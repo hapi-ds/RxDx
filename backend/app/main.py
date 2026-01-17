@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.db import graph_service
 
 
 @asynccontextmanager
@@ -16,10 +17,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print(f"Starting RxDx Backend v{settings.VERSION}")
     print(f"Environment: {settings.ENVIRONMENT}")
     
+    # Initialize graph database connection
+    try:
+        await graph_service.connect()
+        print("✓ Connected to Apache AGE graph database")
+    except Exception as e:
+        print(f"⚠ Warning: Could not connect to graph database: {e}")
+        print("  The application will start but graph features will be unavailable")
+    
     yield
     
     # Shutdown
     print("Shutting down RxDx Backend")
+    await graph_service.close()
+    print("✓ Closed graph database connection")
 
 
 app = FastAPI(

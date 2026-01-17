@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = Field(default="rxdx", description="PostgreSQL username")
     POSTGRES_PASSWORD: str = Field(default="rxdx_password", description="PostgreSQL password")
     POSTGRES_DB: str = Field(default="rxdx", description="PostgreSQL database name")
-    DATABASE_URL: PostgresDsn | None = None
+    DATABASE_URL: str | None = None
     
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -68,7 +68,7 @@ class Settings(BaseSettings):
         )
     
     # Graph Database (Apache AGE)
-    AGE_GRAPH_NAME: str = Field(default="project_graph", description="Apache AGE graph name")
+    AGE_GRAPH_NAME: str = Field(default="rxdx_graph", description="Apache AGE graph name")
     
     # Email
     SMTP_HOST: str = Field(default="localhost", description="SMTP server host")

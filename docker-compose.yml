@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: apache/age:release_PG15_1.6.0
     container_name: rxdx-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rxdx}

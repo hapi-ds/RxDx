@@ -6,6 +6,7 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1 import api_router
 from app.core.config import settings
 from app.db import graph_service
 
@@ -67,3 +68,7 @@ async def root() -> dict[str, str]:
 async def health_check() -> dict[str, str]:
     """Health check endpoint"""
     return {"status": "healthy"}
+
+
+# Include API v1 router
+app.include_router(api_router, prefix="/api/v1")

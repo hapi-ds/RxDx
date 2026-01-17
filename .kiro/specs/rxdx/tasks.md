@@ -69,12 +69,12 @@
 
 ### 2.4 Authentication API Endpoints
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 2.4.1 Create POST /api/v1/auth/login endpoint
-- [ ] 2.4.2 Create POST /api/v1/auth/refresh endpoint
-- [ ] 2.4.3 Create POST /api/v1/auth/logout endpoint
-- [ ] 2.4.4 Create GET /api/v1/auth/me endpoint
-- [ ] 2.4.5 Implement FastAPI dependency injection for current user
-- [ ] 2.4.6 Write integration tests for auth endpoints
+- [x] 2.4.1 Create POST /api/v1/auth/login endpoint
+- [x] 2.4.2 Create POST /api/v1/auth/refresh endpoint
+- [x] 2.4.3 Create POST /api/v1/auth/logout endpoint
+- [x] 2.4.4 Create GET /api/v1/auth/me endpoint
+- [x] 2.4.5 Implement FastAPI dependency injection for current user
+- [x] 2.4.6 Write integration tests for auth endpoints
 
 ## Phase 3: Audit Trail System
 

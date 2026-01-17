@@ -1,9 +1,9 @@
-# Design Document: Regulated Industry Project Management System
+# Design Document: RxDx
 
 ## 1. System Overview
 
 ### 1.1 Purpose
-This document specifies the technical design for a web-based project management system tailored for regulated industries (medtech, GxP, automotive). The system provides comprehensive project management with strict compliance tracking, digital signatures, versioned requirements management, offline scheduling, and local LLM integration.
+This document specifies the technical design for RxDx, a web-based project management system tailored for regulated industries (medtech, GxP, automotive). The system provides comprehensive project management with strict compliance tracking, digital signatures, versioned requirements management, offline scheduling, and local LLM integration.
 
 ### 1.2 Architecture Philosophy
 The system follows a modern, scalable architecture with:

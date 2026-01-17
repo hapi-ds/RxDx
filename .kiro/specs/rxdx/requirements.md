@@ -1,12 +1,12 @@
-# Requirements Document: Regulated Industry Project Management System
+# Requirements Document: RxDx
 
 ## Introduction
 
-This document specifies the requirements for a web-based project management system designed for regulated industries including medical technology (medtech), Good Practice (GxP) environments, and automotive sectors. The system provides comprehensive project management capabilities with strict compliance tracking, digital signatures, versioned requirements management, offline scheduling, and local LLM integration for intelligent work instruction processing.
+This document specifies the requirements for RxDx, a web-based project management system designed for regulated industries including medical technology (medtech), Good Practice (GxP) environments, and automotive sectors. The system provides comprehensive project management capabilities with strict compliance tracking, digital signatures, versioned requirements management, offline scheduling, and local LLM integration for intelligent work instruction processing.
 
 ## Glossary
 
-- **System**: The Regulated Industry Project Management System
+- **System**: RxDx (Requirement Management and much more to Documents and much more)
 - **WorkItem**: A base entity representing any trackable work element (requirement, task, test, etc.)
 - **Digital_Signature**: A cryptographic signature with timestamp and user identity for compliance
 - **Version_History**: A complete audit trail of changes to a WorkItem with timestamps and user attribution

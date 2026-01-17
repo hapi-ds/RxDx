@@ -1,13 +1,17 @@
 """Security utilities for authentication and authorization"""
 
 from datetime import UTC, datetime, timedelta
-from typing import Optional
+from enum import Enum
+from functools import wraps
+from typing import Callable, Optional
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.models.user import UserRole
 
 # Password hashing context using Argon2id
 # Argon2id is the recommended algorithm for password hashing (OWASP, 2023)
@@ -117,3 +121,119 @@ def extract_user_id_from_token(token: str) -> Optional[UUID]:
         return UUID(user_id_str)
     except (ValueError, AttributeError):
         return None
+
+
+# ============================================================================
+# Authorization and RBAC (Role-Based Access Control)
+# ============================================================================
+
+
+class Permission(str, Enum):
+    """
+    Permission enumeration for RBAC.
+    
+    Defines all possible permissions in the system:
+    - READ_WORKITEM: View work items
+    - WRITE_WORKITEM: Create and modify work items
+    - SIGN_WORKITEM: Digitally sign work items
+    - DELETE_WORKITEM: Delete work items
+    - MANAGE_USERS: Create, update, and delete users
+    - VIEW_AUDIT: View audit logs and compliance reports
+    """
+
+    READ_WORKITEM = "read:workitem"
+    WRITE_WORKITEM = "write:workitem"
+    SIGN_WORKITEM = "sign:workitem"
+    DELETE_WORKITEM = "delete:workitem"
+    MANAGE_USERS = "manage:users"
+    VIEW_AUDIT = "view:audit"
+
+
+# Role-to-permissions mapping
+# Defines which permissions each role has
+ROLE_PERMISSIONS: dict[UserRole, list[Permission]] = {
+    UserRole.ADMIN: [
+        Permission.READ_WORKITEM,
+        Permission.WRITE_WORKITEM,
+        Permission.SIGN_WORKITEM,
+        Permission.DELETE_WORKITEM,
+        Permission.MANAGE_USERS,
+        Permission.VIEW_AUDIT,
+    ],
+    UserRole.PROJECT_MANAGER: [
+        Permission.READ_WORKITEM,
+        Permission.WRITE_WORKITEM,
+        Permission.SIGN_WORKITEM,
+        Permission.DELETE_WORKITEM,
+    ],
+    UserRole.VALIDATOR: [
+        Permission.READ_WORKITEM,
+        Permission.SIGN_WORKITEM,
+    ],
+    UserRole.AUDITOR: [
+        Permission.READ_WORKITEM,
+        Permission.VIEW_AUDIT,
+    ],
+    UserRole.USER: [
+        Permission.READ_WORKITEM,
+        Permission.WRITE_WORKITEM,
+    ],
+}
+
+
+def has_permission(user_role: UserRole, permission: Permission) -> bool:
+    """
+    Check if a user role has a specific permission.
+    
+    Args:
+        user_role: The user's role
+        permission: The permission to check
+        
+    Returns:
+        True if the role has the permission, False otherwise
+    """
+    return permission in ROLE_PERMISSIONS.get(user_role, [])
+
+
+def require_permission(permission: Permission) -> Callable:
+    """
+    Decorator to require a specific permission for an endpoint.
+    
+    Usage:
+        @require_permission(Permission.WRITE_WORKITEM)
+        async def create_workitem(current_user: User = Depends(get_current_user)):
+            ...
+    
+    Args:
+        permission: The required permission
+        
+    Returns:
+        Decorator function
+        
+    Raises:
+        HTTPException: 403 Forbidden if user lacks the permission
+    """
+
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Extract current_user from kwargs
+            current_user = kwargs.get("current_user")
+            if current_user is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Authentication required",
+                )
+
+            # Check permission
+            if not has_permission(current_user.role, permission):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Permission denied: {permission.value} required",
+                )
+
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator

@@ -61,11 +61,11 @@
 
 ### 2.3 Authorization and RBAC
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 2.3.1 Define Permission enum (READ_WORKITEM, WRITE_WORKITEM, SIGN_WORKITEM, DELETE_WORKITEM, MANAGE_USERS, VIEW_AUDIT)
-- [ ] 2.3.2 Create ROLE_PERMISSIONS mapping for all roles (admin, project_manager, validator, auditor, user)
-- [ ] 2.3.3 Implement require_permission decorator for endpoint protection
-- [ ] 2.3.4 Write unit tests for permission checking
-- [ ] 2.3.5 Write property-based tests for RBAC logic
+- [x] 2.3.1 Define Permission enum (READ_WORKITEM, WRITE_WORKITEM, SIGN_WORKITEM, DELETE_WORKITEM, MANAGE_USERS, VIEW_AUDIT)
+- [x] 2.3.2 Create ROLE_PERMISSIONS mapping for all roles (admin, project_manager, validator, auditor, user)
+- [x] 2.3.3 Implement require_permission decorator for endpoint protection
+- [x] 2.3.4 Write unit tests for permission checking
+- [x] 2.3.5 Write property-based tests for RBAC logic
 
 ### 2.4 Authentication API Endpoints
 **References:** Requirement 1 (User Authentication and Authorization)

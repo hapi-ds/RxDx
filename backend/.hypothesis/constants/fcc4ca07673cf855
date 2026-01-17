@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/auth.py
+# hypothesis_version: 6.150.2
+
+['/login', '/logout', '/me', '/refresh', 'Bearer', 'WWW-Authenticate', 'bearer']

@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/audit.py
+# hypothesis_version: 6.150.2
+
+[100, 1000, 'from_attributes']

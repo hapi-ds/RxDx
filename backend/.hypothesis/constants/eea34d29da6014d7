@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/auth.py
+# hypothesis_version: 6.150.2
+
+['JWT access token', 'Refresh token', 'Token type', "User's email address", "User's full name", "User's password", "User's role", 'bearer']

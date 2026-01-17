@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/main.py
+# hypothesis_version: 6.150.2
+
+['*', '/', '/api/docs', '/api/openapi.json', '/api/redoc', '/api/v1', '/health', 'RxDx API', 'docs', 'healthy', 'message', 'status', 'version']

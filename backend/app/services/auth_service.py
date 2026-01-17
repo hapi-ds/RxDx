@@ -135,7 +135,7 @@ class AuthService:
         
         # Check if account is locked
         if user.locked_until:
-            if user.locked_until > datetime.utcnow():
+            if user.locked_until > datetime.now(UTC):
                 raise AccountLockedException(user.locked_until)
             else:
                 # Lock period expired, reset failed attempts
@@ -164,7 +164,7 @@ class AuthService:
         user.failed_login_attempts += 1
         
         if user.failed_login_attempts >= settings.MAX_LOGIN_ATTEMPTS:
-            user.locked_until = datetime.utcnow() + timedelta(
+            user.locked_until = datetime.now(UTC) + timedelta(
                 hours=settings.ACCOUNT_LOCK_DURATION_HOURS
             )
         

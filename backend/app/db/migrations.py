@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.db.session import Base, engine
-from app.models import User  # noqa: F401 - Import to register models
+from app.models import AuditLog, User  # noqa: F401 - Import to register models
 
 
 async def create_tables(engine_instance: AsyncEngine = engine) -> None:

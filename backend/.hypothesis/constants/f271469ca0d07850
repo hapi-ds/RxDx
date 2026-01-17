@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/core/config.py
+# hypothesis_version: 6.150.2
+
+[587, 1024, 3650, 5432, './uploads', '.env', '/api/v1', '0.1.0', 'Allowed CORS origins', 'DATABASE_URL', 'From email address', 'HS256', 'LLM model name', 'LM-Studio API URL', 'POSTGRES_PASSWORD', 'POSTGRES_PORT', 'POSTGRES_SERVER', 'POSTGRES_USER', 'PostgreSQL password', 'PostgreSQL username', 'RxDx', 'SMTP password', 'SMTP server host', 'SMTP server port', 'SMTP username', 'Use TLS for SMTP', 'before', 'development', 'ignore', 'local-model', 'localhost', 'noreply@rxdx.local', 'postgresql+asyncpg', 'production', 'rxdx', 'rxdx_graph', 'rxdx_password', 'staging', 'support@rxdx.local', 'utf-8']

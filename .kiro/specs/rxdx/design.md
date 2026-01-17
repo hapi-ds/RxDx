@@ -46,7 +46,7 @@ The system follows a modern, scalable architecture with:
 - **Package Manager**: uv - Fast Python package installer and resolver
 - **Database ORM**: SQLAlchemy 2.0+ (async) - For PostgreSQL operations
 - **Graph Database**: Apache AGE - PostgreSQL extension for graph data
-- **Authentication**: python-jose (JWT), passlib (password hashing)
+- **Authentication**: python-jose (JWT), passlib with Argon2id (password hashing)
 - **Cryptography**: cryptography library for digital signatures
 - **Document Generation**: 
   - ReportLab - PDF generation
@@ -448,7 +448,7 @@ from passlib.context import CryptContext
 
 class AuthService:
     def __init__(self):
-        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        self.pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
         self.secret_key = settings.SECRET_KEY
         self.algorithm = "HS256"
         self.access_token_expire = timedelta(minutes=30)
@@ -2515,7 +2515,7 @@ settings = Settings()
 - Email communication over TLS
 
 #### Sensitive Data Handling
-- Passwords: Hashed with bcrypt (cost factor 12)
+- Passwords: Hashed with Argon2id (memory cost 65536 KiB, time cost 3, parallelism 4)
 - JWT tokens: Signed with HS256, short expiration
 - Private keys: Never stored on server, only client-side
 - Audit logs: Immutable, append-only

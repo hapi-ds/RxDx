@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/core/security.py
+# hypothesis_version: 6.150.2
+
+['auto', 'bcrypt', 'exp', 'iat', 'sub']

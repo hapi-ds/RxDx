@@ -44,20 +44,20 @@
 
 ### 2.1 User Model and Database
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 2.1.1 Create User SQLAlchemy model with all fields (id, email, hashed_password, full_name, role, is_active, failed_login_attempts, locked_until, created_at, updated_at)
-- [ ] 2.1.2 Create Pydantic schemas for User (UserCreate, UserUpdate, UserResponse)
-- [ ] 2.1.3 Create database migration for users table
-- [ ] 2.1.4 Write unit tests for User model validation
+- [x] 2.1.1 Create User SQLAlchemy model with all fields (id, email, hashed_password, full_name, role, is_active, failed_login_attempts, locked_until, created_at, updated_at)
+- [x] 2.1.2 Create Pydantic schemas for User (UserCreate, UserUpdate, UserResponse)
+- [x] 2.1.3 Create database migration for users table
+- [x] 2.1.4 Write unit tests for User model validation
 
 ### 2.2 Authentication Service
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 2.2.1 Implement password hashing with passlib (bcrypt)
-- [ ] 2.2.2 Implement JWT token generation with python-jose
-- [ ] 2.2.3 Create AuthService with authenticate_user method
-- [ ] 2.2.4 Implement failed login attempt tracking and account locking (3 attempts, 1 hour lock)
-- [ ] 2.2.5 Implement session management with token expiration (30 minutes)
-- [ ] 2.2.6 Write unit tests for authentication logic
-- [ ] 2.2.7 Write property-based tests for password hashing
+- [x] 2.2.1 Implement password hashing with passlib (Argon2id)
+- [x] 2.2.2 Implement JWT token generation with python-jose
+- [x] 2.2.3 Create AuthService with authenticate_user method
+- [x] 2.2.4 Implement failed login attempt tracking and account locking (3 attempts, 1 hour lock)
+- [x] 2.2.5 Implement session management with token expiration (30 minutes)
+- [x] 2.2.6 Write unit tests for authentication logic
+- [x] 2.2.7 Write property-based tests for password hashing
 
 ### 2.3 Authorization and RBAC
 **References:** Requirement 1 (User Authentication and Authorization)

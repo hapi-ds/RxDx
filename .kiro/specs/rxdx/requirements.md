@@ -295,5 +295,5 @@ This document specifies the requirements for RxDx, a web-based project managemen
 16. THE System SHALL use multi-stage Docker builds with uv for containerization
 17. THE System SHALL use docker-compose v2 for service orchestration
 18. THE System SHALL use pytest with hypothesis for property-based testing
-19. THE System SHALL use passlib for password hashing, python-jose for JWT tokens, and cryptography library for digital signatures
+19. THE System SHALL use passlib with Argon2id for password hashing, python-jose for JWT tokens, and cryptography library for digital signatures
 20. THE System SHALL use ReportLab for PDF generation, openpyxl for Excel generation, and python-docx-template for Word document generation

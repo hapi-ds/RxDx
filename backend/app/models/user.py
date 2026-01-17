@@ -1,6 +1,6 @@
 """User model for authentication and authorization"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum as PyEnum
 from uuid import uuid4
 
@@ -50,12 +50,12 @@ class User(Base):
     )
     is_active = Column(Boolean, default=True, nullable=False)
     failed_login_attempts = Column(Integer, default=0, nullable=False)
-    locked_until = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     updated_at = Column(
-        DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
 

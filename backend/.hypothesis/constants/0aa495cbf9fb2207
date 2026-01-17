@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/models/user.py
+# hypothesis_version: 6.150.2
+
+['admin', 'auditor', 'project_manager', 'user', 'user_role', 'users', 'validator']

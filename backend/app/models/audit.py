@@ -1,6 +1,6 @@
 """Audit log model for compliance tracking"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import Column, DateTime, ForeignKey, String, JSON
@@ -41,8 +41,8 @@ class AuditLog(Base):
     entity_type = Column(String, nullable=False, index=True)
     entity_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     timestamp = Column(
-        DateTime,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
         nullable=False,
         index=True,
     )

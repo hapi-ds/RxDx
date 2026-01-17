@@ -80,10 +80,10 @@
 
 ### 3.1 Audit Log Model
 **References:** Requirement 13 (Audit Trail and Compliance Reporting)
-- [ ] 3.1.1 Create AuditLog SQLAlchemy model (id, user_id, action, entity_type, entity_id, timestamp, ip_address, details)
-- [ ] 3.1.2 Create Pydantic schemas for AuditLog
-- [ ] 3.1.3 Create database migration for audit_logs table with indexes
-- [ ] 3.1.4 Write unit tests for AuditLog model
+- [x] 3.1.1 Create AuditLog SQLAlchemy model (id, user_id, action, entity_type, entity_id, timestamp, ip_address, details)
+- [x] 3.1.2 Create Pydantic schemas for AuditLog
+- [x] 3.1.3 Create database migration for audit_logs table with indexes
+- [x] 3.1.4 Write unit tests for AuditLog model
 
 ### 3.2 Audit Service
 **References:** Requirement 13 (Audit Trail and Compliance Reporting)

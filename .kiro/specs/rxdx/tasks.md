@@ -150,14 +150,14 @@
 
 ### 5.3 WorkItem API Endpoints
 **References:** Requirement 3 (Requirements Management with Version Control)
-- [ ] 5.3.1 Create GET /api/v1/workitems endpoint with filtering
-- [ ] 5.3.2 Create POST /api/v1/workitems endpoint
-- [ ] 5.3.3 Create GET /api/v1/workitems/{id} endpoint
-- [ ] 5.3.4 Create PATCH /api/v1/workitems/{id} endpoint
-- [ ] 5.3.5 Create DELETE /api/v1/workitems/{id} endpoint
-- [ ] 5.3.6 Create GET /api/v1/workitems/{id}/history endpoint
-- [ ] 5.3.7 Create GET /api/v1/workitems/{id}/version/{version} endpoint
-- [ ] 5.3.8 Write integration tests for WorkItem endpoints
+- [x] 5.3.1 Create GET /api/v1/workitems endpoint with filtering
+- [x] 5.3.2 Create POST /api/v1/workitems endpoint
+- [x] 5.3.3 Create GET /api/v1/workitems/{id} endpoint
+- [x] 5.3.4 Create PATCH /api/v1/workitems/{id} endpoint
+- [x] 5.3.5 Create DELETE /api/v1/workitems/{id} endpoint
+- [x] 5.3.6 Create GET /api/v1/workitems/{id}/history endpoint
+- [x] 5.3.7 Create GET /api/v1/workitems/{id}/version/{version} endpoint
+- [x] 5.3.8 Write integration tests for WorkItem endpoints
 
 ## Phase 6: Version Control System
 

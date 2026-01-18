@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, audit, graph
+from app.api.v1 import auth, audit, graph, workitems
 
 api_router = APIRouter()
 
@@ -14,3 +14,6 @@ api_router.include_router(audit.router, tags=["audit"])
 
 # Include graph routes
 api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
+
+# Include workitem routes
+api_router.include_router(workitems.router, tags=["workitems"])

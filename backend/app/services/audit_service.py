@@ -4,9 +4,11 @@ from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
+from fastapi import Depends
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db
 from app.models.audit import AuditLog
 from app.schemas.audit import AuditLogCreate, AuditLogFilter, AuditLogResponse
 
@@ -424,3 +426,8 @@ class AuditService:
 
     # Note: No update or delete methods - audit logs are immutable
     # This ensures compliance with regulatory requirements for audit trail integrity
+
+
+async def get_audit_service(db: AsyncSession = Depends(get_db)) -> AuditService:
+    """Dependency for getting AuditService instance"""
+    return AuditService(db)

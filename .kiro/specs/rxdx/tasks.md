@@ -133,11 +133,11 @@
 
 ### 5.1 WorkItem Models
 **References:** Requirement 3 (Requirements Management with Version Control)
-- [ ] 5.1.1 Create WorkItem base Pydantic schema (title, description, status, priority, assigned_to)
-- [ ] 5.1.2 Create WorkItemCreate, WorkItemUpdate, WorkItemResponse schemas
-- [ ] 5.1.3 Create specialized schemas for Requirement, Task, Test, Risk, Document types
-- [ ] 5.1.4 Implement Pydantic validators for all fields
-- [ ] 5.1.5 Write unit tests for schema validation
+- [x] 5.1.1 Create WorkItem base Pydantic schema (title, description, status, priority, assigned_to)
+- [x] 5.1.2 Create WorkItemCreate, WorkItemUpdate, WorkItemResponse schemas
+- [x] 5.1.3 Create specialized schemas for Requirement, Task, Test, Risk, Document types
+- [x] 5.1.4 Implement Pydantic validators for all fields
+- [x] 5.1.5 Write unit tests for schema validation
 
 ### 5.2 WorkItem Service
 **References:** Requirement 3 (Requirements Management with Version Control)

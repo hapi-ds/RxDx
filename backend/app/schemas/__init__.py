@@ -6,6 +6,15 @@ from app.schemas.audit import (
     AuditLogFilter,
     AuditLogResponse,
 )
+from app.schemas.signature import (
+    DigitalSignatureBase,
+    DigitalSignatureCreate,
+    DigitalSignatureUpdate,
+    DigitalSignatureResponse,
+    DigitalSignatureFilter,
+    SignatureVerificationRequest,
+    SignatureVerificationResponse,
+)
 from app.schemas.user import UserCreate, UserInDB, UserResponse, UserUpdate
 from app.schemas.workitem import (
     WorkItemBase,
@@ -39,6 +48,13 @@ __all__ = [
     "AuditLogCreate",
     "AuditLogFilter",
     "AuditLogResponse",
+    "DigitalSignatureBase",
+    "DigitalSignatureCreate",
+    "DigitalSignatureUpdate",
+    "DigitalSignatureResponse",
+    "DigitalSignatureFilter",
+    "SignatureVerificationRequest",
+    "SignatureVerificationResponse",
     "UserCreate",
     "UserUpdate",
     "UserResponse",

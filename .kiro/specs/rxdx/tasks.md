@@ -184,10 +184,10 @@
 
 ### 7.1 Digital Signature Model
 **References:** Requirement 2 (Digital Signature Management)
-- [ ] 7.1.1 Create DigitalSignature SQLAlchemy model (id, workitem_id, workitem_version, user_id, signature_hash, content_hash, signed_at, is_valid, invalidated_at, invalidation_reason)
-- [ ] 7.1.2 Create Pydantic schemas for DigitalSignature
-- [ ] 7.1.3 Create database migration for digital_signatures table
-- [ ] 7.1.4 Write unit tests for DigitalSignature model
+- [x] 7.1.1 Create DigitalSignature SQLAlchemy model (id, workitem_id, workitem_version, user_id, signature_hash, content_hash, signed_at, is_valid, invalidated_at, invalidation_reason)
+- [x] 7.1.2 Create Pydantic schemas for DigitalSignature
+- [x] 7.1.3 Create database migration for digital_signatures table
+- [x] 7.1.4 Write unit tests for DigitalSignature model
 
 ### 7.2 Signature Service
 **References:** Requirement 2 (Digital Signature Management)

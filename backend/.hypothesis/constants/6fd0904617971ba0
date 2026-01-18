@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/models/signature.py
+# hypothesis_version: 6.150.2
+
+['RESTRICT', 'digital_signatures', 'users.id']

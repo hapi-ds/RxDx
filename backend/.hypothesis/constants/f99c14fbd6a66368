@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/workitem_service.py
+# hypothesis_version: 6.150.2
+
+[100, '.', '1.0', '1.1', 'NEXT_VERSION', 'WorkItem updated', 'acceptance_criteria', 'actual_hours', 'actual_result', 'assigned_to', 'business_value', 'change_description', 'checksum', 'created_at', 'created_by', 'description', 'detection', 'document_type', 'due_date', 'estimated_hours', 'expected_result', 'file_path', 'file_size', 'from_version', 'id', 'is_signed', 'mime_type', 'mitigation_actions', 'occurrence', 'priority', 'risk', 'risk_owner', 'rpn', 'severity', 'source', 'status', 'test_status', 'test_steps', 'test_type', 'title', 'to_version', 'type', 'updated_at', 'updated_by', 'version']

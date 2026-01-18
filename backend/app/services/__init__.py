@@ -1,6 +1,7 @@
 """Business logic services"""
 
 from .workitem_service import WorkItemService, get_workitem_service
+from .requirement_service import RequirementService, get_requirement_service
 from .auth_service import AuthService
 from .audit_service import AuditService
 from .version_service import VersionService, get_version_service
@@ -9,6 +10,8 @@ from .signature_service import SignatureService, get_signature_service
 __all__ = [
     "WorkItemService",
     "get_workitem_service",
+    "RequirementService",
+    "get_requirement_service",
     "AuthService", 
     "AuditService",
     "VersionService",

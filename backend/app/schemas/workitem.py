@@ -1,7 +1,7 @@
 """Pydantic schemas for WorkItem model"""
 
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
@@ -28,9 +28,9 @@ class WorkItemBase(BaseModel):
     @classmethod
     def validate_status(cls, v: str) -> str:
         """Validate status is one of allowed values"""
-        allowed_statuses = {"draft", "active", "completed", "archived"}
+        allowed_statuses = {"draft", "active", "completed", "archived", "rejected"}
         if v.lower() not in allowed_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(allowed_statuses)}")
+            raise ValueError(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
         return v.lower()
 
     @field_validator("title")
@@ -39,7 +39,19 @@ class WorkItemBase(BaseModel):
         """Validate title is not empty after stripping whitespace"""
         if not v.strip():
             raise ValueError("Title cannot be empty or only whitespace")
-        return v.strip()
+        
+        title = v.strip()
+        if len(title) < 5:
+            raise ValueError("Title must be at least 5 characters long")
+            
+        if len(title) > 500:
+            raise ValueError("Title cannot exceed 500 characters")
+            
+        # Check for meaningful content
+        if not any(c.isalpha() for c in title):
+            raise ValueError("Title must contain at least one letter")
+            
+        return title
 
 
 class WorkItemCreate(WorkItemBase):
@@ -115,6 +127,99 @@ class RequirementBase(WorkItemBase):
     business_value: Optional[str] = Field(None, description="Business value or justification")
     source: Optional[str] = Field(None, description="Source of the requirement (e.g., stakeholder, regulation)")
 
+    @field_validator("acceptance_criteria")
+    @classmethod
+    def validate_acceptance_criteria(cls, v: Optional[str]) -> Optional[str]:
+        """Validate acceptance criteria format and content"""
+        if v is None:
+            return v
+        
+        v = v.strip()
+        if not v:
+            return None
+            
+        if len(v) < 20:
+            raise ValueError("Acceptance criteria must be at least 20 characters long")
+            
+        if len(v) > 2000:
+            raise ValueError("Acceptance criteria cannot exceed 2000 characters")
+            
+        # Check for structured format keywords
+        structured_keywords = ["given", "when", "then", "and", "but", "should", "must", "shall"]
+        v_lower = v.lower()
+        has_structure = any(keyword in v_lower for keyword in structured_keywords)
+        
+        if not has_structure:
+            raise ValueError(
+                "Acceptance criteria should follow a structured format (e.g., Given-When-Then) "
+                "and include keywords like 'given', 'when', 'then', 'should', 'must', or 'shall'"
+            )
+            
+        # Check for prohibited placeholder text
+        prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+        v_upper = v.upper()
+        for pattern in prohibited_patterns:
+            if pattern in v_upper:
+                raise ValueError(f"Acceptance criteria cannot contain placeholder text: {pattern}")
+                
+        return v
+
+    @field_validator("business_value")
+    @classmethod
+    def validate_business_value(cls, v: Optional[str]) -> Optional[str]:
+        """Validate business value content"""
+        if v is None:
+            return v
+            
+        v = v.strip()
+        if not v:
+            return None
+            
+        if len(v) < 10:
+            raise ValueError("Business value must be at least 10 characters long")
+            
+        if len(v) > 1000:
+            raise ValueError("Business value cannot exceed 1000 characters")
+            
+        # Check for meaningful content
+        if not any(c.isalpha() for c in v):
+            raise ValueError("Business value must contain descriptive text")
+            
+        # Check for prohibited placeholder text
+        prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+        v_upper = v.upper()
+        for pattern in prohibited_patterns:
+            if pattern in v_upper:
+                raise ValueError(f"Business value cannot contain placeholder text: {pattern}")
+                
+        return v
+
+    @field_validator("source")
+    @classmethod
+    def validate_source(cls, v: Optional[str]) -> Optional[str]:
+        """Validate requirement source"""
+        if v is None:
+            return v
+            
+        v = v.strip()
+        if not v:
+            return None
+            
+        valid_sources = {
+            "stakeholder", "regulation", "standard", "user_story", 
+            "business_rule", "technical_constraint", "compliance", 
+            "security", "performance", "usability", "other"
+        }
+        
+        v_lower = v.lower()
+        if v_lower not in valid_sources:
+            raise ValueError(
+                f"Invalid requirement source '{v}'. "
+                f"Must be one of: {', '.join(sorted(valid_sources))}"
+            )
+            
+        return v_lower
+
 
 class RequirementCreate(RequirementBase):
     """Schema for creating a new Requirement"""
@@ -139,9 +244,9 @@ class RequirementUpdate(BaseModel):
     def validate_status(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
-        allowed_statuses = {"draft", "active", "completed", "archived"}
-        if v.lower() not in allowed_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(allowed_statuses)}")
+        valid_statuses = {"draft", "active", "completed", "archived", "rejected"}
+        if v.lower() not in valid_statuses:
+            raise ValueError(f"Status must be one of: {', '.join(sorted(valid_statuses))}")
         return v.lower()
 
     @field_validator("title")
@@ -151,7 +256,141 @@ class RequirementUpdate(BaseModel):
             return v
         if not v.strip():
             raise ValueError("Title cannot be empty or only whitespace")
-        return v.strip()
+        
+        title = v.strip()
+        if len(title) < 5:
+            raise ValueError("Requirement title must be at least 5 characters long")
+            
+        if len(title) > 500:
+            raise ValueError("Requirement title cannot exceed 500 characters")
+            
+        # Check for meaningful content
+        if not any(c.isalpha() for c in title):
+            raise ValueError("Requirement title must contain at least one letter")
+            
+        # Check for prohibited patterns
+        prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+        title_upper = title.upper()
+        for pattern in prohibited_patterns:
+            if pattern in title_upper:
+                raise ValueError(f"Requirement title cannot contain placeholder text: {pattern}")
+                
+        return title
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+            
+        if v:  # Only validate if not empty string
+            description = v.strip()
+            if len(description) < 20:
+                raise ValueError("Requirement description must be at least 20 characters long if provided")
+                
+            if len(description) > 5000:
+                raise ValueError("Requirement description cannot exceed 5000 characters")
+                
+            # Check for prohibited placeholder text
+            prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX", "Lorem ipsum"]
+            description_upper = description.upper()
+            for pattern in prohibited_patterns:
+                if pattern in description_upper:
+                    raise ValueError(f"Requirement description cannot contain placeholder text: {pattern}")
+                    
+            return description
+        
+        return v
+
+    @field_validator("acceptance_criteria")
+    @classmethod
+    def validate_acceptance_criteria(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+            
+        if v:  # Only validate if not empty string
+            criteria = v.strip()
+            if len(criteria) < 20:
+                raise ValueError("Acceptance criteria must be at least 20 characters long")
+                
+            if len(criteria) > 2000:
+                raise ValueError("Acceptance criteria cannot exceed 2000 characters")
+                
+            # Check for structured format keywords
+            structured_keywords = ["given", "when", "then", "and", "but", "should", "must", "shall"]
+            criteria_lower = criteria.lower()
+            has_structure = any(keyword in criteria_lower for keyword in structured_keywords)
+            
+            if not has_structure:
+                raise ValueError(
+                    "Acceptance criteria should follow a structured format (e.g., Given-When-Then) "
+                    "and include keywords like 'given', 'when', 'then', 'should', 'must', or 'shall'"
+                )
+                
+            # Check for prohibited placeholder text
+            prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+            criteria_upper = criteria.upper()
+            for pattern in prohibited_patterns:
+                if pattern in criteria_upper:
+                    raise ValueError(f"Acceptance criteria cannot contain placeholder text: {pattern}")
+                    
+            return criteria
+        
+        return v
+
+    @field_validator("business_value")
+    @classmethod
+    def validate_business_value(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+            
+        if v:  # Only validate if not empty string
+            value = v.strip()
+            if len(value) < 10:
+                raise ValueError("Business value must be at least 10 characters long")
+                
+            if len(value) > 1000:
+                raise ValueError("Business value cannot exceed 1000 characters")
+                
+            # Check for meaningful content
+            if not any(c.isalpha() for c in value):
+                raise ValueError("Business value must contain descriptive text")
+                
+            # Check for prohibited placeholder text
+            prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+            value_upper = value.upper()
+            for pattern in prohibited_patterns:
+                if pattern in value_upper:
+                    raise ValueError(f"Business value cannot contain placeholder text: {pattern}")
+                    
+            return value
+        
+        return v
+
+    @field_validator("source")
+    @classmethod
+    def validate_source(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+            
+        if v:  # Only validate if not empty string
+            source = v.strip()
+            valid_sources = {
+                "stakeholder", "regulation", "standard", "user_story", 
+                "business_rule", "technical_constraint", "compliance", 
+                "security", "performance", "usability", "other"
+            }
+            
+            source_lower = source.lower()
+            if source_lower not in valid_sources:
+                raise ValueError(
+                    f"Invalid requirement source '{source}'. "
+                    f"Must be one of: {', '.join(sorted(valid_sources))}"
+                )
+                
+            return source_lower
+        
+        return v
 
 
 class RequirementResponse(RequirementBase):
@@ -442,3 +681,105 @@ class DocumentResponse(DocumentBase):
     is_signed: bool = False
 
     model_config = {"from_attributes": True}
+
+
+# Comment schemas for requirement comments
+
+class CommentBase(BaseModel):
+    """Base schema for comments"""
+    
+    comment: str = Field(..., min_length=1, max_length=2000, description="Comment text")
+
+    @field_validator("comment")
+    @classmethod
+    def validate_comment(cls, v: str) -> str:
+        """Validate comment content"""
+        if not v or not v.strip():
+            raise ValueError("Comment cannot be empty")
+            
+        comment = v.strip()
+        
+        if len(comment) < 1:
+            raise ValueError("Comment must contain at least 1 character")
+            
+        if len(comment) > 2000:
+            raise ValueError("Comment cannot exceed 2000 characters")
+            
+        # Check for prohibited placeholder text
+        prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+        comment_upper = comment.upper()
+        for pattern in prohibited_patterns:
+            if pattern in comment_upper:
+                raise ValueError(f"Comment cannot contain placeholder text: {pattern}")
+                
+        return comment
+
+
+class CommentCreate(CommentBase):
+    """Schema for creating a new comment"""
+    pass
+
+
+class CommentUpdate(BaseModel):
+    """Schema for updating a comment"""
+    
+    comment: str = Field(..., min_length=1, max_length=2000, description="Updated comment text")
+
+    @field_validator("comment")
+    @classmethod
+    def validate_comment(cls, v: str) -> str:
+        """Validate comment content"""
+        if not v or not v.strip():
+            raise ValueError("Comment cannot be empty")
+            
+        comment = v.strip()
+        
+        if len(comment) < 1:
+            raise ValueError("Comment must contain at least 1 character")
+            
+        if len(comment) > 2000:
+            raise ValueError("Comment cannot exceed 2000 characters")
+            
+        # Check for prohibited placeholder text
+        prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX"]
+        comment_upper = comment.upper()
+        for pattern in prohibited_patterns:
+            if pattern in comment_upper:
+                raise ValueError(f"Comment cannot contain placeholder text: {pattern}")
+                
+        return comment
+
+
+class CommentResponse(CommentBase):
+    """Schema for comment response with metadata"""
+    
+    id: UUID = Field(..., description="Unique comment identifier")
+    requirement_id: UUID = Field(..., description="ID of the requirement this comment belongs to")
+    user_id: UUID = Field(..., description="ID of the user who created the comment")
+    user_name: Optional[str] = Field(None, description="Full name of the user who created the comment")
+    user_email: Optional[str] = Field(None, description="Email of the user who created the comment")
+    created_at: datetime = Field(..., description="When the comment was created")
+    updated_at: Optional[datetime] = Field(None, description="When the comment was last updated")
+    version: str = Field(..., description="Version of the requirement when comment was added")
+    is_edited: bool = Field(default=False, description="Whether the comment has been edited")
+    edit_count: int = Field(default=0, description="Number of times the comment has been edited")
+
+    model_config = {"from_attributes": True}
+
+
+class CommentWithUserInfo(CommentResponse):
+    """Extended comment response with full user information"""
+    
+    user_role: Optional[str] = Field(None, description="Role of the user who created the comment")
+    user_avatar: Optional[str] = Field(None, description="Avatar URL of the user")
+
+
+class CommentListResponse(BaseModel):
+    """Schema for paginated comment list response"""
+    
+    comments: List[CommentResponse] = Field(..., description="List of comments")
+    total_count: int = Field(..., description="Total number of comments")
+    page: int = Field(..., description="Current page number")
+    page_size: int = Field(..., description="Number of comments per page")
+    has_next: bool = Field(..., description="Whether there are more comments")
+    has_previous: bool = Field(..., description="Whether there are previous comments")

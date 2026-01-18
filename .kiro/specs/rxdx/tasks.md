@@ -213,20 +213,20 @@
 
 ### 8.1 Requirements Service
 **References:** Requirement 3 (Requirements Management with Version Control)
-- [ ] 8.1.1 Create RequirementService extending WorkItemService
-- [ ] 8.1.2 Implement requirement-specific validation
-- [ ] 8.1.3 Implement add_comment method with user attribution
-- [ ] 8.1.4 Implement requirement dependency tracking
-- [ ] 8.1.5 Write unit tests for requirement operations
+- [x] 8.1.1 Create RequirementService extending WorkItemService
+- [x] 8.1.2 Implement requirement-specific validation
+- [x] 8.1.3 Implement add_comment method with user attribution
+- [x] 8.1.4 Implement requirement dependency tracking
+- [x] 8.1.5 Write unit tests for requirement operations
 
 ### 8.2 Requirements API Endpoints
 **References:** Requirement 3 (Requirements Management with Version Control)
-- [ ] 8.2.1 Create GET /api/v1/requirements endpoint
-- [ ] 8.2.2 Create POST /api/v1/requirements endpoint
-- [ ] 8.2.3 Create GET /api/v1/requirements/{id} endpoint
-- [ ] 8.2.4 Create PATCH /api/v1/requirements/{id} endpoint
-- [ ] 8.2.5 Create POST /api/v1/requirements/{id}/comments endpoint
-- [ ] 8.2.6 Write integration tests for requirements endpoints
+- [x] 8.2.1 Create GET /api/v1/requirements endpoint
+- [x] 8.2.2 Create POST /api/v1/requirements endpoint
+- [x] 8.2.3 Create GET /api/v1/requirements/{id} endpoint
+- [x] 8.2.4 Create PATCH /api/v1/requirements/{id} endpoint
+- [x] 8.2.5 Create POST /api/v1/requirements/{id}/comments endpoint
+- [x] 8.2.6 Write integration tests for requirements endpoints
 
 ## Phase 9: Test Management
 

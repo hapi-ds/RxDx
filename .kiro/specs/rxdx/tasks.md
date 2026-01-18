@@ -123,11 +123,11 @@
 
 ### 4.3 Graph Visualization API
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 4.3.1 Implement get_graph_for_visualization method with depth parameter
-- [ ] 4.3.2 Create GET /api/v1/graph/visualization endpoint
-- [ ] 4.3.3 Implement node/edge formatting for react-flow and R3F
-- [ ] 4.3.4 Add query performance optimization (limit 1000 nodes)
-- [ ] 4.3.5 Write integration tests for visualization endpoint
+- [x] 4.3.1 Implement get_graph_for_visualization method with depth parameter
+- [x] 4.3.2 Create GET /api/v1/graph/visualization endpoint
+- [x] 4.3.3 Implement node/edge formatting for react-flow and R3F
+- [x] 4.3.4 Add query performance optimization (limit 1000 nodes)
+- [x] 4.3.5 Write integration tests for visualization endpoint
 
 ## Phase 5: WorkItem Management
 

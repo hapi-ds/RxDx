@@ -532,6 +532,318 @@ class TestGraphTraversalProperties:
                 assert "async" in str(e).lower() or "event loop" in str(e).lower()
 
 
+class TestGraphVisualizationMethods:
+    """Test graph visualization methods for task 4.3"""
+    
+    @pytest.mark.asyncio
+    async def test_get_graph_for_visualization_full_graph(self, graph_service):
+        """Test getting full graph for visualization"""
+        # Mock nodes and edges
+        mock_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "test-1", "type": "test", "title": "Test 1"}
+        ]
+        
+        mock_edges = [
+            {"start_id": "req-1", "end_id": "test-1", "type": "TESTED_BY"}
+        ]
+        
+        # Mock the helper methods
+        graph_service._get_full_graph = AsyncMock(return_value=(mock_nodes, mock_edges))
+        graph_service._format_node_for_visualization = MagicMock(side_effect=lambda node: {
+            "id": node["id"],
+            "type": node["type"],
+            "label": node["title"],
+            "color": "#3B82F6",
+            "size": 50,
+            "properties": node,
+            "reactFlow": {"id": node["id"], "type": "custom"},
+            "r3f": {"id": node["id"], "position": [0, 0, 0]}
+        })
+        graph_service._format_edge_for_visualization = MagicMock(side_effect=lambda edge: {
+            "id": f"{edge['start_id']}-{edge['end_id']}-{edge['type']}",
+            "source": edge["start_id"],
+            "target": edge["end_id"],
+            "type": edge["type"],
+            "color": "#F59E0B",
+            "style": "solid",
+            "properties": edge,
+            "reactFlow": {"id": f"{edge['start_id']}-{edge['end_id']}", "source": edge["start_id"]},
+            "r3f": {"id": f"{edge['start_id']}-{edge['end_id']}", "source": edge["start_id"]}
+        })
+        
+        result = await graph_service.get_graph_for_visualization()
+        
+        assert "nodes" in result
+        assert "edges" in result
+        assert "metadata" in result
+        
+        assert len(result["nodes"]) == 2
+        assert len(result["edges"]) == 1
+        
+        # Check metadata
+        metadata = result["metadata"]
+        assert metadata["total_nodes"] == 2
+        assert metadata["total_edges"] == 1
+        assert metadata["depth"] == 2
+        assert metadata["center_node"] is None
+        assert metadata["truncated"] is False
+        
+        # Verify helper methods were called
+        graph_service._get_full_graph.assert_called_once_with(None, None, 1000)
+        assert graph_service._format_node_for_visualization.call_count == 2
+        assert graph_service._format_edge_for_visualization.call_count == 1
+        
+    @pytest.mark.asyncio
+    async def test_get_graph_for_visualization_subgraph(self, graph_service):
+        """Test getting subgraph around center node"""
+        mock_nodes = [
+            {"id": "center-1", "type": "requirement", "title": "Center Requirement"}
+        ]
+        mock_edges = []
+        
+        graph_service._get_subgraph_around_node = AsyncMock(return_value=(mock_nodes, mock_edges))
+        graph_service._format_node_for_visualization = MagicMock(return_value={
+            "id": "center-1", "type": "requirement", "label": "Center Requirement"
+        })
+        graph_service._format_edge_for_visualization = MagicMock()
+        
+        result = await graph_service.get_graph_for_visualization(
+            center_node_id="center-1",
+            depth=3,
+            node_types=["requirement", "test"],
+            relationship_types=["TESTED_BY"],
+            limit=500
+        )
+        
+        # Verify subgraph method was called with correct parameters
+        graph_service._get_subgraph_around_node.assert_called_once_with(
+            "center-1", 3, ["requirement", "test"], ["TESTED_BY"], 500
+        )
+        
+        # Check metadata
+        metadata = result["metadata"]
+        assert metadata["center_node"] == "center-1"
+        assert metadata["depth"] == 3
+        
+    @pytest.mark.asyncio
+    async def test_get_subgraph_around_node(self, graph_service):
+        """Test getting subgraph around a specific node"""
+        # Mock center node
+        center_node = {"id": "center-1", "type": "requirement", "title": "Center"}
+        
+        # Mock query results
+        query_results = [
+            {
+                "n": {"id": "related-1", "type": "test", "title": "Related Test"},
+                "rels": [
+                    {"start_id": "center-1", "end_id": "related-1", "type": "TESTED_BY"}
+                ]
+            }
+        ]
+        
+        graph_service.get_node = AsyncMock(return_value=center_node)
+        graph_service.execute_query = AsyncMock(return_value=query_results)
+        
+        nodes, edges = await graph_service._get_subgraph_around_node(
+            center_node_id="center-1",
+            depth=2,
+            node_types=["requirement", "test"],
+            relationship_types=["TESTED_BY"],
+            limit=100
+        )
+        
+        # Should include center node plus related nodes
+        assert len(nodes) == 2  # center + related
+        assert len(edges) == 1
+        
+        # Verify center node is included
+        center_found = any(node["id"] == "center-1" for node in nodes)
+        assert center_found
+        
+        # Verify query was called with correct filters
+        call_args = graph_service.execute_query.call_args[0][0]
+        assert "center-1" in call_args
+        assert ":TESTED_BY" in call_args
+        assert "n:requirement OR n:test" in call_args
+        assert "*1..2" in call_args
+        assert "LIMIT 100" in call_args
+        
+    @pytest.mark.asyncio
+    async def test_get_full_graph(self, graph_service):
+        """Test getting full graph with filters"""
+        # Mock node query results
+        node_results = [
+            {"id": "node-1", "type": "requirement"},
+            {"id": "node-2", "type": "test"}
+        ]
+        
+        # Mock relationship query results
+        rel_results = [
+            {
+                "r": {"type": "TESTED_BY", "properties": {}},
+                "start_id": "node-1",
+                "end_id": "node-2"
+            }
+        ]
+        
+        graph_service.execute_query = AsyncMock(side_effect=[node_results, rel_results])
+        
+        nodes, edges = await graph_service._get_full_graph(
+            node_types=["requirement", "test"],
+            relationship_types=["TESTED_BY"],
+            limit=100
+        )
+        
+        assert len(nodes) == 2
+        assert len(edges) == 1
+        
+        # Verify two queries were made
+        assert graph_service.execute_query.call_count == 2
+        
+        # Check node query
+        node_query = graph_service.execute_query.call_args_list[0][0][0]
+        assert "n:requirement OR n:test" in node_query
+        assert "LIMIT 100" in node_query
+        
+        # Check relationship query
+        rel_query = graph_service.execute_query.call_args_list[1][0][0]
+        assert "r:TESTED_BY" in rel_query
+        assert "LIMIT 200" in rel_query  # limit * 2
+        
+    def test_format_node_for_visualization(self, graph_service):
+        """Test formatting node for visualization libraries"""
+        node = {
+            "id": "req-1",
+            "type": "requirement",
+            "title": "Test Requirement",
+            "description": "Test description",
+            "status": "active",
+            "priority": 3  # Default priority
+        }
+        
+        result = graph_service._format_node_for_visualization(node)
+        
+        # Check basic properties
+        assert result["id"] == "req-1"
+        assert result["type"] == "requirement"
+        assert result["label"] == "Test Requirement"
+        assert result["status"] == "active"
+        assert result["priority"] == 3
+        assert result["description"] == "Test description"
+        assert result["color"] == "#3B82F6"  # Blue for active requirements
+        assert result["size"] == 80  # Base size 50 * (1 + (6-3)*0.2) = 50 * 1.6 = 80
+        assert result["properties"] == node
+        
+        # Check react-flow format
+        react_flow = result["reactFlow"]
+        assert react_flow["id"] == "req-1"
+        assert react_flow["type"] == "custom"
+        assert "position" in react_flow
+        assert react_flow["data"]["label"] == "Test Requirement"
+        assert react_flow["data"]["type"] == "requirement"
+        assert react_flow["data"]["status"] == "active"
+        assert react_flow["data"]["priority"] == 3
+        
+        # Check R3F format
+        r3f = result["r3f"]
+        assert r3f["id"] == "req-1"
+        assert r3f["position"] == [0, 0, 0]
+        assert r3f["type"] == "requirement"
+        assert r3f["label"] == "Test Requirement"
+        assert r3f["status"] == "active"
+        assert r3f["priority"] == 3
+        
+    def test_format_node_colors_by_type(self, graph_service):
+        """Test that different node types get different colors"""
+        test_cases = [
+            ("requirement", "#3B82F6"),  # Blue
+            ("task", "#10B981"),         # Green
+            ("test", "#F59E0B"),         # Amber
+            ("risk", "#EF4444"),         # Red
+            ("document", "#8B5CF6"),     # Purple
+            ("failure", "#DC2626"),      # Dark red
+            ("entity", "#6B7280"),       # Gray
+            ("user", "#06B6D4"),         # Cyan
+            ("unknown", "#6B7280")       # Default gray
+        ]
+        
+        for node_type, expected_color in test_cases:
+            node = {"id": "test", "type": node_type, "title": "Test"}
+            result = graph_service._format_node_for_visualization(node)
+            assert result["color"] == expected_color
+            
+    def test_format_edge_for_visualization(self, graph_service):
+        """Test formatting edge for visualization libraries"""
+        edge = {
+            "start_id": "req-1",
+            "end_id": "test-1", 
+            "type": "TESTED_BY",
+            "properties": {"created_at": "2024-01-01"}
+        }
+        
+        result = graph_service._format_edge_for_visualization(edge)
+        
+        # Check basic properties
+        assert result["id"] == "req-1-test-1-TESTED_BY"
+        assert result["source"] == "req-1"
+        assert result["target"] == "test-1"
+        assert result["type"] == "TESTED_BY"
+        assert result["color"] == "#F59E0B"  # Amber for TESTED_BY
+        assert result["style"] == "solid"
+        
+        # Check react-flow format
+        react_flow = result["reactFlow"]
+        assert react_flow["id"] == "req-1-test-1-TESTED_BY"
+        assert react_flow["source"] == "req-1"
+        assert react_flow["target"] == "test-1"
+        assert react_flow["type"] == "smoothstep"
+        assert react_flow["label"] == "Tested By"
+        
+        # Check R3F format
+        r3f = result["r3f"]
+        assert r3f["source"] == "req-1"
+        assert r3f["target"] == "test-1"
+        assert r3f["type"] == "TESTED_BY"
+        
+    def test_format_edge_styles_by_type(self, graph_service):
+        """Test that different edge types get different styles"""
+        test_cases = [
+            ("TESTED_BY", "#F59E0B", "solid", False),
+            ("MITIGATES", "#EF4444", "dashed", False),
+            ("DEPENDS_ON", "#6B7280", "solid", False),
+            ("IMPLEMENTS", "#10B981", "solid", False),
+            ("LEADS_TO", "#DC2626", "dotted", True),  # Animated
+            ("NEXT_VERSION", "#3B82F6", "dashed", True),  # Animated
+            ("RELATES_TO", "#8B5CF6", "solid", False),
+            ("UNKNOWN_TYPE", "#6B7280", "solid", False)  # Default
+        ]
+        
+        for edge_type, expected_color, expected_style, expected_animated in test_cases:
+            edge = {
+                "start_id": "a",
+                "end_id": "b",
+                "type": edge_type
+            }
+            
+            result = graph_service._format_edge_for_visualization(edge)
+            
+            assert result["color"] == expected_color
+            assert result["style"] == expected_style
+            
+            # Check animation in react-flow format
+            react_flow = result["reactFlow"]
+            assert react_flow["animated"] == expected_animated
+            
+            # Check stroke dash array for dashed/dotted lines
+            if expected_style == "dashed":
+                assert react_flow["style"]["strokeDasharray"] == "5,5"
+            elif expected_style == "dotted":
+                assert react_flow["style"]["strokeDasharray"] == "2,2"
+            else:
+                assert react_flow["style"]["strokeDasharray"] is None
+
+
 class TestGraphServiceIntegration:
     """Integration tests for GraphService (require actual database)"""
     

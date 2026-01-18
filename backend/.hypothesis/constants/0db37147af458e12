@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/audit_service.py
+# hypothesis_version: 6.150.2
+
+[3650, 10000, 'AUTHZ_DENIED', 'AUTHZ_GRANTED', 'AUTH_FAILURE', 'AUTH_SUCCESS', 'AuditLog', 'Authorization', 'CLEANUP', 'DigitalSignature', 'User', 'action', 'changes', 'cutoff_date', 'deleted_count', 'details', 'email', 'entity_id', 'entity_type', 'failure_reason', 'id', 'ip_address', 'permission', 'resource', 'retention_days', 'signature_id', 'timestamp', 'user_id', 'verification_result', 'workitem_id']

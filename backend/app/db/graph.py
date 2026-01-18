@@ -2,6 +2,7 @@
 
 import asyncpg
 from typing import Any, Dict, List, Optional
+from datetime import datetime, timezone
 from app.core.config import settings
 import json
 
@@ -26,16 +27,42 @@ class GraphService:
                 command_timeout=60,
             )
             
-            # Load AGE extension
-            async with self.pool.acquire() as conn:
+            # Load AGE extension and set search path for each connection
+            async def init_connection(conn):
                 await conn.execute("LOAD 'age';")
                 await conn.execute("SET search_path = ag_catalog, '$user', public;")
+                
+            # Apply initialization to all connections in the pool
+            async with self.pool.acquire() as conn:
+                await init_connection(conn)
                 
     async def close(self):
         """Close connection pool"""
         if self.pool:
             await self.pool.close()
             self.pool = None
+            
+    async def _ensure_graph_exists(self):
+        """Ensure the graph database exists"""
+        async with self.pool.acquire() as conn:
+            try:
+                # Ensure AGE is loaded and search path is set
+                await conn.execute("LOAD 'age';")
+                await conn.execute("SET search_path = ag_catalog, '$user', public;")
+                
+                # Check if graph exists
+                check_query = f"SELECT * FROM ag_catalog.ag_graph WHERE name = '{self.graph_name}'"
+                result = await conn.fetch(check_query)
+                
+                if not result:
+                    # Create the graph using the correct function
+                    create_query = f"SELECT ag_catalog.create_graph('{self.graph_name}')"
+                    await conn.fetch(create_query)
+                    print(f"Created graph: {self.graph_name}")
+                    
+            except Exception as e:
+                print(f"Graph creation error: {e}")
+                # Graph might already exist, continue
             
     async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict]:
         """
@@ -51,25 +78,38 @@ class GraphService:
         if not self.pool:
             await self.connect()
             
-        # Wrap Cypher query in AGE SQL function
+        # Ensure the graph exists before executing queries
+        await self._ensure_graph_exists()
+            
+        # Use the full ag_catalog.cypher function with explicit type casting
         sql_query = f"""
-        SELECT * FROM cypher('{self.graph_name}', $$
+        SELECT * FROM ag_catalog.cypher('{self.graph_name}', $$
             {query}
-        $$) as (result agtype);
+        $$) as (result ag_catalog.agtype);
         """
         
         async with self.pool.acquire() as conn:
-            rows = await conn.fetch(sql_query)
-            
-            # Parse AGE agtype results to Python dicts
-            results = []
-            for row in rows:
-                result = row['result']
-                # AGE returns results as agtype, convert to dict
-                if result:
-                    results.append(self._parse_agtype(result))
-                    
-            return results
+            try:
+                # Ensure AGE is loaded and search path is set for this connection
+                await conn.execute("LOAD 'age';")
+                await conn.execute("SET search_path = ag_catalog, '$user', public;")
+                
+                rows = await conn.fetch(sql_query)
+                
+                # Parse AGE agtype results to Python dicts
+                results = []
+                for row in rows:
+                    result = row['result']
+                    # AGE returns results as agtype, convert to dict
+                    if result:
+                        results.append(self._parse_agtype(result))
+                        
+                return results
+            except Exception as e:
+                # Log the error for debugging
+                print(f"Query execution error: {e}")
+                print(f"Query: {sql_query}")
+                raise
             
     async def create_node(
         self,
@@ -218,6 +258,154 @@ class GraphService:
         """
         
         return await self.execute_query(query)
+
+    async def create_workitem_node(
+        self,
+        workitem_id: str,
+        workitem_type: str,
+        title: str,
+        description: Optional[str] = None,
+        status: str = "draft",
+        priority: Optional[int] = None,
+        version: str = "1.0",
+        created_by: str = None,
+        assigned_to: Optional[str] = None,
+        **additional_props
+    ) -> Dict[str, Any]:
+        """
+        Create a WorkItem node in the graph database
+        
+        Args:
+            workitem_id: Unique identifier for the WorkItem
+            workitem_type: Type of WorkItem (requirement, task, test, risk, document)
+            title: WorkItem title
+            description: Optional description
+            status: WorkItem status (draft, active, completed, archived)
+            priority: Priority level (1-5)
+            version: Version string (default "1.0")
+            created_by: User ID who created the WorkItem
+            assigned_to: Optional user ID assigned to the WorkItem
+            **additional_props: Additional properties specific to WorkItem type
+            
+        Returns:
+            Created WorkItem node
+        """
+        properties = {
+            "id": workitem_id,
+            "type": workitem_type,
+            "title": title,
+            "status": status,
+            "version": version
+        }
+        
+        if description:
+            properties["description"] = description
+        if priority:
+            properties["priority"] = priority
+        if created_by:
+            properties["created_by"] = created_by
+        if assigned_to:
+            properties["assigned_to"] = assigned_to
+            
+        # Add any additional properties
+        properties.update(additional_props)
+        
+        # Add timestamps
+        properties["created_at"] = datetime.now(timezone.utc).isoformat()
+        properties["updated_at"] = datetime.now(timezone.utc).isoformat()
+        
+        return await self.create_node("WorkItem", properties)
+
+    async def get_workitem(self, workitem_id: str) -> Optional[Dict[str, Any]]:
+        """Get a WorkItem node by ID"""
+        query = f"MATCH (w:WorkItem {{id: '{workitem_id}'}}) RETURN w"
+        results = await self.execute_query(query)
+        
+        if results:
+            # Extract the node data from the parsed result
+            node_data = results[0]
+            if 'properties' in node_data:
+                return node_data['properties']
+            else:
+                return node_data
+        return None
+        
+    async def get_workitem_version(self, workitem_id: str, version: str) -> Optional[Dict[str, Any]]:
+        """Get a specific version of a WorkItem"""
+        query = f"MATCH (w:WorkItem {{id: '{workitem_id}', version: '{version}'}}) RETURN w"
+        results = await self.execute_query(query)
+        
+        if results:
+            # Extract the node data from the parsed result
+            node_data = results[0]
+            if 'properties' in node_data:
+                return node_data['properties']
+            else:
+                return node_data
+        return None
+        
+    async def create_workitem_version(
+        self,
+        workitem_id: str,
+        version: str,
+        data: Dict[str, Any],
+        user_id: str,
+        change_description: str
+    ) -> Dict[str, Any]:
+        """Create a new version of a WorkItem"""
+        # Update the data with new version info
+        version_data = {**data}
+        version_data.update({
+            "version": version,
+            "updated_by": user_id,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "change_description": change_description
+        })
+        
+        return await self.create_node("WorkItem", version_data)
+        
+    async def initialize_graph_schema(self) -> Dict[str, List[str]]:
+        """
+        Initialize the graph schema with supported node types and relationships
+        
+        Returns:
+            Dictionary with supported node_types and relationship_types
+        """
+        # Define supported node types
+        node_types = [
+            "WorkItem",      # Base work item (requirements, tasks, tests, etc.)
+            "Requirement",   # Specific requirement nodes
+            "Task",          # Task nodes
+            "Test",          # Test specification nodes
+            "Risk",          # Risk nodes for FMEA
+            "Failure",       # Failure nodes for FMEA chains
+            "Document",      # Document nodes
+            "Entity",        # Entities extracted from emails/meetings
+            "User"           # User nodes for relationships
+        ]
+        
+        # Define supported relationship types
+        relationship_types = [
+            "TESTED_BY",     # Requirement -> Test
+            "MITIGATES",     # Requirement -> Risk
+            "DEPENDS_ON",    # WorkItem -> WorkItem (dependencies)
+            "IMPLEMENTS",    # Task -> Requirement
+            "LEADS_TO",      # Risk -> Failure (FMEA chains)
+            "RELATES_TO",    # Entity -> Entity
+            "MENTIONED_IN",  # Entity -> WorkItem
+            "REFERENCES",    # WorkItem -> WorkItem
+            "NEXT_VERSION",  # WorkItem -> WorkItem (version history)
+            "CREATED_BY",    # WorkItem -> User
+            "ASSIGNED_TO"    # WorkItem -> User
+        ]
+        
+        # Note: AGE doesn't support CREATE INDEX in Cypher queries like Neo4j
+        # Indexes would need to be created using PostgreSQL syntax if needed
+        
+        return {
+            "node_types": node_types,
+            "relationship_types": relationship_types
+        }
         
     def _dict_to_cypher_props(self, props: Dict[str, Any]) -> str:
         """Convert Python dict to Cypher properties string"""
@@ -227,26 +415,40 @@ class GraphService:
         items = []
         for k, v in props.items():
             if isinstance(v, str):
-                items.append(f"{k}: '{v}'")
-            elif isinstance(v, (int, float, bool)):
-                items.append(f"{k}: {str(v).lower() if isinstance(v, bool) else v}")
+                # Escape single quotes in strings
+                escaped_v = v.replace("'", "\\'")
+                items.append(f"{k}: '{escaped_v}'")
+            elif isinstance(v, bool):
+                # Handle booleans before int/float check since bool is a subclass of int
+                items.append(f"{k}: {str(v).lower()}")
+            elif isinstance(v, (int, float)):
+                items.append(f"{k}: {v}")
             elif v is None:
                 items.append(f"{k}: null")
             else:
                 # For complex types, serialize to JSON string
-                items.append(f"{k}: '{json.dumps(v)}'")
+                escaped_json = json.dumps(v).replace("'", "\\'")
+                items.append(f"{k}: '{escaped_json}'")
                 
         return "{" + ", ".join(items) + "}"
         
     def _parse_agtype(self, agtype_value: Any) -> Dict[str, Any]:
         """Parse AGE agtype value to Python dict"""
-        # AGE returns agtype values that need to be parsed
-        # This is a simplified parser - may need enhancement
         if isinstance(agtype_value, str):
-            try:
-                return json.loads(agtype_value)
-            except json.JSONDecodeError:
-                return {"value": agtype_value}
+            # AGE returns vertex/edge data as strings like: 
+            # '{"id": 1125899906842625, "label": "WorkItem", "properties": {...}}::vertex'
+            if '::vertex' in agtype_value or '::edge' in agtype_value:
+                # Remove the type suffix and parse JSON
+                json_part = agtype_value.split('::')[0]
+                try:
+                    return json.loads(json_part)
+                except json.JSONDecodeError:
+                    return {"value": agtype_value}
+            else:
+                try:
+                    return json.loads(agtype_value)
+                except json.JSONDecodeError:
+                    return {"value": agtype_value}
         return agtype_value
 
 

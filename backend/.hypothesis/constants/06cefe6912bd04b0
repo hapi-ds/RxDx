@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/audit.py
+# hypothesis_version: 6.150.2
+
+[100, 1000, 3650, 7300, '+00:00', '/audit', '/audit/cleanup', '/audit/count', '/audit/export', 'AuditLog', 'Content-Disposition', 'EXPORT', 'Filter by entity ID', 'Filter by user ID', 'READ', 'Z', '^(json|csv)$', 'action', 'csv', 'cutoff_date', 'deleted_count', 'end_date', 'entity_id', 'entity_type', 'export_format', 'filters', 'json', 'limit', 'message', 'offset', 'record_count', 'result_count', 'retention_days', 'start_date', 'text/csv', 'total_count', 'user_id']

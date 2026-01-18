@@ -105,11 +105,11 @@
 
 ### 4.1 Apache AGE Setup
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 4.1.1 Create GraphService class with asyncpg connection pool
-- [ ] 4.1.2 Implement create_workitem_node method for WorkItem nodes
-- [ ] 4.1.3 Implement create_relationship method for graph edges
-- [ ] 4.1.4 Create graph schema initialization script (node types and relationship types)
-- [ ] 4.1.5 Write unit tests for graph operations
+- [x] 4.1.1 Create GraphService class with asyncpg connection pool
+- [x] 4.1.2 Implement create_workitem_node method for WorkItem nodes
+- [x] 4.1.3 Implement create_relationship method for graph edges
+- [x] 4.1.4 Create graph schema initialization script (node types and relationship types)
+- [x] 4.1.5 Write unit tests for graph operations
 
 ### 4.2 Graph Query Methods
 **References:** Requirement 6 (Knowledge Management with Graph Database)

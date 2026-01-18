@@ -379,5 +379,48 @@ class AuditService:
             for log in audit_logs
         ]
 
+    async def cleanup_old_audit_logs(
+        self,
+        retention_days: int = 3650,  # Default 10 years
+    ) -> int:
+        """
+        Clean up audit logs older than retention period.
+        
+        Args:
+            retention_days: Number of days to retain audit logs (default: 10 years)
+            
+        Returns:
+            Number of audit log entries deleted
+            
+        Note:
+            This method should be called periodically (e.g., daily) to maintain
+            compliance with audit log retention policies.
+        """
+        from datetime import datetime, timedelta
+        from sqlalchemy import delete
+        
+        cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
+        
+        # Delete old audit logs
+        delete_stmt = delete(AuditLog).where(AuditLog.timestamp < cutoff_date)
+        result = await self.db.execute(delete_stmt)
+        await self.db.commit()
+        
+        deleted_count = result.rowcount
+        
+        # Log the cleanup operation
+        if deleted_count > 0:
+            await self.log(
+                action="CLEANUP",
+                entity_type="AuditLog",
+                details={
+                    "retention_days": retention_days,
+                    "cutoff_date": cutoff_date.isoformat(),
+                    "deleted_count": deleted_count,
+                }
+            )
+        
+        return deleted_count
+
     # Note: No update or delete methods - audit logs are immutable
     # This ensures compliance with regulatory requirements for audit trail integrity

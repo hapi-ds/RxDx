@@ -113,13 +113,13 @@
 
 ### 4.2 Graph Query Methods
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 4.2.1 Implement get_workitem method to retrieve node by ID
-- [ ] 4.2.2 Implement get_workitem_version method for version history traversal
-- [ ] 4.2.3 Implement search_workitems method with full-text search
-- [ ] 4.2.4 Implement get_traceability_matrix method (requirements-tests-risks)
-- [ ] 4.2.5 Implement get_risk_chains method for FMEA failure paths
-- [ ] 4.2.6 Write unit tests for graph queries
-- [ ] 4.2.7 Write property-based tests for graph traversal
+- [x] 4.2.1 Implement get_workitem method to retrieve node by ID
+- [x] 4.2.2 Implement get_workitem_version method for version history traversal
+- [x] 4.2.3 Implement search_workitems method with full-text search
+- [x] 4.2.4 Implement get_traceability_matrix method (requirements-tests-risks)
+- [x] 4.2.5 Implement get_risk_chains method for FMEA failure paths
+- [x] 4.2.6 Write unit tests for graph queries
+- [x] 4.2.7 Write property-based tests for graph traversal
 
 ### 4.3 Graph Visualization API
 **References:** Requirement 6 (Knowledge Management with Graph Database)

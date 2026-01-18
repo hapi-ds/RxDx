@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/db/graph.py
+# hypothesis_version: 6.150.2
+
+[0.0, 1.0, 100, ' AND ', "'", ', ', '1.0', '::', '::edge', '::vertex', 'ASSIGNED_TO', 'CREATED_BY', 'DEPENDS_ON', 'Document', 'Entity', 'Failure', 'IMPLEMENTS', 'LEADS_TO', "LOAD 'age';", 'MENTIONED_IN', 'MITIGATES', 'NEXT_VERSION', 'REFERENCES', 'RELATES_TO', 'Requirement', 'Risk', 'TESTED_BY', 'Task', 'Test', 'User', 'WorkItem', '[]', "\\'", 'assigned_to', 'both', 'chain_length', 'change_description', 'created_at', 'created_by', 'description', 'draft', 'id', 'incoming', 'node_types', 'outgoing', 'path', 'postgresql://', 'priority', 'probabilities', 'properties', 'relationship_types', 'requirements', 'result', 'risks', 'start_risk_id', 'status', 'tests', 'title', 'total_probability', 'true', 'type', 'updated_at', 'updated_by', 'value', 'version', '{', '}']

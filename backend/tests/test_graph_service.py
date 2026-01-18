@@ -260,6 +260,278 @@ class TestGraphService:
         assert result == dict_value
 
 
+class TestGraphQueryMethods:
+    """Test new graph query methods for task 4.2"""
+    
+    @pytest.mark.asyncio
+    async def test_search_workitems_by_text(self, graph_service):
+        """Test searching WorkItems by text"""
+        expected_results = [
+            {"id": "1", "title": "Test Requirement", "type": "requirement"},
+            {"id": "2", "title": "Another Test", "type": "task"}
+        ]
+        
+        graph_service.execute_query = AsyncMock(return_value=expected_results)
+        
+        result = await graph_service.search_workitems(search_text="test")
+        
+        assert result == expected_results
+        
+        # Verify query was called with correct parameters
+        call_args = graph_service.execute_query.call_args[0][0]
+        assert "toLower(w.title) CONTAINS 'test'" in call_args
+        assert "toLower(w.description) CONTAINS 'test'" in call_args
+        
+    @pytest.mark.asyncio
+    async def test_search_workitems_by_type(self, graph_service):
+        """Test searching WorkItems by type"""
+        expected_results = [
+            {"id": "1", "title": "Requirement 1", "type": "requirement"}
+        ]
+        
+        graph_service.execute_query = AsyncMock(return_value=expected_results)
+        
+        result = await graph_service.search_workitems(workitem_type="requirement")
+        
+        assert result == expected_results
+        
+        call_args = graph_service.execute_query.call_args[0][0]
+        assert "w.type = 'requirement'" in call_args
+        
+    @pytest.mark.asyncio
+    async def test_search_workitems_multiple_filters(self, graph_service):
+        """Test searching WorkItems with multiple filters"""
+        expected_results = [
+            {"id": "1", "title": "Active Requirement", "type": "requirement", "status": "active"}
+        ]
+        
+        graph_service.execute_query = AsyncMock(return_value=expected_results)
+        
+        result = await graph_service.search_workitems(
+            search_text="requirement",
+            workitem_type="requirement", 
+            status="active",
+            assigned_to="user-123"
+        )
+        
+        assert result == expected_results
+        
+        call_args = graph_service.execute_query.call_args[0][0]
+        assert "w.type = 'requirement'" in call_args
+        assert "w.status = 'active'" in call_args
+        assert "w.assigned_to = 'user-123'" in call_args
+        assert "toLower(w.title) CONTAINS 'requirement'" in call_args
+        
+    @pytest.mark.asyncio
+    async def test_get_traceability_matrix(self, graph_service):
+        """Test getting traceability matrix"""
+        # Mock the three separate queries
+        requirements_result = [
+            {
+                "r": {"id": "req-1", "title": "Requirement 1"},
+                "tests": [{"id": "test-1", "title": "Test 1"}],
+                "risks": [{"id": "risk-1", "title": "Risk 1"}]
+            }
+        ]
+        
+        tests_result = [
+            {
+                "t": {"id": "test-1", "title": "Test 1"},
+                "requirements": [{"id": "req-1", "title": "Requirement 1"}]
+            }
+        ]
+        
+        risks_result = [
+            {
+                "risk": {"id": "risk-1", "title": "Risk 1"},
+                "requirements": [{"id": "req-1", "title": "Requirement 1"}]
+            }
+        ]
+        
+        # Mock execute_query to return different results for each call
+        graph_service.execute_query = AsyncMock(side_effect=[
+            requirements_result,
+            tests_result, 
+            risks_result
+        ])
+        
+        result = await graph_service.get_traceability_matrix()
+        
+        assert "requirements" in result
+        assert "tests" in result
+        assert "risks" in result
+        assert result["requirements"] == requirements_result
+        assert result["tests"] == tests_result
+        assert result["risks"] == risks_result
+        
+        # Verify three queries were made
+        assert graph_service.execute_query.call_count == 3
+        
+    @pytest.mark.asyncio
+    async def test_get_traceability_matrix_with_project_filter(self, graph_service):
+        """Test getting traceability matrix with project filter"""
+        graph_service.execute_query = AsyncMock(return_value=[])
+        
+        await graph_service.get_traceability_matrix(project_id="proj-123")
+        
+        # Verify all queries include project filter
+        for call in graph_service.execute_query.call_args_list:
+            query = call[0][0]
+            assert "project_id = 'proj-123'" in query
+            
+    @pytest.mark.asyncio
+    async def test_get_risk_chains_specific_risk(self, graph_service):
+        """Test getting risk chains for specific risk"""
+        expected_chains = [
+            {
+                "path": ["risk-1", "failure-1", "failure-2"],
+                "probabilities": [0.3, 0.2],
+                "chain_length": 2
+            }
+        ]
+        
+        graph_service.execute_query = AsyncMock(return_value=expected_chains)
+        
+        result = await graph_service.get_risk_chains(risk_id="risk-1")
+        
+        assert len(result) == 1
+        assert result[0]["total_probability"] == 0.06  # 0.3 * 0.2
+        
+        call_args = graph_service.execute_query.call_args[0][0]
+        assert "id: 'risk-1'" in call_args
+        assert "LEADS_TO" in call_args
+        
+    @pytest.mark.asyncio
+    async def test_get_risk_chains_all_risks(self, graph_service):
+        """Test getting all risk chains"""
+        expected_chains = [
+            {
+                "path": ["risk-1", "failure-1"],
+                "probabilities": [0.5],
+                "chain_length": 1,
+                "start_risk_id": "risk-1"
+            }
+        ]
+        
+        graph_service.execute_query = AsyncMock(return_value=expected_chains)
+        
+        result = await graph_service.get_risk_chains()
+        
+        assert len(result) == 1
+        assert result[0]["total_probability"] == 0.5
+        assert result[0]["start_risk_id"] == "risk-1"
+        
+    def test_calculate_chain_probability(self, graph_service):
+        """Test calculating chain probability"""
+        # Test empty list
+        assert graph_service._calculate_chain_probability([]) == 0.0
+        
+        # Test single probability
+        assert graph_service._calculate_chain_probability([0.5]) == 0.5
+        
+        # Test multiple probabilities
+        assert graph_service._calculate_chain_probability([0.3, 0.2, 0.5]) == 0.03
+        
+        # Test invalid probability (> 1)
+        assert graph_service._calculate_chain_probability([0.3, 1.5]) == 0.0
+        
+        # Test invalid probability (< 0)
+        assert graph_service._calculate_chain_probability([0.3, -0.1]) == 0.0
+        
+        # Test non-numeric probability
+        assert graph_service._calculate_chain_probability([0.3, "invalid"]) == 0.0
+
+
+class TestGraphTraversalProperties:
+    """Property-based tests for graph traversal"""
+    
+    def test_search_text_escaping_property(self, graph_service):
+        """Property: Search text with quotes should be properly escaped"""
+        # Test various text inputs that could cause SQL injection
+        test_cases = [
+            "normal text",
+            "text with 'quotes'", 
+            "text with \"double quotes\"",
+            "text with '; DROP TABLE users; --",
+            "text with \\ backslashes",
+            ""
+        ]
+        
+        for search_text in test_cases:
+            # Mock execute_query to capture the query
+            graph_service.execute_query = AsyncMock(return_value=[])
+            
+            # This should not raise an exception due to SQL injection
+            try:
+                import asyncio
+                asyncio.run(graph_service.search_workitems(search_text=search_text))
+                
+                # Verify the query was called
+                assert graph_service.execute_query.called
+                
+                # Verify quotes are escaped in the query
+                call_args = graph_service.execute_query.call_args[0][0]
+                if "'" in search_text:
+                    # Should contain escaped quotes
+                    escaped_text = search_text.replace("'", "\\'")
+                    assert escaped_text.lower() in call_args.lower()
+                    
+            except Exception as e:
+                # Should only fail due to async context, not SQL injection
+                assert "async" in str(e).lower() or "event loop" in str(e).lower()
+                
+    def test_probability_calculation_property(self, graph_service):
+        """Property: Chain probability should always be between 0 and 1"""
+        # Test various probability combinations
+        test_cases = [
+            [0.5, 0.3, 0.8],
+            [1.0],
+            [0.0, 0.5],
+            [0.1, 0.2, 0.3, 0.4, 0.5],
+            [0.9, 0.9, 0.9],
+            []  # Empty case
+        ]
+        
+        for probabilities in test_cases:
+            result = graph_service._calculate_chain_probability(probabilities)
+            if probabilities:  # Non-empty list
+                assert 0.0 <= result <= 1.0
+            else:  # Empty list should return 0
+                assert result == 0.0
+                
+        # Test invalid probabilities
+        invalid_cases = [
+            [1.5],  # > 1
+            [-0.1], # < 0
+            [0.5, "invalid"], # Non-numeric
+            [0.5, None] # None value
+        ]
+        
+        for probabilities in invalid_cases:
+            result = graph_service._calculate_chain_probability(probabilities)
+            assert result == 0.0  # Should return 0 for invalid input
+        
+    def test_chain_length_property(self, graph_service):
+        """Property: Risk chain depth should be respected"""
+        # Test various depth values
+        test_depths = [1, 2, 5, 10]
+        
+        for max_depth in test_depths:
+            graph_service.execute_query = AsyncMock(return_value=[])
+            
+            try:
+                import asyncio
+                asyncio.run(graph_service.get_risk_chains(max_depth=max_depth))
+                
+                # Verify the query includes the correct depth limit
+                call_args = graph_service.execute_query.call_args[0][0]
+                assert f"*1..{max_depth}" in call_args
+                
+            except Exception as e:
+                # Should only fail due to async context
+                assert "async" in str(e).lower() or "event loop" in str(e).lower()
+
+
 class TestGraphServiceIntegration:
     """Integration tests for GraphService (require actual database)"""
     

@@ -364,6 +364,205 @@ class GraphService:
         
         return await self.create_node("WorkItem", version_data)
         
+    async def search_workitems(
+        self,
+        search_text: Optional[str] = None,
+        workitem_type: Optional[str] = None,
+        status: Optional[str] = None,
+        assigned_to: Optional[str] = None,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Search WorkItems with full-text search and filters
+        
+        Args:
+            search_text: Text to search in title and description
+            workitem_type: Filter by WorkItem type
+            status: Filter by status
+            assigned_to: Filter by assigned user
+            limit: Maximum number of results
+            
+        Returns:
+            List of matching WorkItems
+        """
+        # Build WHERE clauses
+        where_clauses = []
+        
+        if workitem_type:
+            where_clauses.append(f"w.type = '{workitem_type}'")
+        if status:
+            where_clauses.append(f"w.status = '{status}'")
+        if assigned_to:
+            where_clauses.append(f"w.assigned_to = '{assigned_to}'")
+            
+        # Add text search (case-insensitive contains)
+        if search_text:
+            escaped_text = search_text.replace("'", "\\'").lower()
+            where_clauses.append(
+                f"(toLower(w.title) CONTAINS '{escaped_text}' OR "
+                f"toLower(w.description) CONTAINS '{escaped_text}')"
+            )
+            
+        where_clause = " AND ".join(where_clauses) if where_clauses else "true"
+        
+        query = f"""
+        MATCH (w:WorkItem)
+        WHERE {where_clause}
+        RETURN w
+        ORDER BY w.updated_at DESC
+        LIMIT {limit}
+        """
+        
+        results = await self.execute_query(query)
+        
+        # Extract WorkItem data from results
+        workitems = []
+        for result in results:
+            if 'properties' in result:
+                workitems.append(result['properties'])
+            else:
+                workitems.append(result)
+                
+        return workitems
+        
+    async def get_traceability_matrix(
+        self,
+        project_id: Optional[str] = None
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Get traceability matrix showing relationships between requirements, tests, and risks
+        
+        Args:
+            project_id: Optional project filter
+            
+        Returns:
+            Dictionary with requirements, tests, risks and their relationships
+        """
+        # Build project filter if provided
+        project_filter = f"AND r.project_id = '{project_id}'" if project_id else ""
+        
+        # Get requirements and their relationships
+        requirements_query = f"""
+        MATCH (r:WorkItem {{type: 'requirement'}})
+        WHERE true {project_filter}
+        OPTIONAL MATCH (r)-[:TESTED_BY]->(t:WorkItem {{type: 'test'}})
+        OPTIONAL MATCH (r)-[:MITIGATES]->(risk:WorkItem {{type: 'risk'}})
+        RETURN r, 
+               COLLECT(DISTINCT t) as tests,
+               COLLECT(DISTINCT risk) as risks
+        """
+        
+        requirements_results = await self.execute_query(requirements_query)
+        
+        # Get all tests and their coverage
+        tests_query = f"""
+        MATCH (t:WorkItem {{type: 'test'}})
+        WHERE true {project_filter}
+        OPTIONAL MATCH (r:WorkItem {{type: 'requirement'}})-[:TESTED_BY]->(t)
+        RETURN t,
+               COLLECT(DISTINCT r) as requirements
+        """
+        
+        tests_results = await self.execute_query(tests_query)
+        
+        # Get all risks and their mitigations
+        risks_query = f"""
+        MATCH (risk:WorkItem {{type: 'risk'}})
+        WHERE true {project_filter}
+        OPTIONAL MATCH (r:WorkItem {{type: 'requirement'}})-[:MITIGATES]->(risk)
+        RETURN risk,
+               COLLECT(DISTINCT r) as requirements
+        """
+        
+        risks_results = await self.execute_query(risks_query)
+        
+        return {
+            "requirements": requirements_results,
+            "tests": tests_results,
+            "risks": risks_results
+        }
+        
+    async def get_risk_chains(
+        self,
+        risk_id: Optional[str] = None,
+        max_depth: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Get FMEA failure chains showing risk propagation paths
+        
+        Args:
+            risk_id: Optional starting risk ID (if None, gets all chains)
+            max_depth: Maximum chain depth to traverse
+            
+        Returns:
+            List of risk chains with failure paths and probabilities
+        """
+        if risk_id:
+            # Get chains starting from specific risk
+            query = f"""
+            MATCH path = (start:WorkItem {{id: '{risk_id}', type: 'risk'}})-[:LEADS_TO*1..{max_depth}]->(end)
+            WHERE end.type IN ['risk', 'failure']
+            RETURN path,
+                   [rel in relationships(path) | rel.probability] as probabilities,
+                   length(path) as chain_length
+            ORDER BY chain_length
+            """
+        else:
+            # Get all risk chains
+            query = f"""
+            MATCH path = (start:WorkItem {{type: 'risk'}})-[:LEADS_TO*1..{max_depth}]->(end)
+            WHERE end.type IN ['risk', 'failure']
+            RETURN path,
+                   [rel in relationships(path) | rel.probability] as probabilities,
+                   length(path) as chain_length,
+                   start.id as start_risk_id
+            ORDER BY start_risk_id, chain_length
+            """
+            
+        results = await self.execute_query(query)
+        
+        # Process results to extract chain information
+        chains = []
+        for result in results:
+            chain_data = {
+                "path": result.get("path", []),
+                "probabilities": result.get("probabilities", []),
+                "chain_length": result.get("chain_length", 0),
+                "total_probability": self._calculate_chain_probability(
+                    result.get("probabilities", [])
+                )
+            }
+            
+            if "start_risk_id" in result:
+                chain_data["start_risk_id"] = result["start_risk_id"]
+                
+            chains.append(chain_data)
+            
+        return chains
+        
+    def _calculate_chain_probability(self, probabilities: List[float]) -> float:
+        """
+        Calculate total probability for a failure chain
+        
+        Args:
+            probabilities: List of individual step probabilities
+            
+        Returns:
+            Combined probability (product of all probabilities)
+        """
+        if not probabilities:
+            return 0.0
+            
+        total_prob = 1.0
+        for prob in probabilities:
+            if isinstance(prob, (int, float)) and 0 <= prob <= 1:
+                total_prob *= prob
+            else:
+                # Invalid probability, return 0
+                return 0.0
+                
+        return total_prob
+        
     async def initialize_graph_schema(self) -> Dict[str, List[str]]:
         """
         Initialize the graph schema with supported node types and relationships

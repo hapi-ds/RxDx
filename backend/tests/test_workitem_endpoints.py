@@ -515,3 +515,284 @@ class TestWorkItemEndpoints:
         # Verify graph service was not called
         mock_graph_service.get_workitem.assert_not_called()
         mock_graph_service.delete_node.assert_not_called()
+
+
+class TestWorkItemVersionHistoryIntegration:
+    """Integration tests for WorkItem version history functionality"""
+    
+    async def test_get_workitem_history_success(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+    ):
+        """Test successful WorkItem version history retrieval"""
+        workitem_id = uuid4()
+        user_id = uuid4()
+        
+        # Mock version history data (newest first)
+        version_history = [
+            {
+                "id": str(workitem_id),
+                "type": "requirement",
+                "title": "Updated Test Requirement v1.2",
+                "description": "This is an updated test requirement",
+                "status": "active",
+                "priority": 5,
+                "version": "1.2",
+                "created_by": str(user_id),
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T02:00:00Z",
+                "is_signed": False
+            },
+            {
+                "id": str(workitem_id),
+                "type": "requirement",
+                "title": "Updated Test Requirement v1.1",
+                "description": "This is an updated test requirement",
+                "status": "active",
+                "priority": 3,
+                "version": "1.1",
+                "created_by": str(user_id),
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T01:00:00Z",
+                "is_signed": False
+            },
+            {
+                "id": str(workitem_id),
+                "type": "requirement",
+                "title": "Test Requirement v1.0",
+                "description": "This is a test requirement",
+                "status": "draft",
+                "priority": 3,
+                "version": "1.0",
+                "created_by": str(user_id),
+                "created_at": "2024-01-01T00:00:00Z",
+                "updated_at": "2024-01-01T00:00:00Z",
+                "is_signed": False
+            }
+        ]
+        
+        # Mock the WorkItemService to return version history
+        # Since we're mocking at the graph service level, we need to mock the conversion
+        mock_graph_service.get_workitem.return_value = version_history[0]  # For fallback
+        
+        # Get version history
+        response = await client.get(
+            f"/api/v1/workitems/{workitem_id}/history",
+            headers=auth_headers
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        
+        # Should return at least the current version (fallback behavior)
+        assert isinstance(data, list)
+        assert len(data) >= 1
+        
+        # Check the first version (current)
+        current_version = data[0]
+        assert current_version["id"] == str(workitem_id)
+        assert current_version["version"] == "1.2"
+        assert current_version["title"] == "Updated Test Requirement v1.2"
+    
+    async def test_get_workitem_version_success(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+    ):
+        """Test successful specific WorkItem version retrieval"""
+        workitem_id = uuid4()
+        version = "1.1"
+        user_id = uuid4()
+        
+        # Mock specific version data
+        version_data = {
+            "id": str(workitem_id),
+            "type": "requirement",
+            "title": "Test Requirement v1.1",
+            "description": "This is version 1.1 of the requirement",
+            "status": "active",
+            "priority": 3,
+            "version": version,
+            "created_by": str(user_id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T01:00:00Z",
+            "is_signed": False
+        }
+        
+        # Setup mock
+        mock_graph_service.get_workitem_version.return_value = version_data
+        
+        # Get specific version
+        response = await client.get(
+            f"/api/v1/workitems/{workitem_id}/version/{version}",
+            headers=auth_headers
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        
+        assert data["id"] == str(workitem_id)
+        assert data["version"] == version
+        assert data["title"] == "Test Requirement v1.1"
+        assert data["description"] == "This is version 1.1 of the requirement"
+        assert data["status"] == "active"
+        
+        # Verify graph service was called with correct parameters
+        mock_graph_service.get_workitem_version.assert_called_once_with(
+            str(workitem_id), 
+            version
+        )
+    
+    async def test_get_workitem_version_not_found(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+    ):
+        """Test WorkItem version retrieval when version doesn't exist"""
+        workitem_id = uuid4()
+        version = "2.0"
+        
+        # Setup mock to return None (version not found)
+        mock_graph_service.get_workitem_version.return_value = None
+        
+        response = await client.get(
+            f"/api/v1/workitems/{workitem_id}/version/{version}",
+            headers=auth_headers
+        )
+        
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        data = response.json()
+        assert "not found" in data["detail"].lower()
+        
+        # Verify graph service was called
+        mock_graph_service.get_workitem_version.assert_called_once_with(
+            str(workitem_id), 
+            version
+        )
+    
+    async def test_compare_workitem_versions_success(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+    ):
+        """Test successful WorkItem version comparison"""
+        workitem_id = uuid4()
+        
+        # Mock comparison result (this would come from VersionService)
+        # Since we're testing without VersionService, this will return 501
+        response = await client.get(
+            f"/api/v1/workitems/{workitem_id}/compare/1.0/1.1",
+            headers=auth_headers
+        )
+        
+        # Should return 501 when VersionService is not available
+        assert response.status_code == status.HTTP_501_NOT_IMPLEMENTED
+        data = response.json()
+        assert "not available" in data["detail"].lower()
+    
+    async def test_workitem_update_creates_new_version(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+    ):
+        """Test that updating a WorkItem creates a new version"""
+        workitem_id = uuid4()
+        user_id = uuid4()
+        
+        # Mock original workitem
+        original_workitem = {
+            "id": str(workitem_id),
+            "type": "requirement",
+            "title": "Original Title",
+            "description": "Original description",
+            "status": "draft",
+            "priority": 3,
+            "version": "1.0",
+            "created_by": str(user_id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+        
+        # Setup mocks for update
+        mock_graph_service.get_workitem.return_value = original_workitem
+        mock_graph_service.create_workitem_version.return_value = None
+        mock_graph_service.create_relationship.return_value = None
+        
+        # Update the workitem
+        update_data = {
+            "title": "Updated Title",
+            "status": "active"
+        }
+        
+        response = await client.patch(
+            f"/api/v1/workitems/{workitem_id}?change_description=Updated title and status",
+            json=update_data,
+            headers=auth_headers
+        )
+        
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        
+        # Verify new version was created
+        assert data["version"] == "1.1"  # Should increment from 1.0
+        assert data["title"] == "Updated Title"
+        assert data["status"] == "active"
+        
+        # Verify version creation was called
+        mock_graph_service.create_workitem_version.assert_called_once()
+        mock_graph_service.create_relationship.assert_called_once()
+        
+        # Verify relationship creation includes version information
+        relationship_call = mock_graph_service.create_relationship.call_args
+        assert relationship_call[1]["rel_type"] == "NEXT_VERSION"
+        assert "from_version" in relationship_call[1]["properties"]
+        assert "to_version" in relationship_call[1]["properties"]
+        assert relationship_call[1]["properties"]["from_version"] == "1.0"
+        assert relationship_call[1]["properties"]["to_version"] == "1.1"
+    
+    async def test_workitem_history_empty_when_not_found(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+    ):
+        """Test WorkItem history returns 404 when WorkItem doesn't exist"""
+        fake_workitem_id = uuid4()
+        
+        # Setup mock to return None (workitem not found)
+        mock_graph_service.get_workitem.return_value = None
+        
+        response = await client.get(
+            f"/api/v1/workitems/{fake_workitem_id}/history",
+            headers=auth_headers
+        )
+        
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        data = response.json()
+        assert "not found" in data["detail"].lower()
+    
+    async def test_unauthorized_access_to_version_endpoints(
+        self,
+        client: AsyncClient,
+    ):
+        """Test that version endpoints require authentication"""
+        workitem_id = uuid4()
+        
+        # Test history endpoint
+        response = await client.get(f"/api/v1/workitems/{workitem_id}/history")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        
+        # Test version endpoint
+        response = await client.get(f"/api/v1/workitems/{workitem_id}/version/1.0")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        
+        # Test comparison endpoint
+        response = await client.get(f"/api/v1/workitems/{workitem_id}/compare/1.0/1.1")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED

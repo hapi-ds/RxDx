@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from unittest.mock import AsyncMock, MagicMock
 
 from app.services.workitem_service import WorkItemService
+from app.services.version_service import VersionService
 from app.schemas.workitem import (
     WorkItemCreate, 
     WorkItemUpdate, 
@@ -24,9 +25,22 @@ def mock_graph_service():
 
 
 @pytest.fixture
+def mock_version_service():
+    """Mock version service for testing"""
+    mock = AsyncMock()
+    return mock
+
+
+@pytest.fixture
 def workitem_service(mock_graph_service):
-    """WorkItem service with mocked dependencies"""
+    """WorkItem service with mocked dependencies (no version service)"""
     return WorkItemService(mock_graph_service)
+
+
+@pytest.fixture
+def workitem_service_with_versioning(mock_graph_service, mock_version_service):
+    """WorkItem service with version service integration"""
+    return WorkItemService(mock_graph_service, mock_version_service)
 
 
 @pytest.fixture
@@ -608,3 +622,321 @@ class TestWorkItemServiceEdgeCases:
         assert result is not None
         assert result.type == "risk"
         assert result.title == "Complete Risk"
+
+
+class TestWorkItemServiceVersionIntegration:
+    """Test WorkItem service integration with VersionService"""
+    
+    @pytest.mark.asyncio
+    async def test_update_workitem_uses_version_service(
+        self, 
+        workitem_service_with_versioning, 
+        mock_graph_service, 
+        mock_version_service,
+        sample_user
+    ):
+        """Test that update_workitem uses VersionService when available"""
+        # Setup mock data
+        workitem_id = uuid4()
+        current_data = {
+            "id": str(workitem_id),
+            "type": "requirement",
+            "title": "Original Title",
+            "description": "Original description",
+            "status": "draft",
+            "priority": 3,
+            "version": "1.0",
+            "created_by": str(sample_user.id),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "is_signed": False
+        }
+        
+        new_version_data = {
+            **current_data,
+            "title": "Updated Title",
+            "status": "active",
+            "version": "1.1",
+            "updated_by": str(sample_user.id),
+            "change_description": "Updated title and status"
+        }
+        
+        mock_graph_service.get_workitem.return_value = current_data
+        mock_version_service.create_version.return_value = new_version_data
+        
+        # Prepare update data
+        updates = WorkItemUpdate(
+            title="Updated Title",
+            status="active"
+        )
+        
+        # Execute
+        result = await workitem_service_with_versioning.update_workitem(
+            workitem_id, 
+            updates, 
+            sample_user,
+            "Updated title and status"
+        )
+        
+        # Verify
+        assert result is not None
+        assert result.title == "Updated Title"
+        assert result.status == "active"
+        assert result.version == "1.1"
+        
+        # Verify VersionService was called instead of manual versioning
+        mock_version_service.create_version.assert_called_once_with(
+            workitem_id=workitem_id,
+            updates={
+                "title": "Updated Title",
+                "status": "active"
+            },
+            user=sample_user,
+            change_description="Updated title and status"
+        )
+        
+        # Verify graph service was NOT called for manual versioning
+        mock_graph_service.create_workitem_version.assert_not_called()
+        mock_graph_service.create_relationship.assert_not_called()
+    
+    @pytest.mark.asyncio
+    async def test_update_workitem_fallback_when_version_service_fails(
+        self, 
+        workitem_service_with_versioning, 
+        mock_graph_service, 
+        mock_version_service,
+        sample_user
+    ):
+        """Test fallback to manual versioning when VersionService fails"""
+        # Setup mock data
+        workitem_id = uuid4()
+        current_data = {
+            "id": str(workitem_id),
+            "type": "requirement",
+            "title": "Original Title",
+            "status": "draft",
+            "version": "1.0",
+            "created_by": str(sample_user.id),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "is_signed": False
+        }
+        
+        mock_graph_service.get_workitem.return_value = current_data
+        mock_version_service.create_version.side_effect = Exception("VersionService failed")
+        mock_graph_service.create_workitem_version.return_value = {"id": str(workitem_id)}
+        mock_graph_service.create_relationship.return_value = {"type": "NEXT_VERSION"}
+        
+        updates = WorkItemUpdate(title="Updated Title")
+        
+        # Execute
+        result = await workitem_service_with_versioning.update_workitem(
+            workitem_id, 
+            updates, 
+            sample_user
+        )
+        
+        # Verify fallback behavior
+        assert result is not None
+        assert result.title == "Updated Title"
+        assert result.version == "1.1"
+        
+        # Verify VersionService was attempted
+        mock_version_service.create_version.assert_called_once()
+        
+        # Verify fallback to manual versioning
+        mock_graph_service.create_workitem_version.assert_called_once()
+        mock_graph_service.create_relationship.assert_called_once()
+    
+    @pytest.mark.asyncio
+    async def test_get_workitem_history_uses_version_service(
+        self, 
+        workitem_service_with_versioning, 
+        mock_version_service,
+        sample_user
+    ):
+        """Test that get_workitem_history uses VersionService when available"""
+        # Setup mock data
+        workitem_id = uuid4()
+        version_history = [
+            {
+                "id": str(workitem_id),
+                "type": "requirement",
+                "title": "Test Requirement v1.2",
+                "description": "Test description",
+                "status": "active",
+                "priority": 3,
+                "version": "1.2",
+                "created_by": str(sample_user.id),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "is_signed": False
+            },
+            {
+                "id": str(workitem_id),
+                "type": "requirement",
+                "title": "Test Requirement v1.1",
+                "description": "Test description",
+                "status": "active",
+                "priority": 3,
+                "version": "1.1",
+                "created_by": str(sample_user.id),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "is_signed": False
+            },
+            {
+                "id": str(workitem_id),
+                "type": "requirement",
+                "title": "Test Requirement v1.0",
+                "description": "Test description",
+                "status": "draft",
+                "priority": 3,
+                "version": "1.0",
+                "created_by": str(sample_user.id),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "is_signed": False
+            }
+        ]
+        
+        mock_version_service.get_version_history.return_value = version_history
+        
+        # Execute
+        result = await workitem_service_with_versioning.get_workitem_history(workitem_id)
+        
+        # Verify
+        assert len(result) == 3
+        assert result[0].version == "1.2"
+        assert result[1].version == "1.1"
+        assert result[2].version == "1.0"
+        
+        # Verify VersionService was called
+        mock_version_service.get_version_history.assert_called_once_with(workitem_id)
+    
+    @pytest.mark.asyncio
+    async def test_get_workitem_version_uses_version_service(
+        self, 
+        workitem_service_with_versioning, 
+        mock_version_service,
+        sample_user
+    ):
+        """Test that get_workitem_version uses VersionService when available"""
+        # Setup mock data
+        workitem_id = uuid4()
+        version = "1.1"
+        version_data = {
+            "id": str(workitem_id),
+            "type": "requirement",
+            "title": "Test Requirement v1.1",
+            "description": "Test description",
+            "status": "active",
+            "priority": 3,
+            "version": version,
+            "created_by": str(sample_user.id),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "is_signed": False
+        }
+        
+        mock_version_service.get_version_by_number.return_value = version_data
+        
+        # Execute
+        result = await workitem_service_with_versioning.get_workitem_version(workitem_id, version)
+        
+        # Verify
+        assert result is not None
+        assert result.version == version
+        assert result.title == "Test Requirement v1.1"
+        
+        # Verify VersionService was called
+        mock_version_service.get_version_by_number.assert_called_once_with(workitem_id, version)
+    
+    @pytest.mark.asyncio
+    async def test_compare_workitem_versions(
+        self, 
+        workitem_service_with_versioning, 
+        mock_version_service
+    ):
+        """Test version comparison functionality"""
+        # Setup mock data
+        workitem_id = uuid4()
+        comparison_result = {
+            "version1": "1.0",
+            "version2": "1.1",
+            "changed_fields": {
+                "title": {
+                    "from": "Original Title",
+                    "to": "Updated Title"
+                },
+                "status": {
+                    "from": "draft",
+                    "to": "active"
+                }
+            },
+            "unchanged_fields": {
+                "description": "Test description",
+                "priority": 3
+            },
+            "added_fields": {},
+            "removed_fields": {}
+        }
+        
+        mock_version_service.compare_versions.return_value = comparison_result
+        
+        # Execute
+        result = await workitem_service_with_versioning.compare_workitem_versions(
+            workitem_id, "1.0", "1.1"
+        )
+        
+        # Verify
+        assert result is not None
+        assert result["version1"] == "1.0"
+        assert result["version2"] == "1.1"
+        assert "title" in result["changed_fields"]
+        assert "status" in result["changed_fields"]
+        
+        # Verify VersionService was called
+        mock_version_service.compare_versions.assert_called_once_with(workitem_id, "1.0", "1.1")
+    
+    @pytest.mark.asyncio
+    async def test_compare_workitem_versions_without_version_service(
+        self, 
+        workitem_service, 
+        mock_graph_service
+    ):
+        """Test version comparison returns None when VersionService not available"""
+        # Execute
+        result = await workitem_service.compare_workitem_versions(
+            uuid4(), "1.0", "1.1"
+        )
+        
+        # Verify
+        assert result is None
+    
+    @pytest.mark.asyncio
+    async def test_workitem_service_initialization_with_version_service(
+        self, 
+        mock_graph_service, 
+        mock_version_service
+    ):
+        """Test WorkItemService initialization with VersionService"""
+        # Execute
+        service = WorkItemService(mock_graph_service, mock_version_service)
+        
+        # Verify
+        assert service.graph_service == mock_graph_service
+        assert service.version_service == mock_version_service
+    
+    @pytest.mark.asyncio
+    async def test_workitem_service_initialization_without_version_service(
+        self, 
+        mock_graph_service
+    ):
+        """Test WorkItemService initialization without VersionService"""
+        # Execute
+        service = WorkItemService(mock_graph_service)
+        
+        # Verify
+        assert service.graph_service == mock_graph_service
+        assert service.version_service is None

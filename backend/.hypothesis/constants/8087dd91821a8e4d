@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/workitems.py
+# hypothesis_version: 6.150.2
+
+[100, 403, 404, 1000, '/workitems', 'CREATE', 'DELETE', 'Filter by creator', 'Filter by status', 'READ', 'UPDATE', 'WorkItem', 'WorkItem not found', 'action_type', 'added_fields', 'added_fields_count', 'admin', 'assigned_to', 'change_description', 'changed_fields', 'changed_fields_count', 'created_by', 'description', 'force_delete', 'new_version', 'priority', 'removed_fields', 'removed_fields_count', 'result_count', 'search', 'search_filters', 'status', 'title', 'type', 'updated_fields', 'version', 'version1', 'version2', 'version_access', 'version_comparison', 'version_count', 'version_history', 'workitem_type']

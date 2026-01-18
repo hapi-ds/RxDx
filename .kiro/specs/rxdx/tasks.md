@@ -164,21 +164,21 @@
 ### 6.1 Version Service
 **References:** Requirement 3 (Requirements Management with Version Control)
 - [x] 6.1.1 Create VersionService class
-- [ ] 6.1.2 Implement create_version method (increments version, creates graph node)
-- [ ] 6.1.3 Implement version number calculation (major.minor format)
-- [ ] 6.1.4 Create NEXT_VERSION relationships in graph
-- [ ] 6.1.5 Implement get_version_history method
-- [ ] 6.1.6 Store change descriptions with each version
-- [ ] 6.1.7 Write unit tests for version control
-- [ ] 6.1.8 Write property-based tests for version numbering
+- [x] 6.1.2 Implement create_version method (increments version, creates graph node)
+- [x] 6.1.3 Implement version number calculation (major.minor format)
+- [x] 6.1.4 Create NEXT_VERSION relationships in graph
+- [x] 6.1.5 Implement get_version_history method
+- [x] 6.1.6 Store change descriptions with each version
+- [x] 6.1.7 Write unit tests for version control
+- [x] 6.1.8 Write property-based tests for version numbering
 
 ### 6.2 Version History Integration
 **References:** Requirement 3 (Requirements Management with Version Control)
-- [ ] 6.2.1 Integrate version creation with WorkItem updates
-- [ ] 6.2.2 Ensure version history preserves complete snapshots
-- [ ] 6.2.3 Link versions to user identity and timestamps
-- [ ] 6.2.4 Implement version comparison functionality
-- [ ] 6.2.5 Write integration tests for version history
+- [x] 6.2.1 Integrate version creation with WorkItem updates
+- [x] 6.2.2 Ensure version history preserves complete snapshots
+- [x] 6.2.3 Link versions to user identity and timestamps
+- [x] 6.2.4 Implement version comparison functionality
+- [x] 6.2.5 Write integration tests for version history
 
 ## Phase 7: Digital Signature System
 

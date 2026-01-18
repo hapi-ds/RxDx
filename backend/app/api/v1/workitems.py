@@ -481,3 +481,72 @@ async def get_workitem_version(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving WorkItem version: {str(e)}"
         )
+
+
+@router.get("/workitems/{workitem_id}/compare/{version1}/{version2}")
+async def compare_workitem_versions(
+    workitem_id: UUID,
+    version1: str,
+    version2: str,
+    current_user: User = Depends(get_current_user),
+    workitem_service: WorkItemService = Depends(get_workitem_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Compare two versions of a WorkItem
+    
+    Returns the differences between two versions of the same WorkItem.
+    Version format: "major.minor" (e.g., "1.0", "1.1", "2.0")
+    
+    Returns:
+    - version1: First version identifier
+    - version2: Second version identifier  
+    - changed_fields: Fields that differ between versions
+    - added_fields: Fields present in version2 but not version1
+    - removed_fields: Fields present in version1 but not version2
+    - unchanged_fields: Fields that are the same in both versions
+    """
+    # Check read permission
+    if not has_permission(current_user.role, Permission.READ_WORKITEM):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to read WorkItems"
+        )
+    
+    try:
+        # Compare the versions
+        comparison = await workitem_service.compare_workitem_versions(
+            workitem_id, version1, version2
+        )
+        
+        if comparison is None:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Version comparison not available (VersionService required)"
+            )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="READ",
+            entity_type="WorkItem",
+            entity_id=workitem_id,
+            details={
+                "action_type": "version_comparison",
+                "version1": version1,
+                "version2": version2,
+                "changed_fields_count": len(comparison.get("changed_fields", {})),
+                "added_fields_count": len(comparison.get("added_fields", {})),
+                "removed_fields_count": len(comparison.get("removed_fields", {}))
+            }
+        )
+        
+        return comparison
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error comparing WorkItem versions: {str(e)}"
+        )

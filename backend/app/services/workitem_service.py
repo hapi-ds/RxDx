@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from uuid import UUID
 
 from app.db.graph import GraphService, get_graph_service
+from app.services.version_service import VersionService, get_version_service
 from app.schemas.workitem import (
     WorkItemCreate, 
     WorkItemUpdate, 
@@ -27,8 +28,9 @@ from app.models.user import User
 class WorkItemService:
     """Service for managing WorkItems with graph database storage"""
     
-    def __init__(self, graph_service: GraphService):
+    def __init__(self, graph_service: GraphService, version_service: VersionService = None):
         self.graph_service = graph_service
+        self.version_service = version_service
         
     async def create_workitem(
         self,
@@ -173,7 +175,7 @@ class WorkItemService:
         version: str
     ) -> Optional[WorkItemResponse]:
         """
-        Get a specific version of a WorkItem
+        Get a specific version of a WorkItem using VersionService
         
         Args:
             workitem_id: WorkItem UUID
@@ -182,7 +184,16 @@ class WorkItemService:
         Returns:
             WorkItem version if found, None otherwise
         """
-        # Get the specific version from graph database
+        if self.version_service:
+            try:
+                # Use VersionService to get specific version
+                version_data = await self.version_service.get_version_by_number(workitem_id, version)
+                if version_data:
+                    return self._graph_data_to_response(version_data)
+            except Exception as e:
+                print(f"VersionService failed, falling back to graph service: {e}")
+        
+        # Fallback: Use graph service directly
         workitem_data = await self.graph_service.get_workitem_version(
             str(workitem_id), 
             version
@@ -201,7 +212,7 @@ class WorkItemService:
         change_description: str = "WorkItem updated"
     ) -> Optional[WorkItemResponse]:
         """
-        Update a WorkItem (creates new version)
+        Update a WorkItem using the VersionService for proper version control
         
         Args:
             workitem_id: WorkItem UUID
@@ -212,7 +223,7 @@ class WorkItemService:
         Returns:
             Updated WorkItem with new version
         """
-        # Get current WorkItem
+        # Check if WorkItem exists
         current_workitem = await self.graph_service.get_workitem(str(workitem_id))
         if not current_workitem:
             return None
@@ -285,6 +296,21 @@ class WorkItemService:
             if severity and occurrence and detection:
                 update_data["rpn"] = severity * occurrence * detection
         
+        # Use VersionService to create new version if available
+        if self.version_service:
+            try:
+                new_version_data = await self.version_service.create_version(
+                    workitem_id=workitem_id,
+                    updates=update_data,
+                    user=current_user,
+                    change_description=change_description
+                )
+                return self._graph_data_to_response(new_version_data)
+            except Exception as e:
+                # Fall back to manual version creation if VersionService fails
+                print(f"VersionService failed, falling back to manual versioning: {e}")
+        
+        # Fallback: Manual version creation (legacy behavior)
         # Calculate new version number
         current_version = current_workitem.get("version", "1.0")
         try:
@@ -358,6 +384,33 @@ class WorkItemService:
         
         return True
         
+    async def compare_workitem_versions(
+        self,
+        workitem_id: UUID,
+        version1: str,
+        version2: str
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Compare two versions of a WorkItem using VersionService
+        
+        Args:
+            workitem_id: WorkItem UUID
+            version1: First version to compare
+            version2: Second version to compare
+            
+        Returns:
+            Dictionary containing the differences between versions, or None if VersionService unavailable
+        """
+        if self.version_service:
+            try:
+                return await self.version_service.compare_versions(workitem_id, version1, version2)
+            except Exception as e:
+                print(f"VersionService comparison failed: {e}")
+                return None
+        
+        # No fallback implementation for comparison - requires VersionService
+        return None
+        
     async def search_workitems(
         self,
         search_text: Optional[str] = None,
@@ -415,17 +468,31 @@ class WorkItemService:
         workitem_id: UUID
     ) -> List[WorkItemResponse]:
         """
-        Get complete version history for a WorkItem
+        Get complete version history for a WorkItem using VersionService
         
         Args:
             workitem_id: WorkItem UUID
             
         Returns:
-            List of WorkItem versions ordered by version number
+            List of WorkItem versions ordered by version number (newest first)
         """
-        # Get version history from graph service
-        # This would need to be implemented in graph service
-        # For now, return current version only
+        if self.version_service:
+            try:
+                # Use VersionService to get complete history
+                version_history = await self.version_service.get_version_history(workitem_id)
+                
+                # Convert to WorkItemResponse objects
+                workitem_responses = []
+                for version_data in version_history:
+                    response = self._graph_data_to_response(version_data)
+                    if response:
+                        workitem_responses.append(response)
+                
+                return workitem_responses
+            except Exception as e:
+                print(f"VersionService failed, falling back to current version only: {e}")
+        
+        # Fallback: Return current version only
         current = await self.get_workitem(workitem_id)
         return [current] if current else []
         
@@ -474,6 +541,14 @@ class WorkItemService:
 
 
 async def get_workitem_service() -> WorkItemService:
-    """Dependency for getting WorkItem service"""
+    """Dependency for getting WorkItem service with VersionService integration"""
     graph_service = await get_graph_service()
-    return WorkItemService(graph_service)
+    
+    # Try to get VersionService, but don't fail if it's not available
+    try:
+        version_service = await get_version_service(graph_service=graph_service)
+    except Exception as e:
+        print(f"Warning: Could not initialize VersionService: {e}")
+        version_service = None
+    
+    return WorkItemService(graph_service, version_service)

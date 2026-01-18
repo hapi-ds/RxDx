@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
@@ -14,6 +15,38 @@ from app.schemas.audit import AuditLogFilter, AuditLogResponse
 from app.services.audit_service import AuditService
 
 router = APIRouter()
+
+
+def parse_iso_date(date_str: str, field_name: str) -> datetime:
+    """
+    Parse ISO 8601 date string with robust handling of various formats.
+    
+    Args:
+        date_str: ISO 8601 date string
+        field_name: Name of the field for error messages
+        
+    Returns:
+        Parsed datetime object
+        
+    Raises:
+        HTTPException: If date format is invalid
+    """
+    try:
+        # Handle various ISO 8601 formats more robustly
+        if date_str.endswith('Z'):
+            # Remove Z and add explicit UTC offset
+            return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+        elif '+' in date_str or date_str.endswith('00:00'):
+            # Already has timezone info
+            return datetime.fromisoformat(date_str)
+        else:
+            # Assume UTC if no timezone info
+            return datetime.fromisoformat(date_str + '+00:00')
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid {field_name} format. Use ISO 8601 format (e.g., 2024-01-01T00:00:00Z)"
+        )
 
 
 def require_audit_permission(current_user: User = Depends(get_current_user)) -> User:
@@ -87,28 +120,14 @@ async def get_audit_logs(
     """
     try:
         # Parse date strings if provided
-        from datetime import datetime
-        
         parsed_start_date = None
         parsed_end_date = None
         
         if start_date:
-            try:
-                parsed_start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid start_date format. Use ISO 8601 format (e.g., 2024-01-01T00:00:00Z)"
-                )
+            parsed_start_date = parse_iso_date(start_date, "start_date")
         
         if end_date:
-            try:
-                parsed_end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Invalid end_date format. Use ISO 8601 format (e.g., 2024-01-31T23:59:59Z)"
-                )
+            parsed_end_date = parse_iso_date(end_date, "end_date")
         
         # Create filter object
         filters = AuditLogFilter(

@@ -241,7 +241,7 @@ class TestBase(WorkItemBase):
     )
 
 
-class TestCreate(TestBase):
+class TestSpecCreate(TestBase):
     """Schema for creating a new Test"""
     
     type: Literal["test"] = "test"
@@ -257,7 +257,7 @@ class TestCreate(TestBase):
         return v.lower()
 
 
-class TestUpdate(BaseModel):
+class TestSpecUpdate(BaseModel):
     """Schema for updating a Test"""
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
@@ -301,7 +301,7 @@ class TestUpdate(BaseModel):
         return v.strip()
 
 
-class TestResponse(TestBase):
+class TestSpecResponse(TestBase):
     """Schema for Test response"""
     
     id: UUID

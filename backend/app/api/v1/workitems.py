@@ -19,9 +19,9 @@ from app.schemas.workitem import (
     TaskCreate,
     TaskUpdate,
     TaskResponse,
-    TestCreate,
-    TestUpdate,
-    TestResponse,
+    TestSpecCreate,
+    TestSpecUpdate,
+    TestSpecResponse,
     RiskCreate,
     RiskUpdate,
     RiskResponse,
@@ -164,7 +164,14 @@ async def create_workitem(
         )
 
 
-@router.get("/workitems/{workitem_id}", response_model=WorkItemResponse)
+@router.get(
+    "/workitems/{workitem_id}", 
+    response_model=WorkItemResponse,
+    responses={
+        404: {"description": "WorkItem not found"},
+        403: {"description": "Insufficient permissions"}
+    }
+)
 async def get_workitem(
     workitem_id: UUID,
     current_user: User = Depends(get_current_user),

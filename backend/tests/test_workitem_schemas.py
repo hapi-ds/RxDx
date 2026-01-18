@@ -16,9 +16,9 @@ from app.schemas.workitem import (
     TaskCreate,
     TaskUpdate,
     TaskResponse,
-    TestCreate,
-    TestUpdate,
-    TestResponse,
+    TestSpecCreate,
+    TestSpecUpdate,
+    TestSpecResponse,
     RiskCreate,
     RiskUpdate,
     RiskResponse,
@@ -28,7 +28,7 @@ from app.schemas.workitem import (
 )
 
 
-class TestWorkItemBase:
+class TestWorkItemBaseSchema:
     """Test WorkItemBase schema validation"""
 
     def test_valid_workitem_base(self):
@@ -111,7 +111,7 @@ class TestWorkItemBase:
         assert workitem.title == "Test Title"
 
 
-class TestWorkItemCreate:
+class TestWorkItemCreateSchema:
     """Test WorkItemCreate schema validation"""
 
     def test_valid_workitem_create(self):
@@ -150,7 +150,7 @@ class TestWorkItemCreate:
         assert workitem.type == "requirement"
 
 
-class TestWorkItemUpdate:
+class TestWorkItemUpdateSchema:
     """Test WorkItemUpdate schema validation"""
 
     def test_valid_workitem_update(self):
@@ -250,7 +250,7 @@ class TestTestSchemas:
             "expected_result": "User is logged in",
             "test_status": "not_run"
         }
-        test = TestCreate(**data)
+        test = TestSpecCreate(**data)
         assert test.type == "test"
         assert test.test_status == "not_run"
 
@@ -259,7 +259,7 @@ class TestTestSchemas:
         valid_statuses = ["not_run", "passed", "failed", "blocked"]
         
         for status in valid_statuses:
-            test = TestCreate(
+            test = TestSpecCreate(
                 title="Test",
                 status="draft",
                 test_status=status
@@ -268,7 +268,7 @@ class TestTestSchemas:
 
         # Invalid test status should fail
         with pytest.raises(ValidationError) as exc_info:
-            TestCreate(title="Test", status="draft", test_status="invalid")
+            TestSpecCreate(title="Test", status="draft", test_status="invalid")
         assert "Test status must be one of" in str(exc_info.value)
 
 
@@ -358,7 +358,7 @@ class TestDocumentSchemas:
         assert "Input should be greater than or equal to 0" in str(exc_info.value)
 
 
-class TestWorkItemResponse:
+class TestWorkItemResponseSchema:
     """Test WorkItemResponse schema"""
 
     def test_workitem_response(self):
@@ -422,7 +422,7 @@ class TestComprehensiveWorkItemValidation:
         assert task.type == 'task'
         assert task.estimated_hours == 8.0
 
-        test = TestCreate(
+        test = TestSpecCreate(
             title='Test Test Case', 
             status='draft', 
             test_status='not_run',
@@ -474,7 +474,7 @@ class TestComprehensiveWorkItemValidation:
         assert task_update.estimated_hours == 12.5
         assert task_update.actual_hours == 10.0
 
-        test_update = TestUpdate(test_status='passed', actual_result='Test passed')
+        test_update = TestSpecUpdate(test_status='passed', actual_result='Test passed')
         assert test_update.test_status == 'passed'
         assert test_update.actual_result == 'Test passed'
 
@@ -529,7 +529,7 @@ class TestComprehensiveWorkItemValidation:
         assert task_response.type == "task"
         assert task_response.estimated_hours == 8.0
 
-        test_response = TestResponse(
+        test_response = TestSpecResponse(
             title="Test Test Case",
             status="active",
             type="test",
@@ -625,8 +625,8 @@ class TestComprehensiveWorkItemValidation:
         task_create = TaskCreate(title="Task", status="draft")
         schemas_created.append(("TaskCreate", task_create))
         
-        test_create = TestCreate(title="Test", status="draft")
-        schemas_created.append(("TestCreate", test_create))
+        test_create = TestSpecCreate(title="Test", status="draft")
+        schemas_created.append(("TestSpecCreate", test_create))
         
         risk_create = RiskCreate(title="Risk", status="draft", severity=5, occurrence=3, detection=7)
         schemas_created.append(("RiskCreate", risk_create))
@@ -649,7 +649,7 @@ class TestComprehensiveWorkItemValidation:
                 expected_types = {
                     'RequirementCreate': 'requirement',
                     'TaskCreate': 'task', 
-                    'TestCreate': 'test',
+                    'TestSpecCreate': 'test',
                     'RiskCreate': 'risk',
                     'DocumentCreate': 'document'
                 }

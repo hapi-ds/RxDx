@@ -214,7 +214,7 @@ class TestWorkItemEndpoints:
             headers=auth_headers
         )
         
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
     
     async def test_get_workitems_success(
         self,

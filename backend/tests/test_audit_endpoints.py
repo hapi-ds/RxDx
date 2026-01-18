@@ -2,7 +2,7 @@
 
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -299,9 +299,9 @@ class TestAuditEndpoints:
         """Test audit log date filtering"""
         headers = {"Authorization": f"Bearer {admin_token}"}
         
-        # Test with date range
-        start_date = (datetime.utcnow() - timedelta(days=1)).isoformat() + "Z"
-        end_date = datetime.utcnow().isoformat() + "Z"
+        # Test with date range - use proper ISO 8601 format
+        start_date = (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_date = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
         
         response = await client.get(
             "/api/v1/audit",
@@ -311,6 +311,7 @@ class TestAuditEndpoints:
                 "end_date": end_date
             }
         )
+        
         assert response.status_code == 200
         data = response.json()
         
@@ -511,7 +512,7 @@ class TestAuditEndpoints:
             action="READ",
             entity_type="AuditLog",
             entity_id=None,
-            start_date=datetime.utcnow() - timedelta(minutes=1),
+            start_date=datetime.now(timezone.utc) - timedelta(minutes=1),
             end_date=None,
             limit=10,
             offset=0

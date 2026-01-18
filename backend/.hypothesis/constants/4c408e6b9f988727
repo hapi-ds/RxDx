@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/workitem.py
+# hypothesis_version: 6.150.2
+
+[500, 1000, 2000, 5000, 'Actual hours spent', 'Actual test result', 'Comment text', 'Current page number', 'Detailed test steps', 'Expected test result', 'FIXME', 'File size in bytes', 'List of comments', 'Lorem ipsum', 'TBD', 'TODO', 'Type of WorkItem', 'Updated comment text', 'WorkItem title', 'XXX', 'acceptance_criteria', 'active', 'and', 'archived', 'blocked', 'business_rule', 'business_value', 'but', 'comment', 'completed', 'compliance', 'description', 'document', 'draft', 'failed', 'from_attributes', 'given', 'must', 'not_run', 'other', 'passed', 'performance', 'regulation', 'rejected', 'requirement', 'risk', 'security', 'shall', 'should', 'source', 'stakeholder', 'standard', 'status', 'task', 'technical_constraint', 'test', 'test_status', 'then', 'title', 'type', 'usability', 'user_story', 'when']

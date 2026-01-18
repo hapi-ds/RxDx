@@ -467,7 +467,7 @@ class TaskResponse(TaskBase):
     model_config = {"from_attributes": True}
 
 
-class TestBase(WorkItemBase):
+class SpecBase(WorkItemBase):
     """Base schema for Test WorkItems"""
     
     test_type: Optional[str] = Field(None, description="Type of test (unit, integration, system, acceptance)")
@@ -480,7 +480,7 @@ class TestBase(WorkItemBase):
     )
 
 
-class TestSpecCreate(TestBase):
+class SpecCreate(SpecBase):
     """Schema for creating a new Test"""
     
     type: Literal["test"] = "test"
@@ -496,7 +496,7 @@ class TestSpecCreate(TestBase):
         return v.lower()
 
 
-class TestSpecUpdate(BaseModel):
+class SpecUpdate(BaseModel):
     """Schema for updating a Test"""
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
@@ -540,7 +540,7 @@ class TestSpecUpdate(BaseModel):
         return v.strip()
 
 
-class TestSpecResponse(TestBase):
+class SpecResponse(SpecBase):
     """Schema for Test response"""
     
     id: UUID
@@ -552,6 +552,12 @@ class TestSpecResponse(TestBase):
     is_signed: bool = False
 
     model_config = {"from_attributes": True}
+
+# Keep the old names for backward compatibility
+TestBase = SpecBase
+TestSpecCreate = SpecCreate
+TestSpecUpdate = SpecUpdate
+TestSpecResponse = SpecResponse
 
 
 class RiskBase(WorkItemBase):

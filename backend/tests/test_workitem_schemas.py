@@ -34,25 +34,25 @@ class TestWorkItemBaseSchema:
     def test_valid_workitem_base(self):
         """Test valid WorkItemBase creation"""
         data = {
-            "title": "Test WorkItem",
+            "title": "Test WorkItem Title",
             "description": "A test work item",
             "status": "draft",
             "priority": 3,
             "assigned_to": str(uuid4())
         }
         workitem = WorkItemBase(**data)
-        assert workitem.title == "Test WorkItem"
+        assert workitem.title == "Test WorkItem Title"
         assert workitem.status == "draft"
         assert workitem.priority == 3
 
     def test_minimal_workitem_base(self):
         """Test WorkItemBase with minimal required fields"""
         data = {
-            "title": "Minimal WorkItem",
+            "title": "Minimal WorkItem Title",
             "status": "active"
         }
         workitem = WorkItemBase(**data)
-        assert workitem.title == "Minimal WorkItem"
+        assert workitem.title == "Minimal WorkItem Title"
         assert workitem.status == "active"
         assert workitem.description is None
         assert workitem.priority is None
@@ -70,6 +70,11 @@ class TestWorkItemBaseSchema:
             WorkItemBase(title="   ", status="draft")
         assert "Title cannot be empty or only whitespace" in str(exc_info.value)
 
+        # Title too short should fail
+        with pytest.raises(ValidationError) as exc_info:
+            WorkItemBase(title="Test", status="draft")
+        assert "Title must be at least 5 characters long" in str(exc_info.value)
+
         # Title too long should fail
         long_title = "x" * 501
         with pytest.raises(ValidationError) as exc_info:
@@ -78,31 +83,31 @@ class TestWorkItemBaseSchema:
 
     def test_status_validation(self):
         """Test status field validation"""
-        valid_statuses = ["draft", "active", "completed", "archived"]
+        valid_statuses = ["draft", "active", "completed", "archived", "rejected"]
         
         for status in valid_statuses:
-            workitem = WorkItemBase(title="Test", status=status)
+            workitem = WorkItemBase(title="Test Title", status=status)
             assert workitem.status == status
 
         # Invalid status should fail
         with pytest.raises(ValidationError) as exc_info:
-            WorkItemBase(title="Test", status="invalid")
+            WorkItemBase(title="Test Title", status="invalid")
         assert "Status must be one of" in str(exc_info.value)
 
     def test_priority_validation(self):
         """Test priority field validation"""
         # Valid priorities
         for priority in [1, 2, 3, 4, 5]:
-            workitem = WorkItemBase(title="Test", status="draft", priority=priority)
+            workitem = WorkItemBase(title="Test Title", status="draft", priority=priority)
             assert workitem.priority == priority
 
         # Invalid priorities should fail
         with pytest.raises(ValidationError) as exc_info:
-            WorkItemBase(title="Test", status="draft", priority=0)
+            WorkItemBase(title="Test Title", status="draft", priority=0)
         assert "Input should be greater than or equal to 1" in str(exc_info.value)
 
         with pytest.raises(ValidationError) as exc_info:
-            WorkItemBase(title="Test", status="draft", priority=6)
+            WorkItemBase(title="Test Title", status="draft", priority=6)
         assert "Input should be less than or equal to 5" in str(exc_info.value)
 
     def test_title_whitespace_trimming(self):
@@ -117,7 +122,7 @@ class TestWorkItemCreateSchema:
     def test_valid_workitem_create(self):
         """Test valid WorkItemCreate"""
         data = {
-            "title": "New WorkItem",
+            "title": "New WorkItem Title",
             "description": "Description",
             "status": "draft",
             "type": "requirement",
@@ -125,7 +130,7 @@ class TestWorkItemCreateSchema:
         }
         workitem = WorkItemCreate(**data)
         assert workitem.type == "requirement"
-        assert workitem.title == "New WorkItem"
+        assert workitem.title == "New WorkItem Title"
 
     def test_type_validation(self):
         """Test type field validation"""
@@ -133,7 +138,7 @@ class TestWorkItemCreateSchema:
         
         for workitem_type in valid_types:
             workitem = WorkItemCreate(
-                title="Test",
+                title="Test Title",
                 status="draft",
                 type=workitem_type
             )
@@ -141,12 +146,12 @@ class TestWorkItemCreateSchema:
 
         # Invalid type should fail
         with pytest.raises(ValidationError) as exc_info:
-            WorkItemCreate(title="Test", status="draft", type="invalid")
+            WorkItemCreate(title="Test Title", status="draft", type="invalid")
         assert "Type must be one of" in str(exc_info.value)
 
     def test_type_case_normalization(self):
         """Test that type is normalized to lowercase"""
-        workitem = WorkItemCreate(title="Test", status="draft", type="REQUIREMENT")
+        workitem = WorkItemCreate(title="Test Title", status="draft", type="REQUIREMENT")
         assert workitem.type == "requirement"
 
 
@@ -156,19 +161,19 @@ class TestWorkItemUpdateSchema:
     def test_valid_workitem_update(self):
         """Test valid WorkItemUpdate with all fields"""
         data = {
-            "title": "Updated Title",
+            "title": "Updated Title Here",
             "description": "Updated description",
             "status": "active",
             "priority": 4
         }
         update = WorkItemUpdate(**data)
-        assert update.title == "Updated Title"
+        assert update.title == "Updated Title Here"
         assert update.status == "active"
 
     def test_partial_workitem_update(self):
         """Test WorkItemUpdate with only some fields"""
-        update = WorkItemUpdate(title="New Title")
-        assert update.title == "New Title"
+        update = WorkItemUpdate(title="New Title Here")
+        assert update.title == "New Title Here"
         assert update.description is None
         assert update.status is None
 
@@ -187,24 +192,24 @@ class TestRequirementSchemas:
         """Test RequirementCreate schema"""
         data = {
             "title": "User Authentication Requirement",
-            "description": "System shall authenticate users",
+            "description": "System shall authenticate users with proper validation and security measures",
             "status": "draft",
-            "acceptance_criteria": "User can login with valid credentials",
-            "business_value": "Security compliance",
-            "source": "Security team"
+            "acceptance_criteria": "Given a user with valid credentials, when they attempt to login, then the system should authenticate them successfully",
+            "business_value": "Security compliance and user access control",
+            "source": "security"
         }
         req = RequirementCreate(**data)
         assert req.type == "requirement"
-        assert req.acceptance_criteria == "User can login with valid credentials"
+        assert req.acceptance_criteria == "Given a user with valid credentials, when they attempt to login, then the system should authenticate them successfully"
 
     def test_requirement_update(self):
         """Test RequirementUpdate schema"""
         data = {
-            "acceptance_criteria": "Updated criteria",
-            "business_value": "Updated value"
+            "acceptance_criteria": "Given updated criteria, when conditions are met, then the system should respond appropriately",
+            "business_value": "Updated business value description"
         }
         update = RequirementUpdate(**data)
-        assert update.acceptance_criteria == "Updated criteria"
+        assert update.acceptance_criteria == "Given updated criteria, when conditions are met, then the system should respond appropriately"
         assert update.title is None
 
 
@@ -229,7 +234,7 @@ class TestTaskSchemas:
         # Negative hours should fail
         with pytest.raises(ValidationError) as exc_info:
             TaskCreate(
-                title="Test",
+                title="Test Task Title",
                 status="draft",
                 estimated_hours=-1
             )
@@ -242,7 +247,7 @@ class TestTestSchemas:
     def test_test_create(self):
         """Test TestCreate schema"""
         data = {
-            "title": "Login Test",
+            "title": "Login Test Case",
             "description": "Test user login",
             "status": "draft",
             "test_type": "integration",
@@ -260,7 +265,7 @@ class TestTestSchemas:
         
         for status in valid_statuses:
             test = TestSpecCreate(
-                title="Test",
+                title="Test Title Here",
                 status="draft",
                 test_status=status
             )
@@ -268,7 +273,7 @@ class TestTestSchemas:
 
         # Invalid test status should fail
         with pytest.raises(ValidationError) as exc_info:
-            TestSpecCreate(title="Test", status="draft", test_status="invalid")
+            TestSpecCreate(title="Test Title Here", status="draft", test_status="invalid")
         assert "Test status must be one of" in str(exc_info.value)
 
 
@@ -278,7 +283,7 @@ class TestRiskSchemas:
     def test_risk_create(self):
         """Test RiskCreate schema"""
         data = {
-            "title": "Data Loss Risk",
+            "title": "Data Loss Risk Assessment",
             "description": "Risk of losing user data",
             "status": "draft",
             "severity": 8,
@@ -296,7 +301,7 @@ class TestRiskSchemas:
         """Test risk rating validation (1-10)"""
         # Valid ratings
         risk = RiskCreate(
-            title="Test Risk",
+            title="Test Risk Assessment",
             status="draft",
             severity=5,
             occurrence=5,
@@ -307,7 +312,7 @@ class TestRiskSchemas:
         # Invalid ratings should fail
         with pytest.raises(ValidationError) as exc_info:
             RiskCreate(
-                title="Test Risk",
+                title="Test Risk Assessment",
                 status="draft",
                 severity=0,
                 occurrence=5,
@@ -317,7 +322,7 @@ class TestRiskSchemas:
 
         with pytest.raises(ValidationError) as exc_info:
             RiskCreate(
-                title="Test Risk",
+                title="Test Risk Assessment",
                 status="draft",
                 severity=11,
                 occurrence=5,
@@ -332,7 +337,7 @@ class TestDocumentSchemas:
     def test_document_create(self):
         """Test DocumentCreate schema"""
         data = {
-            "title": "System Specification",
+            "title": "System Specification Document",
             "description": "Technical specification document",
             "status": "draft",
             "document_type": "specification",
@@ -351,7 +356,7 @@ class TestDocumentSchemas:
         # Negative file size should fail
         with pytest.raises(ValidationError) as exc_info:
             DocumentCreate(
-                title="Test Doc",
+                title="Test Document Title",
                 status="draft",
                 file_size=-1
             )
@@ -365,7 +370,7 @@ class TestWorkItemResponseSchema:
         """Test WorkItemResponse schema"""
         data = {
             "id": uuid4(),
-            "title": "Test WorkItem",
+            "title": "Test WorkItem Response",
             "description": "Test description",
             "status": "active",
             "priority": 3,
@@ -391,30 +396,30 @@ class TestComprehensiveWorkItemValidation:
         
         # Test validation works correctly for status
         with pytest.raises(ValidationError) as exc_info:
-            WorkItemBase(title='Test', status='invalid_status')
+            WorkItemBase(title='Test Title Here', status='invalid_status')
         assert "Status must be one of" in str(exc_info.value)
 
         # Test validation works correctly for type
         with pytest.raises(ValidationError) as exc_info:
-            WorkItemCreate(title='Test', status='draft', type='invalid_type')
+            WorkItemCreate(title='Test Title Here', status='draft', type='invalid_type')
         assert "Type must be one of" in str(exc_info.value)
 
         # Test case normalization works
-        wc = WorkItemCreate(title='Test', status='DRAFT', type='REQUIREMENT')
+        wc = WorkItemCreate(title='Test Title Here', status='DRAFT', type='REQUIREMENT')
         assert wc.status == 'draft'
         assert wc.type == 'requirement'
 
         # Test all specialized create schemas work
         req = RequirementCreate(
-            title='Test Requirement', 
+            title='Test Requirement Title', 
             status='draft', 
-            acceptance_criteria='Must work correctly'
+            acceptance_criteria='Given proper conditions, when action is taken, then system must work correctly'
         )
         assert req.type == 'requirement'
-        assert req.acceptance_criteria == 'Must work correctly'
+        assert req.acceptance_criteria == 'Given proper conditions, when action is taken, then system must work correctly'
 
         task = TaskCreate(
-            title='Test Task', 
+            title='Test Task Title', 
             status='draft', 
             estimated_hours=8.0,
             due_date=datetime.now()
@@ -423,7 +428,7 @@ class TestComprehensiveWorkItemValidation:
         assert task.estimated_hours == 8.0
 
         test = TestSpecCreate(
-            title='Test Test Case', 
+            title='Test Test Case Title', 
             status='draft', 
             test_status='not_run',
             test_type='integration'
@@ -432,7 +437,7 @@ class TestComprehensiveWorkItemValidation:
         assert test.test_status == 'not_run'
 
         risk = RiskCreate(
-            title='Test Risk', 
+            title='Test Risk Assessment Title', 
             status='draft', 
             severity=5, 
             occurrence=3, 
@@ -445,7 +450,7 @@ class TestComprehensiveWorkItemValidation:
         assert risk.detection == 7
 
         doc = DocumentCreate(
-            title='Test Document', 
+            title='Test Document Title', 
             status='draft', 
             file_size=1024,
             mime_type='application/pdf'
@@ -457,17 +462,17 @@ class TestComprehensiveWorkItemValidation:
         """Test all update schemas work correctly"""
         
         # Test base update schema
-        update = WorkItemUpdate(title='Updated Title', status='completed')
-        assert update.title == 'Updated Title'
+        update = WorkItemUpdate(title='Updated Title Here', status='completed')
+        assert update.title == 'Updated Title Here'
         assert update.status == 'completed'
         assert update.description is None  # Optional field
 
         # Test specialized update schemas
         req_update = RequirementUpdate(
-            acceptance_criteria='Updated criteria',
-            business_value='Updated value'
+            acceptance_criteria='Given updated conditions, when action occurs, then system should respond appropriately',
+            business_value='Updated business value description'
         )
-        assert req_update.acceptance_criteria == 'Updated criteria'
+        assert req_update.acceptance_criteria == 'Given updated conditions, when action occurs, then system should respond appropriately'
         assert req_update.title is None  # Optional field
 
         task_update = TaskUpdate(estimated_hours=12.5, actual_hours=10.0)
@@ -500,7 +505,7 @@ class TestComprehensiveWorkItemValidation:
 
         # Test WorkItemResponse
         workitem_response = WorkItemResponse(
-            title="Test WorkItem",
+            title="Test WorkItem Response",
             status="active",
             type="requirement",
             **base_data
@@ -510,17 +515,17 @@ class TestComprehensiveWorkItemValidation:
 
         # Test specialized response schemas
         req_response = RequirementResponse(
-            title="Test Requirement",
+            title="Test Requirement Response",
             status="active",
             type="requirement",
-            acceptance_criteria="Must work",
+            acceptance_criteria="Given conditions, when action occurs, then system must work",
             **base_data
         )
         assert req_response.type == "requirement"
-        assert req_response.acceptance_criteria == "Must work"
+        assert req_response.acceptance_criteria == "Given conditions, when action occurs, then system must work"
 
         task_response = TaskResponse(
-            title="Test Task",
+            title="Test Task Response",
             status="active",
             type="task",
             estimated_hours=8.0,
@@ -530,7 +535,7 @@ class TestComprehensiveWorkItemValidation:
         assert task_response.estimated_hours == 8.0
 
         test_response = TestSpecResponse(
-            title="Test Test Case",
+            title="Test Test Case Response",
             status="active",
             type="test",
             test_status="passed",
@@ -540,7 +545,7 @@ class TestComprehensiveWorkItemValidation:
         assert test_response.test_status == "passed"
 
         risk_response = RiskResponse(
-            title="Test Risk",
+            title="Test Risk Response",
             status="active",
             type="risk",
             severity=5,
@@ -552,7 +557,7 @@ class TestComprehensiveWorkItemValidation:
         assert risk_response.severity == 5
 
         doc_response = DocumentResponse(
-            title="Test Document",
+            title="Test Document Response",
             status="active",
             type="document",
             file_size=1024,
@@ -567,20 +572,20 @@ class TestComprehensiveWorkItemValidation:
         # Test priority bounds
         valid_priorities = [1, 2, 3, 4, 5]
         for priority in valid_priorities:
-            workitem = WorkItemBase(title="Test", status="draft", priority=priority)
+            workitem = WorkItemBase(title="Test Title Here", status="draft", priority=priority)
             assert workitem.priority == priority
 
         # Test invalid priorities
         with pytest.raises(ValidationError):
-            WorkItemBase(title="Test", status="draft", priority=0)
+            WorkItemBase(title="Test Title Here", status="draft", priority=0)
         
         with pytest.raises(ValidationError):
-            WorkItemBase(title="Test", status="draft", priority=6)
+            WorkItemBase(title="Test Title Here", status="draft", priority=6)
 
         # Test risk rating bounds
         for rating in [1, 5, 10]:
             risk = RiskCreate(
-                title="Test Risk",
+                title="Test Risk Assessment",
                 status="draft",
                 severity=rating,
                 occurrence=rating,
@@ -591,7 +596,7 @@ class TestComprehensiveWorkItemValidation:
         # Test invalid risk ratings
         with pytest.raises(ValidationError):
             RiskCreate(
-                title="Test Risk",
+                title="Test Risk Assessment",
                 status="draft",
                 severity=0,  # Invalid
                 occurrence=5,
@@ -599,11 +604,11 @@ class TestComprehensiveWorkItemValidation:
             )
 
         # Test file size validation
-        doc = DocumentCreate(title="Test", status="draft", file_size=0)
+        doc = DocumentCreate(title="Test Document Title", status="draft", file_size=0)
         assert doc.file_size == 0
 
         with pytest.raises(ValidationError):
-            DocumentCreate(title="Test", status="draft", file_size=-1)
+            DocumentCreate(title="Test Document Title", status="draft", file_size=-1)
 
     def test_all_schemas_integration(self):
         """Integration test ensuring all schemas work together seamlessly"""
@@ -612,26 +617,26 @@ class TestComprehensiveWorkItemValidation:
         schemas_created = []
         
         # Base schemas
-        workitem_base = WorkItemBase(title="Base WorkItem", status="draft")
+        workitem_base = WorkItemBase(title="Base WorkItem Title", status="draft")
         schemas_created.append(("WorkItemBase", workitem_base))
         
-        workitem_create = WorkItemCreate(title="Create WorkItem", status="draft", type="requirement")
+        workitem_create = WorkItemCreate(title="Create WorkItem Title", status="draft", type="requirement")
         schemas_created.append(("WorkItemCreate", workitem_create))
         
         # Specialized create schemas
-        req_create = RequirementCreate(title="Requirement", status="draft")
+        req_create = RequirementCreate(title="Requirement Title", status="draft")
         schemas_created.append(("RequirementCreate", req_create))
         
-        task_create = TaskCreate(title="Task", status="draft")
+        task_create = TaskCreate(title="Task Title", status="draft")
         schemas_created.append(("TaskCreate", task_create))
         
-        test_create = TestSpecCreate(title="Test", status="draft")
+        test_create = TestSpecCreate(title="Test Title", status="draft")
         schemas_created.append(("TestSpecCreate", test_create))
         
-        risk_create = RiskCreate(title="Risk", status="draft", severity=5, occurrence=3, detection=7)
+        risk_create = RiskCreate(title="Risk Title", status="draft", severity=5, occurrence=3, detection=7)
         schemas_created.append(("RiskCreate", risk_create))
         
-        doc_create = DocumentCreate(title="Document", status="draft")
+        doc_create = DocumentCreate(title="Document Title", status="draft")
         schemas_created.append(("DocumentCreate", doc_create))
         
         # Verify all schemas were created successfully

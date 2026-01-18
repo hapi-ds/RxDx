@@ -70,13 +70,13 @@ def sample_workitem_create():
 def sample_requirement_create():
     """Sample Requirement creation data"""
     return RequirementCreate(
-        title="Test Requirement",
-        description="A test requirement for unit testing",
+        title="Test Requirement Title",
+        description="A test requirement for unit testing with proper validation and acceptance criteria",
         status="draft",
         priority=3,
-        acceptance_criteria="The system shall pass all tests",
-        business_value="High value feature",
-        source="Stakeholder feedback"
+        acceptance_criteria="Given the system is running, when tests are executed, then all tests shall pass successfully",
+        business_value="High value feature for testing",
+        source="stakeholder"
     )
 
 
@@ -164,12 +164,12 @@ class TestWorkItemService:
         # Verify
         assert result is not None
         assert result.type == "requirement"
-        assert result.title == "Test Requirement"
+        assert result.title == "Test Requirement Title"
         
         # Verify graph service was called with correct parameters
         call_args = mock_graph_service.create_workitem_node.call_args
         assert call_args[1]["workitem_type"] == "requirement"
-        assert call_args[1]["title"] == "Test Requirement"
+        assert call_args[1]["title"] == "Test Requirement Title"
         
     @pytest.mark.asyncio
     async def test_create_task_with_time_tracking(

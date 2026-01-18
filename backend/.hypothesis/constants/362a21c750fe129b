@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/workitem.py
+# hypothesis_version: 6.150.2
+
+[500, 'Actual hours spent', 'Actual test result', 'Detailed test steps', 'Expected test result', 'File size in bytes', 'Type of WorkItem', 'WorkItem title', 'active', 'archived', 'blocked', 'completed', 'document', 'draft', 'failed', 'from_attributes', 'not_run', 'passed', 'requirement', 'risk', 'status', 'task', 'test', 'test_status', 'title', 'type']

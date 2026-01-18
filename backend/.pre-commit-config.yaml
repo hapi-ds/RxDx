@@ -1,0 +1,30 @@
+# Pre-commit hooks for RxDx backend
+repos:
+  - repo: local
+    hooks:
+      - id: workitem-schema-tests
+        name: WorkItem Schema Tests
+        entry: uv run python -m pytest tests/test_workitem_schemas.py -q
+        language: system
+        pass_filenames: false
+        files: ^(app/schemas/workitem\.py|tests/test_workitem_schemas\.py)$
+        
+      - id: comprehensive-workitem-tests
+        name: Comprehensive WorkItem Validation
+        entry: uv run python -m pytest tests/test_workitem_schemas.py::TestComprehensiveWorkItemValidation -q
+        language: system
+        pass_filenames: false
+        files: ^app/schemas/workitem\.py$
+        
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        files: ^app/.*\.py$
+        
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.1.14
+    hooks:
+      - id: ruff
+        files: ^app/.*\.py$
+        args: [--fix, --exit-non-zero-on-fix]

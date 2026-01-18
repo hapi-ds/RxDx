@@ -1,0 +1,48 @@
+name: WorkItem Schema Tests
+
+on:
+  push:
+    paths:
+      - 'backend/app/schemas/workitem.py'
+      - 'backend/tests/test_workitem_schemas.py'
+      - 'backend/pyproject.toml'
+  pull_request:
+    paths:
+      - 'backend/app/schemas/workitem.py'
+      - 'backend/tests/test_workitem_schemas.py'
+      - 'backend/pyproject.toml'
+
+jobs:
+  test-workitem-schemas:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        version: "latest"
+    
+    - name: Set up Python
+      run: uv python install 3.11
+    
+    - name: Install dependencies
+      run: |
+        cd backend
+        uv sync --dev
+    
+    - name: Run WorkItem Schema Tests
+      run: |
+        cd backend
+        uv run python -m pytest tests/test_workitem_schemas.py -v --tb=short
+    
+    - name: Run Comprehensive Validation Tests
+      run: |
+        cd backend
+        uv run python -m pytest tests/test_workitem_schemas.py::TestComprehensiveWorkItemValidation -v
+    
+    - name: Run Custom Test Script
+      run: |
+        cd backend
+        uv run python scripts/test_workitem_schemas.py

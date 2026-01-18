@@ -381,3 +381,277 @@ class TestWorkItemResponse:
         assert response.version == "1.0"
         assert response.is_signed is False
         assert response.type == "requirement"
+
+
+class TestComprehensiveWorkItemValidation:
+    """Comprehensive integration tests for all WorkItem schemas"""
+
+    def test_comprehensive_validation_and_functionality(self):
+        """Test all WorkItem schemas work together correctly with proper validation"""
+        
+        # Test validation works correctly for status
+        with pytest.raises(ValidationError) as exc_info:
+            WorkItemBase(title='Test', status='invalid_status')
+        assert "Status must be one of" in str(exc_info.value)
+
+        # Test validation works correctly for type
+        with pytest.raises(ValidationError) as exc_info:
+            WorkItemCreate(title='Test', status='draft', type='invalid_type')
+        assert "Type must be one of" in str(exc_info.value)
+
+        # Test case normalization works
+        wc = WorkItemCreate(title='Test', status='DRAFT', type='REQUIREMENT')
+        assert wc.status == 'draft'
+        assert wc.type == 'requirement'
+
+        # Test all specialized create schemas work
+        req = RequirementCreate(
+            title='Test Requirement', 
+            status='draft', 
+            acceptance_criteria='Must work correctly'
+        )
+        assert req.type == 'requirement'
+        assert req.acceptance_criteria == 'Must work correctly'
+
+        task = TaskCreate(
+            title='Test Task', 
+            status='draft', 
+            estimated_hours=8.0,
+            due_date=datetime.now()
+        )
+        assert task.type == 'task'
+        assert task.estimated_hours == 8.0
+
+        test = TestCreate(
+            title='Test Test Case', 
+            status='draft', 
+            test_status='not_run',
+            test_type='integration'
+        )
+        assert test.type == 'test'
+        assert test.test_status == 'not_run'
+
+        risk = RiskCreate(
+            title='Test Risk', 
+            status='draft', 
+            severity=5, 
+            occurrence=3, 
+            detection=7,
+            mitigation_actions='Implement safeguards'
+        )
+        assert risk.type == 'risk'
+        assert risk.severity == 5
+        assert risk.occurrence == 3
+        assert risk.detection == 7
+
+        doc = DocumentCreate(
+            title='Test Document', 
+            status='draft', 
+            file_size=1024,
+            mime_type='application/pdf'
+        )
+        assert doc.type == 'document'
+        assert doc.file_size == 1024
+
+    def test_comprehensive_update_schemas(self):
+        """Test all update schemas work correctly"""
+        
+        # Test base update schema
+        update = WorkItemUpdate(title='Updated Title', status='completed')
+        assert update.title == 'Updated Title'
+        assert update.status == 'completed'
+        assert update.description is None  # Optional field
+
+        # Test specialized update schemas
+        req_update = RequirementUpdate(
+            acceptance_criteria='Updated criteria',
+            business_value='Updated value'
+        )
+        assert req_update.acceptance_criteria == 'Updated criteria'
+        assert req_update.title is None  # Optional field
+
+        task_update = TaskUpdate(estimated_hours=12.5, actual_hours=10.0)
+        assert task_update.estimated_hours == 12.5
+        assert task_update.actual_hours == 10.0
+
+        test_update = TestUpdate(test_status='passed', actual_result='Test passed')
+        assert test_update.test_status == 'passed'
+        assert test_update.actual_result == 'Test passed'
+
+        risk_update = RiskUpdate(severity=8, mitigation_actions='Enhanced safeguards')
+        assert risk_update.severity == 8
+        assert risk_update.mitigation_actions == 'Enhanced safeguards'
+
+        doc_update = DocumentUpdate(file_size=2048, checksum='abc123')
+        assert doc_update.file_size == 2048
+        assert doc_update.checksum == 'abc123'
+
+    def test_comprehensive_response_schemas(self):
+        """Test all response schemas work correctly"""
+        
+        base_data = {
+            "id": uuid4(),
+            "version": "1.0",
+            "created_by": uuid4(),
+            "created_at": datetime.now(),
+            "updated_at": datetime.now(),
+            "is_signed": False
+        }
+
+        # Test WorkItemResponse
+        workitem_response = WorkItemResponse(
+            title="Test WorkItem",
+            status="active",
+            type="requirement",
+            **base_data
+        )
+        assert workitem_response.version == "1.0"
+        assert workitem_response.is_signed is False
+
+        # Test specialized response schemas
+        req_response = RequirementResponse(
+            title="Test Requirement",
+            status="active",
+            type="requirement",
+            acceptance_criteria="Must work",
+            **base_data
+        )
+        assert req_response.type == "requirement"
+        assert req_response.acceptance_criteria == "Must work"
+
+        task_response = TaskResponse(
+            title="Test Task",
+            status="active",
+            type="task",
+            estimated_hours=8.0,
+            **base_data
+        )
+        assert task_response.type == "task"
+        assert task_response.estimated_hours == 8.0
+
+        test_response = TestResponse(
+            title="Test Test Case",
+            status="active",
+            type="test",
+            test_status="passed",
+            **base_data
+        )
+        assert test_response.type == "test"
+        assert test_response.test_status == "passed"
+
+        risk_response = RiskResponse(
+            title="Test Risk",
+            status="active",
+            type="risk",
+            severity=5,
+            occurrence=3,
+            detection=7,
+            **base_data
+        )
+        assert risk_response.type == "risk"
+        assert risk_response.severity == 5
+
+        doc_response = DocumentResponse(
+            title="Test Document",
+            status="active",
+            type="document",
+            file_size=1024,
+            **base_data
+        )
+        assert doc_response.type == "document"
+        assert doc_response.file_size == 1024
+
+    def test_field_validation_edge_cases(self):
+        """Test edge cases for field validation"""
+        
+        # Test priority bounds
+        valid_priorities = [1, 2, 3, 4, 5]
+        for priority in valid_priorities:
+            workitem = WorkItemBase(title="Test", status="draft", priority=priority)
+            assert workitem.priority == priority
+
+        # Test invalid priorities
+        with pytest.raises(ValidationError):
+            WorkItemBase(title="Test", status="draft", priority=0)
+        
+        with pytest.raises(ValidationError):
+            WorkItemBase(title="Test", status="draft", priority=6)
+
+        # Test risk rating bounds
+        for rating in [1, 5, 10]:
+            risk = RiskCreate(
+                title="Test Risk",
+                status="draft",
+                severity=rating,
+                occurrence=rating,
+                detection=rating
+            )
+            assert risk.severity == rating
+
+        # Test invalid risk ratings
+        with pytest.raises(ValidationError):
+            RiskCreate(
+                title="Test Risk",
+                status="draft",
+                severity=0,  # Invalid
+                occurrence=5,
+                detection=5
+            )
+
+        # Test file size validation
+        doc = DocumentCreate(title="Test", status="draft", file_size=0)
+        assert doc.file_size == 0
+
+        with pytest.raises(ValidationError):
+            DocumentCreate(title="Test", status="draft", file_size=-1)
+
+    def test_all_schemas_integration(self):
+        """Integration test ensuring all schemas work together seamlessly"""
+        
+        # Create instances of all schema types
+        schemas_created = []
+        
+        # Base schemas
+        workitem_base = WorkItemBase(title="Base WorkItem", status="draft")
+        schemas_created.append(("WorkItemBase", workitem_base))
+        
+        workitem_create = WorkItemCreate(title="Create WorkItem", status="draft", type="requirement")
+        schemas_created.append(("WorkItemCreate", workitem_create))
+        
+        # Specialized create schemas
+        req_create = RequirementCreate(title="Requirement", status="draft")
+        schemas_created.append(("RequirementCreate", req_create))
+        
+        task_create = TaskCreate(title="Task", status="draft")
+        schemas_created.append(("TaskCreate", task_create))
+        
+        test_create = TestCreate(title="Test", status="draft")
+        schemas_created.append(("TestCreate", test_create))
+        
+        risk_create = RiskCreate(title="Risk", status="draft", severity=5, occurrence=3, detection=7)
+        schemas_created.append(("RiskCreate", risk_create))
+        
+        doc_create = DocumentCreate(title="Document", status="draft")
+        schemas_created.append(("DocumentCreate", doc_create))
+        
+        # Verify all schemas were created successfully
+        assert len(schemas_created) == 7
+        
+        # Verify each schema has the expected attributes
+        for schema_name, schema_instance in schemas_created:
+            assert hasattr(schema_instance, 'title')
+            assert hasattr(schema_instance, 'status')
+            assert schema_instance.title is not None
+            assert schema_instance.status == 'draft'
+            
+            # Verify type-specific schemas have their type set correctly
+            if hasattr(schema_instance, 'type'):
+                expected_types = {
+                    'RequirementCreate': 'requirement',
+                    'TaskCreate': 'task', 
+                    'TestCreate': 'test',
+                    'RiskCreate': 'risk',
+                    'DocumentCreate': 'document'
+                }
+                if schema_name in expected_types:
+                    assert schema_instance.type == expected_types[schema_name]

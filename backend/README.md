@@ -68,6 +68,31 @@ Run specific test file:
 uv run pytest tests/test_auth.py
 ```
 
+#### WorkItem Schema Tests
+
+The WorkItem schemas are critical to the system and have comprehensive test coverage. You can run them specifically:
+
+```bash
+# Run all WorkItem schema tests
+uv run pytest tests/test_workitem_schemas.py -v
+
+# Run only the comprehensive validation tests
+uv run pytest tests/test_workitem_schemas.py::TestComprehensiveWorkItemValidation -v
+
+# Use the custom test runner script
+uv run python scripts/test_workitem_schemas.py
+```
+
+The comprehensive test suite includes:
+- ✅ Field validation (status, type, priority, etc.)
+- ✅ Case normalization (DRAFT → draft)
+- ✅ All specialized schemas (Requirement, Task, Test, Risk, Document)
+- ✅ Create, Update, and Response schema validation
+- ✅ Edge cases and error conditions
+- ✅ Integration testing across all schema types
+
+These tests run automatically on every change to WorkItem-related files via pre-commit hooks and CI/CD.
+
 ### Code Quality
 
 Format code with Black:

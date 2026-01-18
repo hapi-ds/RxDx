@@ -14,7 +14,6 @@ class WorkItemBase(BaseModel):
     description: Optional[str] = Field(None, description="Detailed description of the WorkItem")
     status: str = Field(
         ..., 
-        pattern=r"^(draft|active|completed|archived)$",
         description="Current status of the WorkItem"
     )
     priority: Optional[int] = Field(
@@ -48,7 +47,6 @@ class WorkItemCreate(WorkItemBase):
 
     type: str = Field(
         ..., 
-        pattern=r"^(requirement|task|test|risk|document)$",
         description="Type of WorkItem"
     )
 
@@ -67,7 +65,7 @@ class WorkItemUpdate(BaseModel):
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(draft|active|completed|archived)$")
+    status: Optional[str] = Field(None, description="Current status of the WorkItem")
     priority: Optional[int] = Field(None, ge=1, le=5)
     assigned_to: Optional[UUID] = None
 
@@ -129,7 +127,7 @@ class RequirementUpdate(BaseModel):
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(draft|active|completed|archived)$")
+    status: Optional[str] = Field(None, description="Current status of the WorkItem")
     priority: Optional[int] = Field(None, ge=1, le=5)
     assigned_to: Optional[UUID] = None
     acceptance_criteria: Optional[str] = None
@@ -189,7 +187,7 @@ class TaskUpdate(BaseModel):
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(draft|active|completed|archived)$")
+    status: Optional[str] = Field(None, description="Current status of the WorkItem")
     priority: Optional[int] = Field(None, ge=1, le=5)
     assigned_to: Optional[UUID] = None
     estimated_hours: Optional[float] = Field(None, ge=0)
@@ -239,7 +237,6 @@ class TestBase(WorkItemBase):
     actual_result: Optional[str] = Field(None, description="Actual test result")
     test_status: Optional[str] = Field(
         None, 
-        pattern=r"^(not_run|passed|failed|blocked)$",
         description="Test execution status"
     )
 
@@ -265,14 +262,14 @@ class TestUpdate(BaseModel):
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(draft|active|completed|archived)$")
+    status: Optional[str] = Field(None, description="Current status of the WorkItem")
     priority: Optional[int] = Field(None, ge=1, le=5)
     assigned_to: Optional[UUID] = None
     test_type: Optional[str] = None
     test_steps: Optional[str] = None
     expected_result: Optional[str] = None
     actual_result: Optional[str] = None
-    test_status: Optional[str] = Field(None, pattern=r"^(not_run|passed|failed|blocked)$")
+    test_status: Optional[str] = Field(None, description="Test execution status")
 
     @field_validator("status")
     @classmethod
@@ -340,7 +337,7 @@ class RiskUpdate(BaseModel):
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(draft|active|completed|archived)$")
+    status: Optional[str] = Field(None, description="Current status of the WorkItem")
     priority: Optional[int] = Field(None, ge=1, le=5)
     assigned_to: Optional[UUID] = None
     severity: Optional[int] = Field(None, ge=1, le=10)
@@ -404,7 +401,7 @@ class DocumentUpdate(BaseModel):
     
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
-    status: Optional[str] = Field(None, pattern=r"^(draft|active|completed|archived)$")
+    status: Optional[str] = Field(None, description="Current status of the WorkItem")
     priority: Optional[int] = Field(None, ge=1, le=5)
     assigned_to: Optional[UUID] = None
     document_type: Optional[str] = None

@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/__init__.py
+# hypothesis_version: 6.150.2
+
+['AuditService', 'AuthService', 'VersionService', 'WorkItemService', 'get_version_service', 'get_workitem_service']

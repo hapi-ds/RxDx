@@ -11,6 +11,7 @@ from app.core.security import extract_user_id_from_token
 from app.db.session import get_db
 from app.models.user import User
 from app.services.auth_service import AuthService
+from app.services.signature_service import SignatureService
 
 # HTTP Bearer token security scheme
 security = HTTPBearer()
@@ -18,17 +19,32 @@ security = HTTPBearer()
 
 async def get_auth_service(
     db: AsyncSession = Depends(get_db),
-) -> AsyncGenerator[AuthService, None]:
+) -> AuthService:
     """
     Dependency to get AuthService instance.
     
     Args:
         db: Database session
         
-    Yields:
+    Returns:
         AuthService instance
     """
-    yield AuthService(db)
+    return AuthService(db)
+
+
+async def get_signature_service(
+    db: AsyncSession = Depends(get_db),
+) -> SignatureService:
+    """
+    Dependency to get SignatureService instance.
+    
+    Args:
+        db: Database session
+        
+    Returns:
+        SignatureService instance
+    """
+    return SignatureService(db)
 
 
 async def get_current_user(

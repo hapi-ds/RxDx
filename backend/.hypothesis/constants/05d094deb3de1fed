@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/signatures.py
+# hypothesis_version: 6.150.2
+
+['/signatures', 'DigitalSignature', 'READ', 'SIGN', 'SIGN_ERROR', 'SIGN_FAILED', 'Signature not found', 'VERIFY', 'VERIFY_ERROR', 'VERIFY_FAILED', 'WorkItemSignatures', 'include_invalid', 'signature_count']

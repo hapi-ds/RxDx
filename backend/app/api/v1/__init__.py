@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, audit, graph, workitems
+from app.api.v1 import auth, audit, graph, signatures, workitems
 
 api_router = APIRouter()
 
@@ -17,3 +17,6 @@ api_router.include_router(graph.router, prefix="/graph", tags=["graph"])
 
 # Include workitem routes
 api_router.include_router(workitems.router, tags=["workitems"])
+
+# Include signature routes
+api_router.include_router(signatures.router, tags=["signatures"])

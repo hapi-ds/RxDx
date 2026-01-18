@@ -70,3 +70,19 @@ class SignatureVerificationResponse(BaseModel):
     content_matches: bool
     signature_intact: bool
     error_message: Optional[str] = None
+
+
+class SignWorkItemRequest(BaseModel):
+    """Schema for signing a WorkItem"""
+
+    workitem_id: UUID = Field(..., description="ID of the WorkItem to sign")
+    workitem_version: str = Field(..., min_length=1, max_length=20, description="Version of the WorkItem to sign")
+    workitem_content: dict = Field(..., description="Complete WorkItem content as dictionary")
+    private_key_pem: str = Field(..., description="RSA private key in PEM format (base64 encoded)")
+
+
+class VerifySignatureRequest(BaseModel):
+    """Schema for verifying a signature"""
+
+    current_workitem_content: dict = Field(..., description="Current WorkItem content for comparison")
+    public_key_pem: str = Field(..., description="RSA public key in PEM format (base64 encoded)")

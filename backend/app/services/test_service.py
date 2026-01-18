@@ -8,6 +8,7 @@ and test coverage calculation as per Requirement 9.
 import json
 from typing import List, Optional, Dict, Any
 from uuid import UUID, uuid4
+from datetime import datetime, UTC
 from datetime import datetime
 
 from app.schemas.test import (
@@ -18,8 +19,8 @@ from app.schemas.test import (
     TestRunUpdate,
     TestRunResponse,
     TestCoverageResponse,
-    TestStatus,
-    TestStepStatus,
+    ExecutionStatus,
+    StepExecutionStatus,
 )
 from app.services.audit_service import AuditService
 from app.services.signature_service import SignatureService
@@ -77,13 +78,27 @@ class TestService:
             'type': 'test_spec',
             'version': '1.0',
             'created_by': str(user.id),
-            'created_at': datetime.utcnow().isoformat(),
-            'updated_at': datetime.utcnow().isoformat(),
+            'created_at': datetime.now(UTC).isoformat(),
+            'updated_at': datetime.now(UTC).isoformat(),
             'is_signed': False,
         })
         
         # Create test spec node in graph database
-        await self.graph_service.create_workitem_node(test_spec_dict)
+        await self.graph_service.create_workitem_node(
+            workitem_id=str(test_spec_id),
+            workitem_type='test_spec',
+            title=test_spec_data.title,
+            description=test_spec_data.description,
+            status='draft',
+            priority=test_spec_data.priority,
+            version='1.0',
+            created_by=str(user.id),
+            assigned_to=None,  # Test specs don't have assigned_to field
+            test_type=test_spec_data.test_type,
+            preconditions=test_spec_data.preconditions,
+            test_steps=[step.model_dump() for step in test_spec_data.test_steps],
+            linked_requirements=test_spec_data.linked_requirements
+        )
         
         # Create relationships to linked requirements
         for req_id in test_spec_data.linked_requirements:
@@ -91,7 +106,7 @@ class TestService:
                 from_id=str(req_id),
                 to_id=str(test_spec_id),
                 rel_type="TESTED_BY",
-                properties={'created_at': datetime.utcnow().isoformat()}
+                properties={'created_at': datetime.now(UTC).isoformat()}
             )
         
         # Log audit event
@@ -189,7 +204,7 @@ class TestService:
                     from_id=str(req_id),
                     to_id=str(test_spec_id),
                     rel_type="TESTED_BY",
-                    properties={'created_at': datetime.utcnow().isoformat()}
+                    properties={'created_at': datetime.now(UTC).isoformat()}
                 )
         
         # Log audit event
@@ -242,13 +257,30 @@ class TestService:
         test_run_dict.update({
             'id': str(test_run_id),
             'type': 'test_run',
-            'created_at': datetime.utcnow().isoformat(),
-            'updated_at': datetime.utcnow().isoformat(),
+            'created_at': datetime.now(UTC).isoformat(),
+            'updated_at': datetime.now(UTC).isoformat(),
             'is_signed': False,
         })
         
         # Create test run node in graph database
-        await self.graph_service.create_workitem_node(test_run_dict)
+        await self.graph_service.create_workitem_node(
+            workitem_id=str(test_run_id),
+            workitem_type='test_run',
+            title=f"Test Run for {test_spec['title']}",
+            description=f"Test execution for {test_spec['title']} version {test_run_data.test_spec_version}",
+            status='completed',
+            version='1.0',
+            created_by=str(user.id),
+            test_spec_id=str(test_run_data.test_spec_id),
+            test_spec_version=test_run_data.test_spec_version,
+            executed_by=str(test_run_data.executed_by),
+            environment=test_run_data.environment,
+            overall_status=test_run_data.overall_status,
+            step_results=[step.model_dump() for step in test_run_data.step_results],
+            failure_description=test_run_data.failure_description,
+            execution_notes=test_run_data.execution_notes,
+            defect_workitem_ids=test_run_data.defect_workitem_ids
+        )
         
         # Create relationship to test spec
         await self.graph_service.create_relationship(
@@ -257,7 +289,7 @@ class TestService:
             rel_type="HAS_RUN",
             properties={
                 'version': test_run_data.test_spec_version,
-                'created_at': datetime.utcnow().isoformat()
+                'created_at': datetime.now(UTC).isoformat()
             }
         )
         
@@ -267,7 +299,7 @@ class TestService:
                 from_id=str(test_run_id),
                 to_id=str(defect_id),
                 rel_type="FOUND_DEFECT",
-                properties={'created_at': datetime.utcnow().isoformat()}
+                properties={'created_at': datetime.now(UTC).isoformat()}
             )
         
         # Log audit event
@@ -313,7 +345,7 @@ class TestService:
         
         # Prepare update data
         update_dict = {k: v for k, v in updates.model_dump().items() if v is not None}
-        update_dict['updated_at'] = datetime.utcnow().isoformat()
+        update_dict['updated_at'] = datetime.now(UTC).isoformat()
         
         # Update test run in graph database
         updated_test_run = {**current_test_run, **update_dict}
@@ -334,7 +366,7 @@ class TestService:
                     from_id=str(test_run_id),
                     to_id=str(defect_id),
                     rel_type="FOUND_DEFECT",
-                    properties={'created_at': datetime.utcnow().isoformat()}
+                    properties={'created_at': datetime.now(UTC).isoformat()}
                 )
         
         # Log audit event

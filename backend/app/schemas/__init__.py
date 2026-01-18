@@ -39,8 +39,8 @@ from app.schemas.workitem import (
     DocumentResponse,
 )
 from app.schemas.test import (
-    TestStatus,
-    TestStepStatus,
+    ExecutionStatus,
+    StepExecutionStatus,
     TestStep,
     TestSpecBase,
     TestSpecCreate,
@@ -92,8 +92,8 @@ __all__ = [
     "DocumentUpdate",
     "DocumentResponse",
     # Test Management Schemas
-    "TestStatus",
-    "TestStepStatus",
+    "ExecutionStatus",
+    "StepExecutionStatus",
     "TestStep",
     "TestSpecBase",
     "TestSpecCreate",

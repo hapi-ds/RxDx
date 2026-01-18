@@ -92,6 +92,25 @@ async def get_test_specs(
     )
 
 
+@router.get("/coverage", response_model=TestCoverageResponse)
+@require_permission(Permission.READ_WORKITEM)
+async def get_test_coverage(
+    test_service: TestService = Depends(get_test_service),
+    current_user: User = Depends(get_current_user),
+) -> TestCoverageResponse:
+    """
+    Get test coverage metrics across all requirements.
+    
+    Returns:
+    - **total_requirements**: Total number of requirements
+    - **requirements_with_tests**: Requirements with linked test specs
+    - **requirements_with_passing_tests**: Requirements with passing test runs
+    - **coverage_percentage**: Test coverage percentage
+    - **detailed_coverage**: Detailed coverage per requirement
+    """
+    return await test_service.calculate_test_coverage()
+
+
 @router.post("/", response_model=TestSpecResponse, status_code=status.HTTP_201_CREATED)
 @require_permission(Permission.WRITE_WORKITEM)
 async def create_test_spec(
@@ -285,22 +304,3 @@ async def update_test_run(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
-
-
-@router.get("/coverage", response_model=TestCoverageResponse)
-@require_permission(Permission.READ_WORKITEM)
-async def get_test_coverage(
-    test_service: TestService = Depends(get_test_service),
-    current_user: User = Depends(get_current_user),
-) -> TestCoverageResponse:
-    """
-    Get test coverage metrics across all requirements.
-    
-    Returns:
-    - **total_requirements**: Total number of requirements
-    - **requirements_with_tests**: Requirements with linked test specs
-    - **requirements_with_passing_tests**: Requirements with passing test runs
-    - **coverage_percentage**: Test coverage percentage
-    - **detailed_coverage**: Detailed coverage per requirement
-    """
-    return await test_service.calculate_test_coverage()

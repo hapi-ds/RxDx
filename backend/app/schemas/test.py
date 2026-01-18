@@ -5,14 +5,14 @@ This module defines Pydantic schemas for test specifications and test runs,
 supporting verification and validation management as per Requirement 9.
 """
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, UTC
 from uuid import UUID
 from enum import Enum
 
 
-class TestStatus(str, Enum):
+class ExecutionStatus(str, Enum):
     """Test execution status enumeration."""
     PASS = "pass"
     FAIL = "fail"
@@ -20,7 +20,7 @@ class TestStatus(str, Enum):
     NOT_RUN = "not_run"
 
 
-class TestStepStatus(str, Enum):
+class StepExecutionStatus(str, Enum):
     """Individual test step status enumeration."""
     PASS = "pass"
     FAIL = "fail"
@@ -34,7 +34,7 @@ class TestStep(BaseModel):
     step_number: int = Field(..., ge=1, description="Step sequence number")
     description: str = Field(..., min_length=1, max_length=1000, description="Step description")
     expected_result: str = Field(..., min_length=1, max_length=1000, description="Expected outcome")
-    status: TestStepStatus = Field(default=TestStepStatus.NOT_RUN, description="Step execution status")
+    status: StepExecutionStatus = Field(default=StepExecutionStatus.NOT_RUN, description="Step execution status")
     actual_result: Optional[str] = Field(None, max_length=1000, description="Actual outcome when executed")
     notes: Optional[str] = Field(None, max_length=2000, description="Additional notes or comments")
 
@@ -50,7 +50,8 @@ class TestSpecBase(BaseModel):
     test_steps: List[TestStep] = Field(default_factory=list, description="List of test steps")
     linked_requirements: List[UUID] = Field(default_factory=list, description="Requirements this test validates")
     
-    @validator('test_steps')
+    @field_validator('test_steps')
+    @classmethod
     def validate_test_steps(cls, v):
         """Ensure test steps have sequential numbering."""
         if not v:
@@ -80,7 +81,8 @@ class TestSpecUpdate(BaseModel):
     test_steps: Optional[List[TestStep]] = None
     linked_requirements: Optional[List[UUID]] = None
     
-    @validator('test_steps')
+    @field_validator('test_steps')
+    @classmethod
     def validate_test_steps(cls, v):
         """Ensure test steps have sequential numbering."""
         if v is None:
@@ -107,8 +109,7 @@ class TestSpecResponse(TestSpecBase):
     updated_at: datetime
     is_signed: bool = Field(default=False, description="Whether this test spec has valid signatures")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TestRunBase(BaseModel):
@@ -116,16 +117,17 @@ class TestRunBase(BaseModel):
     test_spec_id: UUID = Field(..., description="ID of the test specification being executed")
     test_spec_version: str = Field(..., description="Version of test spec being executed")
     executed_by: UUID = Field(..., description="User executing the test")
-    execution_date: datetime = Field(default_factory=datetime.utcnow, description="Test execution timestamp")
+    execution_date: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Test execution timestamp")
     environment: Optional[str] = Field(None, max_length=200, description="Test environment details")
     test_data: Optional[Dict[str, Any]] = Field(None, description="Test data used during execution")
-    overall_status: TestStatus = Field(default=TestStatus.NOT_RUN, description="Overall test result")
+    overall_status: ExecutionStatus = Field(default=ExecutionStatus.NOT_RUN, description="Overall test result")
     step_results: List[TestStep] = Field(default_factory=list, description="Results for each test step")
     failure_description: Optional[str] = Field(None, max_length=2000, description="Description of failures")
     defect_workitem_ids: List[UUID] = Field(default_factory=list, description="Linked defect WorkItems")
     execution_notes: Optional[str] = Field(None, max_length=2000, description="Additional execution notes")
     
-    @validator('step_results')
+    @field_validator('step_results')
+    @classmethod
     def validate_step_results(cls, v):
         """Ensure step results have sequential numbering."""
         if not v:
@@ -139,10 +141,12 @@ class TestRunBase(BaseModel):
         
         return v
     
-    @validator('failure_description')
-    def validate_failure_description(cls, v, values):
+    @field_validator('failure_description')
+    @classmethod
+    def validate_failure_description(cls, v, info):
         """Require failure description when overall status is FAIL."""
-        if values.get('overall_status') == TestStatus.FAIL and not v:
+        values = info.data
+        if values.get('overall_status') == ExecutionStatus.FAIL and not v:
             raise ValueError("Failure description is required when overall status is FAIL")
         return v
 
@@ -156,13 +160,14 @@ class TestRunUpdate(BaseModel):
     """Schema for updating an existing test run."""
     environment: Optional[str] = Field(None, max_length=200)
     test_data: Optional[Dict[str, Any]] = None
-    overall_status: Optional[TestStatus] = None
+    overall_status: Optional[ExecutionStatus] = None
     step_results: Optional[List[TestStep]] = None
     failure_description: Optional[str] = Field(None, max_length=2000)
     defect_workitem_ids: Optional[List[UUID]] = None
     execution_notes: Optional[str] = Field(None, max_length=2000)
     
-    @validator('step_results')
+    @field_validator('step_results')
+    @classmethod
     def validate_step_results(cls, v):
         """Ensure step results have sequential numbering."""
         if v is None:
@@ -179,10 +184,12 @@ class TestRunUpdate(BaseModel):
         
         return v
     
-    @validator('failure_description')
-    def validate_failure_description(cls, v, values):
+    @field_validator('failure_description')
+    @classmethod
+    def validate_failure_description(cls, v, info):
         """Require failure description when overall status is FAIL."""
-        if values.get('overall_status') == TestStatus.FAIL and not v:
+        values = info.data
+        if values.get('overall_status') == ExecutionStatus.FAIL and not v:
             raise ValueError("Failure description is required when overall status is FAIL")
         return v
 
@@ -194,8 +201,7 @@ class TestRunResponse(TestRunBase):
     updated_at: datetime
     is_signed: bool = Field(default=False, description="Whether this test run has valid signatures")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TestCoverageResponse(BaseModel):
@@ -207,25 +213,31 @@ class TestCoverageResponse(BaseModel):
     detailed_coverage: List[Dict[str, Any]] = Field(default_factory=list, 
                                                    description="Detailed coverage per requirement")
     
-    @validator('requirements_with_tests')
-    def validate_requirements_with_tests(cls, v, values):
+    @field_validator('requirements_with_tests')
+    @classmethod
+    def validate_requirements_with_tests(cls, v, info):
         """Ensure requirements with tests doesn't exceed total."""
+        values = info.data
         total = values.get('total_requirements', 0)
         if v > total:
             raise ValueError("Requirements with tests cannot exceed total requirements")
         return v
     
-    @validator('requirements_with_passing_tests')
-    def validate_requirements_with_passing_tests(cls, v, values):
+    @field_validator('requirements_with_passing_tests')
+    @classmethod
+    def validate_requirements_with_passing_tests(cls, v, info):
         """Ensure requirements with passing tests doesn't exceed those with tests."""
+        values = info.data
         with_tests = values.get('requirements_with_tests', 0)
         if v > with_tests:
             raise ValueError("Requirements with passing tests cannot exceed requirements with tests")
         return v
     
-    @validator('coverage_percentage')
-    def validate_coverage_percentage(cls, v, values):
+    @field_validator('coverage_percentage')
+    @classmethod
+    def validate_coverage_percentage(cls, v, info):
         """Ensure coverage percentage matches calculated value."""
+        values = info.data
         total = values.get('total_requirements', 0)
         passing = values.get('requirements_with_passing_tests', 0)
         

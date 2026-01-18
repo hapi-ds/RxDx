@@ -16,8 +16,8 @@ from app.schemas.test import (
     TestSpecUpdate,
     TestRunCreate,
     TestRunUpdate,
-    TestStatus,
-    TestStepStatus,
+    ExecutionStatus,
+    StepExecutionStatus,
     TestStep,
 )
 from app.models.user import User
@@ -106,20 +106,20 @@ def sample_test_run_create():
         test_spec_version="1.0",
         executed_by=uuid4(),
         environment="Test Environment",
-        overall_status=TestStatus.PASS,
+        overall_status=ExecutionStatus.PASS,
         step_results=[
             TestStep(
                 step_number=1,
                 description="Navigate to login page",
                 expected_result="Login form is displayed",
-                status=TestStepStatus.PASS,
+                status=StepExecutionStatus.PASS,
                 actual_result="Login form displayed correctly"
             ),
             TestStep(
                 step_number=2,
                 description="Enter valid credentials",
                 expected_result="User is logged in successfully",
-                status=TestStepStatus.PASS,
+                status=StepExecutionStatus.PASS,
                 actual_result="User logged in successfully"
             )
         ]
@@ -322,6 +322,7 @@ class TestTestRunManagement:
             'id': str(sample_test_run_create.test_spec_id),
             'type': 'test_spec',
             'version': sample_test_run_create.test_spec_version,
+            'title': 'Test Specification',
         }
         mock_graph_service.get_workitem_version.return_value = mock_test_spec
         
@@ -378,7 +379,7 @@ class TestTestRunManagement:
         }
         
         updates = TestRunUpdate(
-            overall_status=TestStatus.PASS,
+            overall_status=ExecutionStatus.PASS,
             execution_notes="Test completed successfully"
         )
         
@@ -388,7 +389,7 @@ class TestTestRunManagement:
         result = await test_service.update_test_run(test_run_id, updates, sample_user)
         
         # Verify
-        assert result.overall_status == TestStatus.PASS
+        assert result.overall_status == ExecutionStatus.PASS
         assert result.execution_notes == updates.execution_notes
         
         # Verify graph operations

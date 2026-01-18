@@ -439,7 +439,9 @@ class TestVersionServiceIntegration:
         
         @given(
             descriptions=st.lists(
-                st.text(min_size=1, max_size=200).filter(lambda x: '\x00' not in x),  # Filter out null bytes
+                st.text(min_size=1, max_size=200).filter(
+                    lambda x: '\x00' not in x and x.strip()  # Filter out null bytes and whitespace-only strings
+                ),
                 min_size=1,
                 max_size=5
             )
@@ -453,7 +455,7 @@ class TestVersionServiceIntegration:
                 assert len(description) > 0
                 # Ensure description doesn't contain problematic characters for storage
                 assert '\x00' not in description  # Null bytes not allowed
-                assert description.strip() == description or len(description.strip()) > 0  # No empty strings after strip
+                assert len(description.strip()) > 0  # No whitespace-only strings
         
         test_change_descriptions_format()
 

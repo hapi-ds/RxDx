@@ -191,14 +191,14 @@
 
 ### 7.2 Signature Service
 **References:** Requirement 2 (Digital Signature Management)
-- [ ] 7.2.1 Create SignatureService class
-- [ ] 7.2.2 Implement sign_workitem method with RSA cryptographic signing
-- [ ] 7.2.3 Implement content hash generation (SHA-256)
-- [ ] 7.2.4 Implement verify_signature method
-- [ ] 7.2.5 Implement invalidate_signatures method (called on WorkItem modification)
-- [ ] 7.2.6 Prevent deletion of signed WorkItems
-- [ ] 7.2.7 Write unit tests for signature operations
-- [ ] 7.2.8 Write property-based tests for signature verification
+- [x] 7.2.1 Create SignatureService class
+- [x] 7.2.2 Implement sign_workitem method with RSA cryptographic signing
+- [x] 7.2.3 Implement content hash generation (SHA-256)
+- [x] 7.2.4 Implement verify_signature method
+- [x] 7.2.5 Implement invalidate_signatures method (called on WorkItem modification)
+- [x] 7.2.6 Prevent deletion of signed WorkItems
+- [x] 7.2.7 Write unit tests for signature operations
+- [x] 7.2.8 Write property-based tests for signature verification
 
 ### 7.3 Signature API Endpoints
 **References:** Requirement 2 (Digital Signature Management)

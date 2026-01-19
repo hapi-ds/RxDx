@@ -382,29 +382,29 @@
 
 ### 16.1 Authentication UI
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 16.1.1 Create authStore with Zustand (login, logout, refreshToken)
-- [ ] 16.1.2 Create Login page component
-- [ ] 16.1.3 Create useAuth custom hook
-- [ ] 16.1.4 Implement JWT token storage and refresh logic
-- [ ] 16.1.5 Create ProtectedRoute component
-- [ ] 16.1.6 Write unit tests for auth store and components
+- [x] 16.1.1 Create authStore with Zustand (login, logout, refreshToken)
+- [x] 16.1.2 Create Login page component
+- [x] 16.1.3 Create useAuth custom hook
+- [x] 16.1.4 Implement JWT token storage and refresh logic
+- [x] 16.1.5 Create ProtectedRoute component
+- [x] 16.1.6 Write unit tests for auth store and components
 
 ### 16.2 API Client Setup
 **References:** Requirement 17 (Technology Stack)
-- [ ] 16.2.1 Create API client with axios/fetch and TypeScript types
-- [ ] 16.2.2 Implement request interceptor for JWT token injection
-- [ ] 16.2.3 Implement response interceptor for token refresh
-- [ ] 16.2.4 Create service modules (authService, workitemService, graphService)
-- [ ] 16.2.5 Write unit tests for API client
+- [x] 16.2.1 Create API client with axios/fetch and TypeScript types
+- [x] 16.2.2 Implement request interceptor for JWT token injection
+- [x] 16.2.3 Implement response interceptor for token refresh
+- [x] 16.2.4 Create service modules (authService, workitemService, graphService)
+- [x] 16.2.5 Write unit tests for API client
 
 ### 16.3 Common UI Components
 **References:** Requirement 17 (Technology Stack)
-- [ ] 16.3.1 Create Button component
-- [ ] 16.3.2 Create Modal component
-- [ ] 16.3.3 Create Form components (Input, Select, Textarea)
-- [ ] 16.3.4 Create Table component
-- [ ] 16.3.5 Create Loading and Error components
-- [ ] 16.3.6 Write unit tests for common components
+- [x] 16.3.1 Create Button component
+- [x] 16.3.2 Create Modal component
+- [x] 16.3.3 Create Form components (Input, Select, Textarea)
+- [x] 16.3.4 Create Table component
+- [x] 16.3.5 Create Loading and Error components
+- [x] 16.3.6 Write unit tests for common components
 
 ## Phase 17: Frontend - WorkItem Management
 

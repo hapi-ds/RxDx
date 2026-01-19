@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS digital_signatures (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workitem_id UUID NOT NULL,
     workitem_version VARCHAR(20) NOT NULL,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    user_id UUID NOT NULL,
     signature_hash TEXT NOT NULL,
     content_hash VARCHAR(64) NOT NULL,
     signed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

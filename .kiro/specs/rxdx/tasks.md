@@ -278,20 +278,20 @@
 
 ### 11.1 LLM Service
 **References:** Requirement 12 (Local LLM Integration)
-- [ ] 11.1.1 Create LLMService class with LM-Studio API client
-- [ ] 11.1.2 Implement extract_work_instruction method for email parsing
-- [ ] 11.1.3 Implement extract_meeting_knowledge method for entity extraction
-- [ ] 11.1.4 Implement suggest_requirement_improvements method
-- [ ] 11.1.5 Implement graceful degradation when LLM unavailable
-- [ ] 11.1.6 Add configuration for LLM endpoint and model name
-- [ ] 11.1.7 Write unit tests for LLM service (with mocked responses)
+- [x] 11.1.1 Create LLMService class with LM-Studio API client
+- [x] 11.1.2 Implement extract_work_instruction method for email parsing
+- [x] 11.1.3 Implement extract_meeting_knowledge method for entity extraction
+- [x] 11.1.4 Implement suggest_requirement_improvements method
+- [x] 11.1.5 Implement graceful degradation when LLM unavailable
+- [x] 11.1.6 Add configuration for LLM endpoint and model name
+- [x] 11.1.7 Write unit tests for LLM service (with mocked responses)
 
 ### 11.2 LLM API Endpoints
 **References:** Requirement 12 (Local LLM Integration)
-- [ ] 11.2.1 Create POST /api/v1/llm/analyze-requirement endpoint
-- [ ] 11.2.2 Create POST /api/v1/llm/extract-meeting endpoint
-- [ ] 11.2.3 Create POST /api/v1/llm/parse-email endpoint
-- [ ] 11.2.4 Write integration tests for LLM endpoints
+- [x] 11.2.1 Create POST /api/v1/llm/analyze-requirement endpoint
+- [x] 11.2.2 Create POST /api/v1/llm/extract-meeting endpoint
+- [x] 11.2.3 Create POST /api/v1/llm/parse-email endpoint
+- [x] 11.2.4 Write integration tests for LLM endpoints
 
 ## Phase 12: Email Processing
 

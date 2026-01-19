@@ -7,6 +7,7 @@ from .audit_service import AuditService
 from .version_service import VersionService, get_version_service
 from .signature_service import SignatureService, get_signature_service
 from .risk_service import RiskService, get_risk_service
+from .llm_service import LLMService, get_llm_service
 
 __all__ = [
     "WorkItemService",
@@ -21,4 +22,6 @@ __all__ = [
     "get_signature_service",
     "RiskService",
     "get_risk_service",
+    "LLMService",
+    "get_llm_service",
 ]

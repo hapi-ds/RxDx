@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/email_service.py
+# hypothesis_version: 6.150.2
+
+[b'From:', 100, '(RFC822)', '+FLAGS', ', ', '@', 'Content-Disposition', 'Email body is empty', 'EmailThread', 'From', 'Message-ID', 'N/A', 'OK', 'Reply-To', 'STATUS:\\s*(\\w+)', 'Subject', 'To', 'UNSEEN', 'Work Instruction', '\\Seen', '\\s*\\|\\s*$', 'actions', 'active', 'archived', 'attachment', 'body', 'comment', 'complete', 'completed', 'decisions', 'description', 'direction', 'done', 'draft', 'emails', 'entities', 'error', 'errors', 'finished', 'id', 'in_progress', 'incoming', 'invalid_recipients', 'llm', 'message_id', 'ongoing', 'outgoing', 'parse_method', 'parsed_data', 'plain', 'priority', 'recipients', 'relationships', 'replace', 'rxdx.local', 'sender', 'started', 'status', 'structured', 'subject', 'success', 'text/plain', 'thread_id', 'time_spent', 'timestamp', 'title', 'utf-8', 'working', 'workitem_id']

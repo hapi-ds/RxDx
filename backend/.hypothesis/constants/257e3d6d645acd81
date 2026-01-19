@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/llm_service.py
+# hypothesis_version: 6.150.2
+
+[0.1, 200, 2000, '[', ']', '```', '```json', 'actions', 'active', 'assignee', 'choices', 'comment', 'completed', 'content', 'deadline', 'decisions', 'description', 'draft', 'entities', 'from', 'max_tokens', 'message', 'messages', 'model', 'name', 'next_steps', 'owner', 'relates_to', 'relationships', 'role', 'status', 'suggestions', 'system', 'temperature', 'time_spent', 'to', 'type', 'unknown', 'user', '{', '}']

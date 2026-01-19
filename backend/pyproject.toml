@@ -25,6 +25,7 @@ dependencies = [
     "httpx>=0.28.1",
     "hypothesis>=6.150.2",
     "pytest-cov>=7.0.0",
+    "aioimaplib>=2.0.1",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/email.py
+# hypothesis_version: 6.150.2
+
+[500, 5000, '/email', '/extract-knowledge', '/polling/start', '/polling/status', '/polling/stop', '/process-incoming', '/send-instruction', '/threads', 'Get polling status', 'Start email polling', 'Stop email polling', 'WorkItem ID', 'description', 'draft', 'email', 'id', 'priority', 'status', 'title']

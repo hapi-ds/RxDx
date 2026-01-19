@@ -70,7 +70,7 @@ class Settings(BaseSettings):
     # Graph Database (Apache AGE)
     AGE_GRAPH_NAME: str = Field(default="rxdx_graph", description="Apache AGE graph name")
     
-    # Email
+    # Email - SMTP (Outgoing)
     SMTP_HOST: str = Field(default="localhost", description="SMTP server host")
     SMTP_PORT: int = Field(default=587, description="SMTP server port")
     SMTP_USER: str = Field(default="", description="SMTP username")
@@ -78,6 +78,18 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = Field(default=True, description="Use TLS for SMTP")
     EMAIL_FROM: str = Field(default="noreply@rxdx.local", description="From email address")
     EMAIL_REPLY_TO: str = Field(default="support@rxdx.local", description="Reply-to email address")
+    
+    # Email - IMAP (Incoming)
+    IMAP_HOST: str = Field(default="localhost", description="IMAP server host")
+    IMAP_PORT: int = Field(default=993, description="IMAP server port")
+    IMAP_USER: str = Field(default="", description="IMAP username")
+    IMAP_PASSWORD: str = Field(default="", description="IMAP password")
+    IMAP_TLS: bool = Field(default=True, description="Use TLS for IMAP")
+    IMAP_MAILBOX: str = Field(default="INBOX", description="IMAP mailbox to monitor")
+    EMAIL_POLL_INTERVAL_SECONDS: int = Field(
+        default=60, 
+        description="Interval in seconds between email polling"
+    )
     
     # Local LLM
     LLM_ENABLED: bool = Field(default=False, description="Enable local LLM integration")

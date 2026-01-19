@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/llm.py
+# hypothesis_version: 6.150.2
+
+[5000, 50000, 'Name of the entity', 'Planned next actions', 'Source entity', 'Target entity', 'Type of relationship', 'email_body', 'from', 'from_attributes', 'meeting_text', 'populate_by_name', 'relates_to', 'requirement_text', 'to', 'unknown']

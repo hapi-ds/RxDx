@@ -297,23 +297,23 @@
 
 ### 12.1 Email Service
 **References:** Requirement 5 (Email-Based Work Instructions and Knowledge Capture)
-- [ ] 12.1.1 Create EmailService class with aiosmtplib
-- [ ] 12.1.2 Implement send_work_instruction method
-- [ ] 12.1.3 Implement process_incoming_email method with WorkItem ID extraction
-- [ ] 12.1.4 Implement parse_structured_reply method (STATUS, COMMENT, TIME format)
-- [ ] 12.1.5 Integrate LLM for unstructured email parsing
-- [ ] 12.1.6 Implement send_parsing_error method
-- [ ] 12.1.7 Write unit tests for email processing
-- [ ] 12.1.8 Write property-based tests for email parsing
+- [x] 12.1.1 Create EmailService class with aiosmtplib
+- [x] 12.1.2 Implement send_work_instruction method
+- [x] 12.1.3 Implement process_incoming_email method with WorkItem ID extraction
+- [x] 12.1.4 Implement parse_structured_reply method (STATUS, COMMENT, TIME format)
+- [x] 12.1.5 Integrate LLM for unstructured email parsing
+- [x] 12.1.6 Implement send_parsing_error method
+- [x] 12.1.7 Write unit tests for email processing
+- [x] 12.1.8 Write property-based tests for email parsing
 
 ### 12.2 Email Integration
 **References:** Requirement 5 (Email-Based Work Instructions and Knowledge Capture)
-- [ ] 12.2.1 Set up SMTP configuration for outgoing emails
-- [ ] 12.2.2 Set up IMAP/POP3 for incoming email monitoring
-- [ ] 12.2.3 Create background task for email polling
-- [ ] 12.2.4 Implement email thread history tracking
-- [ ] 12.2.5 Link email-derived knowledge to Graph DB
-- [ ] 12.2.6 Write integration tests for email workflows
+- [x] 12.2.1 Set up SMTP configuration for outgoing emails
+- [x] 12.2.2 Set up IMAP/POP3 for incoming email monitoring
+- [x] 12.2.3 Create background task for email polling
+- [x] 12.2.4 Implement email thread history tracking
+- [x] 12.2.5 Link email-derived knowledge to Graph DB
+- [x] 12.2.6 Write integration tests for email workflows
 
 ## Phase 13: Project Scheduling
 

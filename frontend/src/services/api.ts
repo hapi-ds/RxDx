@@ -180,15 +180,43 @@ export function isApiError(error: unknown): error is AxiosError<ApiError> {
 
 export function getErrorMessage(error: unknown): string {
   if (isApiError(error)) {
-    return (
-      error.response?.data?.detail ||
-      error.response?.data?.message ||
-      error.message ||
-      'An unexpected error occurred'
-    );
+    const data = error.response?.data;
+    // Handle various error response formats
+    if (typeof data === 'string') {
+      return data;
+    }
+    if (data && typeof data === 'object') {
+      // FastAPI validation errors
+      if ('detail' in data) {
+        const detail = (data as { detail: unknown }).detail;
+        if (typeof detail === 'string') {
+          return detail;
+        }
+        // Handle array of validation errors
+        if (Array.isArray(detail)) {
+          return detail.map((err: { msg?: string; message?: string }) => 
+            err.msg || err.message || JSON.stringify(err)
+          ).join(', ');
+        }
+        // Handle object detail
+        if (typeof detail === 'object' && detail !== null) {
+          return JSON.stringify(detail);
+        }
+      }
+      if ('message' in data) {
+        const message = (data as { message: unknown }).message;
+        if (typeof message === 'string') {
+          return message;
+        }
+      }
+    }
+    return error.message || 'An unexpected error occurred';
   }
   if (error instanceof Error) {
     return error.message;
+  }
+  if (typeof error === 'string') {
+    return error;
   }
   return 'An unexpected error occurred';
 }

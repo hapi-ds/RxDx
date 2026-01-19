@@ -437,21 +437,21 @@
 
 ### 18.1 2D Graph Components
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 18.1.1 Create graphStore with Zustand
-- [ ] 18.1.2 Create GraphView2D component with react-flow
-- [ ] 18.1.3 Create custom node components (RequirementNode, TaskNode, TestNode, RiskNode)
-- [ ] 18.1.4 Implement node selection and editing
-- [ ] 18.1.5 Implement relationship creation (drag-and-drop)
-- [ ] 18.1.6 Add MiniMap and Controls
-- [ ] 18.1.7 Write unit tests for graph components
+- [x] 18.1.1 Create graphStore with Zustand
+- [x] 18.1.2 Create GraphView2D component with react-flow
+- [x] 18.1.3 Create custom node components (RequirementNode, TaskNode, TestNode, RiskNode)
+- [x] 18.1.4 Implement node selection and editing
+- [x] 18.1.5 Implement relationship creation (drag-and-drop)
+- [x] 18.1.6 Add MiniMap and Controls
+- [x] 18.1.7 Write unit tests for graph components
 
 ### 18.2 Graph Explorer Page
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 18.2.1 Create GraphExplorer page
-- [ ] 18.2.2 Implement graph search functionality
-- [ ] 18.2.3 Implement depth control for graph loading
-- [ ] 18.2.4 Implement graph export (image/HTML)
-- [ ] 18.2.5 Write integration tests for graph explorer
+- [x] 18.2.1 Create GraphExplorer page
+- [x] 18.2.2 Implement graph search functionality
+- [x] 18.2.3 Implement depth control for graph loading
+- [x] 18.2.4 Implement graph export (image/HTML)
+- [x] 18.2.5 Write integration tests for graph explorer
 
 ## Phase 19: Frontend - 3D/VR Visualization
 

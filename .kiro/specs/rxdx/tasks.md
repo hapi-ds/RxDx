@@ -339,23 +339,23 @@
 
 ### 14.1 Document Service
 **References:** Requirement 8 (Document Generation)
-- [ ] 14.1.1 Create DocumentService class
-- [ ] 14.1.2 Implement generate_design_review_pdf method with ReportLab
-- [ ] 14.1.3 Implement generate_traceability_matrix_pdf method
-- [ ] 14.1.4 Implement generate_fmea_excel method with openpyxl
-- [ ] 14.1.5 Implement generate_invoice_word method with python-docx-template
-- [ ] 14.1.6 Create document templates (PDF, Excel, Word)
-- [ ] 14.1.7 Implement signature inclusion in generated documents
-- [ ] 14.1.8 Write unit tests for document generation
+- [x] 14.1.1 Create DocumentService class
+- [x] 14.1.2 Implement generate_design_review_pdf method with ReportLab
+- [x] 14.1.3 Implement generate_traceability_matrix_pdf method
+- [x] 14.1.4 Implement generate_fmea_excel method with openpyxl
+- [x] 14.1.5 Implement generate_invoice_word method with python-docx-template
+- [x] 14.1.6 Create document templates (PDF, Excel, Word)
+- [x] 14.1.7 Implement signature inclusion in generated documents
+- [x] 14.1.8 Write unit tests for document generation
 
 ### 14.2 Document API Endpoints
 **References:** Requirement 8 (Document Generation)
-- [ ] 14.2.1 Create POST /api/v1/documents/design-review endpoint
-- [ ] 14.2.2 Create POST /api/v1/documents/traceability-matrix endpoint
-- [ ] 14.2.3 Create POST /api/v1/documents/fmea endpoint
-- [ ] 14.2.4 Create POST /api/v1/documents/invoice endpoint
-- [ ] 14.2.5 Create GET /api/v1/documents/{id} endpoint
-- [ ] 14.2.6 Write integration tests for document endpoints
+- [x] 14.2.1 Create POST /api/v1/documents/design-review endpoint
+- [x] 14.2.2 Create POST /api/v1/documents/traceability-matrix endpoint
+- [x] 14.2.3 Create POST /api/v1/documents/fmea endpoint
+- [x] 14.2.4 Create POST /api/v1/documents/invoice endpoint
+- [x] 14.2.5 Create GET /api/v1/documents/{id} endpoint
+- [x] 14.2.6 Write integration tests for document endpoints
 
 ## Phase 15: Time Recording Backend
 

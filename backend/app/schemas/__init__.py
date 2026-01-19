@@ -84,6 +84,24 @@ from app.schemas.risk import (
     RPNThresholdConfig,
     RPNAnalysisResponse,
 )
+from app.schemas.document import (
+    DocumentType,
+    DocumentFormat,
+    DocumentStatus,
+    DesignReviewRequest,
+    DesignReviewResponse,
+    TraceabilityMatrixRequest,
+    TraceabilityMatrixResponse,
+    FMEARequest,
+    FMEAResponse,
+    BillingPeriod,
+    InvoiceLineItem,
+    InvoiceRequest,
+    InvoiceResponse,
+    DocumentRecord,
+    DocumentFilter,
+    DocumentDownloadResponse,
+)
 
 __all__ = [
     "AuditLogBase",
@@ -165,4 +183,21 @@ __all__ = [
     "RiskReassessmentResponse",
     "RPNThresholdConfig",
     "RPNAnalysisResponse",
+    # Document Generation Schemas
+    "DocumentType",
+    "DocumentFormat",
+    "DocumentStatus",
+    "DesignReviewRequest",
+    "DesignReviewResponse",
+    "TraceabilityMatrixRequest",
+    "TraceabilityMatrixResponse",
+    "FMEARequest",
+    "FMEAResponse",
+    "BillingPeriod",
+    "InvoiceLineItem",
+    "InvoiceRequest",
+    "InvoiceResponse",
+    "DocumentRecord",
+    "DocumentFilter",
+    "DocumentDownloadResponse",
 ]

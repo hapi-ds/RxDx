@@ -20,6 +20,7 @@ dependencies = [
     "reportlab>=4.0.9",
     "openpyxl>=3.1.2",
     "docxtpl>=0.16.7",
+    "python-docx>=1.1.0",
     "ortools>=9.8.3296",
     "passlib[argon2]>=1.7.4",
     "httpx>=0.28.1",

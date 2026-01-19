@@ -319,21 +319,21 @@
 
 ### 13.1 Scheduler Service
 **References:** Requirement 7 (Offline Project Scheduling)
-- [ ] 13.1.1 Create SchedulerService class with ortools
-- [ ] 13.1.2 Implement schedule_project method with constraint programming
-- [ ] 13.1.3 Implement task dependency constraints (finish-to-start, start-to-start, finish-to-finish)
-- [ ] 13.1.4 Implement resource capacity constraints
-- [ ] 13.1.5 Implement schedule optimization (minimize project duration)
-- [ ] 13.1.6 Implement conflict identification
-- [ ] 13.1.7 Write unit tests for scheduling logic
-- [ ] 13.1.8 Write property-based tests for constraint satisfaction
+- [x] 13.1.1 Create SchedulerService class with ortools
+- [x] 13.1.2 Implement schedule_project method with constraint programming
+- [x] 13.1.3 Implement task dependency constraints (finish-to-start, start-to-start, finish-to-finish)
+- [x] 13.1.4 Implement resource capacity constraints
+- [x] 13.1.5 Implement schedule optimization (minimize project duration)
+- [x] 13.1.6 Implement conflict identification
+- [x] 13.1.7 Write unit tests for scheduling logic
+- [x] 13.1.8 Write property-based tests for constraint satisfaction
 
 ### 13.2 Scheduler API Endpoints
 **References:** Requirement 7 (Offline Project Scheduling)
-- [ ] 13.2.1 Create POST /api/v1/schedule/calculate endpoint
-- [ ] 13.2.2 Create GET /api/v1/schedule/{project_id} endpoint
-- [ ] 13.2.3 Create PATCH /api/v1/schedule/{project_id} endpoint (manual adjustments)
-- [ ] 13.2.4 Write integration tests for scheduler endpoints
+- [x] 13.2.1 Create POST /api/v1/schedule/calculate endpoint
+- [x] 13.2.2 Create GET /api/v1/schedule/{project_id} endpoint
+- [x] 13.2.3 Create PATCH /api/v1/schedule/{project_id} endpoint (manual adjustments)
+- [x] 13.2.4 Write integration tests for scheduler endpoints
 
 ## Phase 14: Document Generation
 

@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/schedule.py
+# hypothesis_version: 6.150.2
+
+[200, 365, 500, 3650, 'Applied constraints', 'Available resources', 'Conflict description', 'Duration in hours', 'Identified conflicts', 'Lag time in hours', 'Project deadline', 'Project end date', 'Project identifier', 'Project start date', 'Resource name', 'Resources used', 'Schedule constraints', 'Schedule version', 'Scheduled end date', 'Scheduled start date', 'Scheduled tasks', 'Suggested resolution', 'Task deadline', 'Task dependencies', 'Task identifier', 'Task title', 'Tasks to schedule', 'Type of conflict', 'error', 'feasible', 'finish_to_finish', 'finish_to_start', 'id', 'infeasible', 'start_to_start', 'success', 'tasks']

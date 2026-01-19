@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/scheduler_service.py
+# hypothesis_version: 6.150.2
+
+[60.0, 3600, 'circular_dependency', 'duration', 'end', 'end_date', 'error', 'feasible', 'finish_to_finish', 'finish_to_start', 'impossible_deadline', 'infeasible', 'missing_dependency', 'missing_resource', 'project_end', 'start', 'start_date', 'start_to_start', 'success', 'task']

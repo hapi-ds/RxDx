@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, audit, graph, requirements, signatures, workitems, tests
+from app.api.v1 import auth, audit, graph, requirements, risks, signatures, workitems, tests
 
 api_router = APIRouter()
 
@@ -26,3 +26,6 @@ api_router.include_router(signatures.router, tags=["signatures"])
 
 # Include test routes
 api_router.include_router(tests.router, prefix="/tests", tags=["tests"])
+
+# Include risk routes
+api_router.include_router(risks.router, prefix="/risks", tags=["risks"])

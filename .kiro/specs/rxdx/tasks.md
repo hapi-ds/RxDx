@@ -265,14 +265,14 @@
 
 ### 10.2 Risk API Endpoints
 **References:** Requirement 10 (Risk Management with FMEA)
-- [ ] 10.2.1 Create GET /api/v1/risks endpoint
-- [ ] 10.2.2 Create POST /api/v1/risks endpoint
-- [ ] 10.2.3 Create GET /api/v1/risks/{id} endpoint
-- [ ] 10.2.4 Create PATCH /api/v1/risks/{id} endpoint
-- [ ] 10.2.5 Create POST /api/v1/risks/{id}/failures endpoint (create failure chain)
-- [ ] 10.2.6 Create GET /api/v1/risks/{id}/chains endpoint
-- [ ] 10.2.7 Create POST /api/v1/risks/{id}/mitigations endpoint
-- [ ] 10.2.8 Write integration tests for risk endpoints
+- [x] 10.2.1 Create GET /api/v1/risks endpoint
+- [x] 10.2.2 Create POST /api/v1/risks endpoint
+- [x] 10.2.3 Create GET /api/v1/risks/{id} endpoint
+- [x] 10.2.4 Create PATCH /api/v1/risks/{id} endpoint
+- [x] 10.2.5 Create POST /api/v1/risks/{id}/failures endpoint (create failure chain)
+- [x] 10.2.6 Create GET /api/v1/risks/{id}/chains endpoint
+- [x] 10.2.7 Create POST /api/v1/risks/{id}/mitigations endpoint
+- [x] 10.2.8 Write integration tests for risk endpoints
 
 ## Phase 11: Local LLM Integration
 

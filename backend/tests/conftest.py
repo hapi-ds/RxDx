@@ -130,6 +130,71 @@ class MockGraphService:
             requirements = [item for item in self.workitems.values() 
                            if item.get('workitem_type') == 'requirement']
             return [{"req": req} for req in requirements]
+        elif "MATCH (r:Risk" in query and "HAS_MITIGATION" in query:
+            # Return mitigations for a risk
+            mitigations = [item for item in self.workitems.values() 
+                          if item.get('type') == 'mitigation']
+            return [{"m": m} for m in mitigations]
+        return []
+    
+    async def create_node(self, label, properties):
+        """Create a node in the graph database."""
+        from datetime import datetime, UTC
+        
+        node_id = properties.get('id', str(uuid4()))
+        node = {
+            "id": node_id,
+            "label": label,
+            "properties": properties,
+            **properties
+        }
+        self.workitems[node_id] = node
+        return node
+    
+    async def get_node(self, node_id):
+        """Get a node by ID."""
+        return self.workitems.get(str(node_id))
+    
+    async def update_node(self, node_id, data):
+        """Update a node."""
+        node_id_str = str(node_id)
+        if node_id_str in self.workitems:
+            self.workitems[node_id_str].update(data)
+            if 'properties' in self.workitems[node_id_str]:
+                self.workitems[node_id_str]['properties'].update(data)
+            return self.workitems[node_id_str]
+        return None
+    
+    async def delete_node(self, node_id):
+        """Delete a node."""
+        node_id_str = str(node_id)
+        if node_id_str in self.workitems:
+            del self.workitems[node_id_str]
+            return True
+        return False
+    
+    async def search_nodes(self, label=None, properties=None, limit=50):
+        """Search for nodes."""
+        results = []
+        for item in self.workitems.values():
+            if label and item.get('label') != label:
+                continue
+            if properties:
+                match = True
+                for key, value in properties.items():
+                    if item.get(key) != value and item.get('properties', {}).get(key) != value:
+                        match = False
+                        break
+                if not match:
+                    continue
+            results.append(item)
+            if len(results) >= limit:
+                break
+        return results
+    
+    async def get_risk_chains(self, risk_id=None, max_depth=5):
+        """Get risk failure chains."""
+        # Return empty list for mock - chains would be populated by actual graph queries
         return []
 
 
@@ -218,6 +283,29 @@ async def client(test_engine):
     # Import and override the get_test_service function
     from app.api.v1.tests import get_test_service
     app.dependency_overrides[get_test_service] = override_get_test_service
+    
+    # Mock risk service to use our mock graph service
+    async def override_get_risk_service(db: AsyncSession = Depends(override_get_db)):
+        from app.services.risk_service import RiskService
+        from app.services.audit_service import AuditService
+        from app.services.signature_service import SignatureService
+        from app.services.version_service import VersionService
+        
+        # Create mock services
+        audit_service = AuditService(db)
+        signature_service = SignatureService(db)
+        version_service = VersionService(mock_graph_service, audit_service)
+        
+        return RiskService(
+            graph_service=mock_graph_service,
+            audit_service=audit_service,
+            signature_service=signature_service,
+            version_service=version_service,
+        )
+    
+    # Import and override the get_risk_service function
+    from app.api.v1.risks import get_risk_service
+    app.dependency_overrides[get_risk_service] = override_get_risk_service
     
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

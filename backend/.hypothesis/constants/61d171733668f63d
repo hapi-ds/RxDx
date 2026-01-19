@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/risks.py
+# hypothesis_version: 6.150.2
+
+[0.0, 1.0, 100, 1000, '/', '/high-rpn', '/{risk_id}', '/{risk_id}/analysis', '/{risk_id}/chains', '/{risk_id}/failures', 'Filter by risk owner', 'Maximum RPN filter', 'Minimum RPN filter', 'Page number', 'Page size', 'status']

@@ -38,17 +38,11 @@ class AuthService {
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', credentials.email);
-      formData.append('password', credentials.password);
-
       const response = await apiClient.post<LoginResponse>(
         `${this.basePath}/login`,
-        formData,
         {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
+          email: credentials.email,
+          password: credentials.password,
         }
       );
       return response.data;

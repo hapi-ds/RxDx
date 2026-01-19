@@ -5,13 +5,13 @@
 
 import React from 'react';
 import type { ReactNode } from 'react';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import type { User } from '../../stores/authStore';
 
 interface ProtectedRouteProps {
   children: ReactNode;
   requiredRoles?: User['role'][];
-  fallback?: ReactNode;
   loadingComponent?: ReactNode;
   unauthorizedComponent?: ReactNode;
 }
@@ -74,65 +74,23 @@ function DefaultUnauthorized(): React.ReactElement {
   );
 }
 
-function DefaultFallback(): React.ReactElement {
-  return (
-    <div className="protected-route-fallback">
-      <h2>Please Sign In</h2>
-      <p>You need to be signed in to access this page.</p>
-      <a href="/login" className="sign-in-link">
-        Go to Sign In
-      </a>
-      <style>{`
-        .protected-route-fallback {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 200px;
-          text-align: center;
-          padding: 2rem;
-        }
-        .protected-route-fallback h2 {
-          color: #333;
-          margin-bottom: 0.5rem;
-        }
-        .protected-route-fallback p {
-          color: #666;
-          margin-bottom: 1rem;
-        }
-        .sign-in-link {
-          padding: 0.75rem 1.5rem;
-          background: #667eea;
-          color: white;
-          text-decoration: none;
-          border-radius: 4px;
-          transition: background 0.2s;
-        }
-        .sign-in-link:hover {
-          background: #5a67d8;
-        }
-      `}</style>
-    </div>
-  );
-}
-
 export function ProtectedRoute({
   children,
   requiredRoles,
-  fallback,
   loadingComponent,
   unauthorizedComponent,
 }: ProtectedRouteProps): React.ReactElement {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
+  const location = useLocation();
 
   // Show loading state
   if (isLoading) {
     return <>{loadingComponent || <DefaultLoading />}</>;
   }
 
-  // Not authenticated
+  // Not authenticated - redirect to login
   if (!isAuthenticated) {
-    return <>{fallback || <DefaultFallback />}</>;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Check role requirements

@@ -3,7 +3,8 @@
  * Handles user authentication with email and password
  */
 
-import React, { useState, type FormEvent } from 'react';
+import React, { useState, useEffect, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
 interface LoginFormData {
@@ -12,12 +13,20 @@ interface LoginFormData {
 }
 
 export function Login(): React.ReactElement {
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const navigate = useNavigate();
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuthStore();
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
   });
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/requirements', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const validateForm = (): boolean => {
     if (!formData.email.trim()) {
@@ -50,6 +59,7 @@ export function Login(): React.ReactElement {
 
     try {
       await login(formData.email, formData.password);
+      // Navigation happens via useEffect when isAuthenticated changes
     } catch {
       // Error is handled by the store
     }

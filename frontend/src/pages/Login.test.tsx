@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { Login } from './Login';
 import { useAuthStore } from '../stores/authStore';
 
@@ -14,6 +15,15 @@ vi.mock('../stores/authStore', () => ({
 }));
 
 const mockUseAuthStore = useAuthStore as unknown as ReturnType<typeof vi.fn>;
+
+// Wrapper with router context
+function renderWithRouter(ui: React.ReactElement) {
+  return render(
+    <MemoryRouter>
+      {ui}
+    </MemoryRouter>
+  );
+}
 
 describe('Login', () => {
   const mockLogin = vi.fn();
@@ -26,11 +36,12 @@ describe('Login', () => {
       isLoading: false,
       error: null,
       clearError: mockClearError,
+      isAuthenticated: false,
     });
   });
 
   it('renders login form', () => {
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     expect(screen.getByText('RxDx')).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -39,7 +50,7 @@ describe('Login', () => {
   });
 
   it('shows validation error for empty email', async () => {
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     fireEvent.click(submitButton);
@@ -51,7 +62,7 @@ describe('Login', () => {
   });
 
   it('shows validation error for invalid email', async () => {
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     // Type an invalid email (no @) using fireEvent
     const emailInput = screen.getByLabelText(/email/i);
@@ -70,7 +81,7 @@ describe('Login', () => {
 
   it('shows validation error for empty password', async () => {
     const user = userEvent.setup();
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.click(screen.getByRole('button', { name: /sign in/i }));
@@ -83,7 +94,7 @@ describe('Login', () => {
 
   it('shows validation error for short password', async () => {
     const user = userEvent.setup();
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/password/i), '12345');
@@ -98,7 +109,7 @@ describe('Login', () => {
   it('calls login with correct credentials', async () => {
     const user = userEvent.setup();
     mockLogin.mockResolvedValueOnce(undefined);
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
     await user.type(screen.getByLabelText(/password/i), 'password123');
@@ -115,9 +126,10 @@ describe('Login', () => {
       isLoading: true,
       error: null,
       clearError: mockClearError,
+      isAuthenticated: false,
     });
 
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     expect(screen.getByRole('button', { name: /signing in/i })).toBeInTheDocument();
     expect(screen.getByRole('button')).toBeDisabled();
@@ -129,9 +141,10 @@ describe('Login', () => {
       isLoading: false,
       error: 'Invalid credentials',
       clearError: mockClearError,
+      isAuthenticated: false,
     });
 
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
   });
@@ -143,9 +156,10 @@ describe('Login', () => {
       isLoading: false,
       error: 'Some error',
       clearError: mockClearError,
+      isAuthenticated: false,
     });
 
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     await user.type(screen.getByLabelText(/email/i), 'a');
 
@@ -158,9 +172,10 @@ describe('Login', () => {
       isLoading: true,
       error: null,
       clearError: mockClearError,
+      isAuthenticated: false,
     });
 
-    render(<Login />);
+    renderWithRouter(<Login />);
 
     expect(screen.getByLabelText(/email/i)).toBeDisabled();
     expect(screen.getByLabelText(/password/i)).toBeDisabled();

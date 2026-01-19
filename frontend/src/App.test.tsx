@@ -8,10 +8,9 @@ describe('App', () => {
     expect(screen.getByText('RxDx')).toBeInTheDocument();
   });
 
-  it('renders the subtitle', () => {
+  it('renders the login page subtitle', () => {
     render(<App />);
-    expect(
-      screen.getByText('Project Management System for Regulated Industries')
-    ).toBeInTheDocument();
+    // The login page shows "Project Management System" (shorter version)
+    expect(screen.getByText('Project Management System')).toBeInTheDocument();
   });
 });

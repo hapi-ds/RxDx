@@ -1,8 +1,91 @@
 """Database schema initialization script"""
 
 import asyncio
-from app.db.session import init_db
+from sqlalchemy import select
+
+from app.db.session import init_db, AsyncSessionLocal
 from app.db.graph import graph_service
+from app.models.user import User, UserRole
+from app.services.auth_service import AuthService
+
+
+# Default users to seed for development
+DEFAULT_USERS = [
+    {
+        "email": "test@example.com",
+        "password": "AdminPassword123!",
+        "full_name": "Test User",
+        "role": UserRole.USER.value,
+    },
+    {
+        "email": "admin@example.com",
+        "password": "AdminPassword123!",
+        "full_name": "Admin User",
+        "role": UserRole.ADMIN.value,
+    },
+    {
+        "email": "validator@example.com",
+        "password": "AdminPassword123!",
+        "full_name": "Validator User",
+        "role": UserRole.VALIDATOR.value,
+    },
+    {
+        "email": "auditor@example.com",
+        "password": "AdminPassword123!",
+        "full_name": "Auditor User",
+        "role": UserRole.AUDITOR.value,
+    },
+    {
+        "email": "pm@example.com",
+        "password": "AdminPassword123!",
+        "full_name": "Project Manager",
+        "role": UserRole.PROJECT_MANAGER.value,
+    },
+]
+
+
+async def seed_users(skip_existing: bool = True) -> list[str]:
+    """
+    Seed default users for development.
+    
+    Args:
+        skip_existing: If True, skip users that already exist
+        
+    Returns:
+        List of created user emails
+    """
+    created_users = []
+    
+    async with AsyncSessionLocal() as session:
+        auth_service = AuthService(session)
+        
+        for user_data in DEFAULT_USERS:
+            # Check if user already exists
+            result = await session.execute(
+                select(User).where(User.email == user_data["email"])
+            )
+            existing_user = result.scalar_one_or_none()
+            
+            if existing_user:
+                if skip_existing:
+                    print(f"  User {user_data['email']} already exists, skipping...")
+                    continue
+                else:
+                    # Delete existing user to recreate
+                    await session.delete(existing_user)
+                    await session.commit()
+            
+            # Create user
+            user = await auth_service.create_user(
+                email=user_data["email"],
+                password=user_data["password"],
+                full_name=user_data["full_name"],
+                role=user_data["role"],
+            )
+            created_users.append(user.email)
+            print(f"  Created user: {user.email} (role: {user.role.value})")
+    
+    return created_users
 
 
 async def initialize_graph_schema():
@@ -55,8 +138,13 @@ async def initialize_graph_schema():
     await graph_service.close()
 
 
-async def main():
-    """Main initialization function"""
+async def main(seed_users_flag: bool = True):
+    """
+    Main initialization function.
+    
+    Args:
+        seed_users_flag: If True, seed default development users
+    """
     print("Starting database initialization...")
     
     # Initialize PostgreSQL tables
@@ -64,12 +152,34 @@ async def main():
     await init_db()
     print("PostgreSQL tables initialized successfully")
     
+    # Seed default users
+    if seed_users_flag:
+        print("\n2. Seeding default users...")
+        created = await seed_users()
+        if created:
+            print(f"Created {len(created)} user(s)")
+        else:
+            print("No new users created (all already exist)")
+    
     # Initialize Apache AGE graph schema
-    print("\n2. Initializing Apache AGE graph schema...")
+    print("\n3. Initializing Apache AGE graph schema...")
     await initialize_graph_schema()
     
     print("\n✓ Database initialization complete!")
+    
+    if seed_users_flag:
+        print("\n" + "=" * 50)
+        print("Default login credentials:")
+        print("=" * 50)
+        for user in DEFAULT_USERS:
+            print(f"  {user['email']} / AdminPassword123! ({user['role']})")
+        print("=" * 50)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    
+    # Check for --no-seed flag
+    seed_flag = "--no-seed" not in sys.argv
+    
+    asyncio.run(main(seed_users_flag=seed_flag))

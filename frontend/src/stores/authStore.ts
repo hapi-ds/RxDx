@@ -42,7 +42,7 @@ export interface AuthActions {
 
 export type AuthStore = AuthState & AuthActions;
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -62,10 +62,10 @@ export const useAuthStore = create<AuthStore>()(
           const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Type': 'application/json',
             },
-            body: new URLSearchParams({
-              username: email,
+            body: JSON.stringify({
+              email: email,
               password: password,
             }),
           });

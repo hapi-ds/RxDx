@@ -76,15 +76,25 @@ class WorkItemService {
       if (params?.status) queryParams.append('status', params.status);
       if (params?.assigned_to) queryParams.append('assigned_to', params.assigned_to);
       if (params?.search) queryParams.append('search', params.search);
-      if (params?.skip !== undefined) queryParams.append('skip', params.skip.toString());
+      // Backend uses 'offset' instead of 'skip'
+      if (params?.skip !== undefined) queryParams.append('offset', params.skip.toString());
       if (params?.limit !== undefined) queryParams.append('limit', params.limit.toString());
 
       const url = queryParams.toString()
         ? `${this.basePath}?${queryParams.toString()}`
         : this.basePath;
 
-      const response = await apiClient.get<WorkItemListResponse>(url);
-      return response.data;
+      // Backend returns array directly, not paginated response object
+      const response = await apiClient.get<WorkItem[]>(url);
+      const items = response.data || [];
+      
+      // Wrap in expected response format
+      return {
+        items,
+        total: items.length,
+        skip: params?.skip || 0,
+        limit: params?.limit || 100,
+      };
     } catch (error) {
       throw new Error(getErrorMessage(error));
     }

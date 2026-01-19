@@ -4,8 +4,24 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { ProtectedRoute, RoleGate, withProtectedRoute } from './ProtectedRoute';
 import { useAuthStore } from '../../stores/authStore';
+
+// Wrapper component for router context
+function RouterWrapper({ children, initialEntries = ['/protected'] }: { 
+  children: React.ReactNode;
+  initialEntries?: string[];
+}) {
+  return (
+    <MemoryRouter initialEntries={initialEntries}>
+      <Routes>
+        <Route path="/login" element={<div>Login Page</div>} />
+        <Route path="/protected" element={children} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
 
 describe('ProtectedRoute', () => {
   beforeEach(() => {
@@ -22,9 +38,11 @@ describe('ProtectedRoute', () => {
     useAuthStore.setState({ isLoading: true });
 
     render(
-      <ProtectedRoute>
-        <div>Protected Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute>
+          <div>Protected Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Loading...')).toBeInTheDocument();
@@ -35,37 +53,29 @@ describe('ProtectedRoute', () => {
     useAuthStore.setState({ isLoading: true });
 
     render(
-      <ProtectedRoute loadingComponent={<div>Custom Loading</div>}>
-        <div>Protected Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute loadingComponent={<div>Custom Loading</div>}>
+          <div>Protected Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Custom Loading')).toBeInTheDocument();
   });
 
-  it('shows fallback when not authenticated', () => {
+  it('redirects to login when not authenticated', () => {
     useAuthStore.setState({ isAuthenticated: false, isLoading: false });
 
     render(
-      <ProtectedRoute>
-        <div>Protected Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute>
+          <div>Protected Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
-    expect(screen.getByText('Please Sign In')).toBeInTheDocument();
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
-  });
-
-  it('shows custom fallback when provided', () => {
-    useAuthStore.setState({ isAuthenticated: false, isLoading: false });
-
-    render(
-      <ProtectedRoute fallback={<div>Custom Fallback</div>}>
-        <div>Protected Content</div>
-      </ProtectedRoute>
-    );
-
-    expect(screen.getByText('Custom Fallback')).toBeInTheDocument();
   });
 
   it('renders children when authenticated', () => {
@@ -82,9 +92,11 @@ describe('ProtectedRoute', () => {
     });
 
     render(
-      <ProtectedRoute>
-        <div>Protected Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute>
+          <div>Protected Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Protected Content')).toBeInTheDocument();
@@ -104,9 +116,11 @@ describe('ProtectedRoute', () => {
     });
 
     render(
-      <ProtectedRoute requiredRoles={['admin']}>
-        <div>Admin Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute requiredRoles={['admin']}>
+          <div>Admin Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
@@ -127,12 +141,14 @@ describe('ProtectedRoute', () => {
     });
 
     render(
-      <ProtectedRoute
-        requiredRoles={['admin']}
-        unauthorizedComponent={<div>Custom Unauthorized</div>}
-      >
-        <div>Admin Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute
+          requiredRoles={['admin']}
+          unauthorizedComponent={<div>Custom Unauthorized</div>}
+        >
+          <div>Admin Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Custom Unauthorized')).toBeInTheDocument();
@@ -152,9 +168,11 @@ describe('ProtectedRoute', () => {
     });
 
     render(
-      <ProtectedRoute requiredRoles={['admin']}>
-        <div>Admin Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute requiredRoles={['admin']}>
+          <div>Admin Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Admin Content')).toBeInTheDocument();
@@ -174,9 +192,11 @@ describe('ProtectedRoute', () => {
     });
 
     render(
-      <ProtectedRoute requiredRoles={['admin', 'project_manager']}>
-        <div>Manager Content</div>
-      </ProtectedRoute>
+      <RouterWrapper>
+        <ProtectedRoute requiredRoles={['admin', 'project_manager']}>
+          <div>Manager Content</div>
+        </ProtectedRoute>
+      </RouterWrapper>
     );
 
     expect(screen.getByText('Manager Content')).toBeInTheDocument();
@@ -266,13 +286,17 @@ describe('withProtectedRoute', () => {
     });
   });
 
-  it('wraps component with ProtectedRoute', () => {
+  it('wraps component with ProtectedRoute and redirects when not authenticated', () => {
     const TestComponent = () => <div>Test Component</div>;
     const ProtectedTestComponent = withProtectedRoute(TestComponent);
 
-    render(<ProtectedTestComponent />);
+    render(
+      <RouterWrapper>
+        <ProtectedTestComponent />
+      </RouterWrapper>
+    );
 
-    expect(screen.getByText('Please Sign In')).toBeInTheDocument();
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
     expect(screen.queryByText('Test Component')).not.toBeInTheDocument();
   });
 
@@ -291,7 +315,11 @@ describe('withProtectedRoute', () => {
     const TestComponent = () => <div>Test Component</div>;
     const ProtectedTestComponent = withProtectedRoute(TestComponent);
 
-    render(<ProtectedTestComponent />);
+    render(
+      <RouterWrapper>
+        <ProtectedTestComponent />
+      </RouterWrapper>
+    );
 
     expect(screen.getByText('Test Component')).toBeInTheDocument();
   });
@@ -313,7 +341,11 @@ describe('withProtectedRoute', () => {
       requiredRoles: ['admin'],
     });
 
-    render(<ProtectedTestComponent />);
+    render(
+      <RouterWrapper>
+        <ProtectedTestComponent />
+      </RouterWrapper>
+    );
 
     expect(screen.getByText('Access Denied')).toBeInTheDocument();
   });

@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/api/v1/time_entries.py
+# hypothesis_version: 6.150.2
+
+[100, 1000, '/time-entries', '/time-entries/sync', 'AGGREGATE', 'CREATE', 'DELETE', 'Filter by category', 'Filter by project', 'Filter by task', 'READ', 'SYNC', 'Time entry not found', 'TimeEntry', 'UPDATE', 'aggregation_count', 'category', 'device_id', 'duration_hours', 'end_date', 'failed_count', 'filters', 'group_by', 'period_end', 'period_start', 'project_id', 'result_count', 'start_date', 'sync_timestamp', 'synced', 'synced_count', 'task_id', 'total_entries', 'total_hours', 'updated_fields']

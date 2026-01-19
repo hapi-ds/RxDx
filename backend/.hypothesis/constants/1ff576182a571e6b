@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/time_entry.py
+# hypothesis_version: 6.150.2
+
+[100, 2000, 'Aggregated time data', 'Category of work', 'End of period', 'Filter by project', 'Filter by user', 'Start of period', 'TimeEntryBase', 'TimeEntrySyncItem', 'TimeEntrySyncResult', 'Total hours worked', 'UUID of the project', 'UUID of the user', 'administration', 'after', 'category', 'description', 'development', 'documentation', 'from_attributes', 'group_by', 'meeting', 'other', 'planning', 'project_id', 'review', 'support', 'task_id', 'testing', 'training', 'user_id']

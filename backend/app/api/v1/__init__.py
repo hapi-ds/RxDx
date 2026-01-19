@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, audit, documents, email, graph, requirements, risks, signatures, workitems, tests, llm, schedule
+from app.api.v1 import auth, audit, documents, email, graph, requirements, risks, signatures, workitems, tests, llm, schedule, time_entries
 
 api_router = APIRouter()
 
@@ -41,3 +41,6 @@ api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 
 # Include schedule routes
 api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"])
+
+# Include time entry routes
+api_router.include_router(time_entries.router, tags=["time-entries"])

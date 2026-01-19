@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/schemas/document.py
+# hypothesis_version: 6.150.2
+
+[0.0, 0.19, 1.0, 100, 200, 500, 1000, 'EUR', 'ID of the project', 'completed', 'default_invoice', 'design_review', 'excel', 'failed', 'fmea', 'from_attributes', 'generating', 'invoice', 'pdf', 'pending', 'traceability_matrix', 'word']

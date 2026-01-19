@@ -1,0 +1,4 @@
+# file: /home/hako/Testing/RxDx/RxDx/backend/app/services/time_service.py
+# hypothesis_version: 6.150.2
+
+[100, 3600, ' AND ', ', ', 'category', 'category = :category', 'created_at', 'description', 'duration_hours', 'end_date', 'end_time', 'entry_count', 'entry_id', 'filter_user_id', 'id', 'limit', 'offset', 'project_id', 'start_date', 'start_time', 'synced', 'synced = :synced', 'task_id', 'task_id = :task_id', 'total_hours', 'updated_at', 'user_id', 'user_id = :user_id']

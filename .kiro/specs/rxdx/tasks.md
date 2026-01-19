@@ -361,22 +361,22 @@
 
 ### 15.1 Time Entry Models and Service
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 15.1.1 Create TimeEntry Pydantic schema (id, user_id, project_id, task_id, start_time, end_time, duration, description, category)
-- [ ] 15.1.2 Create TimeService class
-- [ ] 15.1.3 Implement create_time_entry method
-- [ ] 15.1.4 Implement update_time_entry method
-- [ ] 15.1.5 Implement get_time_entries method with filtering
-- [ ] 15.1.6 Implement time aggregation for invoicing
-- [ ] 15.1.7 Write unit tests for time tracking
+- [x] 15.1.1 Create TimeEntry Pydantic schema (id, user_id, project_id, task_id, start_time, end_time, duration, description, category)
+- [x] 15.1.2 Create TimeService class
+- [x] 15.1.3 Implement create_time_entry method
+- [x] 15.1.4 Implement update_time_entry method
+- [x] 15.1.5 Implement get_time_entries method with filtering
+- [x] 15.1.6 Implement time aggregation for invoicing
+- [x] 15.1.7 Write unit tests for time tracking
 
 ### 15.2 Time Recording API Endpoints
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 15.2.1 Create POST /api/v1/time-entries endpoint
-- [ ] 15.2.2 Create GET /api/v1/time-entries endpoint
-- [ ] 15.2.3 Create PATCH /api/v1/time-entries/{id} endpoint
-- [ ] 15.2.4 Create DELETE /api/v1/time-entries/{id} endpoint
-- [ ] 15.2.5 Create POST /api/v1/time-entries/sync endpoint (for offline sync)
-- [ ] 15.2.6 Write integration tests for time entry endpoints
+- [x] 15.2.1 Create POST /api/v1/time-entries endpoint
+- [x] 15.2.2 Create GET /api/v1/time-entries endpoint
+- [x] 15.2.3 Create PATCH /api/v1/time-entries/{id} endpoint
+- [x] 15.2.4 Create DELETE /api/v1/time-entries/{id} endpoint
+- [x] 15.2.5 Create POST /api/v1/time-entries/sync endpoint (for offline sync)
+- [x] 15.2.6 Write integration tests for time entry endpoints
 
 ## Phase 16: Frontend - Core Setup
 

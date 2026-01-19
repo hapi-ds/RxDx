@@ -254,14 +254,14 @@
 
 ### 10.1 Risk Models and Service
 **References:** Requirement 10 (Risk Management with FMEA)
-- [ ] 10.1.1 Create Risk and Failure node schemas for graph DB
-- [ ] 10.1.2 Create RiskService class
-- [ ] 10.1.3 Implement create_risk method with severity, occurrence, detection ratings
-- [ ] 10.1.4 Implement RPN calculation (severity × occurrence × detection)
-- [ ] 10.1.5 Implement create_failure_chain method with probability attributes
-- [ ] 10.1.6 Implement mitigation action tracking
-- [ ] 10.1.7 Write unit tests for risk management
-- [ ] 10.1.8 Write property-based tests for RPN calculation
+- [x] 10.1.1 Create Risk and Failure node schemas for graph DB
+- [x] 10.1.2 Create RiskService class
+- [x] 10.1.3 Implement create_risk method with severity, occurrence, detection ratings
+- [x] 10.1.4 Implement RPN calculation (severity × occurrence × detection)
+- [x] 10.1.5 Implement create_failure_chain method with probability attributes
+- [x] 10.1.6 Implement mitigation action tracking
+- [x] 10.1.7 Write unit tests for risk management
+- [x] 10.1.8 Write property-based tests for RPN calculation
 
 ### 10.2 Risk API Endpoints
 **References:** Requirement 10 (Risk Management with FMEA)

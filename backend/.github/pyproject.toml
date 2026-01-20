@@ -1,0 +1,46 @@
+[project]
+name = "openwebui-graphrag"
+version = "0.1.0"
+description = "GraphRAG implementation for OpenWebUI with PostgreSQL and Apache AGE extension"
+authors = [
+    {name = "OpenWebUI Team", email = "team@openwebui.com"}
+]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.dependencies]
+pydantic = "^2.5.0"
+psycopg2-binary = "^2.9.7"
+python-dotenv = "^1.0.0"
+requests = "^2.31.0"
+# Add other dependencies as needed for your specific implementation
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=6.0",
+    "black >=22.0",
+    "flake8 >=4.0",
+    "mypy >=1.0",
+]
+
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["graphrag*"]
+
+[project.scripts]
+graphrag-processor = "graphrag.scripts.graph_processor:main"
+graphrag-pipeline = "graphrag.scripts.document_pipeline:main"
+
+[project.urls]
+Homepage = "https://github.com/open-webui/openwebui"
+Repository = "https://github.com/open-webui/openwebui"

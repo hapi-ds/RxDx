@@ -1,15 +1,19 @@
 /**
  * GraphExplorer page
- * Main interface for exploring the knowledge graph with 2D visualization
- * Includes GraphView2D for visualization, NodeEditor for editing selected nodes,
- * and search functionality for finding nodes
+ * Main interface for exploring the knowledge graph with 2D and 3D visualization
+ * Includes GraphView2D/GraphView3D for visualization, NodeEditor for editing selected nodes,
+ * ViewModeToggle for switching between views, and search functionality for finding nodes
+ * 
+ * References: Requirement 16 (Dual Frontend Interface)
  */
 
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { GraphView2D } from '../components/graph/GraphView2D';
+import { GraphView3D } from '../components/graph/GraphView3D';
 import { GraphExport, type ExportFormat } from '../components/graph/GraphExport';
 import { NodeEditor } from '../components/graph/NodeEditor';
-import { useGraphStore, type SearchResult } from '../stores/graphStore';
+import { ViewModeToggle } from '../components/graph/ViewModeToggle';
+import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
 
 export function GraphExplorer(): React.ReactElement {
@@ -27,6 +31,7 @@ export function GraphExplorer(): React.ReactElement {
     searchResults,
     isSearching,
     searchQuery,
+    viewMode,
   } = useGraphStore();
 
   // Local state for search input (controlled separately from store for debouncing)
@@ -142,6 +147,11 @@ export function GraphExplorer(): React.ReactElement {
   // Handle node save
   const handleNodeSave = useCallback((nodeId: string) => {
     console.log(`Node saved: ${nodeId}`);
+  }, []);
+
+  // Handle view mode change
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    console.log(`View mode changed to: ${mode}`);
   }, []);
 
   // Export callbacks
@@ -284,6 +294,13 @@ export function GraphExplorer(): React.ReactElement {
         </div>
 
         <div className="toolbar-right">
+          {/* View Mode Toggle */}
+          <ViewModeToggle
+            onViewModeChange={handleViewModeChange}
+            showShortcutHint={true}
+            size="sm"
+          />
+
           {/* Refresh Button */}
           <Button
             variant="secondary"
@@ -326,15 +343,33 @@ export function GraphExplorer(): React.ReactElement {
           </div>
         )}
 
-        {/* Graph Visualization */}
-        <GraphView2D
-          className="graph-view"
-          showMiniMap={true}
-          showControls={true}
-          showBackground={true}
-          onConnectionMade={handleConnectionMade}
-          renderToolbarContent={renderExportButton}
-        />
+        {/* Graph Visualization - 2D or 3D based on viewMode */}
+        {viewMode === '2d' ? (
+          <GraphView2D
+            className="graph-view"
+            showMiniMap={true}
+            showControls={true}
+            showBackground={true}
+            onConnectionMade={handleConnectionMade}
+            renderToolbarContent={renderExportButton}
+          />
+        ) : (
+          <GraphView3D
+            className="graph-view"
+            showVRButton={true}
+            showARButton={false}
+            enableOrbitControls={true}
+            showSimulationControls={true}
+            showCameraControls={true}
+            autoRotate={false}
+            enableKeyboardNavigation={true}
+            showXRStatus={true}
+            enableControllers={true}
+            enableHandTracking={true}
+            enableVoiceCommands={true}
+            showVoiceUI={true}
+          />
+        )}
 
         {/* Node Editor Panel */}
         {selectedNode && (

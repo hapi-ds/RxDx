@@ -40,7 +40,7 @@ vi.mock('../components/graph/NodeEditor', () => ({
 
 // Mock the GraphExport component
 vi.mock('../components/graph/GraphExport', () => ({
-  GraphExport: vi.fn(({ onExportStart, onExportComplete, onExportError }) => (
+  GraphExport: vi.fn(({ onExportStart }) => (
     <div data-testid="graph-export">
       <button 
         data-testid="export-button"
@@ -48,6 +48,35 @@ vi.mock('../components/graph/GraphExport', () => ({
       >
         Export ▾
       </button>
+    </div>
+  )),
+}));
+
+// Mock the ViewModeToggle component
+vi.mock('../components/graph/ViewModeToggle', () => ({
+  ViewModeToggle: vi.fn(({ onViewModeChange }) => (
+    <div data-testid="view-mode-toggle">
+      <button 
+        data-testid="view-mode-2d"
+        onClick={() => onViewModeChange?.('2d')}
+      >
+        2D
+      </button>
+      <button 
+        data-testid="view-mode-3d"
+        onClick={() => onViewModeChange?.('3d')}
+      >
+        3D
+      </button>
+    </div>
+  )),
+}));
+
+// Mock the GraphView3D component
+vi.mock('../components/graph/GraphView3D', () => ({
+  GraphView3D: vi.fn(({ className }) => (
+    <div data-testid="graph-view-3d" className={className}>
+      GraphView3D Mock
     </div>
   )),
 }));
@@ -85,6 +114,7 @@ describe('GraphExplorer', () => {
     searchResults: [],
     isSearching: false,
     searchQuery: '',
+    viewMode: '2d' as const,
   };
 
   beforeEach(() => {
@@ -357,5 +387,37 @@ describe('GraphExplorer', () => {
 
     const searchButton = screen.getByRole('button', { name: /searching/i });
     expect(searchButton).toBeDisabled();
+  });
+
+  describe('View Mode Toggle', () => {
+    it('renders ViewModeToggle component', () => {
+      render(<GraphExplorer />);
+
+      expect(screen.getByTestId('view-mode-toggle')).toBeInTheDocument();
+    });
+
+    it('renders GraphView2D when viewMode is 2d', () => {
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        viewMode: '2d',
+      });
+
+      render(<GraphExplorer />);
+
+      expect(screen.getByTestId('graph-view-2d')).toBeInTheDocument();
+      expect(screen.queryByTestId('graph-view-3d')).not.toBeInTheDocument();
+    });
+
+    it('renders GraphView3D when viewMode is 3d', () => {
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        viewMode: '3d',
+      });
+
+      render(<GraphExplorer />);
+
+      expect(screen.getByTestId('graph-view-3d')).toBeInTheDocument();
+      expect(screen.queryByTestId('graph-view-2d')).not.toBeInTheDocument();
+    });
   });
 });

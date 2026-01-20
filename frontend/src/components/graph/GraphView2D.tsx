@@ -3,6 +3,13 @@
  * 2D graph visualization using @xyflow/react (react-flow)
  * Renders nodes and edges from the graphStore with pan, zoom, and node click interactivity
  * Supports creating relationships via drag-and-drop with relationship type selection
+ * 
+ * State Synchronization:
+ * - Uses filtered nodes/edges from graphStore based on nodeTypeFilter
+ * - Updates viewport state (zoom/pan) in graphStore for synchronization with 3D view
+ * - Node positions are synchronized via graphStore.updateNodePosition
+ * 
+ * References: Requirement 16 (Dual Frontend Interface)
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,6 +21,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   type Node,
   type Edge,
   type OnConnect,
@@ -21,6 +29,7 @@ import {
   type OnEdgesChange,
   type NodeMouseHandler,
   type NodeTypes,
+  type Viewport,
   BackgroundVariant,
   Handle,
   Position,
@@ -309,6 +318,7 @@ export const GraphView2D: React.FC<GraphView2DProps> = ({
 
 /**
  * Inner component that has access to ReactFlow context
+ * Handles state synchronization between graphStore and react-flow
  */
 const GraphView2DInner: React.FC<GraphView2DProps> = ({
   className,
@@ -322,16 +332,26 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
 }) => {
   // Get state and actions from graphStore
   const {
-    nodes: storeNodes,
-    edges: storeEdges,
     loadGraph,
     selectNode,
     createRelationship,
     updateNodePosition,
+    setViewport,
+    getFilteredNodes,
+    getFilteredEdges,
+    viewport,
     isLoading,
     isCreatingRelationship,
+    isViewTransitioning,
     error,
   } = useGraphStore();
+
+  // Get filtered nodes and edges for rendering
+  const storeNodes = getFilteredNodes();
+  const storeEdges = getFilteredEdges();
+
+  // Get react-flow instance for viewport synchronization
+  const reactFlowInstance = useReactFlow();
 
   // Local state for react-flow (allows smooth dragging)
   const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node<GraphNodeData>>(storeNodes);
@@ -354,6 +374,36 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   useEffect(() => {
     setFlowEdges(storeEdges);
   }, [storeEdges, setFlowEdges]);
+
+  // Sync viewport from store when switching from 3D to 2D view
+  useEffect(() => {
+    if (!isViewTransitioning && reactFlowInstance) {
+      // Apply stored viewport state when view becomes active
+      const currentViewport = reactFlowInstance.getViewport();
+      if (Math.abs(currentViewport.zoom - viewport.zoom) > 0.01 ||
+          Math.abs(currentViewport.x - viewport.panX) > 1 ||
+          Math.abs(currentViewport.y - viewport.panY) > 1) {
+        reactFlowInstance.setViewport({
+          x: viewport.panX,
+          y: viewport.panY,
+          zoom: viewport.zoom,
+        });
+      }
+    }
+  }, [isViewTransitioning, viewport, reactFlowInstance]);
+
+  // Handle viewport changes and sync to store
+  const handleMoveEnd = useCallback(
+    (_event: MouseEvent | TouchEvent | null, newViewport: Viewport) => {
+      // Update store with new viewport state for synchronization
+      setViewport({
+        zoom: newViewport.zoom,
+        panX: newViewport.x,
+        panY: newViewport.y,
+      });
+    },
+    [setViewport]
+  );
 
   // Handle node position changes (for drag)
   const handleNodesChange: OnNodesChange<Node<GraphNodeData>> = useCallback(
@@ -485,6 +535,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onMoveEnd={handleMoveEnd}
         nodeTypes={nodeTypes}
         fitView
         fitViewOptions={{ padding: 0.2 }}

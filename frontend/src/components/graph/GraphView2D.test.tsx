@@ -97,12 +97,18 @@ describe('GraphView2D', () => {
   let mockSelectNode: Mock;
   let mockCreateRelationship: Mock;
   let mockUpdateNodePosition: Mock;
+  let mockSetViewport: Mock;
+  let mockGetFilteredNodes: Mock;
+  let mockGetFilteredEdges: Mock;
 
   beforeEach(() => {
     mockLoadGraph = vi.fn();
     mockSelectNode = vi.fn();
     mockCreateRelationship = vi.fn();
     mockUpdateNodePosition = vi.fn();
+    mockSetViewport = vi.fn();
+    mockGetFilteredNodes = vi.fn().mockReturnValue(mockNodes);
+    mockGetFilteredEdges = vi.fn().mockReturnValue(mockEdges);
 
     (useGraphStore as unknown as Mock).mockReturnValue({
       nodes: mockNodes,
@@ -111,7 +117,13 @@ describe('GraphView2D', () => {
       selectNode: mockSelectNode,
       createRelationship: mockCreateRelationship,
       updateNodePosition: mockUpdateNodePosition,
+      setViewport: mockSetViewport,
+      getFilteredNodes: mockGetFilteredNodes,
+      getFilteredEdges: mockGetFilteredEdges,
+      viewport: { zoom: 1, panX: 0, panY: 0, panZ: 0 },
       isLoading: false,
+      isCreatingRelationship: false,
+      isViewTransitioning: false,
       error: null,
     });
   });
@@ -135,7 +147,13 @@ describe('GraphView2D', () => {
       selectNode: mockSelectNode,
       createRelationship: mockCreateRelationship,
       updateNodePosition: mockUpdateNodePosition,
+      setViewport: mockSetViewport,
+      getFilteredNodes: vi.fn().mockReturnValue([]),
+      getFilteredEdges: vi.fn().mockReturnValue([]),
+      viewport: { zoom: 1, panX: 0, panY: 0, panZ: 0 },
       isLoading: true,
+      isCreatingRelationship: false,
+      isViewTransitioning: false,
       error: null,
     });
 
@@ -151,7 +169,13 @@ describe('GraphView2D', () => {
       selectNode: mockSelectNode,
       createRelationship: mockCreateRelationship,
       updateNodePosition: mockUpdateNodePosition,
+      setViewport: mockSetViewport,
+      getFilteredNodes: vi.fn().mockReturnValue([]),
+      getFilteredEdges: vi.fn().mockReturnValue([]),
+      viewport: { zoom: 1, panX: 0, panY: 0, panZ: 0 },
       isLoading: false,
+      isCreatingRelationship: false,
+      isViewTransitioning: false,
       error: 'Failed to load graph data',
     });
 
@@ -281,7 +305,13 @@ describe('GraphView2D Node Types', () => {
       selectNode: vi.fn(),
       createRelationship: vi.fn(),
       updateNodePosition: vi.fn(),
+      setViewport: vi.fn(),
+      getFilteredNodes: vi.fn().mockReturnValue(mockNodes),
+      getFilteredEdges: vi.fn().mockReturnValue(mockEdges),
+      viewport: { zoom: 1, panX: 0, panY: 0, panZ: 0 },
       isLoading: false,
+      isCreatingRelationship: false,
+      isViewTransitioning: false,
       error: null,
     });
   });
@@ -329,28 +359,37 @@ describe('GraphView2D Node Types', () => {
 });
 
 describe('GraphView2D Test Node Status Icons', () => {
+  const createMockWithNodes = (nodes: Node<GraphNodeData>[]) => ({
+    nodes,
+    edges: [],
+    loadGraph: vi.fn(),
+    selectNode: vi.fn(),
+    createRelationship: vi.fn(),
+    updateNodePosition: vi.fn(),
+    setViewport: vi.fn(),
+    getFilteredNodes: vi.fn().mockReturnValue(nodes),
+    getFilteredEdges: vi.fn().mockReturnValue([]),
+    viewport: { zoom: 1, panX: 0, panY: 0, panZ: 0 },
+    isLoading: false,
+    isCreatingRelationship: false,
+    isViewTransitioning: false,
+    error: null,
+  });
+
   it('shows checkmark for passed tests', async () => {
-    (useGraphStore as unknown as Mock).mockReturnValue({
-      nodes: [
-        {
-          id: 'test-passed',
+    const testNodes = [
+      {
+        id: 'test-passed',
+        type: 'test',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Passed Test',
           type: 'test',
-          position: { x: 0, y: 0 },
-          data: {
-            label: 'Passed Test',
-            type: 'test',
-            properties: { status: 'passed' },
-          },
+          properties: { status: 'passed' },
         },
-      ],
-      edges: [],
-      loadGraph: vi.fn(),
-      selectNode: vi.fn(),
-      createRelationship: vi.fn(),
-      updateNodePosition: vi.fn(),
-      isLoading: false,
-      error: null,
-    });
+      },
+    ];
+    (useGraphStore as unknown as Mock).mockReturnValue(createMockWithNodes(testNodes));
 
     render(<GraphView2D />);
 
@@ -361,27 +400,19 @@ describe('GraphView2D Test Node Status Icons', () => {
   });
 
   it('shows X for failed tests', async () => {
-    (useGraphStore as unknown as Mock).mockReturnValue({
-      nodes: [
-        {
-          id: 'test-failed',
+    const testNodes = [
+      {
+        id: 'test-failed',
+        type: 'test',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Failed Test',
           type: 'test',
-          position: { x: 0, y: 0 },
-          data: {
-            label: 'Failed Test',
-            type: 'test',
-            properties: { status: 'failed' },
-          },
+          properties: { status: 'failed' },
         },
-      ],
-      edges: [],
-      loadGraph: vi.fn(),
-      selectNode: vi.fn(),
-      createRelationship: vi.fn(),
-      updateNodePosition: vi.fn(),
-      isLoading: false,
-      error: null,
-    });
+      },
+    ];
+    (useGraphStore as unknown as Mock).mockReturnValue(createMockWithNodes(testNodes));
 
     render(<GraphView2D />);
 
@@ -392,27 +423,19 @@ describe('GraphView2D Test Node Status Icons', () => {
   });
 
   it('shows blocked icon for blocked tests', async () => {
-    (useGraphStore as unknown as Mock).mockReturnValue({
-      nodes: [
-        {
-          id: 'test-blocked',
+    const testNodes = [
+      {
+        id: 'test-blocked',
+        type: 'test',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Blocked Test',
           type: 'test',
-          position: { x: 0, y: 0 },
-          data: {
-            label: 'Blocked Test',
-            type: 'test',
-            properties: { status: 'blocked' },
-          },
+          properties: { status: 'blocked' },
         },
-      ],
-      edges: [],
-      loadGraph: vi.fn(),
-      selectNode: vi.fn(),
-      createRelationship: vi.fn(),
-      updateNodePosition: vi.fn(),
-      isLoading: false,
-      error: null,
-    });
+      },
+    ];
+    (useGraphStore as unknown as Mock).mockReturnValue(createMockWithNodes(testNodes));
 
     render(<GraphView2D />);
 
@@ -424,28 +447,37 @@ describe('GraphView2D Test Node Status Icons', () => {
 });
 
 describe('GraphView2D Risk RPN Colors', () => {
+  const createMockWithNodes = (nodes: Node<GraphNodeData>[]) => ({
+    nodes,
+    edges: [],
+    loadGraph: vi.fn(),
+    selectNode: vi.fn(),
+    createRelationship: vi.fn(),
+    updateNodePosition: vi.fn(),
+    setViewport: vi.fn(),
+    getFilteredNodes: vi.fn().mockReturnValue(nodes),
+    getFilteredEdges: vi.fn().mockReturnValue([]),
+    viewport: { zoom: 1, panX: 0, panY: 0, panZ: 0 },
+    isLoading: false,
+    isCreatingRelationship: false,
+    isViewTransitioning: false,
+    error: null,
+  });
+
   it('shows red RPN for high risk (>100)', async () => {
-    (useGraphStore as unknown as Mock).mockReturnValue({
-      nodes: [
-        {
-          id: 'risk-high',
+    const riskNodes = [
+      {
+        id: 'risk-high',
+        type: 'risk',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'High Risk',
           type: 'risk',
-          position: { x: 0, y: 0 },
-          data: {
-            label: 'High Risk',
-            type: 'risk',
-            properties: { rpn: 150 },
-          },
+          properties: { rpn: 150 },
         },
-      ],
-      edges: [],
-      loadGraph: vi.fn(),
-      selectNode: vi.fn(),
-      createRelationship: vi.fn(),
-      updateNodePosition: vi.fn(),
-      isLoading: false,
-      error: null,
-    });
+      },
+    ];
+    (useGraphStore as unknown as Mock).mockReturnValue(createMockWithNodes(riskNodes));
 
     render(<GraphView2D />);
 
@@ -456,27 +488,19 @@ describe('GraphView2D Risk RPN Colors', () => {
   });
 
   it('shows orange RPN for medium risk (50-100)', async () => {
-    (useGraphStore as unknown as Mock).mockReturnValue({
-      nodes: [
-        {
-          id: 'risk-medium',
+    const riskNodes = [
+      {
+        id: 'risk-medium',
+        type: 'risk',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Medium Risk',
           type: 'risk',
-          position: { x: 0, y: 0 },
-          data: {
-            label: 'Medium Risk',
-            type: 'risk',
-            properties: { rpn: 75 },
-          },
+          properties: { rpn: 75 },
         },
-      ],
-      edges: [],
-      loadGraph: vi.fn(),
-      selectNode: vi.fn(),
-      createRelationship: vi.fn(),
-      updateNodePosition: vi.fn(),
-      isLoading: false,
-      error: null,
-    });
+      },
+    ];
+    (useGraphStore as unknown as Mock).mockReturnValue(createMockWithNodes(riskNodes));
 
     render(<GraphView2D />);
 
@@ -487,27 +511,19 @@ describe('GraphView2D Risk RPN Colors', () => {
   });
 
   it('shows green RPN for low risk (<50)', async () => {
-    (useGraphStore as unknown as Mock).mockReturnValue({
-      nodes: [
-        {
-          id: 'risk-low',
+    const riskNodes = [
+      {
+        id: 'risk-low',
+        type: 'risk',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Low Risk',
           type: 'risk',
-          position: { x: 0, y: 0 },
-          data: {
-            label: 'Low Risk',
-            type: 'risk',
-            properties: { rpn: 25 },
-          },
+          properties: { rpn: 25 },
         },
-      ],
-      edges: [],
-      loadGraph: vi.fn(),
-      selectNode: vi.fn(),
-      createRelationship: vi.fn(),
-      updateNodePosition: vi.fn(),
-      isLoading: false,
-      error: null,
-    });
+      },
+    ];
+    (useGraphStore as unknown as Mock).mockReturnValue(createMockWithNodes(riskNodes));
 
     render(<GraphView2D />);
 

@@ -24,3 +24,6 @@ export { ProtectedRoute, RoleGate, withProtectedRoute } from './ProtectedRoute';
 
 export { NavigationHeader, navItems } from './NavigationHeader';
 export type { NavigationHeaderProps, NavItem } from './NavigationHeader';
+
+export { PlaceholderPage } from './PlaceholderPage';
+export type { PlaceholderPageProps } from './PlaceholderPage';

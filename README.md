@@ -1,6 +1,30 @@
-# RxDx - Project Management System for Regulated Industries
+# RxDx - Requirement Management System
+ 
+**(R)equirements *(x)* … and much more → (D)ocuments *(x)* ... and much more**
 
-RxDx is a comprehensive web-based project management system designed for regulated industries including medical technology (medtech), Good Practice (GxP) environments, and automotive sectors.
+
+## RxDx – (R)equirements × … and more → (D)ocuments and more
+
+**RxDx** is a tool for structured engineering work across the full lifecycle of requirements and related artifacts. It supports the creation, refinement, linking, and traceability of content ranging from informal notes to formal requirements, specifications, tests, tasks, and risk items.
+
+The system is designed to be methodology-agnostic. It can be used in **classic (plan-driven)** as well as **agile** project environments and allows both approaches to coexist within the same project. Artifacts can be incrementally refined without losing their relationships or history.
+
+RxDx provides consistent **traceability** between all artifact types. Requirements can be linked to specifications, tests, risks, and tasks, enabling impact analysis, coverage checks, and verification tracking. This makes RxDx suitable not only for project management, but also for **risk management and quality-related activities**.
+
+All maintained content can be exported to common formats (DOCX, PDF, XLSX), allowing integration with external processes and organizations that still rely on document-based or paper-based quality management systems.
+
+### Scope and Characteristics
+- Management of content, requirements, specifications, tests, tasks, and risks  
+- End-to-end traceability across artifacts  
+- Agile working/project management, and classic project management management presentations (both in parallel)
+- Basis for verification, validation, and impact analysis
+- Design Review and Risk Management integrated
+- Document exports for downstream QM and compliance processes 
+
+**Current status:** Mock / early preview  
+The current version represents an early stage of development and is intended to demonstrate structure, concepts, and workflows rather than feature completeness.
+
+
 
 ## Features
 

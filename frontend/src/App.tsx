@@ -7,6 +7,12 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './pages/Login';
 import { Requirements } from './pages/Requirements';
+import { GraphExplorer } from './pages/GraphExplorer';
+import { TestsPage } from './pages/TestsPage';
+import { RisksPage } from './pages/RisksPage';
+import { SchedulePage } from './pages/SchedulePage';
+import { KanbanPage } from './pages/KanbanPage';
+import { DocumentsPage } from './pages/DocumentsPage';
 import { ProtectedRoute, NavigationHeader } from './components/common';
 import { useAuthStore } from './stores/authStore';
 
@@ -103,8 +109,68 @@ function App(): React.ReactElement {
               </AppLayout>
             }
           />
+          <Route
+            path="/graph"
+            element={
+              <AppLayout>
+                <ProtectedRoute>
+                  <GraphExplorer />
+                </ProtectedRoute>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/tests"
+            element={
+              <AppLayout>
+                <ProtectedRoute>
+                  <TestsPage />
+                </ProtectedRoute>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/risks"
+            element={
+              <AppLayout>
+                <ProtectedRoute>
+                  <RisksPage />
+                </ProtectedRoute>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/schedule"
+            element={
+              <AppLayout>
+                <ProtectedRoute>
+                  <SchedulePage />
+                </ProtectedRoute>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/kanban"
+            element={
+              <AppLayout>
+                <ProtectedRoute>
+                  <KanbanPage />
+                </ProtectedRoute>
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <AppLayout>
+                <ProtectedRoute>
+                  <DocumentsPage />
+                </ProtectedRoute>
+              </AppLayout>
+            }
+          />
           <Route path="/" element={<AuthRedirect />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<AuthRedirect />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

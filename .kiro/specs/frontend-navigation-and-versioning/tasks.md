@@ -48,15 +48,15 @@ This implementation plan breaks down the frontend navigation and versioning enha
     - Create `frontend/src/pages/DocumentsPage.tsx` using PlaceholderPage
     - _Requirements: 2.3, 2.4, 2.5, 2.6, 2.7_
 
-- [ ] 3. Update App.tsx routing configuration
-  - [ ] 3.1 Add routes for all pages including GraphExplorer
+- [x] 3. Update App.tsx routing configuration
+  - [x] 3.1 Add routes for all pages including GraphExplorer
     - Add route for /graph pointing to existing GraphExplorer component
     - Add routes for /tests, /risks, /schedule, /kanban, /documents
     - Wrap all new routes with ProtectedRoute
     - Update catch-all route to redirect appropriately
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9_
   
-  - [ ] 3.2 Write property tests for route protection
+  - [x] 3.2 Write property tests for route protection
     - **Property 5: Unknown Route Redirect**
     - **Property 6: Route Protection**
     - **Validates: Requirements 2.8, 2.9**

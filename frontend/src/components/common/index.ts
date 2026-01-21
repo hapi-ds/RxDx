@@ -21,3 +21,6 @@ export { ErrorMessage, ErrorBoundaryFallback, EmptyState } from './Error';
 export type { ErrorMessageProps, ErrorVariant, ErrorBoundaryFallbackProps, EmptyStateProps } from './Error';
 
 export { ProtectedRoute, RoleGate, withProtectedRoute } from './ProtectedRoute';
+
+export { NavigationHeader, navItems } from './NavigationHeader';
+export type { NavigationHeaderProps, NavItem } from './NavigationHeader';

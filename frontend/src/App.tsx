@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './pages/Login';
 import { Requirements } from './pages/Requirements';
-import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { ProtectedRoute, NavigationHeader } from './components/common';
 import { useAuthStore } from './stores/authStore';
 
 interface ErrorBoundaryState {
@@ -57,20 +57,7 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
   return (
     <div className="app-layout">
       {isAuthenticated && (
-        <header className="app-header">
-          <div className="header-brand">
-            <h1>RxDx</h1>
-          </div>
-          <nav className="header-nav">
-            <a href="/requirements">Requirements</a>
-          </nav>
-          <div className="header-user">
-            <span>{user?.fullName || user?.email}</span>
-            <button onClick={logout} className="logout-btn">
-              Logout
-            </button>
-          </div>
-        </header>
+        <NavigationHeader user={user} onLogout={logout} />
       )}
       <main className="app-main">
         {children}
@@ -80,55 +67,6 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
           min-height: 100vh;
           display: flex;
           flex-direction: column;
-        }
-        .app-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.75rem 1.5rem;
-          background: #1f2937;
-          color: white;
-        }
-        .header-brand h1 {
-          margin: 0;
-          font-size: 1.25rem;
-        }
-        .header-nav {
-          display: flex;
-          gap: 1.5rem;
-        }
-        .header-nav a {
-          color: #d1d5db;
-          text-decoration: none;
-          font-size: 0.875rem;
-          transition: color 0.2s;
-        }
-        .header-nav a:hover {
-          color: white;
-        }
-        .header-user {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        .header-user span {
-          font-size: 0.875rem;
-          color: #d1d5db;
-        }
-        .logout-btn {
-          padding: 0.375rem 0.75rem;
-          background: transparent;
-          border: 1px solid #4b5563;
-          border-radius: 4px;
-          color: #d1d5db;
-          font-size: 0.75rem;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .logout-btn:hover {
-          background: #374151;
-          border-color: #6b7280;
-          color: white;
         }
         .app-main {
           flex: 1;

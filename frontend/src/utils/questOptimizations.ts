@@ -559,14 +559,4 @@ export function getDeviceInfoString(): string {
   ].join(' | ');
 }
 
-// ============================================================================
-// Export Types
-// ============================================================================
-
-export type {
-  QuestDevice,
-  QuestDeviceCapabilities,
-  QuestXRConfig,
-  QuestPerformanceSettings,
-  VRComfortSettings,
-};
+// Types are already exported at their definition points above

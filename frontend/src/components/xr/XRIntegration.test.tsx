@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import * as THREE from 'three';
 
 // ============================================================================
@@ -22,7 +22,8 @@ import * as THREE from 'three';
 // ============================================================================
 
 // Mock WebXR types and APIs
-const createMockXRSession = (mode: string = 'immersive-vr'): Partial<XRSession> => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const createMockXRSession = (_mode: string = 'immersive-vr'): Partial<XRSession> => {
   const eventListeners: Map<string, Set<EventListener>> = new Map();
   
   return {
@@ -46,6 +47,7 @@ const createMockXRSession = (mode: string = 'immersive-vr'): Partial<XRSession> 
 };
 
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const createMockXRInputSource = (
   handedness: 'left' | 'right' | 'none' = 'right',
   targetRayMode: 'tracked-pointer' | 'gaze' | 'screen' = 'tracked-pointer'
@@ -75,6 +77,7 @@ const createMockXRInputSource = (
   };
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const createMockXRHand = (): Partial<XRHand> => {
   const joints = new Map<XRHandJoint, XRJointSpace>();
   const jointNames: XRHandJoint[] = [
@@ -105,6 +108,9 @@ const createMockXRHand = (): Partial<XRHand> => {
   };
 };
 
+// Void references to satisfy TypeScript - these functions are prepared for future use
+void createMockXRInputSource;
+void createMockXRHand;
 
 // Mock navigator.xr
 const createMockXRSystem = (options: {
@@ -279,13 +285,13 @@ const mockEdges: Edge[] = [
 describe('XR Integration Tests', () => {
   beforeEach(() => {
     // Store original navigator
-    originalNavigator = global.navigator;
+    originalNavigator = globalThis.navigator;
     
     // Create mock XR system
     mockXRSystem = createMockXRSystem({ vrSupported: true, arSupported: false });
     
     // Mock navigator.xr
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: { ...originalNavigator, xr: mockXRSystem },
       writable: true,
       configurable: true,
@@ -348,7 +354,7 @@ describe('XR Integration Tests', () => {
   });
 
   afterEach(() => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: originalNavigator,
       writable: true,
       configurable: true,
@@ -469,7 +475,8 @@ describe('XR Integration Tests', () => {
 
     describe('Visibility Changes', () => {
       it('handles visibility state changes during session', async () => {
-        const onVisibilityChange = vi.fn();
+        // onVisibilityChange would be used in a full integration test
+        // const onVisibilityChange = vi.fn();
         const mockSession = createMockXRSession() as XRSession & { 
           _triggerEvent: (type: string, event: Event) => void 
         };
@@ -1050,7 +1057,7 @@ describe('XR Integration Tests', () => {
         const navigatorWithoutXR = { ...originalNavigator };
         delete (navigatorWithoutXR as { xr?: unknown }).xr;
         
-        Object.defineProperty(global, 'navigator', {
+        Object.defineProperty(globalThis, 'navigator', {
           value: navigatorWithoutXR,
           writable: true,
           configurable: true,

@@ -288,7 +288,7 @@ const transformNode = (node: GraphNode): Node<GraphNodeData> => {
  * Create initial position mapping for a node
  */
 const createPositionMapping = (
-  nodeId: string,
+  _nodeId: string,
   position2D: { x: number; y: number }
 ): NodePositionMap => {
   return {

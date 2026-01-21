@@ -5,11 +5,10 @@
  * References: Requirement 16 (Dual Frontend Interface)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import * as THREE from 'three';
 import {
-  VRInteraction,
   useVRInteraction,
   type VRInteractionProps,
   type NodeInteractionState,
@@ -22,7 +21,7 @@ import {
 vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn((callback) => {
     // Store callback for manual invocation in tests
-    (global as Record<string, unknown>).__useFrameCallback = callback;
+    (globalThis as Record<string, unknown>).__useFrameCallback = callback;
   }),
   useThree: vi.fn(() => ({
     gl: {
@@ -193,7 +192,8 @@ describe('VRInteraction', () => {
       const origin = new THREE.Vector3(0, 0, -5);
       const direction = new THREE.Vector3(1, 0, 0).normalize(); // Pointing sideways
       const nodePosition = new THREE.Vector3(0, 0, 0);
-      const hitRadius = 0.6;
+      // hitRadius would be used if we were checking distance, but here we check direction
+      // const hitRadius = 0.6;
 
       // Calculate intersection
       const toNode = new THREE.Vector3().subVectors(nodePosition, origin);

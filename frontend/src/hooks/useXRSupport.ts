@@ -99,7 +99,7 @@ export interface XRSessionEventHandlers {
   /** Called when session error occurs */
   onSessionError?: (error: Error, mode: XRSessionMode) => void;
   /** Called when input sources change */
-  onInputSourcesChange?: (event: XRInputSourceChangeEvent) => void;
+  onInputSourcesChange?: (event: XRInputSourcesChangeEvent) => void;
 }
 
 /**
@@ -393,7 +393,7 @@ export function useXRSupport(
   /**
    * Handle input sources change event
    */
-  const handleInputSourcesChange = useCallback((event: XRInputSourceChangeEvent) => {
+  const handleInputSourcesChange = useCallback((event: XRInputSourcesChangeEvent) => {
     if (eventHandlersRef.current.onInputSourcesChange) {
       eventHandlersRef.current.onInputSourcesChange(event);
     }

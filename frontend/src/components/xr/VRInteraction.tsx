@@ -401,7 +401,8 @@ export const VRInteraction: React.FC<VRInteractionProps> = ({
     if (gripPressed && state.mode === 'drag' && state.source === source) {
       // Calculate point along ray at drag distance
       const dragDistance = state.dragStartPosition?.distanceTo(controllerState.position) ?? 2;
-      const currentPoint = controllerState.position.clone().add(
+      // Note: currentPoint calculation kept for potential future use in advanced drag modes
+      void controllerState.position.clone().add(
         controllerState.direction.clone().multiplyScalar(
           state.dragStartPosition ? 
             controllerState.position.distanceTo(state.dragStartPosition) + 
@@ -629,12 +630,10 @@ export const VRInteraction: React.FC<VRInteractionProps> = ({
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
-              count={2}
-              array={new Float32Array([
+              args={[new Float32Array([
                 debugState.leftRayOrigin.x, debugState.leftRayOrigin.y, debugState.leftRayOrigin.z,
                 debugState.leftRayEnd.x, debugState.leftRayEnd.y, debugState.leftRayEnd.z,
-              ])}
-              itemSize={3}
+              ]), 3]}
             />
           </bufferGeometry>
           <lineBasicMaterial color={currentRayColor} linewidth={2} />
@@ -647,11 +646,10 @@ export const VRInteraction: React.FC<VRInteractionProps> = ({
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
-              count={2}
-              array={new Float32Array([
+              args={[new Float32Array([
                 debugState.rightRayOrigin.x, debugState.rightRayOrigin.y, debugState.rightRayOrigin.z,
                 debugState.rightRayEnd.x, debugState.rightRayEnd.y, debugState.rightRayEnd.z,
-              ])}
+              ]), 3]}
             />
           </bufferGeometry>
           <lineBasicMaterial color={currentRayColor} linewidth={2} />

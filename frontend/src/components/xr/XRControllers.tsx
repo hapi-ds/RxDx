@@ -177,9 +177,10 @@ export const XRControllers: React.FC<XRControllersProps> = ({
   showDebug = false,
   leftRayColor = '#3b82f6',
   rightRayColor = '#10b981',
-  rayLength = 5,
   enableHaptics = true,
 }) => {
+  // rayLength is available for future ray visualization but not currently used
+  void 5; // rayLength placeholder
   // Get XR session state
   const session = useXR((state) => state.session);
   
@@ -405,7 +406,7 @@ export const XRControllers: React.FC<XRControllersProps> = ({
   useEffect(() => {
     if (!session) return;
 
-    const handleInputSourcesChange = (event: XRInputSourceChangeEvent) => {
+    const handleInputSourcesChange = (event: XRInputSourcesChangeEvent) => {
       console.log('[XRControllers] Input sources changed:', {
         added: event.added.length,
         removed: event.removed.length,

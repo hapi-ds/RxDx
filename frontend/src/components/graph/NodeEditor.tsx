@@ -207,6 +207,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
   onSave,
 }) => {
   const { selectedNode, selectNode, updateNode, isUpdating, error, clearError } = useGraphStore();
+  const storeError: string | null = error;
 
   // Local form state
   const [formData, setFormData] = useState<EditableFields>({
@@ -303,7 +304,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
   const colors = NODE_COLORS[nodeType] || NODE_COLORS.default;
   const typeLabel = NODE_TYPE_LABELS[nodeType] || nodeType;
   const properties = selectedNode.data.properties || {};
-  const displayError = localError || error;
+  const displayError: string | null = localError || storeError;
 
   return (
     <div
@@ -347,11 +348,11 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
       {/* Content */}
       <div style={styles.content}>
         {/* Error message */}
-        {displayError && (
+        {displayError !== null && displayError !== '' ? (
           <div style={styles.errorMessage} role="alert">
-            {String(displayError)}
+            {displayError}
           </div>
-        )}
+        ) : null}
 
         {/* Node ID (read-only) */}
         <div style={styles.field}>
@@ -360,10 +361,10 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
         </div>
 
         {/* Version (read-only) */}
-        {properties.version && (
+        {typeof properties.version === 'string' && properties.version && (
           <div style={styles.field}>
             <label style={styles.label}>Version</label>
-            <div style={styles.readOnlyField}>{properties.version as string}</div>
+            <div style={styles.readOnlyField}>{properties.version}</div>
           </div>
         )}
 

@@ -5,8 +5,7 @@
  * References: Requirement 16 (Dual Frontend Interface) - Voice commands for hands-free operation
  */
 
-import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { VoiceCommands, type VoiceCommandsProps } from './VoiceCommands';
 

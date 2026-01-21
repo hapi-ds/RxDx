@@ -18,16 +18,15 @@ import {
   DEFAULT_COMFORT_SETTINGS,
   COMFORT_PRESET_SENSITIVE,
   COMFORT_PRESET_EXPERIENCED,
-  type QuestDevice,
 } from './questOptimizations';
 
 describe('questOptimizations', () => {
   // Store original navigator
-  const originalNavigator = global.navigator;
+  const originalNavigator = globalThis.navigator;
 
   // Helper to mock navigator.userAgent
   const mockUserAgent = (userAgent: string): void => {
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: { userAgent },
       writable: true,
       configurable: true,
@@ -36,7 +35,7 @@ describe('questOptimizations', () => {
 
   beforeEach(() => {
     // Reset navigator before each test
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: originalNavigator,
       writable: true,
       configurable: true,
@@ -45,7 +44,7 @@ describe('questOptimizations', () => {
 
   afterEach(() => {
     // Restore original navigator
-    Object.defineProperty(global, 'navigator', {
+    Object.defineProperty(globalThis, 'navigator', {
       value: originalNavigator,
       writable: true,
       configurable: true,
@@ -319,13 +318,13 @@ describe('questOptimizations', () => {
     });
 
     it('should handle missing window gracefully', () => {
-      const originalWindow = global.window;
+      const originalWindow = globalThis.window;
       // @ts-expect-error - intentionally setting to undefined for test
-      global.window = undefined;
+      globalThis.window = undefined;
       
       expect(() => applyQuestPolyfills()).not.toThrow();
       
-      global.window = originalWindow;
+      globalThis.window = originalWindow;
     });
   });
 });

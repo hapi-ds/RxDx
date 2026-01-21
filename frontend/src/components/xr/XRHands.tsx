@@ -273,10 +273,6 @@ export const XRHands: React.FC<XRHandsProps> = ({
   const leftStateRef = useRef<HandTrackingState>(createDefaultHandState('left'));
   const rightStateRef = useRef<HandTrackingState>(createDefaultHandState('right'));
 
-  // Previous gesture states for detecting changes (used in processHandInput)
-  const _prevLeftGesturesRef = useRef<GestureState>(createDefaultGestureState());
-  const _prevRightGesturesRef = useRef<GestureState>(createDefaultGestureState());
-
   // Debug state
   const [debugState, setDebugState] = useState({
     leftTracked: false,
@@ -326,7 +322,6 @@ export const XRHands: React.FC<XRHandsProps> = ({
     const thumbTip = joints.get('thumb-tip');
     const indexTip = joints.get('index-finger-tip');
     const middleTip = joints.get('middle-finger-tip');
-    const _ringTip = joints.get('ring-finger-tip'); // Used for future gesture detection
     const pinkyTip = joints.get('pinky-finger-tip');
     const wrist = joints.get('wrist');
     const indexBase = joints.get('index-finger-metacarpal');
@@ -402,6 +397,7 @@ export const XRHands: React.FC<XRHandsProps> = ({
    * Note: This function is prepared for full hand tracking implementation
    * when proper reference space management is available
    */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _processHandInput = useCallback((
     inputSource: XRInputSource,
     frame: XRFrame,
@@ -510,6 +506,9 @@ export const XRHands: React.FC<XRHandsProps> = ({
       openPalm: { ...newGestures.openPalm, normal: newGestures.openPalm.normal.clone() },
     };
   }, [config, detectGestures, onPinchStart, onPinchEnd, onPinchMove, onGrabStart, onGrabEnd, onPointStart, onPointEnd]);
+
+  // Void reference to satisfy TypeScript - function is prepared for future use
+  void _processHandInput;
 
   // Update hand states each frame
   useFrame(() => {

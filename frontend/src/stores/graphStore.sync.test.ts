@@ -18,10 +18,7 @@ import {
   useGraphStore,
   convert2Dto3D,
   convert3Dto2D,
-  type ViewMode,
   type Position3D,
-  type FilterableNodeType,
-  type NodeTypeFilter,
 } from './graphStore';
 
 // Mock the services

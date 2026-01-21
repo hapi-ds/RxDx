@@ -13,13 +13,12 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API
  */
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   useVoiceCommands,
   type VoiceCommandCallbacks,
   type VoiceCommandsConfig,
   type ParsedVoiceCommand,
-  type VoiceRecognitionState,
   type FilterableNodeType,
   AVAILABLE_COMMANDS,
 } from '../../hooks/useVoiceCommands';
@@ -577,7 +576,8 @@ export const VoiceCommands: React.FC<VoiceCommandsProps> = ({
     error,
     hasPermission,
     startListening,
-    stopListening,
+    // stopListening is available but we use toggleListening for the UI
+    stopListening: _stopListening,
     toggleListening,
     requestPermission,
   } = useVoiceCommands(callbacks, config);

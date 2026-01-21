@@ -80,8 +80,8 @@ describe('GraphExport', () => {
     document.body.appendChild(mockFlowContainer);
 
     // Mock URL.createObjectURL and URL.revokeObjectURL
-    global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
-    global.URL.revokeObjectURL = vi.fn();
+    (globalThis as unknown as { URL: typeof URL }).URL.createObjectURL = vi.fn(() => 'blob:mock-url');
+    (globalThis as unknown as { URL: typeof URL }).URL.revokeObjectURL = vi.fn();
   });
 
   afterEach(() => {

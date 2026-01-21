@@ -125,7 +125,7 @@ Connect to the PostgreSQL database and run the seed script manually:
 
 ```bash
 # Using docker compose
-docker compose exec db psql -U rxdx -d rxdx -f /docker-entrypoint-initdb.d/05-seed-data.sql
+docker compose exec postgres psql -U rxdx -d rxdx -f /docker-entrypoint-initdb.d/05-seed-data.sql
 
 # Or connect directly
 psql -h localhost -U rxdx -d rxdx -f backend/db/init/05-seed-data.sql

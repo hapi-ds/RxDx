@@ -184,9 +184,11 @@ class TestAuditLogProperties:
         assert mock_db.commit.call_count == 1
 
     @given(
-        actions=st.lists(action_strategy, min_size=1, max_size=5),
-        entity_types=st.lists(entity_type_strategy, min_size=1, max_size=5),
-        user_ids=st.lists(st.one_of(st.none(), uuid_strategy), min_size=1, max_size=5)
+        log_entries=st.lists(
+            st.tuples(action_strategy, entity_type_strategy, st.one_of(st.none(), uuid_strategy)),
+            min_size=1,
+            max_size=5
+        )
     )
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
@@ -194,23 +196,19 @@ class TestAuditLogProperties:
         self,
         audit_service,
         mock_db,
-        actions,
-        entity_types,
-        user_ids
+        log_entries
     ):
         """
         **Property**: Audit logs maintain chronological order
         **Formal**: ∀ logs l1, l2, created(l1) < created(l2) → timestamp(l1) ≤ timestamp(l2)
         """
-        assume(len(actions) == len(entity_types) == len(user_ids))
-        
         # Reset mock for each test iteration
         mock_db.reset_mock()
         
         timestamps = []
         
         # Create multiple audit logs in sequence
-        for action, entity_type, user_id in zip(actions, entity_types, user_ids):
+        for action, entity_type, user_id in log_entries:
             await audit_service.log(
                 action=action,
                 entity_type=entity_type,

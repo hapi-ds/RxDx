@@ -69,7 +69,7 @@ The system follows a modern, scalable architecture with:
 ### 2.3 Infrastructure
 - **Containerization**: Docker with multi-stage builds using uv
 - **Orchestration**: docker-compose v2
-- **Database**: PostgreSQL 15+ with Apache AGE extension
+- **Database**: PostgreSQL 17 with Apache AGE extension
 - **Reverse Proxy**: nginx or Traefik
 - **Mobile App**: React Native for time recording app
 
@@ -2259,7 +2259,7 @@ version: '3.9'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: apache/age:release_PG17_1.6.0
     environment:
       POSTGRES_DB: regulated_pm
       POSTGRES_USER: ${DB_USER}

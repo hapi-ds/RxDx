@@ -16,7 +16,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.schemas.document import (
@@ -89,7 +89,7 @@ class TestDesignReviewEndpoint:
         
         with patch("app.api.v1.documents.get_document_service", return_value=mock_document_service):
             with patch("app.api.v1.documents.get_current_user", return_value=mock_current_user):
-                async with AsyncClient(app=app, base_url="http://test") as client:
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                     response = await client.post(
                         "/api/v1/documents/design-review",
                         json={

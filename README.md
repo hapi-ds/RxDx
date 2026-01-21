@@ -19,7 +19,7 @@ RxDx is a comprehensive web-based project management system designed for regulat
 
 ### Backend
 - Python 3.11+ with FastAPI
-- PostgreSQL 15+ with Apache AGE extension
+- PostgreSQL 17 with Apache AGE extension
 - SQLAlchemy async ORM
 - Pydantic for validation
 - uv for package management

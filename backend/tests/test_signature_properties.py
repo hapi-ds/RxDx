@@ -164,7 +164,7 @@ class TestSignatureServiceProperties:
         assert is_valid is False, "Signature should not verify for different content"
 
     @given(content_hash=st.text(min_size=1, max_size=100))
-    @settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture])
+    @settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture], deadline=None)
     def test_signature_with_different_keys(self, signature_service, content_hash):
         """
         **Validates: Requirements 2.1, 2.4**

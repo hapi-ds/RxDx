@@ -526,16 +526,26 @@ class SchedulerService:
             working_days = hours // constraints.working_hours_per_day
             remaining_hours = hours % constraints.working_hours_per_day
             
-            # Add calendar days (accounting for weekends)
-            weeks = working_days // 5
-            extra_days = working_days % 5
+            # Start from the beginning of the project start day
+            result = start.replace(hour=0, minute=0, second=0, microsecond=0)
             
-            total_days = weeks * 7 + extra_days
-            
-            # Adjust if we land on a weekend
-            result = start + timedelta(days=total_days, hours=remaining_hours)
-            while result.weekday() >= 5:  # Saturday = 5, Sunday = 6
+            # Add working days, accounting for weekends
+            days_added = 0
+            while days_added < working_days:
                 result += timedelta(days=1)
+                # Only count weekdays
+                if result.weekday() < 5:  # Monday = 0, Friday = 4
+                    days_added += 1
+            
+            # Skip to next weekday if we landed on a weekend
+            while result.weekday() >= 5:
+                result += timedelta(days=1)
+            
+            # Add the remaining hours to the start of the working day
+            # Assuming work starts at 9 AM
+            work_start_hour = 9
+            result = result.replace(hour=work_start_hour)
+            result = result + timedelta(hours=remaining_hours)
             
             return result
         

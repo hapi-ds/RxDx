@@ -6,7 +6,7 @@ This directory contains database initialization scripts and configuration for Rx
 
 ### PostgreSQL with Apache AGE
 
-RxDx uses PostgreSQL 15+ with the Apache AGE extension for graph database capabilities.
+RxDx uses PostgreSQL 17 with the Apache AGE extension for graph database capabilities.
 
 - **PostgreSQL**: Stores user authentication, digital signatures, and audit logs
 - **Apache AGE**: Stores project knowledge graph (WorkItems, relationships, version history)
@@ -33,7 +33,7 @@ docker compose up postgres -d
 ```
 
 This will:
-- Start PostgreSQL 15 container
+- Start PostgreSQL 17 container
 - Automatically run `01-init-age.sql` to install Apache AGE
 - Create the `rxdx_graph` graph database
 
@@ -152,8 +152,8 @@ async def create_requirement():
 
 If you see "extension age does not exist":
 
-1. Ensure you're using PostgreSQL 15+
-2. Check AGE is installed: `docker compose exec postgres ls /usr/lib/postgresql/15/lib/age.so`
+1. Ensure you're using PostgreSQL 17
+2. Check AGE is installed: `docker compose exec postgres ls /usr/lib/postgresql/17/lib/age.so`
 3. Rebuild the container: `docker compose up postgres --build`
 
 ### Connection Issues

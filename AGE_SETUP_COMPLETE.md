@@ -7,8 +7,8 @@ Apache AGE (A Graph Extension) has been successfully integrated into the RxDx pr
 ## What Was Done
 
 ### 1. Docker Configuration
-- **Updated `docker-compose.yml`** to use `apache/age:release_PG15_1.6.0` image
-- This image includes PostgreSQL 15.15 with Apache AGE 1.6.0 pre-installed
+- **Updated `docker-compose.yml`** to use `apache/age:release_PG17_1.6.0` image
+- This image includes PostgreSQL 17 with Apache AGE 1.6.0 pre-installed
 
 ### 2. Database Initialization Scripts
 
@@ -115,9 +115,9 @@ With Apache AGE now configured, you can proceed with:
 
 ## Technical Details
 
-- **PostgreSQL Version**: 15.15
+- **PostgreSQL Version**: 17
 - **Apache AGE Version**: 1.6.0
-- **Docker Image**: `apache/age:release_PG15_1.6.0`
+- **Docker Image**: `apache/age:release_PG17_1.6.0`
 - **Graph Name**: `rxdx_graph` (in both main and test databases)
 - **Schema**: `ag_catalog`
 

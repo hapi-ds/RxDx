@@ -57,7 +57,7 @@
 - `docker-compose.prod.yml` - Production overrides
 
 **Services Configured:**
-1. **PostgreSQL 15+**
+1. **PostgreSQL 17**
    - Apache AGE extension auto-initialization
    - Health checks
    - Volume persistence

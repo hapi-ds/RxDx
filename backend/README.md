@@ -6,7 +6,7 @@ Project Management System for Regulated Industries - Backend API
 
 - **Python**: 3.11+
 - **Framework**: FastAPI
-- **Database**: PostgreSQL 15+ with Apache AGE extension
+- **Database**: PostgreSQL 17 with Apache AGE extension
 - **Package Manager**: uv
 - **Testing**: pytest with hypothesis
 
@@ -50,7 +50,7 @@ After running the initialization script, the following users are available:
 
 - Python 3.11 or higher
 - uv package manager ([installation guide](https://docs.astral.sh/uv/getting-started/installation/))
-- PostgreSQL 15+ with Apache AGE extension
+- PostgreSQL 17 with Apache AGE extension
 
 ### Installation
 

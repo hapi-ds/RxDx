@@ -72,7 +72,17 @@ export const useAuthStore = create<AuthStore>()(
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || 'Login failed');
+            let errorMessage = 'Login failed';
+            if (errorData.detail) {
+              if (typeof errorData.detail === 'string') {
+                errorMessage = errorData.detail;
+              } else if (Array.isArray(errorData.detail)) {
+                errorMessage = errorData.detail.map((e: { msg?: string }) => e.msg || JSON.stringify(e)).join(', ');
+              } else {
+                errorMessage = JSON.stringify(errorData.detail);
+              }
+            }
+            throw new Error(errorMessage);
           }
 
           const data = await response.json();

@@ -12,13 +12,13 @@ All seed users have the same default password: `password123`
 
 | Email | Name | Role | Active | Description |
 |-------|------|------|--------|-------------|
-| admin@rxdx.local | System Administrator | admin | Yes | Full system access, can manage users and settings |
-| pm@rxdx.local | Project Manager | project_manager | Yes | Can manage projects, requirements, and assign tasks |
-| validator@rxdx.local | Quality Validator | validator | Yes | Can validate and approve workitems |
-| auditor@rxdx.local | Compliance Auditor | auditor | Yes | Read-only access to audit logs and compliance data |
-| developer@rxdx.local | Software Developer | user | Yes | Standard user, can create and update workitems |
-| tester@rxdx.local | QA Tester | user | Yes | Standard user, focused on test execution |
-| inactive@rxdx.local | Inactive User | user | No | Disabled account for testing inactive user scenarios |
+| admin@rxdx.example.com | System Administrator | admin | Yes | Full system access, can manage users and settings |
+| pm@rxdx.example.com | Project Manager | project_manager | Yes | Can manage projects, requirements, and assign tasks |
+| validator@rxdx.example.com | Quality Validator | validator | Yes | Can validate and approve workitems |
+| auditor@rxdx.example.com | Compliance Auditor | auditor | Yes | Read-only access to audit logs and compliance data |
+| developer@rxdx.example.com | Software Developer | user | Yes | Standard user, can create and update workitems |
+| tester@rxdx.example.com | QA Tester | user | Yes | Standard user, focused on test execution |
+| inactive@rxdx.lexample.comocal | Inactive User | user | No | Disabled account for testing inactive user scenarios |
 
 ### User Roles and Permissions
 

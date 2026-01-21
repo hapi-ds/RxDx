@@ -29,85 +29,85 @@ END $$;
 -- ============================================================================
 -- SEED USERS
 -- All passwords are hashed using Argon2 (password = 'password123')
--- Hash generated with: passlib.context.CryptContext(schemes=['argon2']).hash('password123')
+-- Hash generated with: passlib.context.CryptContext(schemes=['argon2'], argon2__memory_cost=65536, argon2__time_cost=3, argon2__parallelism=4).hash('password123')
 -- ============================================================================
 
 -- Admin user
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000001',
-    'admin@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'admin@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'System Administrator',
     'admin',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- Project Manager
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000002',
-    'pm@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'pm@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'Project Manager',
     'project_manager',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- Validator
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000003',
-    'validator@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'validator@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'Quality Validator',
     'validator',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- Auditor
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000004',
-    'auditor@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'auditor@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'Compliance Auditor',
     'auditor',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- Regular User (Developer)
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000005',
-    'developer@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'developer@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'Software Developer',
     'user',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- Regular User (Tester)
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000006',
-    'tester@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'tester@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'QA Tester',
     'user',
     TRUE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- Inactive User (for testing)
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     '00000000-0000-0000-0000-000000000007',
-    'inactive@rxdx.local',
-    '$argon2id$v=19$m=65536,t=3,p=4$c2VlZGRhdGFzYWx0MTIz$QxR8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
+    'inactive@rxdx.example.com',
+    '$argon2id$v=19$m=65536,t=3,p=4$8x6jdM455/z//5/zHmPMGQ$E7NWwbopR6St9kCD+ModeUyoVbhTzsp/jEJZnqzHMJA',
     'Inactive User',
     'user',
     FALSE
-) ON CONFLICT (email) DO NOTHING;
+) ON CONFLICT (email) DO UPDATE SET hashed_password = EXCLUDED.hashed_password;
 
 -- ============================================================================
 -- SEED GRAPH DATA (Apache AGE)

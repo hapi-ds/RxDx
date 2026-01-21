@@ -18,7 +18,7 @@ All seed users have the same default password: `password123`
 | auditor@rxdx.example.com | Compliance Auditor | auditor | Yes | Read-only access to audit logs and compliance data |
 | developer@rxdx.example.com | Software Developer | user | Yes | Standard user, can create and update workitems |
 | tester@rxdx.example.com | QA Tester | user | Yes | Standard user, focused on test execution |
-| inactive@rxdx.lexample.comocal | Inactive User | user | No | Disabled account for testing inactive user scenarios |
+| inactive@rxdx.example.com | Inactive User | user | No | Disabled account for testing inactive user scenarios |
 
 ### User Roles and Permissions
 

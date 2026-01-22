@@ -1,9 +1,7 @@
 # RxDx - Requirement Management System
  
-**(R)equirements *(x)* … and much more → (D)ocuments *(x)* ... and much more**
+**(R)equirements *(x)* … and much more TO (D)ocuments *(x)* ... and much more**
 
-
-## RxDx – (R)equirements × … and more → (D)ocuments and more
 
 **RxDx** is a tool for structured engineering work across the full lifecycle of requirements and related artifacts. It supports the creation, refinement, linking, and traceability of content ranging from informal notes to formal requirements, specifications, tests, tasks, and risk items.
 
@@ -13,28 +11,38 @@ RxDx provides consistent **traceability** between all artifact types. Requiremen
 
 All maintained content can be exported to common formats (DOCX, PDF, XLSX), allowing integration with external processes and organizations that still rely on document-based or paper-based quality management systems.
 
-### Scope and Characteristics
+## Scope and Characteristics
 - Management of content, requirements, specifications, tests, tasks, and risks  
 - End-to-end traceability across artifacts  
 - Agile working/project management, and classic project management management presentations (both in parallel)
+- Project-Knowledge-Base and project journaling
 - Basis for verification, validation, and impact analysis
 - Design Review and Risk Management integrated
-- Document exports for downstream QM and compliance processes 
+- Document exports for downstream QM and compliance processes
+- AI assisted
+- Different frontends
+-- Standard Web frontend for "normal" work (Graph view, Kanban, Gantt, ...)
+-- WebXR frontend for a more immersive remote Team-Work (3d Graph-View)
+-- Email for communicating upcoming tasks (outgoing) as well as documentation of project progress (incoming emails) and documentation of additional project-related emails (todo lists, minutes, ...)
+-- Mobile timesheet-app for tracking working times
+-- Documents (Design Documents, FMEA Sheets, Invoices, ... )
+
 
 **Current status:** Mock / early preview  
-The current version represents an early stage of development and is intended to demonstrate structure, concepts, and workflows rather than feature completeness.
 
+I'm not a frontend programmer - and this is my first test to do it with kiro ...
+
+The current version represents an early stage of development and is intended to demonstrate structure, concepts, and workflows rather than feature completeness.
 
 
 ## Features
 
 - **User Authentication & Authorization**: Role-based access control with digital signatures
 - **Requirements Management**: Versioned requirements with complete audit trails
-- **Knowledge Graph**: Apache AGE-powered graph database for project relationships
-- **Risk Management**: FMEA analysis with failure chain visualization
+- **Knowledge Graph**: Apache AGE-powered graph database for relationships
+- **Risk Management**: Risk analysis with failure chain visualization and FMEA export
 - **Test Management**: Verification and validation tracking
 - **Document Generation**: Automated PDF, Excel, and Word document generation
-- **Offline Support**: Work without connectivity and sync when online
 - **Dual Interface**: Standard web UI and immersive 3D/VR interface (WebXR)
 - **Local LLM Integration**: Privacy-first AI assistance with LM-Studio
 - **Mobile Time Tracking**: React Native app for time recording

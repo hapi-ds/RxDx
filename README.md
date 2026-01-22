@@ -21,11 +21,11 @@ All maintained content can be exported to common formats (DOCX, PDF, XLSX), allo
 - Document exports for downstream QM and compliance processes
 - AI assisted
 - Different frontends
--- Standard Web frontend for "normal" work (Graph view, Kanban, Gantt, ...)
--- WebXR frontend for a more immersive remote Team-Work (3d Graph-View)
--- Email for communicating upcoming tasks (outgoing) as well as documentation of project progress (incoming emails) and documentation of additional project-related emails (todo lists, minutes, ...)
--- Mobile timesheet-app for tracking working times
--- Documents (Design Documents, FMEA Sheets, Invoices, ... )
+    - Standard Web frontend for "normal" work (Graph view, Kanban, Gantt, ...)
+    - WebXR frontend for a more immersive remote Team-Work (3d Graph-View)
+    - Email for communicating upcoming tasks (outgoing) as well as documentation of project progress (incoming emails) and documentation of additional project-related emails (todo lists, minutes, ...)
+    - Mobile timesheet-app for tracking working times
+    - Documents (Design Documents, FMEA Sheets, Invoices, ... )
 
 
 **Current status:** Mock / early preview  

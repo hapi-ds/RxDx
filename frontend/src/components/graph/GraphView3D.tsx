@@ -112,11 +112,32 @@ const createConfiguredXRStore = (config: XRStoreConfig = DEFAULT_XR_STORE_CONFIG
   });
 };
 
-// Apply Quest polyfills early
-applyQuestPolyfills();
+// Lazy XR store initialization to prevent crashes when WebGL/XR is unavailable
+let xrStore: ReturnType<typeof createConfiguredXRStore> | null = null;
+let xrStoreError: Error | null = null;
 
-// Default XR store instance with Quest optimizations
-const xrStore = createConfiguredXRStore();
+/**
+ * Get or create the XR store lazily
+ * This prevents module-level crashes when WebGL/XR APIs are unavailable
+ */
+const getXRStore = (): ReturnType<typeof createConfiguredXRStore> | null => {
+  if (xrStoreError) {
+    return null;
+  }
+  if (xrStore) {
+    return xrStore;
+  }
+  try {
+    // Apply Quest polyfills before creating store
+    applyQuestPolyfills();
+    xrStore = createConfiguredXRStore();
+    return xrStore;
+  } catch (error) {
+    console.warn('[GraphView3D] Failed to create XR store:', error);
+    xrStoreError = error instanceof Error ? error : new Error('XR initialization failed');
+    return null;
+  }
+};
 
 // ============================================================================
 // Force-Directed Layout Configuration
@@ -1040,7 +1061,12 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
       await requestXRSession('immersive-vr');
     } else {
       // Fallback to xrStore for basic VR entry
-      xrStore.enterVR();
+      const store = getXRStore();
+      if (store) {
+        store.enterVR();
+      } else {
+        console.warn('[GraphView3D] XR store not available for VR entry');
+      }
     }
   };
 
@@ -1050,7 +1076,12 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
       await requestXRSession('immersive-ar');
     } else {
       // Fallback to xrStore for basic AR entry
-      xrStore.enterAR();
+      const store = getXRStore();
+      if (store) {
+        store.enterAR();
+      } else {
+        console.warn('[GraphView3D] XR store not available for AR entry');
+      }
     }
   };
 
@@ -1216,59 +1247,89 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
         camera={{ position: [0, 5, 15], fov: 60 }}
         gl={{ antialias: true }}
       >
-        {/* XR wrapper for WebXR support with store */}
-        <XR store={xrStore}>
-          {/* Lighting setup */}
-          <ambientLight intensity={ambientLightIntensity} />
-          <pointLight position={[10, 10, 10]} intensity={pointLightIntensity} />
-          <pointLight position={[-10, -10, -10]} intensity={pointLightIntensity * 0.5} />
-          
-          {/* Main graph scene with force-directed layout */}
-          <GraphScene 
-            config={config} 
-            showSimulationControls={showSimulationControls}
-            cameraControlsRef={cameraControlsRef}
-            showXRInputDebug={showXRInputDebug}
-            onVRNodeSelect={onVRNodeSelect}
-            onVRNodeHover={onVRNodeHover}
-            onVRDragStart={onVRDragStart}
-            onVRDragEnd={onVRDragEnd}
-          />
-          
-          {/* VR Controllers for input handling */}
-          {enableControllers && (
-            <XRControllers
-              onTriggerPress={onControllerTriggerPress}
-              onTriggerRelease={onControllerTriggerRelease}
-              onGripPress={onControllerGripPress}
-              onGripRelease={onControllerGripRelease}
-              onThumbstickMove={onControllerThumbstickMove}
-              onControllerUpdate={onControllerUpdate}
-              showDebug={showXRInputDebug}
-              enableHaptics={true}
+        {/* XR wrapper for WebXR support with store - only render if store is available */}
+        {getXRStore() ? (
+          <XR store={getXRStore()!}>
+            {/* Lighting setup */}
+            <ambientLight intensity={ambientLightIntensity} />
+            <pointLight position={[10, 10, 10]} intensity={pointLightIntensity} />
+            <pointLight position={[-10, -10, -10]} intensity={pointLightIntensity * 0.5} />
+            
+            {/* Main graph scene with force-directed layout */}
+            <GraphScene 
+              config={config} 
+              showSimulationControls={showSimulationControls}
+              cameraControlsRef={cameraControlsRef}
+              showXRInputDebug={showXRInputDebug}
+              onVRNodeSelect={onVRNodeSelect}
+              onVRNodeHover={onVRNodeHover}
+              onVRDragStart={onVRDragStart}
+              onVRDragEnd={onVRDragEnd}
             />
-          )}
-          
-          {/* Hand tracking for gesture-based interaction */}
-          {enableHandTracking && (
-            <XRHands
-              onPinchStart={onHandPinchStart}
-              onPinchEnd={onHandPinchEnd}
-              onGrabStart={onHandGrabStart}
-              onGrabEnd={onHandGrabEnd}
-              onHandUpdate={onHandUpdate}
-              showDebug={showXRInputDebug}
+            
+            {/* VR Controllers for input handling */}
+            {enableControllers && (
+              <XRControllers
+                onTriggerPress={onControllerTriggerPress}
+                onTriggerRelease={onControllerTriggerRelease}
+                onGripPress={onControllerGripPress}
+                onGripRelease={onControllerGripRelease}
+                onThumbstickMove={onControllerThumbstickMove}
+                onControllerUpdate={onControllerUpdate}
+                showDebug={showXRInputDebug}
+                enableHaptics={true}
+              />
+            )}
+            
+            {/* Hand tracking for gesture-based interaction */}
+            {enableHandTracking && (
+              <XRHands
+                onPinchStart={onHandPinchStart}
+                onPinchEnd={onHandPinchEnd}
+                onGrabStart={onHandGrabStart}
+                onGrabEnd={onHandGrabEnd}
+                onHandUpdate={onHandUpdate}
+                showDebug={showXRInputDebug}
+              />
+            )}
+            
+            {/* Enhanced desktop navigation controls */}
+            {enableOrbitControls && (
+              <EnhancedOrbitControls
+                ref={cameraControlsRef}
+                cameraConfig={cameraConfig}
+              />
+            )}
+          </XR>
+        ) : (
+          /* Fallback when XR store is not available - render without XR wrapper */
+          <>
+            {/* Lighting setup */}
+            <ambientLight intensity={ambientLightIntensity} />
+            <pointLight position={[10, 10, 10]} intensity={pointLightIntensity} />
+            <pointLight position={[-10, -10, -10]} intensity={pointLightIntensity * 0.5} />
+            
+            {/* Main graph scene with force-directed layout */}
+            <GraphScene 
+              config={config} 
+              showSimulationControls={showSimulationControls}
+              cameraControlsRef={cameraControlsRef}
+              showXRInputDebug={showXRInputDebug}
+              onVRNodeSelect={onVRNodeSelect}
+              onVRNodeHover={onVRNodeHover}
+              onVRDragStart={onVRDragStart}
+              onVRDragEnd={onVRDragEnd}
             />
-          )}
-          
-          {/* Enhanced desktop navigation controls */}
-          {enableOrbitControls && (
-            <EnhancedOrbitControls
-              ref={cameraControlsRef}
-              cameraConfig={cameraConfig}
-            />
-          )}
-        </XR>
+            
+            {/* Enhanced desktop navigation controls */}
+            {enableOrbitControls && (
+              <EnhancedOrbitControls
+                ref={cameraControlsRef}
+                cameraConfig={cameraConfig}
+              />
+            )}
+          </>
+        )}
       </Canvas>
     </div>
   );

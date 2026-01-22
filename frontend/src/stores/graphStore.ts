@@ -272,13 +272,15 @@ export const convert3Dto2D = (
  */
 const transformNode = (node: GraphNode): Node<GraphNodeData> => {
   const position2D = node.position ?? { x: Math.random() * 500, y: Math.random() * 500 };
+  // Ensure node type is lowercase to match react-flow nodeTypes keys
+  const nodeType = node.type?.toLowerCase() ?? 'default';
   return {
     id: node.id,
-    type: node.type,
+    type: nodeType,
     position: position2D,
     data: {
       label: node.label,
-      type: node.type,
+      type: nodeType,
       properties: node.properties,
     },
   };

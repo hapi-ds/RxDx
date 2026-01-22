@@ -7,14 +7,38 @@
  * References: Requirement 16 (Dual Frontend Interface)
  */
 
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef, Suspense } from 'react';
 import { GraphView2D } from '../components/graph/GraphView2D';
-import { GraphView3D } from '../components/graph/GraphView3D';
 import { GraphExport, type ExportFormat } from '../components/graph/GraphExport';
 import { NodeEditor } from '../components/graph/NodeEditor';
 import { ViewModeToggle } from '../components/graph/ViewModeToggle';
 import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
+
+// Lazy load GraphView3D to prevent WebGL errors from crashing the entire page
+const GraphView3D = React.lazy(() => 
+  import('../components/graph/GraphView3D')
+    .then(module => ({ default: module.GraphView3D }))
+    .catch(() => ({ 
+      default: () => (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          height: '100%',
+          background: '#f9fafb',
+          padding: '2rem'
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <h3 style={{ color: '#dc2626', marginBottom: '0.5rem' }}>3D View Unavailable</h3>
+            <p style={{ color: '#666' }}>
+              WebGL is required for 3D visualization. Please use 2D view instead.
+            </p>
+          </div>
+        </div>
+      )
+    }))
+);
 
 export function GraphExplorer(): React.ReactElement {
   const {
@@ -354,21 +378,36 @@ export function GraphExplorer(): React.ReactElement {
             renderToolbarContent={renderExportButton}
           />
         ) : (
-          <GraphView3D
-            className="graph-view"
-            showVRButton={true}
-            showARButton={false}
-            enableOrbitControls={true}
-            showSimulationControls={true}
-            showCameraControls={true}
-            autoRotate={false}
-            enableKeyboardNavigation={true}
-            showXRStatus={true}
-            enableControllers={true}
-            enableHandTracking={true}
-            enableVoiceCommands={true}
-            showVoiceUI={true}
-          />
+          <Suspense fallback={
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              height: '100%',
+              background: '#f9fafb'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div className="loading-spinner" />
+                <span style={{ color: '#666', marginTop: '1rem', display: 'block' }}>Loading 3D View...</span>
+              </div>
+            </div>
+          }>
+            <GraphView3D
+              className="graph-view"
+              showVRButton={true}
+              showARButton={false}
+              enableOrbitControls={true}
+              showSimulationControls={true}
+              showCameraControls={true}
+              autoRotate={false}
+              enableKeyboardNavigation={true}
+              showXRStatus={true}
+              enableControllers={true}
+              enableHandTracking={true}
+              enableVoiceCommands={true}
+              showVoiceUI={true}
+            />
+          </Suspense>
         )}
 
         {/* Node Editor Panel */}

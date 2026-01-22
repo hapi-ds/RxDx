@@ -2,30 +2,39 @@
  * Main App component with routing
  */
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './pages/Login';
 import { Requirements } from './pages/Requirements';
-import { GraphExplorer } from './pages/GraphExplorer';
 import { TestsPage } from './pages/TestsPage';
 import { RisksPage } from './pages/RisksPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { KanbanPage } from './pages/KanbanPage';
 import { DocumentsPage } from './pages/DocumentsPage';
-import { ProtectedRoute, NavigationHeader } from './components/common';
+import { ProtectedRoute, NavigationHeader, LoadingPage } from './components/common';
 import { useAuthStore } from './stores/authStore';
+
+// Lazy load GraphExplorer to prevent module-level errors from blocking the app
+const GraphExplorer = React.lazy(() => 
+  import('./pages/GraphExplorer').then(module => ({ default: module.GraphExplorer }))
+);
 
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
 
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
+}
+
 class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
+  ErrorBoundaryProps,
   ErrorBoundaryState
 > {
-  constructor(props: { children: React.ReactNode }) {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -34,8 +43,15 @@ class ErrorBoundary extends React.Component<
     return { hasError: true, error };
   }
 
+  handleReset = (): void => {
+    this.setState({ hasError: false, error: null });
+  };
+
   render() {
     if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
       return (
         <div style={{ padding: '2rem', textAlign: 'center' }}>
           <h2>Something went wrong</h2>
@@ -55,6 +71,39 @@ class ErrorBoundary extends React.Component<
     }
     return this.props.children;
   }
+}
+
+/**
+ * Page-level error boundary that preserves navigation
+ */
+function PageErrorBoundary({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <ErrorBoundary
+      fallback={
+        <div style={{ padding: '2rem', textAlign: 'center', background: '#fff', margin: '1rem', borderRadius: '8px' }}>
+          <h2 style={{ color: '#dc2626' }}>Page Error</h2>
+          <p style={{ color: '#666', marginBottom: '1rem' }}>
+            This page encountered an error. You can navigate to another page or try reloading.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+            }}
+          >
+            Reload Page
+          </button>
+        </div>
+      }
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }
 
 function AppLayout({ children }: { children: React.ReactNode }): React.ReactElement {
@@ -95,85 +144,99 @@ function AuthRedirect(): React.ReactElement {
 
 function App(): React.ReactElement {
   return (
-    <ErrorBoundary>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/requirements"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/requirements"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
                   <Requirements />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/graph"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
-                  <GraphExplorer />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/tests"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/graph"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
+                  <Suspense fallback={<LoadingPage message="Loading Graph Explorer..." />}>
+                    <GraphExplorer />
+                  </Suspense>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/tests"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
                   <TestsPage />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/risks"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/risks"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
                   <RisksPage />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/schedule"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/schedule"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
                   <SchedulePage />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/kanban"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/kanban"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
                   <KanbanPage />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route
-            path="/documents"
-            element={
-              <AppLayout>
-                <ProtectedRoute>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/documents"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
                   <DocumentsPage />
-                </ProtectedRoute>
-              </AppLayout>
-            }
-          />
-          <Route path="/" element={<AuthRedirect />} />
-          <Route path="*" element={<AuthRedirect />} />
-        </Routes>
-      </BrowserRouter>
-    </ErrorBoundary>
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route path="/" element={<AuthRedirect />} />
+        <Route path="*" element={<AuthRedirect />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

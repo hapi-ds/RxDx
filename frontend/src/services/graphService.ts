@@ -65,6 +65,118 @@ export interface RiskChain {
   }>;
 }
 
+/**
+ * Raw node format from backend API
+ */
+interface BackendNode {
+  id: string;
+  type: string;
+  label: string;
+  status?: string;
+  priority?: number;
+  description?: string;
+  color?: string;
+  size?: number;
+  properties: Record<string, unknown>;
+  reactFlow?: {
+    id: string;
+    type: string;
+    position: { x: number; y: number };
+    data: Record<string, unknown>;
+    style?: Record<string, unknown>;
+    className?: string;
+  };
+  r3f?: {
+    id: string;
+    position: [number, number, number];
+    type: string;
+    label: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Raw edge format from backend API
+ */
+interface BackendEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: string;
+  label?: string;
+  properties?: Record<string, unknown>;
+  reactFlow?: {
+    id: string;
+    source: string;
+    target: string;
+    type: string;
+    label?: string;
+    [key: string]: unknown;
+  };
+  r3f?: {
+    id: string;
+    source: string;
+    target: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Raw response format from backend API
+ */
+interface BackendGraphResponse {
+  nodes: BackendNode[];
+  edges: BackendEdge[];
+  metadata?: {
+    total_nodes: number;
+    total_edges: number;
+    depth: number;
+    center_node: string | null;
+    truncated: boolean;
+    performance_stats?: Record<string, unknown>;
+  };
+}
+
+/**
+ * Transform backend node to frontend GraphNode format
+ */
+function transformBackendNode(backendNode: BackendNode): GraphNode {
+  // Extract position from reactFlow data if available, otherwise use random position
+  const position = backendNode.reactFlow?.position ?? {
+    x: Math.random() * 500,
+    y: Math.random() * 500,
+  };
+
+  return {
+    id: backendNode.id,
+    type: backendNode.type?.toLowerCase() ?? 'default',
+    label: backendNode.label,
+    properties: {
+      ...backendNode.properties,
+      status: backendNode.status,
+      priority: backendNode.priority,
+      description: backendNode.description,
+      color: backendNode.color,
+      size: backendNode.size,
+    },
+    position,
+  };
+}
+
+/**
+ * Transform backend edge to frontend GraphEdge format
+ */
+function transformBackendEdge(backendEdge: BackendEdge): GraphEdge {
+  return {
+    id: backendEdge.id,
+    source: backendEdge.source,
+    target: backendEdge.target,
+    type: backendEdge.type,
+    label: backendEdge.label,
+    properties: backendEdge.properties,
+  };
+}
+
 class GraphService {
   private readonly basePath = '/api/v1/graph';
 
@@ -87,8 +199,13 @@ class GraphService {
         ? `${this.basePath}/visualization?${queryParams.toString()}`
         : `${this.basePath}/visualization`;
 
-      const response = await apiClient.get<GraphData>(url);
-      return response.data;
+      const response = await apiClient.get<BackendGraphResponse>(url);
+      
+      // Transform backend response to frontend format
+      const nodes = response.data.nodes.map(transformBackendNode);
+      const edges = response.data.edges.map(transformBackendEdge);
+
+      return { nodes, edges };
     } catch (error) {
       throw new Error(getErrorMessage(error));
     }

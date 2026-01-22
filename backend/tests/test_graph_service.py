@@ -632,18 +632,24 @@ class TestGraphVisualizationMethods:
         # Mock center node
         center_node = {"id": "center-1", "type": "requirement", "title": "Center"}
         
-        # Mock query results
-        query_results = [
+        # Mock node query results (first query returns nodes)
+        node_query_results = [
+            {"id": "related-1", "type": "test", "title": "Related Test", "properties": {"id": "related-1"}}
+        ]
+        
+        # Mock relationship query results (second query returns relationships)
+        rel_query_results = [
             {
-                "n": {"id": "related-1", "type": "test", "title": "Related Test"},
-                "rels": [
-                    {"start_id": "center-1", "end_id": "related-1", "type": "TESTED_BY"}
-                ]
+                "rel": {"type": "TESTED_BY", "properties": {}},
+                "start_id": "center-1",
+                "end_id": "related-1",
+                "rel_type": "TESTED_BY"
             }
         ]
         
         graph_service.get_node = AsyncMock(return_value=center_node)
-        graph_service.execute_query = AsyncMock(return_value=query_results)
+        # execute_query is called twice: once for nodes, once for relationships
+        graph_service.execute_query = AsyncMock(side_effect=[node_query_results, rel_query_results])
         
         nodes, edges = await graph_service._get_subgraph_around_node(
             center_node_id="center-1",
@@ -658,16 +664,16 @@ class TestGraphVisualizationMethods:
         assert len(edges) == 1
         
         # Verify center node is included
-        center_found = any(node["id"] == "center-1" for node in nodes)
+        center_found = any(node.get("id") == "center-1" for node in nodes)
         assert center_found
         
-        # Verify query was called with correct filters
-        call_args = graph_service.execute_query.call_args[0][0]
-        assert "center-1" in call_args
-        assert ":TESTED_BY" in call_args
-        assert "n:requirement OR n:test" in call_args
-        assert "*1..2" in call_args
-        assert "LIMIT 100" in call_args
+        # Verify first query was called with correct filters (node query)
+        first_call_args = graph_service.execute_query.call_args_list[0][0][0]
+        assert "center-1" in first_call_args
+        assert ":TESTED_BY" in first_call_args
+        assert "n:requirement OR n:test" in first_call_args
+        assert "*1..2" in first_call_args
+        assert "LIMIT 100" in first_call_args
         
     @pytest.mark.asyncio
     async def test_get_full_graph(self, graph_service):
@@ -678,12 +684,13 @@ class TestGraphVisualizationMethods:
             {"id": "node-2", "type": "test"}
         ]
         
-        # Mock relationship query results
+        # Mock relationship query results - new format with map return
         rel_results = [
             {
-                "r": {"type": "TESTED_BY", "properties": {}},
+                "rel": {"type": "TESTED_BY", "properties": {}},
                 "start_id": "node-1",
-                "end_id": "node-2"
+                "end_id": "node-2",
+                "rel_type": "TESTED_BY"
             }
         ]
         

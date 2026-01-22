@@ -740,22 +740,20 @@ class GraphService:
             rel_types_str = "|".join(relationship_types)
             rel_filter = f":{rel_types_str}"
             
-        # Query to get nodes and relationships within depth
-        query = f"""
+        # Query to get nodes within depth - return as single result map
+        node_query = f"""
         MATCH (center {{id: '{center_node_id}'}})
         MATCH path = (center)-[{rel_filter}*1..{depth}]-(n)
         WHERE true {node_filter}
-        WITH DISTINCT n, relationships(path) as rels
+        WITH DISTINCT n
         LIMIT {limit}
-        RETURN n, rels
+        RETURN n
         """
         
-        results = await self.execute_query(query)
+        node_results = await self.execute_query(node_query)
         
         nodes = []
-        edges = []
         seen_nodes = set()
-        seen_edges = set()
         
         # Add center node first
         center_node = await self.get_node(center_node_id)
@@ -763,25 +761,49 @@ class GraphService:
             nodes.append(center_node)
             seen_nodes.add(center_node_id)
         
-        # Process results
-        for result in results:
-            node = result.get('n')
-            relationships = result.get('rels', [])
-            
-            # Add node if not seen
-            if node and 'id' in node:
-                node_id = node['id']
-                if node_id not in seen_nodes:
+        # Process node results
+        for result in node_results:
+            if result:
+                node = result
+                if 'properties' in node:
+                    node_id = node['properties'].get('id')
+                else:
+                    node_id = node.get('id')
+                    
+                if node_id and node_id not in seen_nodes:
                     nodes.append(node)
                     seen_nodes.add(node_id)
+        
+        # Now get relationships between the found nodes
+        edges = []
+        if len(seen_nodes) > 1:
+            # Build a query to get relationships between the found nodes
+            node_ids_str = "', '".join(seen_nodes)
+            rel_query = f"""
+            MATCH (a)-[r{rel_filter}]->(b)
+            WHERE a.id IN ['{node_ids_str}'] AND b.id IN ['{node_ids_str}']
+            RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r)}}
+            LIMIT {limit * 2}
+            """
+            
+            rel_results = await self.execute_query(rel_query)
+            seen_edges = set()
+            
+            for result in rel_results:
+                if result:
+                    edge_data = {}
+                    if 'rel' in result and result['rel']:
+                        if isinstance(result['rel'], dict):
+                            edge_data = result['rel'].copy()
+                    edge_data['start_id'] = result.get('start_id')
+                    edge_data['end_id'] = result.get('end_id')
+                    edge_data['type'] = result.get('rel_type', 'RELATED')
                     
-            # Add relationships
-            for rel in relationships:
-                if isinstance(rel, dict) and 'start_id' in rel and 'end_id' in rel:
-                    edge_key = f"{rel['start_id']}-{rel['end_id']}-{rel.get('type', 'RELATED')}"
-                    if edge_key not in seen_edges:
-                        edges.append(rel)
-                        seen_edges.add(edge_key)
+                    if edge_data.get('start_id') and edge_data.get('end_id'):
+                        edge_key = f"{edge_data['start_id']}-{edge_data['end_id']}-{edge_data['type']}"
+                        if edge_key not in seen_edges:
+                            edges.append(edge_data)
+                            seen_edges.add(edge_key)
                         
         return nodes, edges
         
@@ -804,23 +826,33 @@ class GraphService:
         node_results = await self.execute_query(node_query)
         nodes = [result for result in node_results if result]
         
-        # Build relationship query
+        # Build relationship query - return only the relationship with embedded start/end info
+        # We need to collect start_id and end_id within the relationship properties
         rel_query = "MATCH (a)-[r]->(b)"
         if relationship_types:
             rel_types_str = "|".join(relationship_types)
             rel_query = f"MATCH (a)-[r:{rel_types_str}]->(b)"
-        rel_query += " RETURN r, a.id as start_id, b.id as end_id LIMIT " + str(limit * 2)
+        # Return a map containing all needed info as a single result
+        rel_query += f" RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r)}} LIMIT {limit * 2}"
         
         # Get relationships
         rel_results = await self.execute_query(rel_query)
         edges = []
         
         for result in rel_results:
-            if 'r' in result and 'start_id' in result and 'end_id' in result:
-                edge_data = result['r']
-                edge_data['start_id'] = result['start_id']
-                edge_data['end_id'] = result['end_id']
-                edges.append(edge_data)
+            if result:
+                # Result is now a map with rel, start_id, end_id, rel_type
+                edge_data = {}
+                if 'rel' in result and result['rel']:
+                    if isinstance(result['rel'], dict):
+                        edge_data = result['rel'].copy()
+                    else:
+                        edge_data = {}
+                edge_data['start_id'] = result.get('start_id')
+                edge_data['end_id'] = result.get('end_id')
+                edge_data['type'] = result.get('rel_type', 'RELATED')
+                if edge_data.get('start_id') and edge_data.get('end_id'):
+                    edges.append(edge_data)
                 
         return nodes, edges
         

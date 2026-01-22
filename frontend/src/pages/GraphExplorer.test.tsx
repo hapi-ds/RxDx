@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GraphExplorer } from './GraphExplorer';
 import { useGraphStore } from '../stores/graphStore';
@@ -408,7 +408,7 @@ describe('GraphExplorer', () => {
       expect(screen.queryByTestId('graph-view-3d')).not.toBeInTheDocument();
     });
 
-    it('renders GraphView3D when viewMode is 3d', () => {
+    it('renders GraphView3D when viewMode is 3d', async () => {
       mockUseGraphStore.mockReturnValue({
         ...defaultStoreState,
         viewMode: '3d',
@@ -416,7 +416,10 @@ describe('GraphExplorer', () => {
 
       render(<GraphExplorer />);
 
-      expect(screen.getByTestId('graph-view-3d')).toBeInTheDocument();
+      // Wait for lazy-loaded GraphView3D to appear
+      await waitFor(() => {
+        expect(screen.getByTestId('graph-view-3d')).toBeInTheDocument();
+      });
       expect(screen.queryByTestId('graph-view-2d')).not.toBeInTheDocument();
     });
   });

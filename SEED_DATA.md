@@ -13,8 +13,8 @@ All seed users have the same default password: `password123`
 | Email | Name | Role | Active | Description |
 |-------|------|------|--------|-------------|
 | admin@rxdx.example.com | System Administrator | admin | Yes | Full system access, can manage users and settings |
-| pm@rxdx.example.com | Project Manager | project_manager | Yes | Can manage projects, requirements, and assign tasks |
-| validator@rxdx.example.com | Quality Validator | validator | Yes | Can validate and approve workitems |
+| pm@rxdx.example.com | Projvalidator@rxdx.example.comect Manager | project_manager | Yes | Can manage projects, requirements, and assign tasks |
+|  | Quality Validator | validator | Yes | Can validate and approve workitems |
 | auditor@rxdx.example.com | Compliance Auditor | auditor | Yes | Read-only access to audit logs and compliance data |
 | developer@rxdx.example.com | Software Developer | user | Yes | Standard user, can create and update workitems |
 | tester@rxdx.example.com | QA Tester | user | Yes | Standard user, focused on test execution |

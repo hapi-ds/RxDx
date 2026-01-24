@@ -350,11 +350,10 @@ docker compose up frontend --build
 
 ## License
 
-[Your License Here]
+Apache License 2.0
 
 ## Support
 
 For issues and questions:
 - GitHub Issues: [repository-url]/issues
 - Documentation: [documentation-url]
-- Email: support@rxdx.example.com

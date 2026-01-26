@@ -28,11 +28,11 @@ pwd_context = CryptContext(
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain password against a hashed password.
-    
+
     Args:
         plain_password: The plain text password to verify
         hashed_password: The hashed password to compare against
-        
+
     Returns:
         True if the password matches, False otherwise
     """
@@ -42,10 +42,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     """
     Hash a password using bcrypt.
-    
+
     Args:
         password: The plain text password to hash
-        
+
     Returns:
         The hashed password
     """
@@ -57,11 +57,11 @@ def create_access_token(
 ) -> str:
     """
     Create a JWT access token.
-    
+
     Args:
         data: The data to encode in the token (typically user_id and email)
         expires_delta: Optional custom expiration time (defaults to 30 minutes)
-        
+
     Returns:
         The encoded JWT token
     """
@@ -83,10 +83,10 @@ def create_access_token(
 def decode_access_token(token: str) -> dict | None:
     """
     Decode and verify a JWT access token.
-    
+
     Args:
         token: The JWT token to decode
-        
+
     Returns:
         The decoded token payload, or None if invalid
     """
@@ -102,10 +102,10 @@ def decode_access_token(token: str) -> dict | None:
 def extract_user_id_from_token(token: str) -> UUID | None:
     """
     Extract user ID from a JWT token.
-    
+
     Args:
         token: The JWT token
-        
+
     Returns:
         The user ID if valid, None otherwise
     """
@@ -131,7 +131,7 @@ def extract_user_id_from_token(token: str) -> UUID | None:
 class Permission(str, Enum):
     """
     Permission enumeration for RBAC.
-    
+
     Defines all possible permissions in the system:
     - READ_WORKITEM: View work items
     - WRITE_WORKITEM: Create and modify work items
@@ -184,11 +184,11 @@ ROLE_PERMISSIONS: dict[UserRole, list[Permission]] = {
 def has_permission(user_role: UserRole, permission: Permission) -> bool:
     """
     Check if a user role has a specific permission.
-    
+
     Args:
         user_role: The user's role
         permission: The permission to check
-        
+
     Returns:
         True if the role has the permission, False otherwise
     """
@@ -198,18 +198,18 @@ def has_permission(user_role: UserRole, permission: Permission) -> bool:
 def require_permission(permission: Permission) -> Callable:
     """
     Decorator to require a specific permission for an endpoint.
-    
+
     Usage:
         @require_permission(Permission.WRITE_WORKITEM)
         async def create_workitem(current_user: User = Depends(get_current_user)):
             ...
-    
+
     Args:
         permission: The required permission
-        
+
     Returns:
         Decorator function
-        
+
     Raises:
         HTTPException: 403 Forbidden if user lacks the permission
     """

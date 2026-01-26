@@ -70,16 +70,16 @@ async def generate_design_review(
 ) -> DesignReviewResponse:
     """
     Generate a design phase review PDF document.
-    
+
     This endpoint generates a PDF document containing:
     - All requirements for the specified project
     - Requirement details (title, description, version, status, priority)
     - Digital signatures (if include_signatures is True)
     - Version history (if include_version_history is True)
-    
+
     The generated document is stored and can be downloaded using the
     GET /api/v1/documents/{id} endpoint.
-    
+
     **Required Permission:** READ_WORKITEM
     """
     try:
@@ -119,17 +119,17 @@ async def generate_traceability_matrix(
 ) -> TraceabilityMatrixResponse:
     """
     Generate a requirements traceability matrix PDF document.
-    
+
     This endpoint generates a PDF document containing:
     - Requirements with their linked tests and risks
     - Test coverage information
     - Risk linkage information
     - Signature status for each item
     - Coverage percentage summary
-    
+
     The generated document is stored and can be downloaded using the
     GET /api/v1/documents/{id} endpoint.
-    
+
     **Required Permission:** READ_WORKITEM
     """
     try:
@@ -169,7 +169,7 @@ async def generate_fmea(
 ) -> FMEAResponse:
     """
     Generate an FMEA Excel document.
-    
+
     This endpoint generates an Excel document containing:
     - All risks with severity, occurrence, and detection ratings
     - RPN (Risk Priority Number) calculations
@@ -177,10 +177,10 @@ async def generate_fmea(
     - Mitigation actions and their status
     - Color-coded RPN values for quick risk assessment
     - Summary sheet with statistics
-    
+
     The generated document is stored and can be downloaded using the
     GET /api/v1/documents/{id} endpoint.
-    
+
     **Required Permission:** READ_WORKITEM
     """
     try:
@@ -220,7 +220,7 @@ async def generate_invoice(
 ) -> InvoiceResponse:
     """
     Generate an invoice Word document.
-    
+
     This endpoint generates a Word document containing:
     - Invoice header with number and date
     - Client information
@@ -228,12 +228,12 @@ async def generate_invoice(
     - Line items aggregated from time entries
     - Subtotal, tax, and total calculations
     - Custom notes
-    
+
     The document can use a custom Word template if specified.
-    
+
     The generated document is stored and can be downloaded using the
     GET /api/v1/documents/{id} endpoint.
-    
+
     **Required Permission:** READ_WORKITEM
     """
     try:
@@ -271,10 +271,10 @@ async def get_document(
 ):
     """
     Retrieve a generated document by ID.
-    
+
     This endpoint returns the document metadata. To download the actual
     document content, use the download_url provided in the response.
-    
+
     **Required Permission:** READ_WORKITEM
     """
     document = await document_service.get_document(document_id, current_user)
@@ -301,9 +301,9 @@ async def download_document(
 ):
     """
     Download a generated document file.
-    
+
     Returns the document as a file download with appropriate content type.
-    
+
     **Required Permission:** READ_WORKITEM
     """
     document = await document_service.get_document(document_id, current_user)
@@ -361,12 +361,12 @@ async def list_documents(
 ):
     """
     List generated documents with optional filtering.
-    
+
     - **project_id**: Filter by project ID
     - **document_type**: Filter by document type (design_review, traceability_matrix, fmea, invoice)
     - **limit**: Maximum number of results (1-1000)
     - **offset**: Number of results to skip for pagination
-    
+
     **Required Permission:** READ_WORKITEM
     """
     documents = await document_service.list_documents(

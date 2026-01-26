@@ -24,9 +24,9 @@ class TestRBACProperties:
     def test_property_all_roles_have_permissions(self, role: UserRole):
         """
         Property: Every role must have a non-empty list of permissions.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that the ROLE_PERMISSIONS mapping is complete and
         every role has at least one permission defined.
         """
@@ -38,9 +38,9 @@ class TestRBACProperties:
     def test_property_admin_has_all_permissions(self, permission: Permission):
         """
         Property: Admin role must have every possible permission.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that the admin role is truly a superuser with
         unrestricted access to all system functionality.
         """
@@ -53,9 +53,9 @@ class TestRBACProperties:
     ):
         """
         Property: has_permission must be consistent with ROLE_PERMISSIONS.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that the has_permission function correctly reflects
         the ROLE_PERMISSIONS mapping without any discrepancies.
         """
@@ -67,9 +67,9 @@ class TestRBACProperties:
     def test_property_read_permission_universal(self, role: UserRole):
         """
         Property: All roles must have READ_WORKITEM permission.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that every user can at least read work items,
         which is fundamental to system usability.
         """
@@ -79,9 +79,9 @@ class TestRBACProperties:
     def test_property_manage_users_admin_only(self, role: UserRole):
         """
         Property: Only admin can manage users.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that user management is restricted to administrators,
         maintaining security and access control integrity.
         """
@@ -95,9 +95,9 @@ class TestRBACProperties:
     def test_property_permissions_subset_of_admin(self, role: UserRole):
         """
         Property: Every role's permissions must be a subset of admin permissions.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures proper permission hierarchy where admin has all
         permissions that any other role might have.
         """
@@ -109,9 +109,9 @@ class TestRBACProperties:
     def test_property_at_least_one_role_has_permission(self, permission: Permission):
         """
         Property: Every permission must be assigned to at least one role.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that no permission is orphaned and every defined
         permission is actually used by at least one role.
         """
@@ -124,9 +124,9 @@ class TestRBACProperties:
     def test_property_auditor_read_only_workitems(self, role: UserRole):
         """
         Property: Auditor can only read work items, not modify them.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures auditors maintain independence and cannot alter
         the data they are auditing.
         """
@@ -140,9 +140,9 @@ class TestRBACProperties:
     def test_property_validator_can_sign(self, role: UserRole):
         """
         Property: Validator and above can sign work items.
-        
+
         **Validates: Requirements 1.3, 2.1**
-        
+
         This ensures that validators, project managers, and admins
         can digitally sign work items for compliance.
         """
@@ -162,9 +162,9 @@ class TestRBACProperties:
     def test_property_view_audit_restricted(self, role: UserRole):
         """
         Property: Only admin and auditor can view audit logs.
-        
+
         **Validates: Requirements 1.3, 13.1**
-        
+
         This ensures audit logs are only accessible to authorized
         personnel for compliance and security.
         """
@@ -186,9 +186,9 @@ class TestRBACProperties:
     ):
         """
         Property: Permission checks must be deterministic.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures that checking the same permission for the same role
         always returns the same result (no randomness or state dependency).
         """
@@ -204,9 +204,9 @@ class TestRBACProperties:
     def test_property_no_duplicate_permissions(self, role: UserRole):
         """
         Property: No role should have duplicate permissions.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures the ROLE_PERMISSIONS mapping is clean and
         doesn't contain redundant permission entries.
         """
@@ -217,9 +217,9 @@ class TestRBACProperties:
     def test_property_project_manager_superset_of_user(self, role: UserRole):
         """
         Property: Project manager permissions are superset of user permissions.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures proper permission hierarchy where project managers
         can do everything regular users can do, plus more.
         """
@@ -232,9 +232,9 @@ class TestRBACProperties:
     def test_property_permission_enum_values_unique(self, permission: Permission):
         """
         Property: All permission enum values must be unique.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures no two permissions have the same string value,
         preventing ambiguity in permission checks.
         """
@@ -245,9 +245,9 @@ class TestRBACProperties:
     def test_property_delete_implies_write(self, role: UserRole):
         """
         Property: If a role can delete, it must also be able to write.
-        
+
         **Validates: Requirements 1.3**
-        
+
         This ensures logical consistency where deletion permission
         implies the ability to modify work items.
         """

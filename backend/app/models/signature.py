@@ -12,12 +12,12 @@ from app.db.session import Base
 class DigitalSignature(Base):
     """
     Digital signature model for cryptographic document signing.
-    
+
     This model stores cryptographic signatures for WorkItems to ensure document
     integrity and provide non-repudiation for regulatory compliance. Each signature
     is tied to a specific version of a WorkItem and becomes invalid when the
     WorkItem is modified.
-    
+
     Attributes:
         id: Unique signature identifier (UUID)
         workitem_id: ID of the signed WorkItem (indexed for efficient queries)

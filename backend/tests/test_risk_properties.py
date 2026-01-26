@@ -46,7 +46,7 @@ def rpn_threshold_strategy(draw):
 class TestRPNCalculationProperties:
     """
     Property-based tests for RPN calculation.
-    
+
     **Validates: Requirement 10.4**
     **Statement**: RPN is always severity × occurrence × detection
     **Formal**: ∀ risk r, rpn(r) = severity(r) × occurrence(r) × detection(r)
@@ -61,7 +61,7 @@ class TestRPNCalculationProperties:
     def test_rpn_equals_product_of_ratings(self, severity, occurrence, detection):
         """
         Property: RPN always equals severity × occurrence × detection.
-        
+
         **Validates: Requirement 10.4**
         """
         service = RiskService(
@@ -85,7 +85,7 @@ class TestRPNCalculationProperties:
     def test_rpn_range_is_valid(self, severity, occurrence, detection):
         """
         Property: RPN is always between 1 and 1000 (inclusive).
-        
+
         **Validates: Requirement 10.4**
         """
         service = RiskService(
@@ -111,7 +111,7 @@ class TestRPNCalculationProperties:
     def test_rpn_is_commutative_in_factors(self, s1, o1, d1, s2, o2, d2):
         """
         Property: RPN calculation is deterministic - same inputs always give same output.
-        
+
         **Validates: Requirement 10.4**
         """
         service = RiskService(
@@ -136,7 +136,7 @@ class TestRPNCalculationProperties:
     def test_rpn_increases_with_higher_ratings(self, severity, occurrence, detection):
         """
         Property: Increasing any rating increases or maintains RPN.
-        
+
         **Validates: Requirement 10.4**
         """
         service = RiskService(
@@ -171,13 +171,13 @@ class TestRPNCalculationProperties:
 def calculate_chain_probability(probabilities):
     """
     Calculate total probability for a failure chain.
-    
+
     This is a standalone function for testing purposes.
     The actual implementation is in GraphService._calculate_chain_probability
-    
+
     Args:
         probabilities: List of individual step probabilities
-        
+
     Returns:
         Combined probability (product of all probabilities)
     """
@@ -197,7 +197,7 @@ def calculate_chain_probability(probabilities):
 class TestFailureChainProbabilityProperties:
     """
     Property-based tests for failure chain probability calculation.
-    
+
     **Validates: Requirement 10.3, 10.9**
     **Statement**: Chain probability is product of individual probabilities
     **Formal**: P(chain) = ∏ P(step_i) for all steps i in chain
@@ -208,7 +208,7 @@ class TestFailureChainProbabilityProperties:
     def test_chain_probability_is_product(self, probabilities):
         """
         Property: Total chain probability equals product of step probabilities.
-        
+
         **Validates: Requirement 10.3**
         """
         # Calculate expected product
@@ -227,7 +227,7 @@ class TestFailureChainProbabilityProperties:
     def test_chain_probability_range(self, probabilities):
         """
         Property: Chain probability is always between 0 and 1.
-        
+
         **Validates: Requirement 10.3**
         """
         result = calculate_chain_probability(probabilities)
@@ -239,7 +239,7 @@ class TestFailureChainProbabilityProperties:
     def test_chain_probability_decreases_with_length(self, probabilities):
         """
         Property: Adding more steps (with prob < 1) decreases total probability.
-        
+
         **Validates: Requirement 10.3**
         """
         # Skip if any probability is 1.0 (wouldn't decrease)
@@ -259,7 +259,7 @@ class TestFailureChainProbabilityProperties:
     def test_single_step_chain_equals_step_probability(self, probability):
         """
         Property: Single-step chain probability equals the step probability.
-        
+
         **Validates: Requirement 10.3**
         """
         result = calculate_chain_probability([probability])
@@ -269,7 +269,7 @@ class TestFailureChainProbabilityProperties:
     def test_empty_chain_returns_zero(self):
         """
         Property: Empty chain has zero probability.
-        
+
         **Validates: Requirement 10.3**
         """
         result = calculate_chain_probability([])
@@ -284,7 +284,7 @@ class TestFailureChainProbabilityProperties:
 class TestMitigationRequirementProperties:
     """
     Property-based tests for mitigation requirement determination.
-    
+
     **Validates: Requirement 10.6**
     **Statement**: High RPN risks require mitigation actions
     **Formal**: ∀ risk r, rpn(r) > threshold → requires_mitigation(r)
@@ -300,7 +300,7 @@ class TestMitigationRequirementProperties:
     def test_high_rpn_requires_mitigation(self, severity, occurrence, detection, thresholds):
         """
         Property: Risks with RPN >= high threshold require mitigation.
-        
+
         **Validates: Requirement 10.6**
         """
         service = RiskService(
@@ -329,7 +329,7 @@ class TestMitigationRequirementProperties:
     def test_risk_level_consistency(self, severity, occurrence, detection, thresholds):
         """
         Property: Risk level is consistent with RPN and thresholds.
-        
+
         **Validates: Requirement 10.6**
         """
         service = RiskService(
@@ -361,7 +361,7 @@ class TestMitigationRequirementProperties:
     def test_critical_risks_always_require_mitigation(self, severity, occurrence, detection):
         """
         Property: Critical risks always require mitigation.
-        
+
         **Validates: Requirement 10.6**
         """
         service = RiskService(
@@ -387,7 +387,7 @@ class TestMitigationRequirementProperties:
     def test_low_risks_never_require_mitigation(self, severity, occurrence, detection):
         """
         Property: Low risks never require mitigation (with default thresholds).
-        
+
         **Validates: Requirement 10.6**
         """
         service = RiskService(
@@ -412,7 +412,7 @@ class TestMitigationRequirementProperties:
 class TestRPNReductionProperties:
     """
     Property-based tests for RPN reduction after mitigation.
-    
+
     **Validates: Requirement 10.8**
     """
 
@@ -436,7 +436,7 @@ class TestRPNReductionProperties:
     ):
         """
         Property: Mitigation actions reduce or maintain RPN (never increase).
-        
+
         **Validates: Requirement 10.8**
         """
         service = RiskService(
@@ -473,7 +473,7 @@ class TestRPNReductionProperties:
     ):
         """
         Property: Maximum mitigation (all ratings to 1) achieves minimum RPN of 1.
-        
+
         **Validates: Requirement 10.8**
         """
         service = RiskService(

@@ -74,6 +74,13 @@ line-length = 88
 target-version = "py311"
 select = ["E", "F", "I", "N", "W", "UP"]
 ignore = ["E501"]
+extend-safe-fixes = ["W293"]        # Blank line contains whitespace
+
+[tool.ruff.lint.per-file-ignores]
+# Ignore E712 in all files under the tests directory
+"tests/**/*.py" = ["E712", "F811", "F841"]
+# ignore here too
+"app/services/signature_service.py" = ["E712"]
 
 [tool.black]
 line-length = 88

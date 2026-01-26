@@ -18,17 +18,17 @@ async def login(
 ) -> TokenResponse:
     """
     Authenticate user and return JWT access token.
-    
+
     **Requirement 1.1**: Requires valid authentication credentials
     **Requirement 1.4**: Locks account after 3 failed attempts
-    
+
     Args:
         login_data: User email and password
         auth_service: Authentication service instance
-        
+
     Returns:
         JWT access token with expiration time
-        
+
     Raises:
         HTTPException 401: Invalid credentials
         HTTPException 423: Account locked due to failed attempts
@@ -70,13 +70,13 @@ async def refresh_token(
 ) -> TokenResponse:
     """
     Refresh JWT access token.
-    
+
     **Requirement 1.2**: Establishes secure session with token refresh
-    
+
     Args:
         current_user: Current authenticated user
         auth_service: Authentication service instance
-        
+
     Returns:
         New JWT access token with expiration time
     """
@@ -96,13 +96,13 @@ async def logout(
 ) -> None:
     """
     Logout user (client-side token invalidation).
-    
+
     **Requirement 1.6**: Session management
-    
+
     Note: JWT tokens are stateless, so logout is handled client-side
     by removing the token. This endpoint exists for API consistency
     and future token blacklisting implementation.
-    
+
     Args:
         current_user: Current authenticated user
     """
@@ -117,12 +117,12 @@ async def get_current_user_info(
 ) -> UserResponse:
     """
     Get current authenticated user information.
-    
+
     **Requirement 1.2**: Returns user information with role-based permissions
-    
+
     Args:
         current_user: Current authenticated user
-        
+
     Returns:
         User information including role and permissions
     """

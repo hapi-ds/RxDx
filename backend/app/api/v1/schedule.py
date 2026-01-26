@@ -36,15 +36,15 @@ async def calculate_schedule(
 ) -> ScheduleResponse:
     """
     Calculate project schedule using constraint programming.
-    
+
     This endpoint uses Google OR-Tools to solve the project scheduling problem
     with the following features:
-    
+
     - **Task Dependencies**: Supports finish-to-start, start-to-start, and finish-to-finish
     - **Resource Constraints**: Respects resource capacity limits
     - **Optimization**: Minimizes total project duration
     - **Conflict Detection**: Identifies scheduling conflicts when no solution exists
-    
+
     Request body:
     - **project_id**: Unique project identifier
     - **tasks**: List of tasks to schedule with:
@@ -67,7 +67,7 @@ async def calculate_schedule(
         - horizon_days: Planning horizon in days
         - working_hours_per_day: Working hours per day
         - respect_weekends: Whether to skip weekends
-    
+
     Returns:
     - **status**: success, feasible, infeasible, or error
     - **schedule**: List of scheduled tasks with start/end dates
@@ -101,16 +101,16 @@ async def get_schedule(
 ) -> ProjectSchedule:
     """
     Get the stored schedule for a project.
-    
+
     - **project_id**: Project UUID
-    
+
     Returns the complete project schedule including:
     - Scheduled tasks with start/end dates
     - Resources used
     - Applied constraints
     - Project duration and dates
     - Version and manual adjustments
-    
+
     Raises 404 if no schedule exists for the project.
     """
     schedule = await scheduler_service.get_schedule(project_id)
@@ -138,16 +138,16 @@ async def update_schedule(
 ) -> ScheduleResponse:
     """
     Apply manual adjustments to a project schedule.
-    
+
     - **project_id**: Project UUID
-    
+
     Request body:
     - **task_adjustments**: Dictionary of task ID to adjustments:
         - start_date: New start date (ISO format)
         - end_date: New end date (ISO format)
     - **preserve_dependencies**: Whether to maintain dependency constraints
     - **recalculate_downstream**: Whether to recalculate affected downstream tasks
-    
+
     Example:
     ```json
     {
@@ -159,9 +159,9 @@ async def update_schedule(
         "recalculate_downstream": true
     }
     ```
-    
+
     Returns the updated schedule with new version number.
-    
+
     Raises 404 if no schedule exists for the project.
     """
     result = await scheduler_service.update_schedule(project_id, updates)

@@ -12,12 +12,12 @@ from app.services.audit_service import AuditService, get_audit_service
 class VersionService:
     """
     Service for managing WorkItem version control.
-    
+
     This service handles creating new versions of WorkItems, maintaining version history,
     and managing version relationships in the graph database. It integrates with the
     audit service to log all version changes and handles signature invalidation when
     WorkItems are modified.
-    
+
     Key features:
     - Automatic version number calculation (major.minor format)
     - Complete version history preservation
@@ -39,26 +39,26 @@ class VersionService:
     ) -> dict[str, Any]:
         """
         Create a new version of a WorkItem.
-        
+
         This method:
         1. Gets the current version from the graph database
         2. Calculates the new version number (increments minor version)
         3. Creates a new version node with updated data
         4. Creates NEXT_VERSION relationship between versions
         5. Logs the version change in audit trail
-        
+
         Args:
             workitem_id: UUID of the WorkItem to version
             updates: Dictionary of field updates to apply
             user: User creating the new version
             change_description: Description of what changed
-            
+
         Returns:
             Dictionary containing the new WorkItem version data
-            
+
         Raises:
             ValueError: If WorkItem not found or version calculation fails
-            
+
         Example:
             new_version = await version_service.create_version(
                 workitem_id=UUID("..."),
@@ -128,21 +128,21 @@ class VersionService:
     def _calculate_next_version(self, current_version: str) -> str:
         """
         Calculate the next version number in major.minor format.
-        
+
         Version numbering rules:
         - Format: "major.minor" (e.g., "1.0", "1.1", "2.0")
         - Minor version increments for regular updates (1.0 -> 1.1 -> 1.2)
         - Major version increments are handled manually (not implemented here)
-        
+
         Args:
             current_version: Current version string (e.g., "1.2")
-            
+
         Returns:
             Next version string (e.g., "1.3")
-            
+
         Raises:
             ValueError: If version format is invalid
-            
+
         Example:
             next_version = self._calculate_next_version("1.2")  # Returns "1.3"
         """
@@ -178,16 +178,16 @@ class VersionService:
     async def get_version_history(self, workitem_id: UUID) -> list[dict[str, Any]]:
         """
         Get complete version history for a WorkItem.
-        
+
         This method traverses the NEXT_VERSION relationships in the graph database
         to build a complete chronological history of all versions.
-        
+
         Args:
             workitem_id: UUID of the WorkItem
-            
+
         Returns:
             List of WorkItem versions ordered by version number (newest first)
-            
+
         Example:
             history = await version_service.get_version_history(workitem_id)
             # Returns: [{"version": "1.3", ...}, {"version": "1.2", ...}, {"version": "1.1", ...}]
@@ -225,10 +225,10 @@ class VersionService:
     def _version_sort_key(self, version: str) -> tuple:
         """
         Generate sort key for version strings.
-        
+
         Args:
             version: Version string (e.g., "1.2")
-            
+
         Returns:
             Tuple for sorting (e.g., (1, 2))
         """
@@ -248,11 +248,11 @@ class VersionService:
     ) -> dict[str, Any] | None:
         """
         Get a specific version of a WorkItem by version number.
-        
+
         Args:
             workitem_id: UUID of the WorkItem
             version: Version string (e.g., "1.2")
-            
+
         Returns:
             WorkItem data for the specified version, or None if not found
         """
@@ -266,12 +266,12 @@ class VersionService:
     ) -> dict[str, Any]:
         """
         Compare two versions of a WorkItem and return the differences.
-        
+
         Args:
             workitem_id: UUID of the WorkItem
             version1: First version to compare
             version2: Second version to compare
-            
+
         Returns:
             Dictionary containing the differences between versions
         """
@@ -326,13 +326,13 @@ class VersionService:
     ) -> dict[str, Any]:
         """
         Restore a WorkItem to a previous version by creating a new version with old data.
-        
+
         Args:
             workitem_id: UUID of the WorkItem
             target_version: Version to restore to
             user: User performing the restore
             change_description: Optional description of the restore operation
-            
+
         Returns:
             New WorkItem version data
         """
@@ -364,11 +364,11 @@ async def get_version_service(
 ) -> VersionService:
     """
     Dependency for getting VersionService instance.
-    
+
     Args:
         graph_service: Optional GraphService instance (will be created if None)
         audit_service: Optional AuditService instance (will be created if None)
-        
+
     Returns:
         VersionService instance with dependencies injected
     """

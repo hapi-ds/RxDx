@@ -29,11 +29,11 @@ class WorkItemService:
     ) -> WorkItemResponse:
         """
         Create a new WorkItem and store it in the graph database
-        
+
         Args:
             workitem_data: WorkItem creation data
             current_user: User creating the WorkItem
-            
+
         Returns:
             Created WorkItem with metadata
         """
@@ -143,10 +143,10 @@ class WorkItemService:
     async def get_workitem(self, workitem_id: UUID) -> WorkItemResponse | None:
         """
         Get a WorkItem by ID
-        
+
         Args:
             workitem_id: WorkItem UUID
-            
+
         Returns:
             WorkItem if found, None otherwise
         """
@@ -166,11 +166,11 @@ class WorkItemService:
     ) -> WorkItemResponse | None:
         """
         Get a specific version of a WorkItem using VersionService
-        
+
         Args:
             workitem_id: WorkItem UUID
             version: Version string (e.g., "1.0", "1.1")
-            
+
         Returns:
             WorkItem version if found, None otherwise
         """
@@ -203,13 +203,13 @@ class WorkItemService:
     ) -> WorkItemResponse | None:
         """
         Update a WorkItem using the VersionService for proper version control
-        
+
         Args:
             workitem_id: WorkItem UUID
             updates: Update data
             current_user: User making the update
             change_description: Description of changes made
-            
+
         Returns:
             Updated WorkItem with new version
         """
@@ -349,12 +349,12 @@ class WorkItemService:
     ) -> bool:
         """
         Delete a WorkItem (checks for signatures unless forced)
-        
+
         Args:
             workitem_id: WorkItem UUID
             current_user: User requesting deletion
             force: Force deletion even if signed (admin only)
-            
+
         Returns:
             True if deleted successfully, False otherwise
         """
@@ -382,12 +382,12 @@ class WorkItemService:
     ) -> dict[str, Any] | None:
         """
         Compare two versions of a WorkItem using VersionService
-        
+
         Args:
             workitem_id: WorkItem UUID
             version1: First version to compare
             version2: Second version to compare
-            
+
         Returns:
             Dictionary containing the differences between versions, or None if VersionService unavailable
         """
@@ -414,7 +414,7 @@ class WorkItemService:
     ) -> list[WorkItemResponse]:
         """
         Search WorkItems with filters
-        
+
         Args:
             search_text: Text to search in title and description
             workitem_type: Filter by WorkItem type
@@ -424,7 +424,7 @@ class WorkItemService:
             priority: Filter by priority level
             limit: Maximum number of results
             offset: Number of results to skip
-            
+
         Returns:
             List of matching WorkItems
         """
@@ -459,10 +459,10 @@ class WorkItemService:
     ) -> list[WorkItemResponse]:
         """
         Get complete version history for a WorkItem using VersionService
-        
+
         Args:
             workitem_id: WorkItem UUID
-            
+
         Returns:
             List of WorkItem versions ordered by version number (newest first)
         """
@@ -489,10 +489,10 @@ class WorkItemService:
     def _graph_data_to_response(self, graph_data: dict[str, Any]) -> WorkItemResponse | None:
         """
         Convert graph database data to WorkItemResponse
-        
+
         Args:
             graph_data: Raw data from graph database
-            
+
         Returns:
             WorkItemResponse object or None if conversion fails
         """

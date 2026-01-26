@@ -46,14 +46,14 @@ class TestService:
     ) -> TestSpecResponse:
         """
         Create a new test specification with requirement linking.
-        
+
         Args:
             test_spec_data: Test specification creation data
             user: User creating the test spec
-            
+
         Returns:
             Created test specification
-            
+
         Raises:
             ValueError: If linked requirements don't exist
         """
@@ -122,10 +122,10 @@ class TestService:
     async def get_test_spec(self, test_spec_id: UUID) -> TestSpecResponse | None:
         """
         Retrieve a test specification by ID.
-        
+
         Args:
             test_spec_id: Test specification ID
-            
+
         Returns:
             Test specification if found, None otherwise
         """
@@ -148,16 +148,16 @@ class TestService:
     ) -> TestSpecResponse:
         """
         Update a test specification, creating a new version.
-        
+
         Args:
             test_spec_id: Test specification ID
             updates: Update data
             user: User making the update
             change_description: Description of changes
-            
+
         Returns:
             Updated test specification
-            
+
         Raises:
             ValueError: If test spec doesn't exist or linked requirements are invalid
         """
@@ -224,14 +224,14 @@ class TestService:
     ) -> TestRunResponse:
         """
         Create a new test run with result recording.
-        
+
         Args:
             test_run_data: Test run creation data
             user: User executing the test
-            
+
         Returns:
             Created test run
-            
+
         Raises:
             ValueError: If test spec doesn't exist or version is invalid
         """
@@ -321,15 +321,15 @@ class TestService:
     ) -> TestRunResponse:
         """
         Update a test run with new results.
-        
+
         Args:
             test_run_id: Test run ID
             updates: Update data
             user: User making the update
-            
+
         Returns:
             Updated test run
-            
+
         Raises:
             ValueError: If test run doesn't exist
         """
@@ -386,12 +386,12 @@ class TestService:
     ) -> list[TestRunResponse]:
         """
         Get all test runs for a specific test specification.
-        
+
         Args:
             test_spec_id: Test specification ID
             limit: Maximum number of results
             offset: Number of results to skip
-            
+
         Returns:
             List of test runs
         """
@@ -430,7 +430,7 @@ class TestService:
     async def calculate_test_coverage(self) -> TestCoverageResponse:
         """
         Calculate test coverage metrics across all requirements.
-        
+
         Returns:
             Test coverage metrics
         """
@@ -466,8 +466,8 @@ class TestService:
         # Get requirements with passing test runs
         requirements_with_passing_tests_query = """
         MATCH (r:WorkItem)-[:TESTED_BY]->(ts:WorkItem)-[:HAS_RUN]->(tr:WorkItem)
-        WHERE r.type = 'requirement' 
-          AND ts.type = 'test_spec' 
+        WHERE r.type = 'requirement'
+          AND ts.type = 'test_spec'
           AND tr.type = 'test_run'
           AND tr.overall_status = 'pass'
         RETURN DISTINCT r.id as requirement_id
@@ -523,13 +523,13 @@ class TestService:
     ) -> list[TestSpecResponse]:
         """
         Get test specifications with optional filtering.
-        
+
         Args:
             limit: Maximum number of results
             offset: Number of results to skip
             test_type: Filter by test type
             linked_requirement_id: Filter by linked requirement
-            
+
         Returns:
             List of test specifications
         """
@@ -578,14 +578,14 @@ class TestService:
     async def delete_test_spec(self, test_spec_id: UUID, user: User) -> bool:
         """
         Delete a test specification if it has no valid signatures.
-        
+
         Args:
             test_spec_id: Test specification ID
             user: User requesting deletion
-            
+
         Returns:
             True if deleted successfully
-            
+
         Raises:
             ValueError: If test spec doesn't exist or has valid signatures
         """

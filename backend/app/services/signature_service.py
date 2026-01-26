@@ -22,14 +22,14 @@ from app.schemas.signature import (
 class SignatureService:
     """
     Service for managing digital signatures with RSA cryptographic signing.
-    
+
     This service provides:
     - RSA cryptographic signing of WorkItems
     - SHA-256 content hash generation for integrity verification
     - Signature verification and validation
     - Signature invalidation when WorkItems are modified
     - Prevention of signed WorkItem deletion
-    
+
     The service uses RSA-PSS with SHA-256 for cryptographic signatures,
     following industry best practices for digital signatures.
     """
@@ -37,7 +37,7 @@ class SignatureService:
     def __init__(self, db: AsyncSession):
         """
         Initialize the signature service.
-        
+
         Args:
             db: Database session for signature operations
         """
@@ -53,23 +53,23 @@ class SignatureService:
     ) -> DigitalSignatureResponse:
         """
         Create a cryptographic signature for a WorkItem.
-        
+
         This method:
         1. Generates a SHA-256 hash of the WorkItem content
         2. Creates an RSA-PSS signature of the content hash
         3. Stores the signature in the database
         4. Returns the signature details
-        
+
         Args:
             workitem_id: UUID of the WorkItem being signed
             workitem_version: Version of the WorkItem (e.g., "1.2")
             workitem_content: Complete WorkItem data as dictionary
             user: User creating the signature
             private_key_pem: RSA private key in PEM format
-            
+
         Returns:
             DigitalSignatureResponse with signature details
-            
+
         Raises:
             ValueError: If private key is invalid or signing fails
         """
@@ -112,18 +112,18 @@ class SignatureService:
     ) -> SignatureVerificationResponse:
         """
         Verify the integrity and validity of a digital signature.
-        
+
         This method:
         1. Retrieves the signature from the database
         2. Generates a hash of the current WorkItem content
         3. Compares it with the stored content hash
         4. Verifies the cryptographic signature using the public key
-        
+
         Args:
             signature_id: UUID of the signature to verify
             current_workitem_content: Current WorkItem content for comparison
             public_key_pem: RSA public key in PEM format
-            
+
         Returns:
             SignatureVerificationResponse with verification results
         """
@@ -179,15 +179,15 @@ class SignatureService:
     ) -> list[DigitalSignatureResponse]:
         """
         Invalidate all signatures for a WorkItem when it is modified.
-        
+
         This method is called whenever a WorkItem is updated to ensure
         that existing signatures are marked as invalid since the content
         has changed.
-        
+
         Args:
             workitem_id: UUID of the WorkItem whose signatures should be invalidated
             reason: Reason for invalidation (e.g., "WorkItem modified")
-            
+
         Returns:
             List of invalidated signatures
         """
@@ -220,11 +220,11 @@ class SignatureService:
     ) -> list[DigitalSignatureResponse]:
         """
         Get all signatures for a WorkItem.
-        
+
         Args:
             workitem_id: UUID of the WorkItem
             include_invalid: Whether to include invalidated signatures
-            
+
         Returns:
             List of signatures for the WorkItem
         """
@@ -248,10 +248,10 @@ class SignatureService:
     async def is_workitem_signed(self, workitem_id: UUID) -> bool:
         """
         Check if a WorkItem has any valid signatures.
-        
+
         Args:
             workitem_id: UUID of the WorkItem
-            
+
         Returns:
             True if the WorkItem has valid signatures, False otherwise
         """
@@ -267,13 +267,13 @@ class SignatureService:
     def _generate_content_hash(self, content: dict) -> str:
         """
         Generate SHA-256 hash of WorkItem content.
-        
+
         The content is serialized to JSON with sorted keys to ensure
         consistent hashing regardless of dictionary key order.
-        
+
         Args:
             content: WorkItem content as dictionary
-            
+
         Returns:
             SHA-256 hash as hexadecimal string
         """
@@ -286,17 +286,17 @@ class SignatureService:
     def _create_signature(self, content_hash: str, private_key_pem: bytes) -> str:
         """
         Create RSA-PSS signature of content hash.
-        
+
         Uses RSA-PSS with SHA-256 for cryptographic signing, following
         industry best practices for digital signatures.
-        
+
         Args:
             content_hash: SHA-256 hash of content to sign
             private_key_pem: RSA private key in PEM format
-            
+
         Returns:
             Signature as hexadecimal string
-            
+
         Raises:
             ValueError: If private key is invalid or signing fails
         """
@@ -326,12 +326,12 @@ class SignatureService:
     ) -> bool:
         """
         Verify RSA-PSS signature against content hash.
-        
+
         Args:
             content_hash: Original SHA-256 hash that was signed
             signature_hash: Signature to verify (hexadecimal string)
             public_key_pem: RSA public key in PEM format
-            
+
         Returns:
             True if signature is valid, False otherwise
         """
@@ -363,10 +363,10 @@ class SignatureService:
 async def get_signature_service(db: AsyncSession) -> SignatureService:
     """
     Dependency for getting SignatureService instance.
-    
+
     Args:
         db: Database session
-        
+
     Returns:
         SignatureService instance
     """

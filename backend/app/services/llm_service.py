@@ -39,10 +39,10 @@ class LLMResponseError(LLMServiceError):
 class LLMService:
     """
     Service for interacting with local LLM via LM-Studio compatible API.
-    
+
     This service provides intelligent text processing capabilities while
     maintaining data privacy by using only local LLM services.
-    
+
     Attributes:
         base_url: The LM-Studio API base URL
         model: The model name to use for completions
@@ -59,7 +59,7 @@ class LLMService:
     ):
         """
         Initialize the LLM service.
-        
+
         Args:
             base_url: LM-Studio API URL (defaults to settings.LLM_STUDIO_URL)
             model: Model name (defaults to settings.LLM_MODEL_NAME)
@@ -74,14 +74,14 @@ class LLMService:
     async def _call_llm(self, prompt: str, system_prompt: str | None = None) -> str | None:
         """
         Make a call to the LM-Studio compatible API.
-        
+
         Args:
             prompt: The user prompt to send
             system_prompt: Optional system prompt for context
-            
+
         Returns:
             The LLM response content, or None if unavailable
-            
+
         Raises:
             LLMConnectionError: If connection to LLM fails
             LLMResponseError: If LLM returns invalid response
@@ -142,10 +142,10 @@ class LLMService:
     def _parse_json_response(self, response: str) -> Any | None:
         """
         Parse JSON from LLM response, handling common formatting issues.
-        
+
         Args:
             response: The raw LLM response string
-            
+
         Returns:
             Parsed JSON data, or None if parsing fails
         """
@@ -204,16 +204,16 @@ class LLMService:
     async def extract_work_instruction(self, email_body: str) -> dict[str, Any] | None:
         """
         Extract structured work instruction data from email content.
-        
+
         Uses LLM to parse natural language email content and extract:
         - status: Current status (draft/active/completed)
         - comment: Any comments or updates
         - time_spent: Hours worked (as number)
         - next_steps: Planned next actions
-        
+
         Args:
             email_body: The raw email body text
-            
+
         Returns:
             Dictionary with extracted fields, or None if extraction fails
             or LLM is disabled
@@ -288,16 +288,16 @@ If a field is not mentioned in the email, omit it from the response."""
     ) -> dict[str, list[dict[str, Any]]]:
         """
         Extract entities and relationships from meeting minutes.
-        
+
         Uses LLM to analyze meeting content and extract:
         - entities: People, components, systems mentioned
         - decisions: Decisions made during the meeting
         - actions: Action items with assignees and deadlines
         - relationships: Relationships between entities
-        
+
         Args:
             meeting_text: The meeting minutes text
-            
+
         Returns:
             Dictionary with entities, decisions, actions, and relationships.
             Returns empty lists for all fields if LLM is disabled or extraction fails.
@@ -407,16 +407,16 @@ Return only valid JSON, no other text."""
     ) -> list[str]:
         """
         Analyze requirement quality and suggest improvements.
-        
+
         Uses LLM to evaluate requirement text for:
         - Clarity and unambiguity
         - Testability
         - Completeness
         - Consistency
-        
+
         Args:
             requirement_text: The requirement text to analyze
-            
+
         Returns:
             List of improvement suggestions, or empty list if LLM is disabled
             or analysis fails
@@ -479,7 +479,7 @@ Return only the JSON array, no other text."""
     async def is_available(self) -> bool:
         """
         Check if the LLM service is available and responding.
-        
+
         Returns:
             True if LLM service is enabled and responding, False otherwise
         """
@@ -508,7 +508,7 @@ _llm_service_instance: LLMService | None = None
 async def get_llm_service() -> LLMService:
     """
     Get or create the LLM service instance.
-    
+
     Returns:
         LLMService instance
     """

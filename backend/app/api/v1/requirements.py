@@ -38,32 +38,32 @@ async def get_requirements(
 ):
     """
     Get Requirements with comprehensive filtering and pagination
-    
+
     This endpoint provides access to all requirements in the system with extensive
     filtering capabilities for efficient requirement management and discovery.
-    
+
     **Filtering Options:**
     - **search**: Full-text search across title, description, and acceptance criteria
     - **status**: Filter by requirement status (draft, active, completed, archived, rejected)
     - **assigned_to**: Filter by assigned user UUID
-    - **created_by**: Filter by creator UUID  
+    - **created_by**: Filter by creator UUID
     - **priority**: Filter by priority level (1=lowest, 5=highest)
     - **source**: Filter by requirement source (stakeholder, regulation, standard, etc.)
     - **has_acceptance_criteria**: Filter by presence of acceptance criteria (true/false)
-    
+
     **Pagination:**
     - **limit**: Maximum number of results to return (1-1000, default: 100)
     - **offset**: Number of results to skip for pagination (default: 0)
-    
+
     **Response:**
     Returns a list of RequirementResponse objects containing:
     - Basic WorkItem fields (id, title, description, status, priority, etc.)
     - Requirement-specific fields (acceptance_criteria, business_value, source)
     - Metadata (version, created_at, updated_at, is_signed)
-    
+
     **Permissions:**
     Requires READ_WORKITEM permission.
-    
+
     **Audit Logging:**
     All search operations are logged for compliance tracking.
     """
@@ -149,11 +149,11 @@ async def create_requirement(
 ):
     """
     Create a new Requirement with comprehensive validation
-    
+
     Creates a new requirement in the system with full validation of requirement-specific
     fields and business rules. The requirement is created as version 1.0 and stored
     in the graph database for relationship tracking.
-    
+
     **Request Body:**
     RequirementCreate schema with the following fields:
     - **title**: Requirement title (5-500 characters, must contain letters)
@@ -164,23 +164,23 @@ async def create_requirement(
     - **acceptance_criteria**: Optional acceptance criteria (structured format recommended)
     - **business_value**: Optional business value description
     - **source**: Optional requirement source (stakeholder, regulation, etc.)
-    
+
     **Validation Rules:**
     - Title must be meaningful and not contain placeholder text
     - Acceptance criteria should follow structured format (Given-When-Then)
     - Business value must be descriptive if provided
     - Source must be from predefined list of valid sources
     - Status-based completeness validation (active/completed require more fields)
-    
+
     **Response:**
     Returns the created RequirementResponse with:
     - Generated UUID and version 1.0
     - Creation timestamp and user attribution
     - All validated requirement fields
-    
+
     **Permissions:**
     Requires WRITE_WORKITEM permission.
-    
+
     **Audit Logging:**
     Creation is logged with full requirement details for compliance.
     """
@@ -262,29 +262,29 @@ async def get_requirement(
 ):
     """
     Get a specific Requirement by ID
-    
+
     Retrieves the current version of a requirement with all requirement-specific
     fields and metadata. This endpoint provides access to the complete requirement
     information including acceptance criteria, business value, and source.
-    
+
     **Path Parameters:**
     - **requirement_id**: UUID of the requirement to retrieve
-    
+
     **Response:**
     Returns RequirementResponse with:
     - All requirement fields (title, description, acceptance_criteria, etc.)
     - Version information and audit metadata
     - Digital signature status
     - User attribution (created_by, assigned_to)
-    
+
     **Error Responses:**
     - **404**: Requirement not found or not of type 'requirement'
     - **403**: User lacks READ_WORKITEM permission
     - **500**: Internal server error
-    
+
     **Permissions:**
     Requires READ_WORKITEM permission.
-    
+
     **Audit Logging:**
     Access is logged with requirement ID and version for compliance tracking.
     """
@@ -357,17 +357,17 @@ async def update_requirement(
 ):
     """
     Update a Requirement (creates new version)
-    
+
     Updates a requirement with comprehensive validation and creates a new version.
     All existing digital signatures are invalidated when a requirement is updated.
     A change description is required for audit compliance.
-    
+
     **Path Parameters:**
     - **requirement_id**: UUID of the requirement to update
-    
+
     **Query Parameters:**
     - **change_description**: Required description of changes for audit trail
-    
+
     **Request Body:**
     RequirementUpdate schema with optional fields:
     - **title**: Updated title (same validation as create)
@@ -378,25 +378,25 @@ async def update_requirement(
     - **acceptance_criteria**: Updated acceptance criteria
     - **business_value**: Updated business value
     - **source**: Updated requirement source
-    
+
     **Validation:**
     - All field-level validation from creation applies
     - Status-based completeness validation
     - Cross-field validation for consistency
     - Change description cannot be empty
-    
+
     **Versioning:**
     - Creates new version (e.g., 1.0 → 1.1)
     - Preserves complete history
     - Invalidates existing digital signatures
     - Links to previous version in graph
-    
+
     **Response:**
     Returns updated RequirementResponse with new version number.
-    
+
     **Permissions:**
     Requires WRITE_WORKITEM permission.
-    
+
     **Audit Logging:**
     Update is logged with change description and affected fields.
     """
@@ -493,42 +493,42 @@ async def add_requirement_comment(
 ):
     """
     Add a comment to a requirement
-    
+
     Adds a comment to a requirement with comprehensive user attribution and
     audit tracking. Comments are linked to the current version of the requirement
     and include full user context for compliance and collaboration.
-    
+
     **Path Parameters:**
     - **requirement_id**: UUID of the requirement to comment on
-    
+
     **Request Body:**
     CommentCreate schema with:
     - **comment**: Comment text (1-2000 characters, no placeholder text)
-    
+
     **Comment Features:**
     - Linked to current requirement version
     - Full user attribution (name, email, role)
     - Timestamp tracking (created_at, updated_at)
     - Edit tracking (is_edited, edit_count)
     - IP address and user agent logging (if available)
-    
+
     **Validation:**
     - Comment cannot be empty or only whitespace
     - No placeholder text (TODO, TBD, FIXME, XXX)
     - Length limits (1-2000 characters)
     - User must have access to the requirement
-    
+
     **Response:**
     Returns CommentResponse with:
     - Generated comment UUID
     - Full user attribution
     - Requirement version reference
     - Creation timestamp
-    
+
     **Permissions:**
     Requires READ_WORKITEM permission (commenting requires read access).
     Additional business rules may apply (e.g., no comments on archived requirements for non-admins).
-    
+
     **Audit Logging:**
     Comment creation is logged with requirement context and user details.
     """
@@ -615,19 +615,19 @@ async def get_requirement_comments(
 ):
     """
     Get paginated comments for a requirement
-    
+
     Retrieves comments for a requirement with pagination and optional user information.
     Comments are returned in reverse chronological order (newest first) with
     comprehensive metadata for collaboration and audit purposes.
-    
+
     **Path Parameters:**
     - **requirement_id**: UUID of the requirement
-    
+
     **Query Parameters:**
     - **page**: Page number (1-based, default: 1)
     - **page_size**: Comments per page (1-100, default: 20)
     - **include_user_info**: Include detailed user information (default: true)
-    
+
     **Response:**
     Returns CommentListResponse with:
     - **comments**: List of CommentResponse objects
@@ -636,7 +636,7 @@ async def get_requirement_comments(
     - **page_size**: Number of comments per page
     - **has_next**: Whether there are more comments
     - **has_previous**: Whether there are previous comments
-    
+
     **Comment Information:**
     Each comment includes:
     - Comment text and metadata
@@ -644,10 +644,10 @@ async def get_requirement_comments(
     - Version reference (requirement version when commented)
     - Edit tracking (is_edited, edit_count)
     - Timestamps (created_at, updated_at)
-    
+
     **Permissions:**
     Requires READ_WORKITEM permission.
-    
+
     **Audit Logging:**
     Comment access is logged for compliance tracking.
     """

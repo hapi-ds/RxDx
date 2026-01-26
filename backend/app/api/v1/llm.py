@@ -41,7 +41,7 @@ async def get_llm_status(
 ) -> LLMStatusResponse:
     """
     Get the current status of the LLM service.
-    
+
     Returns:
     - **enabled**: Whether LLM integration is enabled in configuration
     - **available**: Whether the LLM service is currently responding
@@ -67,21 +67,21 @@ async def analyze_requirement(
 ) -> RequirementAnalysisResponse:
     """
     Analyze a requirement and suggest improvements.
-    
+
     Uses local LLM to evaluate requirement quality based on:
     - Clarity and unambiguity
     - Testability
     - Completeness
     - Consistency
     - Atomicity
-    
+
     **Request Body:**
     - **requirement_text**: The requirement text to analyze (10-5000 characters)
-    
+
     **Returns:**
     - **suggestions**: List of specific improvement suggestions
     - **llm_available**: Whether the LLM service was available
-    
+
     If LLM is unavailable, returns empty suggestions with llm_available=False.
     This endpoint never fails due to LLM unavailability (graceful degradation).
     """
@@ -118,20 +118,20 @@ async def extract_meeting_knowledge(
 ) -> MeetingExtractionResponse:
     """
     Extract entities and relationships from meeting minutes.
-    
+
     Uses local LLM to analyze meeting content and extract:
     - **entities**: People, components, systems, projects, teams mentioned
     - **decisions**: Decisions made during the meeting with owners
     - **actions**: Action items with assignees and deadlines
     - **relationships**: Relationships between entities
-    
+
     **Request Body:**
     - **meeting_text**: The meeting minutes text (20-50000 characters)
-    
+
     **Returns:**
     - Structured extraction results
     - **llm_available**: Whether the LLM service was available
-    
+
     If LLM is unavailable, returns empty lists with llm_available=False.
     This endpoint never fails due to LLM unavailability (graceful degradation).
     """
@@ -202,21 +202,21 @@ async def parse_email_work_instruction(
 ) -> EmailParseResponse:
     """
     Parse work instruction data from email content.
-    
+
     Uses local LLM to extract structured data from natural language email:
     - **status**: Current status (draft, active, completed)
     - **comment**: Comments or updates from the sender
     - **time_spent**: Hours worked (as a number)
     - **next_steps**: Planned next actions
-    
+
     **Request Body:**
     - **email_body**: The email body text to parse (5-50000 characters)
-    
+
     **Returns:**
     - **data**: Extracted work instruction data (null if nothing extracted)
     - **parsed**: Whether any data was successfully extracted
     - **llm_available**: Whether the LLM service was available
-    
+
     If LLM is unavailable, returns parsed=False with llm_available=False.
     This endpoint never fails due to LLM unavailability (graceful degradation).
     """

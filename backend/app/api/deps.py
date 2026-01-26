@@ -20,10 +20,10 @@ async def get_auth_service(
 ) -> AuthService:
     """
     Dependency to get AuthService instance.
-    
+
     Args:
         db: Database session
-        
+
     Returns:
         AuthService instance
     """
@@ -35,10 +35,10 @@ async def get_signature_service(
 ) -> SignatureService:
     """
     Dependency to get SignatureService instance.
-    
+
     Args:
         db: Database session
-        
+
     Returns:
         SignatureService instance
     """
@@ -51,17 +51,17 @@ async def get_current_user(
 ) -> User:
     """
     Dependency to get the current authenticated user.
-    
+
     Extracts the JWT token from the Authorization header,
     validates it, and returns the corresponding user.
-    
+
     Args:
         credentials: HTTP Bearer credentials from request header
         auth_service: Authentication service instance
-        
+
     Returns:
         Current authenticated User object
-        
+
     Raises:
         HTTPException: 401 if token is invalid or user not found
     """
@@ -100,13 +100,13 @@ async def get_current_active_user(
 ) -> User:
     """
     Dependency to get the current active user.
-    
+
     This is an alias for get_current_user that explicitly checks
     the user is active (already done in get_current_user).
-    
+
     Args:
         current_user: Current user from get_current_user dependency
-        
+
     Returns:
         Current active User object
     """

@@ -52,7 +52,7 @@ class FailureType(str, Enum):
 class RiskNodeBase(BaseModel):
     """
     Base schema for Risk nodes in the graph database.
-    
+
     Risk nodes represent potential failure modes in FMEA analysis with
     severity, occurrence, and detection ratings used to calculate RPN.
     """
@@ -257,7 +257,7 @@ class RiskNodeResponse(RiskNodeBase):
 class FailureNodeBase(BaseModel):
     """
     Base schema for Failure nodes in the graph database.
-    
+
     Failure nodes represent potential failure outcomes that can be linked
     to Risk nodes via LEADS_TO relationships with probability attributes.
     """
@@ -367,7 +367,7 @@ class FailureNodeResponse(FailureNodeBase):
 class LeadsToRelationshipBase(BaseModel):
     """
     Base schema for LEADS_TO relationships between Risk and Failure nodes.
-    
+
     The probability attribute indicates the likelihood of the failure
     occurring given the risk condition.
     """

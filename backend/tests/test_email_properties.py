@@ -2,9 +2,9 @@
 Property-based tests for email parsing.
 
 Tests validate:
-- Property 5.1: Email Thread Consistency - Email thread history is maintained 
+- Property 5.1: Email Thread Consistency - Email thread history is maintained
   in chronological order
-- Property 5.2: Knowledge Extraction Linkage - Extracted knowledge is always 
+- Property 5.2: Knowledge Extraction Linkage - Extracted knowledge is always
   linked to source email
 
 Uses Hypothesis for property-based testing.
@@ -114,11 +114,11 @@ def email_list_strategy(draw, min_size=1, max_size=20):
 class TestEmailThreadConsistencyProperty:
     """
     Property 5.1: Email Thread Consistency
-    
+
     **Validates: Requirement 5.5**
-    
+
     Statement: Email thread history is maintained in chronological order
-    Formal: ∀ thread t, emails e1, e2 ∈ t, timestamp(e1) < timestamp(e2) 
+    Formal: ∀ thread t, emails e1, e2 ∈ t, timestamp(e1) < timestamp(e2)
             → order(e1, t) < order(e2, t)
     """
 
@@ -130,7 +130,7 @@ class TestEmailThreadConsistencyProperty:
     ):
         """
         Property: Adding emails in any order results in chronological ordering.
-        
+
         **Validates: Requirements 5.5**
         """
         thread = EmailThread(
@@ -175,7 +175,7 @@ class TestEmailThreadConsistencyProperty:
     ):
         """
         Property: Thread order is determined by timestamp, not insertion order.
-        
+
         **Validates: Requirements 5.5**
         """
         thread = EmailThread(
@@ -216,7 +216,7 @@ class TestEmailThreadConsistencyProperty:
 class TestStructuredParsingProperties:
     """
     Property tests for structured email reply parsing.
-    
+
     Validates that the parser correctly extracts STATUS, COMMENT, and TIME
     fields from various input formats.
     """
@@ -226,7 +226,7 @@ class TestStructuredParsingProperties:
     def test_status_extraction_preserves_value(self, status: str):
         """
         Property: Valid status values are always extracted correctly.
-        
+
         **Validates: Requirements 5.3**
         """
         service = EmailService()
@@ -242,7 +242,7 @@ class TestStructuredParsingProperties:
     def test_time_extraction_preserves_value(self, time_val: float):
         """
         Property: Valid time values are always extracted correctly.
-        
+
         **Validates: Requirements 5.3**
         """
         service = EmailService()
@@ -267,7 +267,7 @@ class TestStructuredParsingProperties:
     ):
         """
         Property: Multiple fields are extracted independently.
-        
+
         **Validates: Requirements 5.3**
         """
         service = EmailService()
@@ -286,7 +286,7 @@ class TestStructuredParsingProperties:
     def test_structured_reply_always_parseable(self, body: str):
         """
         Property: Well-formed structured replies are always parseable.
-        
+
         **Validates: Requirements 5.3**
         """
         service = EmailService()
@@ -310,7 +310,7 @@ class TestWorkItemIdExtractionProperties:
     def test_workitem_id_extraction_roundtrip(self, uuid: str):
         """
         Property: WorkItem IDs embedded in subjects are always extractable.
-        
+
         **Validates: Requirements 5.2**
         """
         service = EmailService()
@@ -337,7 +337,7 @@ class TestWorkItemIdExtractionProperties:
     ):
         """
         Property: WorkItem ID extraction works regardless of subject prefixes/suffixes.
-        
+
         **Validates: Requirements 5.2**
         """
         service = EmailService()
@@ -352,7 +352,7 @@ class TestWorkItemIdExtractionProperties:
     def test_no_false_positives_for_random_text(self, text: str):
         """
         Property: Random text without valid WorkItem ID pattern returns None.
-        
+
         **Validates: Requirements 5.2**
         """
         # Skip if text accidentally contains a valid pattern
@@ -375,9 +375,9 @@ class TestWorkItemIdExtractionProperties:
 class TestKnowledgeExtractionLinkageProperty:
     """
     Property 5.2: Knowledge Extraction Linkage
-    
+
     **Validates: Requirement 5.9, 5.10**
-    
+
     Statement: Extracted knowledge is always linked to source email
     Formal: ∀ knowledge k, extracted_from(k, email e) → linked(k, e) = true
     """
@@ -395,7 +395,7 @@ class TestKnowledgeExtractionLinkageProperty:
     ):
         """
         Property: All processed emails are tracked in thread history.
-        
+
         **Validates: Requirements 5.5, 5.9, 5.10**
         """
         from email.mime.text import MIMEText
@@ -453,7 +453,7 @@ class TestEmailValidationProperties:
     ):
         """
         Property: Well-formed email addresses pass validation.
-        
+
         **Validates: Requirements 5.1**
         """
         assume(local.strip() and domain.strip())
@@ -471,7 +471,7 @@ class TestEmailValidationProperties:
     def test_emails_without_at_are_invalid(self, text: str):
         """
         Property: Strings without @ are invalid emails.
-        
+
         **Validates: Requirements 5.1**
         """
         service = EmailService()

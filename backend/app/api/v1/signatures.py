@@ -29,20 +29,20 @@ async def create_signature(
 ) -> DigitalSignatureResponse:
     """
     Create a digital signature for a WorkItem.
-    
+
     **Requirement 2.1**: Creates Digital_Signature with user identity, timestamp, and cryptographic hash
     **Requirement 2.2**: Stores signature immutably in the database
     **Requirement 7.3.5**: Integrates signature validation with audit logging
-    
+
     Args:
         request: Sign WorkItem request containing workitem details and private key
         current_user: Current authenticated user
         signature_service: Digital signature service instance
         audit_service: Audit service for compliance logging
-        
+
     Returns:
         Created digital signature details
-        
+
     Raises:
         HTTPException 400: Invalid private key or signing failed
         HTTPException 401: User not authenticated
@@ -107,19 +107,19 @@ async def get_signature(
 ) -> DigitalSignatureResponse:
     """
     Get digital signature details by ID.
-    
+
     **Requirement 2.5**: Display signature with signer name and timestamp
     **Requirement 7.3.5**: Integrates signature validation with audit logging
-    
+
     Args:
         signature_id: UUID of the signature to retrieve
         current_user: Current authenticated user
         db: Database session
         audit_service: Audit service for compliance logging
-        
+
     Returns:
         Digital signature details
-        
+
     Raises:
         HTTPException 404: Signature not found
         HTTPException 401: User not authenticated
@@ -161,20 +161,20 @@ async def get_workitem_signatures(
 ) -> list[DigitalSignatureResponse]:
     """
     Get all signatures for a WorkItem.
-    
+
     **Requirement 2.5**: Display all valid signatures with signer names and timestamps
     **Requirement 7.3.5**: Integrates signature validation with audit logging
-    
+
     Args:
         workitem_id: UUID of the WorkItem
         include_invalid: Whether to include invalidated signatures (default: False)
         current_user: Current authenticated user
         signature_service: Digital signature service instance
         audit_service: Audit service for compliance logging
-        
+
     Returns:
         List of signatures for the WorkItem
-        
+
     Raises:
         HTTPException 401: User not authenticated
     """
@@ -205,20 +205,20 @@ async def verify_signature(
 ) -> SignatureVerificationResponse:
     """
     Verify the integrity and validity of a digital signature.
-    
+
     **Requirement 2.4**: Verify Digital_Signature integrity on access
     **Requirement 7.3.5**: Integrates signature validation with audit logging
-    
+
     Args:
         signature_id: UUID of the signature to verify
         request: Verification request containing current content and public key
         current_user: Current authenticated user
         signature_service: Digital signature service instance
         audit_service: Audit service for compliance logging
-        
+
     Returns:
         Signature verification results
-        
+
     Raises:
         HTTPException 400: Invalid public key
         HTTPException 401: User not authenticated

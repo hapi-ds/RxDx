@@ -117,14 +117,14 @@ class EmailThread:
 class EmailService:
     """
     Service for email-based work instructions and knowledge capture.
-    
+
     This service provides:
     - Sending work instruction emails to assigned users
     - Processing incoming email replies
     - Parsing structured replies (STATUS, COMMENT, TIME format)
     - LLM-based parsing for unstructured content
     - Email thread history tracking
-    
+
     Attributes:
         smtp_host: SMTP server hostname
         smtp_port: SMTP server port
@@ -160,7 +160,7 @@ class EmailService:
     ):
         """
         Initialize the email service.
-        
+
         Args:
             smtp_host: SMTP server host (defaults to settings.SMTP_HOST)
             smtp_port: SMTP server port (defaults to settings.SMTP_PORT)
@@ -201,10 +201,10 @@ class EmailService:
     def _validate_email(self, email_address: str) -> bool:
         """
         Validate an email address.
-        
+
         Args:
             email_address: Email address to validate
-            
+
         Returns:
             True if valid, False otherwise
         """
@@ -227,11 +227,11 @@ class EmailService:
     ) -> dict[str, Any]:
         """
         Send a work instruction email for a WorkItem.
-        
+
         Creates and sends an email containing work instruction details
         to the specified recipients. The email subject includes the
         WorkItem ID for tracking replies.
-        
+
         Args:
             workitem: WorkItem data dictionary containing:
                 - id: WorkItem UUID
@@ -241,14 +241,14 @@ class EmailService:
                 - priority: Priority level (optional)
                 - assigned_to: Assigned user (optional)
             recipients: List of recipient email addresses
-            
+
         Returns:
             Dictionary with send result:
                 - success: Whether email was sent
                 - message_id: Unique message identifier
                 - thread_id: Email thread identifier
                 - errors: List of any errors
-                
+
         Raises:
             EmailSendError: If email sending fails
             ValueError: If no valid recipients provided
@@ -366,10 +366,10 @@ WorkItem ID: {workitem_id}
     async def _send_email(self, message: MIMEMultipart) -> None:
         """
         Send an email using SMTP.
-        
+
         Args:
             message: Email message to send
-            
+
         Raises:
             EmailConnectionError: If connection fails
             EmailSendError: If sending fails
@@ -409,13 +409,13 @@ WorkItem ID: {workitem_id}
     ) -> dict[str, Any]:
         """
         Process an incoming email reply.
-        
+
         Extracts the WorkItem ID from the subject, parses the email body
         for updates, and returns structured data for updating the WorkItem.
-        
+
         Args:
             raw_email: Raw email bytes
-            
+
         Returns:
             Dictionary with parsed data:
                 - workitem_id: Extracted WorkItem UUID
@@ -425,7 +425,7 @@ WorkItem ID: {workitem_id}
                 - parse_method: "structured" or "llm"
                 - success: Whether parsing succeeded
                 - error: Error message if parsing failed
-                
+
         Raises:
             EmailParseError: If email cannot be parsed at all
         """
@@ -543,10 +543,10 @@ WorkItem ID: {workitem_id}
     def _extract_workitem_id(self, subject: str) -> str | None:
         """
         Extract WorkItem ID from email subject.
-        
+
         Args:
             subject: Email subject line
-            
+
         Returns:
             WorkItem ID string if found, None otherwise
         """
@@ -558,12 +558,12 @@ WorkItem ID: {workitem_id}
     def _get_email_body(self, msg: email.message.Message) -> str:
         """
         Extract the text body from an email message.
-        
+
         Handles multipart messages and various content types.
-        
+
         Args:
             msg: Parsed email message
-            
+
         Returns:
             Email body text
         """
@@ -605,16 +605,16 @@ WorkItem ID: {workitem_id}
     def parse_structured_reply(self, body: str) -> dict[str, Any] | None:
         """
         Parse a structured email reply.
-        
+
         Extracts data from the structured format:
         STATUS: <status> | COMMENT: <comment> | TIME: <hours>
-        
+
         The format is flexible - fields can appear in any order and
         are separated by pipes (|) or newlines.
-        
+
         Args:
             body: Email body text
-            
+
         Returns:
             Dictionary with extracted fields:
                 - status: Task status (draft/active/completed)
@@ -664,10 +664,10 @@ WorkItem ID: {workitem_id}
     async def _parse_with_llm(self, body: str) -> dict[str, Any] | None:
         """
         Parse email body using LLM for unstructured content.
-        
+
         Args:
             body: Email body text
-            
+
         Returns:
             Dictionary with extracted fields or None
         """
@@ -691,16 +691,16 @@ WorkItem ID: {workitem_id}
     ) -> bool:
         """
         Send a parsing error notification to the email sender.
-        
+
         Notifies the user that their email could not be parsed and
         provides guidance on the expected format.
-        
+
         Args:
             recipient: Email address to send notification to
             original_subject: Subject of the original email
             error_message: Specific error message
             workitem_id: WorkItem ID if identified
-            
+
         Returns:
             True if notification sent successfully, False otherwise
         """
@@ -757,12 +757,12 @@ If you continue to experience issues, please contact support.
     ) -> EmailThread:
         """
         Get or create an email thread.
-        
+
         Args:
             thread_id: Thread identifier
             workitem_id: Associated WorkItem ID
             subject: Email subject
-            
+
         Returns:
             EmailThread instance
         """
@@ -777,10 +777,10 @@ If you continue to experience issues, please contact support.
     def get_thread_history(self, workitem_id: str) -> EmailThread | None:
         """
         Get email thread history for a WorkItem.
-        
+
         Args:
             workitem_id: WorkItem ID
-            
+
         Returns:
             EmailThread if found, None otherwise
         """
@@ -790,7 +790,7 @@ If you continue to experience issues, please contact support.
     def get_all_threads(self) -> list[EmailThread]:
         """
         Get all email threads.
-        
+
         Returns:
             List of all EmailThread instances
         """
@@ -802,13 +802,13 @@ If you continue to experience issues, please contact support.
     ) -> dict[str, Any]:
         """
         Extract knowledge from email content using LLM.
-        
+
         Analyzes email content to extract entities, decisions,
         action items, and relationships for storage in the Graph DB.
-        
+
         Args:
             email_body: Email body text
-            
+
         Returns:
             Dictionary with extracted knowledge:
                 - entities: List of extracted entities
@@ -840,10 +840,10 @@ If you continue to experience issues, please contact support.
     async def connect_imap(self) -> aioimaplib.IMAP4_SSL:
         """
         Connect to IMAP server.
-        
+
         Returns:
             Connected IMAP client
-            
+
         Raises:
             EmailConnectionError: If connection fails
         """
@@ -873,7 +873,7 @@ If you continue to experience issues, please contact support.
     async def fetch_new_emails(self) -> list[bytes]:
         """
         Fetch new (unseen) emails from the IMAP server.
-        
+
         Returns:
             List of raw email bytes
         """
@@ -935,7 +935,7 @@ If you continue to experience issues, please contact support.
     ) -> None:
         """
         Start background email polling.
-        
+
         Args:
             callback: Optional callback function to call when email is processed.
                      Receives the parsed email result dictionary.
@@ -1010,7 +1010,7 @@ _email_service_instance: EmailService | None = None
 async def get_email_service() -> EmailService:
     """
     Get or create the email service instance.
-    
+
     Returns:
         EmailService instance with LLM service integration
     """

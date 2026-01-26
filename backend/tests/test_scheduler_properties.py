@@ -163,7 +163,7 @@ def task_list_with_resources_strategy(draw, min_tasks=2, max_tasks=8):
 
 class TestDependencyProperties:
     """Property tests for dependency constraint satisfaction
-    
+
     **Validates: Requirement 7.3** - Task dependencies
     """
 
@@ -179,7 +179,7 @@ class TestDependencyProperties:
         """
         Property: For all finish-to-start dependencies, the successor task
         always starts at or after the predecessor task ends (plus lag).
-        
+
         **Validates: Requirement 7.3** - finish-to-start dependencies
         """
         scheduler = SchedulerService()
@@ -222,7 +222,7 @@ class TestDependencyProperties:
         """
         Property: For all start-to-start dependencies, the successor task
         always starts at or after the predecessor task starts (plus lag).
-        
+
         **Validates: Requirement 7.3** - start-to-start dependencies
         """
         scheduler = SchedulerService()
@@ -260,7 +260,7 @@ class TestDependencyProperties:
         """
         Property: For all finish-to-finish dependencies, the successor task
         always finishes at or after the predecessor task finishes (plus lag).
-        
+
         **Validates: Requirement 7.3** - finish-to-finish dependencies
         """
         scheduler = SchedulerService()
@@ -289,7 +289,7 @@ class TestDependencyProperties:
 
 class TestResourceProperties:
     """Property tests for resource constraint satisfaction
-    
+
     **Validates: Requirement 7.4** - Resource capacity constraints
     """
 
@@ -305,7 +305,7 @@ class TestResourceProperties:
         """
         Property: At any point in time, the sum of resource demands for
         concurrent tasks never exceeds the resource capacity.
-        
+
         **Validates: Requirement 7.4** - Resource capacity constraints
         """
         tasks, resources = task_resource_data
@@ -352,7 +352,7 @@ class TestResourceProperties:
 
 class TestScheduleConsistencyProperties:
     """Property tests for schedule consistency
-    
+
     **Validates: Requirement 7.2** - Task scheduling
     """
 
@@ -367,7 +367,7 @@ class TestScheduleConsistencyProperties:
     ):
         """
         Property: The scheduled duration of each task equals its estimated duration.
-        
+
         **Validates: Requirement 7.2** - Task duration calculation
         """
         scheduler = SchedulerService()
@@ -401,7 +401,7 @@ class TestScheduleConsistencyProperties:
     ):
         """
         Property: When scheduling succeeds, all input tasks appear in the schedule.
-        
+
         **Validates: Requirement 7.2** - Complete task scheduling
         """
         scheduler = SchedulerService()
@@ -435,11 +435,11 @@ class TestScheduleConsistencyProperties:
         """
         Property: For each scheduled task, the duration_hours field matches
         the input estimated_hours.
-        
+
         Note: When respect_weekends=True, the actual calendar time between
         start_date and end_date may be longer than duration_hours due to
         weekend skipping. This test verifies the duration_hours field is correct.
-        
+
         **Validates: Requirement 7.2** - Consistent date calculation
         """
         scheduler = SchedulerService()
@@ -472,7 +472,7 @@ class TestScheduleConsistencyProperties:
 
 class TestOptimizationProperties:
     """Property tests for schedule optimization
-    
+
     **Validates: Requirement 7.5** - Schedule optimization
     """
 
@@ -489,7 +489,7 @@ class TestOptimizationProperties:
         """
         Property: For independent tasks (no dependencies, no resource constraints),
         the project duration equals the maximum task duration.
-        
+
         **Validates: Requirement 7.5** - Minimize project duration
         """
         scheduler = SchedulerService()
@@ -524,7 +524,7 @@ class TestOptimizationProperties:
 
 class TestConflictDetectionProperties:
     """Property tests for conflict detection
-    
+
     **Validates: Requirement 7.5** - Conflict identification
     """
 
@@ -534,7 +534,7 @@ class TestConflictDetectionProperties:
     async def test_infeasible_always_has_conflicts(self, constraints: ScheduleConstraints):
         """
         Property: When scheduling is infeasible, at least one conflict is reported.
-        
+
         **Validates: Requirement 7.5** - Conflict identification
         """
         scheduler = SchedulerService()

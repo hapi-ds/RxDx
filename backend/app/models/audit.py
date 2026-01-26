@@ -12,11 +12,11 @@ from app.db.session import Base
 class AuditLog(Base):
     """
     Audit log model for tracking all system activities.
-    
+
     This model provides immutable audit trails for compliance with regulatory
     requirements. All create, read, update, delete operations, authentication
     attempts, and authorization decisions are logged.
-    
+
     Attributes:
         id: Unique audit log entry identifier (UUID)
         user_id: ID of the user who performed the action (nullable for system actions)

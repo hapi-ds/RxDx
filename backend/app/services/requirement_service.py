@@ -61,14 +61,14 @@ class RequirementService(WorkItemService):
     ) -> RequirementResponse:
         """
         Create a new Requirement WorkItem with requirement-specific validation
-        
+
         Args:
             requirement_data: Requirement creation data
             current_user: User creating the requirement
-            
+
         Returns:
             Created Requirement with metadata
-            
+
         Raises:
             ValueError: If requirement validation fails
         """
@@ -99,10 +99,10 @@ class RequirementService(WorkItemService):
     async def get_requirement(self, requirement_id: UUID) -> RequirementResponse | None:
         """
         Get a Requirement by ID with requirement-specific data
-        
+
         Args:
             requirement_id: Requirement UUID
-            
+
         Returns:
             Requirement if found and is of type 'requirement', None otherwise
         """
@@ -122,13 +122,13 @@ class RequirementService(WorkItemService):
     ) -> RequirementResponse | None:
         """
         Update a Requirement with requirement-specific validation
-        
+
         Args:
             requirement_id: Requirement UUID
             updates: Update data
             current_user: User making the update
             change_description: Description of changes made
-            
+
         Returns:
             Updated Requirement with new version
         """
@@ -178,15 +178,15 @@ class RequirementService(WorkItemService):
     ) -> CommentResponse:
         """
         Add a comment to a requirement with comprehensive user attribution
-        
+
         Args:
             requirement_id: Requirement UUID
             comment_data: Comment creation data with validation
             current_user: User adding the comment
-            
+
         Returns:
             Created comment with full metadata and user attribution
-            
+
         Raises:
             ValueError: If requirement not found or validation fails
             PermissionError: If user lacks permission to comment
@@ -294,13 +294,13 @@ class RequirementService(WorkItemService):
     ) -> CommentListResponse:
         """
         Get paginated comments for a requirement with comprehensive user information
-        
+
         Args:
             requirement_id: Requirement UUID
             page: Page number (1-based)
             page_size: Number of comments per page
             include_user_info: Whether to include detailed user information
-            
+
         Returns:
             Paginated list of comments with metadata
         """
@@ -398,15 +398,15 @@ class RequirementService(WorkItemService):
     ) -> CommentResponse:
         """
         Update a comment with user attribution and edit tracking
-        
+
         Args:
             comment_id: Comment UUID to update
             comment_data: Updated comment data
             current_user: User updating the comment
-            
+
         Returns:
             Updated comment with metadata
-            
+
         Raises:
             ValueError: If comment not found
             PermissionError: If user lacks permission to edit
@@ -475,14 +475,14 @@ class RequirementService(WorkItemService):
     ) -> bool:
         """
         Delete a comment with proper authorization
-        
+
         Args:
             comment_id: Comment UUID to delete
             current_user: User requesting deletion
-            
+
         Returns:
             True if deleted successfully
-            
+
         Raises:
             ValueError: If comment not found
             PermissionError: If user lacks permission to delete
@@ -532,11 +532,11 @@ class RequirementService(WorkItemService):
     ) -> CommentResponse | None:
         """
         Get a specific comment by ID with user attribution
-        
+
         Args:
             comment_id: Comment UUID
             current_user: User requesting the comment
-            
+
         Returns:
             Comment with metadata if found and accessible
         """
@@ -562,7 +562,7 @@ class RequirementService(WorkItemService):
     ) -> bool:
         """
         Create a dependency relationship between requirements with enhanced metadata
-        
+
         Args:
             requirement_id: Requirement that depends on another
             depends_on_id: Requirement that is depended upon
@@ -570,10 +570,10 @@ class RequirementService(WorkItemService):
             dependency_type: Type of dependency (depends_on, blocks, relates_to, implements, validates, conflicts_with)
             description: Optional description of the dependency relationship
             priority: Optional priority level for the dependency (1-5)
-            
+
         Returns:
             True if dependency created successfully
-            
+
         Raises:
             ValueError: If requirements not found or invalid dependency type
         """
@@ -658,12 +658,12 @@ class RequirementService(WorkItemService):
     ) -> dict[str, list[dict[str, Any]]]:
         """
         Get all dependencies for a requirement with enhanced metadata
-        
+
         Args:
             requirement_id: Requirement UUID
             include_metadata: Whether to include dependency metadata (description, priority, etc.)
             dependency_types: Filter by specific dependency types
-            
+
         Returns:
             Dictionary with dependency types as keys and lists of requirements with metadata
         """
@@ -802,17 +802,17 @@ class RequirementService(WorkItemService):
     ) -> bool:
         """
         Remove a dependency relationship between requirements
-        
+
         Args:
             requirement_id: Requirement that depends on another
             depends_on_id: Requirement that is depended upon
             current_user: User removing the dependency
             dependency_type: Type of dependency to remove
             reason: Optional reason for removal
-            
+
         Returns:
             True if dependency removed successfully
-            
+
         Raises:
             ValueError: If dependency not found or invalid type
         """
@@ -869,7 +869,7 @@ class RequirementService(WorkItemService):
     ) -> bool:
         """
         Update metadata for an existing dependency relationship
-        
+
         Args:
             requirement_id: Requirement that depends on another
             depends_on_id: Requirement that is depended upon
@@ -878,10 +878,10 @@ class RequirementService(WorkItemService):
             description: New description
             priority: New priority (1-5)
             status: New status (active, inactive, deprecated)
-            
+
         Returns:
             True if dependency updated successfully
-            
+
         Raises:
             ValueError: If dependency not found or invalid values
         """
@@ -954,13 +954,13 @@ class RequirementService(WorkItemService):
     ) -> list[dict[str, Any]]:
         """
         Get the complete dependency chain for a requirement
-        
+
         Args:
             requirement_id: Starting requirement UUID
             direction: "downstream" (dependencies) or "upstream" (dependents)
             max_depth: Maximum depth to traverse
             dependency_types: Filter by specific dependency types
-            
+
         Returns:
             List of requirements in dependency order with path information
         """
@@ -1049,11 +1049,11 @@ class RequirementService(WorkItemService):
     ) -> dict[str, Any]:
         """
         Analyze the impact of proposed changes to a requirement on its dependencies
-        
+
         Args:
             requirement_id: Requirement UUID to analyze
             proposed_changes: Dictionary of proposed changes (status, priority, etc.)
-            
+
         Returns:
             Dictionary with impact analysis results
         """
@@ -1158,12 +1158,12 @@ class RequirementService(WorkItemService):
     ) -> dict[str, Any]:
         """
         Get data formatted for dependency visualization (graphs, charts)
-        
+
         Args:
             requirement_id: Central requirement UUID
             max_depth: Maximum depth to include in visualization
             include_metadata: Whether to include relationship metadata
-            
+
         Returns:
             Dictionary with nodes and edges for visualization
         """
@@ -1359,7 +1359,7 @@ class RequirementService(WorkItemService):
     ) -> list[RequirementResponse]:
         """
         Search Requirements with requirement-specific filters
-        
+
         Args:
             search_text: Text to search in title, description, and acceptance criteria
             status: Filter by status
@@ -1370,7 +1370,7 @@ class RequirementService(WorkItemService):
             has_acceptance_criteria: Filter by presence of acceptance criteria
             limit: Maximum number of results
             offset: Number of results to skip
-            
+
         Returns:
             List of matching Requirements
         """
@@ -1421,10 +1421,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_data(self, requirement_data: RequirementCreate) -> None:
         """
         Validate requirement-specific data with comprehensive business rules
-        
+
         Args:
             requirement_data: Requirement creation data
-            
+
         Raises:
             ValueError: If validation fails
         """
@@ -1459,10 +1459,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_update(self, updates: RequirementUpdate) -> None:
         """
         Validate requirement update data with comprehensive business rules
-        
+
         Args:
             updates: Requirement update data
-            
+
         Raises:
             ValueError: If validation fails
         """
@@ -1503,10 +1503,10 @@ class RequirementService(WorkItemService):
     ) -> RequirementResponse:
         """
         Convert WorkItemResponse to RequirementResponse with additional requirement data
-        
+
         Args:
             workitem: WorkItem response object
-            
+
         Returns:
             RequirementResponse with requirement-specific fields
         """
@@ -1536,10 +1536,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_title(self, title: str) -> None:
         """
         Validate requirement title with specific business rules
-        
+
         Args:
             title: Requirement title to validate
-            
+
         Raises:
             ValueError: If title validation fails
         """
@@ -1570,10 +1570,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_description(self, description: str | None) -> None:
         """
         Validate requirement description
-        
+
         Args:
             description: Requirement description to validate
-            
+
         Raises:
             ValueError: If description validation fails
         """
@@ -1598,10 +1598,10 @@ class RequirementService(WorkItemService):
     async def _validate_acceptance_criteria(self, acceptance_criteria: str) -> None:
         """
         Validate acceptance criteria with specific business rules
-        
+
         Args:
             acceptance_criteria: Acceptance criteria to validate
-            
+
         Raises:
             ValueError: If acceptance criteria validation fails
         """
@@ -1639,10 +1639,10 @@ class RequirementService(WorkItemService):
     async def _validate_business_value(self, business_value: str) -> None:
         """
         Validate business value description
-        
+
         Args:
             business_value: Business value to validate
-            
+
         Raises:
             ValueError: If business value validation fails
         """
@@ -1673,10 +1673,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_source(self, source: str) -> None:
         """
         Validate requirement source
-        
+
         Args:
             source: Requirement source to validate
-            
+
         Raises:
             ValueError: If source validation fails
         """
@@ -1699,10 +1699,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_priority(self, priority: int) -> None:
         """
         Validate requirement priority with business rules
-        
+
         Args:
             priority: Priority level to validate
-            
+
         Raises:
             ValueError: If priority validation fails
         """
@@ -1718,10 +1718,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_status(self, status: str) -> None:
         """
         Validate requirement status with business rules
-        
+
         Args:
             status: Status to validate
-            
+
         Raises:
             ValueError: If status validation fails
         """
@@ -1740,10 +1740,10 @@ class RequirementService(WorkItemService):
     async def _validate_requirement_completeness(self, requirement_data: RequirementCreate) -> None:
         """
         Validate requirement completeness based on status and business rules
-        
+
         Args:
             requirement_data: Complete requirement data to validate
-            
+
         Raises:
             ValueError: If completeness validation fails
         """
@@ -1792,11 +1792,11 @@ class RequirementService(WorkItemService):
     ) -> None:
         """
         Simple validation of requirement dependencies that raises exceptions
-        
+
         Args:
             requirement_id: The requirement that will have dependencies
             dependency_ids: List of requirement IDs this requirement depends on
-            
+
         Raises:
             ValueError: If dependency validation fails
         """
@@ -1832,15 +1832,15 @@ class RequirementService(WorkItemService):
     ) -> dict[str, Any]:
         """
         Enhanced validation of requirement dependencies with detailed reporting
-        
+
         Args:
             requirement_id: The requirement that will have dependencies
             dependency_ids: List of requirement IDs this requirement depends on
             dependency_types: Optional list of dependency types (must match dependency_ids length)
-            
+
         Returns:
             Dictionary with validation results and details
-            
+
         Raises:
             ValueError: If dependency validation fails
         """
@@ -1982,14 +1982,14 @@ class RequirementService(WorkItemService):
     ) -> None:
         """
         Enhanced circular dependency detection with path tracking
-        
+
         Args:
             requirement_id: Current requirement being checked
             new_dependency_ids: New dependencies being added
             dependency_type: Type of dependency being created
             visited: Set of already visited requirements (for recursion)
             path: Current path for detailed error reporting
-            
+
         Raises:
             ValueError: If circular dependency is detected with detailed path
         """
@@ -2050,12 +2050,12 @@ class RequirementService(WorkItemService):
     ) -> dict[str, Any] | None:
         """
         Check if a dependency relationship already exists
-        
+
         Args:
             requirement_id: Source requirement
             depends_on_id: Target requirement
             dependency_type: Type of dependency
-            
+
         Returns:
             Existing dependency data or None
         """
@@ -2084,14 +2084,14 @@ class RequirementService(WorkItemService):
     ) -> int:
         """
         Calculate impact level (0-5) of proposed changes on a related requirement
-        
+
         Args:
             current_req: The requirement being changed
             affected_req: The requirement that might be affected
             relationship_type: Type of relationship between requirements
             proposed_changes: Proposed changes to current_req
             relationship_priority: Priority of the relationship (1-5)
-            
+
         Returns:
             Impact level from 0 (no impact) to 5 (critical impact)
         """
@@ -2149,12 +2149,12 @@ class RequirementService(WorkItemService):
     ) -> str:
         """
         Generate human-readable impact description
-        
+
         Args:
             relationship_type: Type of relationship
             proposed_changes: Proposed changes
             direction: "upstream" or "downstream"
-            
+
         Returns:
             Human-readable impact description
         """
@@ -2191,12 +2191,12 @@ class RequirementService(WorkItemService):
     ) -> list[str]:
         """
         Generate recommendations based on impact analysis
-        
+
         Args:
             current_req: The requirement being changed
             proposed_changes: Proposed changes
             impact_analysis: Results of impact analysis
-            
+
         Returns:
             List of recommendation strings
         """
@@ -2251,11 +2251,11 @@ class RequirementService(WorkItemService):
     ) -> None:
         """
         Validate that user has permission to comment on requirement
-        
+
         Args:
             requirement: Requirement being commented on
             current_user: User attempting to comment
-            
+
         Raises:
             PermissionError: If user lacks permission
         """
@@ -2270,10 +2270,10 @@ class RequirementService(WorkItemService):
     async def _get_comment_by_id(self, comment_id: UUID) -> dict[str, Any] | None:
         """
         Get comment data by ID from graph database
-        
+
         Args:
             comment_id: Comment UUID
-            
+
         Returns:
             Comment data dictionary or None if not found
         """
@@ -2292,10 +2292,10 @@ class RequirementService(WorkItemService):
     def _comment_data_to_response(self, comment_data: dict[str, Any]) -> CommentResponse:
         """
         Convert comment data from graph to CommentResponse
-        
+
         Args:
             comment_data: Raw comment data from graph database
-            
+
         Returns:
             CommentResponse object
         """

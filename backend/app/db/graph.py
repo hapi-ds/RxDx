@@ -69,11 +69,11 @@ class GraphService:
     async def execute_query(self, query: str, params: dict[str, Any] | None = None) -> list[dict]:
         """
         Execute a Cypher query using Apache AGE
-        
+
         Args:
             query: Cypher query string
             params: Query parameters
-            
+
         Returns:
             List of result dictionaries
         """
@@ -120,11 +120,11 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Create a node in the graph
-        
+
         Args:
             label: Node label (e.g., 'WorkItem', 'Risk', 'Entity')
             properties: Node properties as dictionary
-            
+
         Returns:
             Created node with ID
         """
@@ -143,13 +143,13 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Create a relationship between two nodes
-        
+
         Args:
             from_id: Source node ID
             to_id: Target node ID
             rel_type: Relationship type (e.g., 'TESTED_BY', 'DEPENDS_ON')
             properties: Optional relationship properties
-            
+
         Returns:
             Created relationship
         """
@@ -205,13 +205,13 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Find nodes related to a given node
-        
+
         Args:
             node_id: Starting node ID
             relationship_type: Optional relationship type filter
             direction: 'outgoing', 'incoming', or 'both'
             depth: Traversal depth (default 1)
-            
+
         Returns:
             List of related nodes
         """
@@ -241,12 +241,12 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Search for nodes by label and/or properties
-        
+
         Args:
             label: Optional node label filter
             properties: Optional property filters
             limit: Maximum number of results
-            
+
         Returns:
             List of matching nodes
         """
@@ -276,7 +276,7 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Create a WorkItem node in the graph database
-        
+
         Args:
             workitem_id: Unique identifier for the WorkItem
             workitem_type: Type of WorkItem (requirement, task, test, risk, document)
@@ -288,7 +288,7 @@ class GraphService:
             created_by: User ID who created the WorkItem
             assigned_to: Optional user ID assigned to the WorkItem
             **additional_props: Additional properties specific to WorkItem type
-            
+
         Returns:
             Created WorkItem node
         """
@@ -376,14 +376,14 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Search WorkItems with full-text search and filters
-        
+
         Args:
             search_text: Text to search in title and description
             workitem_type: Filter by WorkItem type
             status: Filter by status
             assigned_to: Filter by assigned user
             limit: Maximum number of results
-            
+
         Returns:
             List of matching WorkItems
         """
@@ -433,10 +433,10 @@ class GraphService:
     ) -> dict[str, list[dict[str, Any]]]:
         """
         Get traceability matrix showing relationships between requirements, tests, and risks
-        
+
         Args:
             project_id: Optional project filter
-            
+
         Returns:
             Dictionary with requirements, tests, risks and their relationships
         """
@@ -449,7 +449,7 @@ class GraphService:
         WHERE true {project_filter}
         OPTIONAL MATCH (r)-[:TESTED_BY]->(t:WorkItem {{type: 'test'}})
         OPTIONAL MATCH (r)-[:MITIGATES]->(risk:WorkItem {{type: 'risk'}})
-        RETURN r, 
+        RETURN r,
                COLLECT(DISTINCT t) as tests,
                COLLECT(DISTINCT risk) as risks
         """
@@ -491,11 +491,11 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Get FMEA failure chains showing risk propagation paths
-        
+
         Args:
             risk_id: Optional starting risk ID (if None, gets all chains)
             max_depth: Maximum chain depth to traverse
-            
+
         Returns:
             List of risk chains with failure paths and probabilities
         """
@@ -545,10 +545,10 @@ class GraphService:
     def _calculate_chain_probability(self, probabilities: list[float]) -> float:
         """
         Calculate total probability for a failure chain
-        
+
         Args:
             probabilities: List of individual step probabilities
-            
+
         Returns:
             Combined probability (product of all probabilities)
         """
@@ -568,7 +568,7 @@ class GraphService:
     async def initialize_graph_schema(self) -> dict[str, list[str]]:
         """
         Initialize the graph schema with supported node types and relationships
-        
+
         Returns:
             Dictionary with supported node_types and relationship_types
         """
@@ -643,20 +643,20 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Get graph data formatted for visualization in react-flow and R3F
-        
+
         Performance optimizations:
         - Limits results to prevent memory issues
         - Uses efficient graph traversal queries
         - Implements early termination when limit is reached
         - Caches frequently accessed node data
-        
+
         Args:
             center_node_id: Optional center node to start traversal from
             depth: Maximum depth to traverse (default 2)
             node_types: Optional filter for node types
             relationship_types: Optional filter for relationship types
             limit: Maximum number of nodes to return (default 1000)
-            
+
         Returns:
             Dictionary with nodes and edges formatted for visualization
         """

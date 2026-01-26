@@ -26,7 +26,7 @@ class TestPasswordHashingProperties:
     def test_password_hash_is_deterministic_verification(self, password: str):
         """
         Property: A password should always verify against its own hash.
-        
+
         For any valid password, hashing it and then verifying the original
         password against the hash should always succeed.
         """
@@ -38,7 +38,7 @@ class TestPasswordHashingProperties:
     def test_password_hash_is_different_from_plaintext(self, password: str):
         """
         Property: A hashed password should never equal the plaintext password.
-        
+
         This ensures that passwords are actually being hashed and not stored
         in plaintext.
         """
@@ -50,7 +50,7 @@ class TestPasswordHashingProperties:
     def test_password_hash_is_non_empty(self, password: str):
         """
         Property: A password hash should never be empty.
-        
+
         For any valid password, the hash should produce a non-empty string.
         """
         hashed = get_password_hash(password)
@@ -62,7 +62,7 @@ class TestPasswordHashingProperties:
     def test_password_hash_uses_salt(self, password: str):
         """
         Property: Hashing the same password twice should produce different hashes.
-        
+
         This verifies that the hashing algorithm uses a salt, which is critical
         for security (prevents rainbow table attacks).
         """
@@ -84,7 +84,7 @@ class TestPasswordHashingProperties:
     def test_wrong_password_does_not_verify(self, password: str, wrong_password: str):
         """
         Property: A different password should not verify against a hash.
-        
+
         For any two different passwords, the hash of one should not verify
         against the other.
         """
@@ -100,7 +100,7 @@ class TestPasswordHashingProperties:
     def test_password_hash_length_consistency(self, password: str):
         """
         Property: Password hashes should have consistent format.
-        
+
         Argon2id hashes have a specific format starting with $argon2id$.
         """
         hashed = get_password_hash(password)
@@ -118,7 +118,7 @@ class TestPasswordHashingProperties:
     ):
         """
         Property: Different passwords should produce different hashes.
-        
+
         While technically possible for different inputs to produce the same
         hash (collision), it should be astronomically unlikely with Argon2id.
         """
@@ -137,7 +137,7 @@ class TestPasswordHashingProperties:
     def test_hash_verification_is_case_sensitive(self, password: str):
         """
         Property: Password verification should be case-sensitive.
-        
+
         A password with different casing should not verify against the hash.
         """
         # Skip if password is all same case or has no letters

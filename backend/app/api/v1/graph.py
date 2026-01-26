@@ -25,22 +25,22 @@ async def get_graph_visualization(
 ) -> dict[str, Any]:
     """
     Get graph data formatted for visualization in 2D (react-flow) and 3D (R3F)
-    
+
     This endpoint returns graph data optimized for visualization libraries:
     - react-flow for 2D interactive graph visualization
     - React Three Fiber (R3F) for 3D/VR immersive visualization
-    
+
     Args:
         center_node_id: Optional center node to build subgraph around
         depth: Maximum traversal depth from center node (1-5)
         node_types: Optional list of node types to include (WorkItem, Risk, etc.)
         relationship_types: Optional list of relationship types to include
         limit: Maximum number of nodes to return (10-5000)
-        
+
     Returns:
         Dictionary containing:
         - nodes: List of nodes formatted for visualization
-        - edges: List of edges formatted for visualization  
+        - edges: List of edges formatted for visualization
         - metadata: Graph statistics and query info
     """
     # Validate node types if provided
@@ -101,11 +101,11 @@ async def get_node_details(
 ) -> dict[str, Any]:
     """
     Get detailed information about a specific node
-    
+
     Args:
         node_id: Unique identifier of the node
         include_relationships: Whether to include related nodes
-        
+
     Returns:
         Node details with optional relationship information
     """
@@ -151,12 +151,12 @@ async def search_graph(
 ) -> dict[str, Any]:
     """
     Search nodes in the graph by text content
-    
+
     Args:
         query: Text to search for in node titles and descriptions
         node_types: Optional filter by node types
         limit: Maximum number of results (1-200)
-        
+
     Returns:
         Search results with matching nodes
     """
@@ -218,10 +218,10 @@ async def get_traceability_matrix(
 ) -> dict[str, Any]:
     """
     Get traceability matrix showing relationships between requirements, tests, and risks
-    
+
     Args:
         project_id: Optional project filter
-        
+
     Returns:
         Traceability matrix with requirements, tests, risks and their relationships
     """
@@ -246,11 +246,11 @@ async def get_risk_chains(
 ) -> dict[str, Any]:
     """
     Get FMEA failure chains showing risk propagation paths
-    
+
     Args:
         risk_id: Optional starting risk ID (if None, gets all chains)
         max_depth: Maximum chain depth to traverse (1-10)
-        
+
     Returns:
         Risk chains with failure paths and probabilities
     """
@@ -282,7 +282,7 @@ async def get_graph_schema(
 ) -> dict[str, Any]:
     """
     Get graph schema information including supported node types and relationships
-    
+
     Returns:
         Graph schema with node types and relationship types
     """

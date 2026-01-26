@@ -73,14 +73,14 @@ async def get_risks(
 ) -> RiskNodeListResponse:
     """
     Get risk nodes with optional filtering and pagination.
-    
+
     - **page**: Page number (1-based)
     - **size**: Number of items per page (1-100)
     - **status**: Filter by risk status (draft, identified, assessed, mitigated, accepted, closed, archived)
     - **min_rpn**: Minimum Risk Priority Number filter
     - **max_rpn**: Maximum Risk Priority Number filter
     - **risk_owner**: Filter by risk owner user ID
-    
+
     Returns paginated list of risk nodes with RPN calculations.
     """
     offset = (page - 1) * size
@@ -117,9 +117,9 @@ async def get_high_rpn_risks(
 ) -> list[RiskNodeResponse]:
     """
     Get risks with RPN above threshold that require mitigation.
-    
+
     - **threshold**: RPN threshold (default: 100 for high-risk)
-    
+
     Returns list of risks requiring mitigation action.
     """
     return await risk_service.get_high_rpn_risks(threshold=threshold)
@@ -134,7 +134,7 @@ async def create_risk(
 ) -> RiskNodeResponse:
     """
     Create a new risk node with FMEA ratings.
-    
+
     - **title**: Risk title (required, 5-500 characters)
     - **description**: Detailed risk description
     - **status**: Risk status (default: draft)
@@ -149,7 +149,7 @@ async def create_risk(
     - **risk_owner**: User responsible for managing this risk
     - **linked_design_items**: Design WorkItems this risk is linked to
     - **linked_process_items**: Process WorkItems this risk is linked to
-    
+
     RPN (Risk Priority Number) is automatically calculated as severity × occurrence × detection.
     """
     try:
@@ -170,9 +170,9 @@ async def get_risk(
 ) -> RiskNodeResponse:
     """
     Get a specific risk node by ID.
-    
+
     - **risk_id**: Risk node UUID
-    
+
     Returns the risk node with calculated RPN and linked items.
     """
     risk = await risk_service.get_risk(risk_id)
@@ -195,10 +195,10 @@ async def update_risk(
 ) -> RiskNodeResponse:
     """
     Update a risk node, creating a new version.
-    
+
     - **risk_id**: Risk node UUID
     - **change_description**: Required description of changes made
-    
+
     Updates create new versions and invalidate existing signatures.
     RPN is automatically recalculated if severity, occurrence, or detection changes.
     """
@@ -222,9 +222,9 @@ async def delete_risk(
 ):
     """
     Delete a risk node.
-    
+
     - **risk_id**: Risk node UUID
-    
+
     Cannot delete risks with valid digital signatures.
     """
     try:
@@ -252,12 +252,12 @@ async def create_failure_chain(
 ) -> LeadsToRelationshipResponse:
     """
     Create a failure node and link it to a risk via LEADS_TO relationship.
-    
+
     - **risk_id**: Source risk node UUID
     - **probability**: Probability of this failure occurring (0.0 to 1.0)
     - **rationale**: Rationale for the probability assessment
     - **failure_data**: Failure node data including description, impact, type
-    
+
     Creates both the Failure node and the LEADS_TO relationship with probability attribute.
     """
     # First verify the risk exists
@@ -298,10 +298,10 @@ async def get_risk_chains(
 ) -> list[RiskChainResponse]:
     """
     Get failure chains showing risk propagation paths.
-    
+
     - **risk_id**: Starting risk node UUID
     - **max_depth**: Maximum chain depth to traverse (1-10, default 5)
-    
+
     Returns list of failure chains with:
     - Chain nodes (risks and failures)
     - Chain edges with probabilities
@@ -333,7 +333,7 @@ async def create_mitigation(
 ) -> MitigationActionResponse:
     """
     Create a mitigation action for a risk.
-    
+
     - **risk_id**: Risk node UUID
     - **title**: Mitigation action title (required)
     - **description**: Detailed description of the mitigation action
@@ -382,7 +382,7 @@ async def get_risk_mitigations(
 ) -> MitigationActionListResponse:
     """
     Get all mitigation actions for a specific risk.
-    
+
     - **risk_id**: Risk node UUID
     - **page**: Page number (1-based)
     - **size**: Number of items per page (1-100)
@@ -427,9 +427,9 @@ async def analyze_risk(
 ) -> RPNAnalysisResponse:
     """
     Analyze a risk and get RPN-based recommendations.
-    
+
     - **risk_id**: Risk node UUID
-    
+
     Returns:
     - RPN value and breakdown (severity, occurrence, detection)
     - Risk level (critical, high, medium, low)

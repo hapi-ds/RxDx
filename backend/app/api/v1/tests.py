@@ -62,7 +62,7 @@ async def get_test_specs(
 ) -> TestSpecListResponse:
     """
     Get test specifications with optional filtering and pagination.
-    
+
     - **page**: Page number (1-based)
     - **size**: Number of items per page (1-100)
     - **test_type**: Filter by test type (unit, integration, system, acceptance, regression)
@@ -98,7 +98,7 @@ async def get_test_coverage(
 ) -> TestCoverageResponse:
     """
     Get test coverage metrics across all requirements.
-    
+
     Returns:
     - **total_requirements**: Total number of requirements
     - **requirements_with_tests**: Requirements with linked test specs
@@ -118,7 +118,7 @@ async def create_test_spec(
 ) -> TestSpecResponse:
     """
     Create a new test specification.
-    
+
     - **title**: Test specification title (required)
     - **description**: Detailed test description
     - **test_type**: Type of test (unit, integration, system, acceptance, regression)
@@ -145,7 +145,7 @@ async def get_test_spec(
 ) -> TestSpecResponse:
     """
     Get a specific test specification by ID.
-    
+
     - **test_spec_id**: Test specification UUID
     """
     test_spec = await test_service.get_test_spec(test_spec_id)
@@ -168,7 +168,7 @@ async def update_test_spec(
 ) -> TestSpecResponse:
     """
     Update a test specification, creating a new version.
-    
+
     - **test_spec_id**: Test specification UUID
     - **change_description**: Required description of changes made
     - Updates create new versions and invalidate existing signatures
@@ -193,7 +193,7 @@ async def delete_test_spec(
 ):
     """
     Delete a test specification.
-    
+
     - **test_spec_id**: Test specification UUID
     - Cannot delete test specifications with valid signatures
     """
@@ -216,7 +216,7 @@ async def create_test_run(
 ) -> TestRunResponse:
     """
     Create a new test run for a test specification.
-    
+
     - **test_spec_id**: Test specification UUID
     - **test_spec_version**: Version of test spec being executed
     - **executed_by**: User executing the test
@@ -253,7 +253,7 @@ async def get_test_runs(
 ) -> TestRunListResponse:
     """
     Get all test runs for a specific test specification.
-    
+
     - **test_spec_id**: Test specification UUID
     - **page**: Page number (1-based)
     - **size**: Number of items per page (1-100)
@@ -287,7 +287,7 @@ async def update_test_run(
 ) -> TestRunResponse:
     """
     Update a test run with new results.
-    
+
     - **run_id**: Test run UUID
     - **overall_status**: Updated test result
     - **step_results**: Updated results for test steps

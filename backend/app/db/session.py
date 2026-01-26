@@ -31,7 +31,7 @@ Base = declarative_base()
 async def get_db() -> AsyncSession:
     """
     Dependency for getting async database sessions.
-    
+
     Usage in FastAPI endpoints:
         @app.get("/items")
         async def get_items(db: AsyncSession = Depends(get_db)):

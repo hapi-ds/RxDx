@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 class SchedulerService:
     """
     Service for project scheduling using constraint programming with OR-Tools.
-    
+
     Supports:
     - Task dependencies (finish-to-start, start-to-start, finish-to-finish)
     - Resource capacity constraints
@@ -45,13 +45,13 @@ class SchedulerService:
     ) -> ScheduleResponse:
         """
         Schedule project tasks using constraint programming.
-        
+
         Args:
             project_id: Unique project identifier
             tasks: List of tasks to schedule
             resources: List of available resources
             constraints: Project constraints
-            
+
         Returns:
             ScheduleResponse with scheduled tasks or conflicts
         """
@@ -172,7 +172,7 @@ class SchedulerService:
     ) -> list[ScheduleConflict]:
         """
         Add task dependency constraints to the model.
-        
+
         Supports:
         - finish_to_start: Successor can't start until predecessor finishes
         - start_to_start: Successor can't start until predecessor starts
@@ -578,10 +578,10 @@ class SchedulerService:
     async def get_schedule(self, project_id: UUID) -> ProjectSchedule | None:
         """
         Get the stored schedule for a project.
-        
+
         Args:
             project_id: Project identifier
-            
+
         Returns:
             ProjectSchedule if found, None otherwise
         """
@@ -594,11 +594,11 @@ class SchedulerService:
     ) -> ScheduleResponse | None:
         """
         Apply manual adjustments to a schedule.
-        
+
         Args:
             project_id: Project identifier
             updates: Manual adjustments to apply
-            
+
         Returns:
             Updated ScheduleResponse or None if schedule not found
         """

@@ -70,14 +70,14 @@ class RiskService:
     def calculate_rpn(severity: int, occurrence: int, detection: int) -> int:
         """
         Calculate Risk Priority Number (RPN).
-        
+
         RPN = Severity × Occurrence × Detection
-        
+
         Args:
             severity: Severity rating (1-10)
             occurrence: Occurrence rating (1-10)
             detection: Detection rating (1-10)
-            
+
         Returns:
             RPN value (1-1000)
         """
@@ -86,10 +86,10 @@ class RiskService:
     def get_risk_level(self, rpn: int) -> str:
         """
         Determine risk level based on RPN and configured thresholds.
-        
+
         Args:
             rpn: Risk Priority Number
-            
+
         Returns:
             Risk level string (critical, high, medium, low)
         """
@@ -105,10 +105,10 @@ class RiskService:
     def requires_mitigation(self, rpn: int) -> bool:
         """
         Determine if a risk requires mitigation based on RPN.
-        
+
         Args:
             rpn: Risk Priority Number
-            
+
         Returns:
             True if mitigation is required
         """
@@ -125,14 +125,14 @@ class RiskService:
     ) -> RiskNodeResponse:
         """
         Create a new Risk node with severity, occurrence, and detection ratings.
-        
+
         Args:
             risk_data: Risk creation data
             user: User creating the risk
-            
+
         Returns:
             Created risk node
-            
+
         Raises:
             ValueError: If linked WorkItems don't exist
         """
@@ -239,10 +239,10 @@ class RiskService:
     async def get_risk(self, risk_id: UUID) -> RiskNodeResponse | None:
         """
         Retrieve a risk node by ID.
-        
+
         Args:
             risk_id: Risk node ID
-            
+
         Returns:
             Risk node if found, None otherwise
         """
@@ -280,16 +280,16 @@ class RiskService:
     ) -> RiskNodeResponse:
         """
         Update a risk node, creating a new version.
-        
+
         Args:
             risk_id: Risk node ID
             updates: Update data
             user: User making the update
             change_description: Description of changes
-            
+
         Returns:
             Updated risk node
-            
+
         Raises:
             ValueError: If risk doesn't exist
         """
@@ -342,14 +342,14 @@ class RiskService:
     async def delete_risk(self, risk_id: UUID, user: User) -> bool:
         """
         Delete a risk node if it has no valid signatures.
-        
+
         Args:
             risk_id: Risk node ID
             user: User requesting deletion
-            
+
         Returns:
             True if deleted successfully
-            
+
         Raises:
             ValueError: If risk doesn't exist or has valid signatures
         """
@@ -389,11 +389,11 @@ class RiskService:
     ) -> FailureNodeResponse:
         """
         Create a new Failure node.
-        
+
         Args:
             failure_data: Failure creation data
             user: User creating the failure
-            
+
         Returns:
             Created failure node
         """
@@ -451,10 +451,10 @@ class RiskService:
     async def get_failure(self, failure_id: UUID) -> FailureNodeResponse | None:
         """
         Retrieve a failure node by ID.
-        
+
         Args:
             failure_id: Failure node ID
-            
+
         Returns:
             Failure node if found, None otherwise
         """
@@ -482,15 +482,15 @@ class RiskService:
     ) -> FailureNodeResponse:
         """
         Update a failure node.
-        
+
         Args:
             failure_id: Failure node ID
             updates: Update data
             user: User making the update
-            
+
         Returns:
             Updated failure node
-            
+
         Raises:
             ValueError: If failure doesn't exist
         """
@@ -532,14 +532,14 @@ class RiskService:
     ) -> LeadsToRelationshipResponse:
         """
         Create a LEADS_TO relationship between Risk/Failure nodes.
-        
+
         Args:
             relationship_data: Relationship creation data
             user: User creating the relationship
-            
+
         Returns:
             Created relationship
-            
+
         Raises:
             ValueError: If source or target nodes don't exist or are invalid types
         """
@@ -610,11 +610,11 @@ class RiskService:
     ) -> list[RiskChainResponse]:
         """
         Get failure chains showing risk propagation paths.
-        
+
         Args:
             risk_id: Optional starting risk ID (if None, gets all chains)
             max_depth: Maximum chain depth to traverse
-            
+
         Returns:
             List of risk chains with failure paths and probabilities
         """
@@ -688,14 +688,14 @@ class RiskService:
     ) -> MitigationActionResponse:
         """
         Create a mitigation action for a risk.
-        
+
         Args:
             mitigation_data: Mitigation creation data
             user: User creating the mitigation
-            
+
         Returns:
             Created mitigation action
-            
+
         Raises:
             ValueError: If risk doesn't exist
         """
@@ -777,15 +777,15 @@ class RiskService:
     ) -> MitigationActionResponse:
         """
         Update a mitigation action.
-        
+
         Args:
             mitigation_id: Mitigation action ID
             updates: Update data
             user: User making the update
-            
+
         Returns:
             Updated mitigation action
-            
+
         Raises:
             ValueError: If mitigation doesn't exist
         """
@@ -828,10 +828,10 @@ class RiskService:
     async def get_mitigation(self, mitigation_id: UUID) -> MitigationActionResponse | None:
         """
         Retrieve a mitigation action by ID.
-        
+
         Args:
             mitigation_id: Mitigation action ID
-            
+
         Returns:
             Mitigation action if found, None otherwise
         """
@@ -849,11 +849,11 @@ class RiskService:
     ) -> list[MitigationActionResponse]:
         """
         Get all mitigation actions for a risk.
-        
+
         Args:
             risk_id: Risk node ID
             status: Optional status filter
-            
+
         Returns:
             List of mitigation actions
         """
@@ -878,14 +878,14 @@ class RiskService:
     ) -> RiskReassessmentResponse:
         """
         Reassess a risk after mitigation actions.
-        
+
         Args:
             reassessment: Reassessment request data
             user: User performing the reassessment
-            
+
         Returns:
             Reassessment response with RPN changes
-            
+
         Raises:
             ValueError: If risk doesn't exist
         """
@@ -985,7 +985,7 @@ class RiskService:
     ) -> list[RiskNodeResponse]:
         """
         Get risks with optional filtering.
-        
+
         Args:
             status: Filter by status
             min_rpn: Minimum RPN filter
@@ -993,7 +993,7 @@ class RiskService:
             risk_owner: Filter by risk owner
             limit: Maximum number of results
             offset: Number of results to skip
-            
+
         Returns:
             List of risk nodes
         """
@@ -1047,10 +1047,10 @@ class RiskService:
     ) -> list[RiskNodeResponse]:
         """
         Get risks with RPN above threshold that require mitigation.
-        
+
         Args:
             threshold: RPN threshold (defaults to configured high threshold)
-            
+
         Returns:
             List of high-RPN risks
         """
@@ -1060,13 +1060,13 @@ class RiskService:
     async def analyze_risk(self, risk_id: UUID) -> RPNAnalysisResponse:
         """
         Analyze a risk and provide RPN-based recommendations.
-        
+
         Args:
             risk_id: Risk node ID
-            
+
         Returns:
             RPN analysis with risk level and recommendations
-            
+
         Raises:
             ValueError: If risk doesn't exist
         """
@@ -1167,13 +1167,13 @@ async def get_risk_service(
 ) -> RiskService:
     """
     Dependency for getting RiskService instance.
-    
+
     Args:
         graph_service: Graph database service
         audit_service: Audit logging service
         signature_service: Digital signature service
         version_service: Version control service
-        
+
     Returns:
         Configured RiskService instance
     """

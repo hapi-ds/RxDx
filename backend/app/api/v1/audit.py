@@ -19,14 +19,14 @@ router = APIRouter()
 def parse_iso_date(date_str: str, field_name: str) -> datetime:
     """
     Parse ISO 8601 date string with robust handling of various formats.
-    
+
     Args:
         date_str: ISO 8601 date string
         field_name: Name of the field for error messages
-        
+
     Returns:
         Parsed datetime object
-        
+
     Raises:
         HTTPException: If date format is invalid
     """
@@ -51,15 +51,15 @@ def parse_iso_date(date_str: str, field_name: str) -> datetime:
 def require_audit_permission(current_user: User = Depends(get_current_user)) -> User:
     """
     Dependency to check if user has audit viewing permissions.
-    
+
     Only admin and auditor roles can view audit logs.
-    
+
     Args:
         current_user: Current authenticated user
-        
+
     Returns:
         User if authorized
-        
+
     Raises:
         HTTPException: 403 if user lacks audit permissions
     """
@@ -91,11 +91,11 @@ async def get_audit_logs(
 ) -> list[AuditLogResponse]:
     """
     Retrieve audit logs with filtering capabilities.
-    
+
     This endpoint provides access to the complete audit trail for compliance
     reporting and security monitoring. Only users with admin or auditor roles
     can access audit logs.
-    
+
     **Filtering Options:**
     - **user_id**: Filter logs by the user who performed the action
     - **action**: Filter by action type (CREATE, READ, UPDATE, DELETE, SIGN, AUTH, etc.)
@@ -105,11 +105,11 @@ async def get_audit_logs(
     - **end_date**: Filter logs up to this date (ISO 8601 format)
     - **limit**: Maximum number of results (1-1000, default: 100)
     - **offset**: Number of results to skip for pagination (default: 0)
-    
+
     **Response:**
     Returns a list of audit log entries matching the filter criteria,
     ordered by timestamp (newest first).
-    
+
     **Example Usage:**
     ```
     GET /api/v1/audit?action=CREATE&entity_type=WorkItem&limit=50
@@ -187,10 +187,10 @@ async def get_audit_log_count(
 ) -> dict:
     """
     Get total count of audit logs matching filter criteria.
-    
+
     This endpoint returns the total number of audit log entries that match
     the specified filters, useful for pagination calculations.
-    
+
     **Response:**
     ```json
     {
@@ -263,19 +263,19 @@ async def export_audit_logs(
 ):
     """
     Export audit logs for compliance reporting.
-    
+
     This endpoint exports audit logs in JSON or CSV format for compliance
     reporting and external analysis. The export is limited to 10,000 records
     to prevent performance issues.
-    
+
     **Parameters:**
     - **format**: Export format - "json" (default) or "csv"
     - All other parameters same as GET /audit endpoint
-    
+
     **Response:**
     - **JSON format**: Returns JSON array of audit log objects
     - **CSV format**: Returns CSV file with audit log data
-    
+
     **Example Usage:**
     ```
     GET /api/v1/audit/export?format=csv&start_date=2024-01-01T00:00:00Z
@@ -384,13 +384,13 @@ async def cleanup_old_audit_logs(
 ) -> dict:
     """
     Clean up audit logs older than retention period.
-    
+
     This endpoint allows administrators to clean up old audit logs according
     to the configured retention policy. Only admin users can perform this operation.
-    
+
     **Parameters:**
     - **retention_days**: Number of days to retain audit logs (1-7300 days, default: 3650 = 10 years)
-    
+
     **Response:**
     ```json
     {
@@ -399,12 +399,12 @@ async def cleanup_old_audit_logs(
         "cutoff_date": "2014-01-18T12:00:00Z"
     }
     ```
-    
+
     **Security:**
     - Only admin users can perform audit log cleanup
     - The cleanup operation itself is logged for audit purposes
     - Minimum retention period is 1 day, maximum is 20 years
-    
+
     **Example Usage:**
     ```
     POST /api/v1/audit/cleanup?retention_days=2555  # 7 years retention

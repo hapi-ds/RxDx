@@ -23,7 +23,7 @@ class UserRole(str, PyEnum):
 class User(Base):
     """
     User model for authentication and authorization.
-    
+
     Attributes:
         id: Unique user identifier (UUID)
         email: User email address (unique, indexed)

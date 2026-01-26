@@ -16,11 +16,11 @@ from app.schemas.audit import AuditLogFilter, AuditLogResponse
 class AuditService:
     """
     Service for managing audit logs and compliance tracking.
-    
+
     This service provides immutable audit trails for all system activities
     to ensure compliance with regulatory requirements. All CRUD operations,
     authentication events, and authorization decisions are logged.
-    
+
     Key features:
     - Immutable audit logs (no update/delete operations)
     - Comprehensive logging of all system activities
@@ -42,7 +42,7 @@ class AuditService:
     ) -> AuditLog:
         """
         Create an immutable audit log entry.
-        
+
         Args:
             action: Type of action (CREATE, READ, UPDATE, DELETE, SIGN, AUTH, etc.)
             entity_type: Type of entity affected (User, WorkItem, Requirement, etc.)
@@ -50,10 +50,10 @@ class AuditService:
             entity_id: ID of the affected entity (None for list operations)
             ip_address: Client IP address
             details: Additional context as dictionary
-            
+
         Returns:
             Created AuditLog instance
-            
+
         Example:
             await audit_service.log(
                 action="CREATE",
@@ -90,14 +90,14 @@ class AuditService:
     ) -> AuditLog:
         """
         Log authentication attempts for security monitoring.
-        
+
         Args:
             email: Email address used for authentication
             success: Whether authentication succeeded
             user_id: User ID if authentication succeeded
             ip_address: Client IP address
             failure_reason: Reason for failure (if applicable)
-            
+
         Returns:
             Created AuditLog instance
         """
@@ -125,14 +125,14 @@ class AuditService:
     ) -> AuditLog:
         """
         Log authorization decisions for compliance tracking.
-        
+
         Args:
             user_id: ID of the user requesting access
             permission: Permission being checked
             resource: Resource being accessed
             granted: Whether access was granted
             ip_address: Client IP address
-            
+
         Returns:
             Created AuditLog instance
         """
@@ -161,7 +161,7 @@ class AuditService:
     ) -> AuditLog:
         """
         Log CRUD operations on entities.
-        
+
         Args:
             operation: CRUD operation (CREATE, READ, UPDATE, DELETE)
             entity_type: Type of entity (WorkItem, User, etc.)
@@ -169,7 +169,7 @@ class AuditService:
             user_id: ID of the user performing the operation
             ip_address: Client IP address
             changes: Dictionary of changed fields (for UPDATE operations)
-            
+
         Returns:
             Created AuditLog instance
         """
@@ -197,7 +197,7 @@ class AuditService:
     ) -> AuditLog:
         """
         Log digital signature events.
-        
+
         Args:
             event_type: Type of signature event (SIGN, VERIFY, INVALIDATE)
             workitem_id: ID of the WorkItem being signed
@@ -205,7 +205,7 @@ class AuditService:
             signature_id: ID of the digital signature
             ip_address: Client IP address
             verification_result: Result of signature verification (if applicable)
-            
+
         Returns:
             Created AuditLog instance
         """
@@ -232,10 +232,10 @@ class AuditService:
     ) -> list[AuditLogResponse]:
         """
         Retrieve audit logs with filtering.
-        
+
         Args:
             filters: Filter criteria for audit logs
-            
+
         Returns:
             List of audit log entries matching the filters
         """
@@ -282,10 +282,10 @@ class AuditService:
     ) -> int:
         """
         Get total count of audit logs matching filters.
-        
+
         Args:
             filters: Filter criteria for audit logs
-            
+
         Returns:
             Total count of matching audit log entries
         """
@@ -324,10 +324,10 @@ class AuditService:
     ) -> list[dict[str, Any]]:
         """
         Export audit logs for compliance reporting.
-        
+
         Args:
             filters: Filter criteria for audit logs
-            
+
         Returns:
             List of audit log entries as dictionaries for export
         """
@@ -387,13 +387,13 @@ class AuditService:
     ) -> int:
         """
         Clean up audit logs older than retention period.
-        
+
         Args:
             retention_days: Number of days to retain audit logs (default: 10 years)
-            
+
         Returns:
             Number of audit log entries deleted
-            
+
         Note:
             This method should be called periodically (e.g., daily) to maintain
             compliance with audit log retention policies.

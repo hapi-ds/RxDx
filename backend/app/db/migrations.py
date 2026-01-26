@@ -9,10 +9,10 @@ from app.models import AuditLog, User  # noqa: F401 - Import to register models
 async def create_tables(engine_instance: AsyncEngine = engine) -> None:
     """
     Create all database tables.
-    
+
     This function creates all tables defined in SQLAlchemy models.
     In production, use Alembic for proper migration management.
-    
+
     Args:
         engine_instance: SQLAlchemy async engine (defaults to app engine)
     """
@@ -23,9 +23,9 @@ async def create_tables(engine_instance: AsyncEngine = engine) -> None:
 async def drop_tables(engine_instance: AsyncEngine = engine) -> None:
     """
     Drop all database tables.
-    
+
     WARNING: This will delete all data. Use with caution!
-    
+
     Args:
         engine_instance: SQLAlchemy async engine (defaults to app engine)
     """

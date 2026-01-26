@@ -35,7 +35,7 @@ async def get_workitems(
 ):
     """
     Get WorkItems with optional filtering
-    
+
     Supports filtering by:
     - search: Text search in title and description
     - type: WorkItem type (requirement, task, test, risk, document)
@@ -43,7 +43,7 @@ async def get_workitems(
     - assigned_to: UUID of assigned user
     - created_by: UUID of creator
     - priority: Priority level (1-5)
-    
+
     Supports pagination with limit and offset parameters.
     """
     # Check read permission
@@ -103,7 +103,7 @@ async def create_workitem(
 ):
     """
     Create a new WorkItem
-    
+
     Creates a WorkItem in the graph database with version 1.0.
     The WorkItem type determines which additional fields are available.
     """
@@ -164,7 +164,7 @@ async def get_workitem(
 ):
     """
     Get a specific WorkItem by ID
-    
+
     Returns the current version of the WorkItem.
     """
     # Check read permission
@@ -218,7 +218,7 @@ async def update_workitem(
 ):
     """
     Update a WorkItem (creates new version)
-    
+
     Updates create a new version of the WorkItem and invalidate existing signatures.
     A change description is required for audit purposes.
     """
@@ -287,7 +287,7 @@ async def delete_workitem(
 ):
     """
     Delete a WorkItem
-    
+
     Deletion is prevented if the WorkItem has valid digital signatures,
     unless force=True is used (requires admin permissions).
     """
@@ -369,7 +369,7 @@ async def get_workitem_history(
 ):
     """
     Get complete version history for a WorkItem
-    
+
     Returns all versions of the WorkItem ordered by version number.
     """
     # Check read permission
@@ -422,7 +422,7 @@ async def get_workitem_version(
 ):
     """
     Get a specific version of a WorkItem
-    
+
     Returns the WorkItem as it existed at the specified version.
     Version format: "major.minor" (e.g., "1.0", "1.1", "2.0")
     """
@@ -478,13 +478,13 @@ async def compare_workitem_versions(
 ):
     """
     Compare two versions of a WorkItem
-    
+
     Returns the differences between two versions of the same WorkItem.
     Version format: "major.minor" (e.g., "1.0", "1.1", "2.0")
-    
+
     Returns:
     - version1: First version identifier
-    - version2: Second version identifier  
+    - version2: Second version identifier
     - changed_fields: Fields that differ between versions
     - added_fields: Fields present in version2 but not version1
     - removed_fields: Fields present in version1 but not version2

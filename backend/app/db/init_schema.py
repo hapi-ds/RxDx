@@ -47,10 +47,10 @@ DEFAULT_USERS = [
 async def seed_users(skip_existing: bool = True) -> list[str]:
     """
     Seed default users for development.
-    
+
     Args:
         skip_existing: If True, skip users that already exist
-        
+
     Returns:
         List of created user emails
     """
@@ -141,7 +141,7 @@ async def initialize_graph_schema():
 async def main(seed_users_flag: bool = True):
     """
     Main initialization function.
-    
+
     Args:
         seed_users_flag: If True, seed default development users
     """

@@ -101,7 +101,7 @@ async def send_work_instruction(
 ) -> SendWorkInstructionResponse:
     """
     Send a work instruction email for a WorkItem.
-    
+
     The email will include the WorkItem ID in the subject for tracking replies.
     """
     workitem = {
@@ -145,7 +145,7 @@ async def process_incoming_email(
 ) -> ProcessEmailResponse:
     """
     Process an incoming email reply.
-    
+
     Extracts WorkItem ID from subject and parses the body for updates.
     Uses structured parsing first, then falls back to LLM if available.
     """
@@ -184,7 +184,7 @@ async def extract_knowledge(
 ) -> ExtractKnowledgeResponse:
     """
     Extract knowledge from email content using LLM.
-    
+
     Analyzes the email body to extract:
     - Entities (people, components, systems)
     - Decisions made
@@ -209,7 +209,7 @@ async def get_thread_history(
 ) -> EmailThreadResponse:
     """
     Get email thread history for a WorkItem.
-    
+
     Returns all emails in the thread in chronological order.
     """
     thread = email_service.get_thread_history(str(workitem_id))
@@ -271,7 +271,7 @@ async def start_polling(
 ) -> PollingStatusResponse:
     """
     Start background email polling.
-    
+
     Polls the configured IMAP server for new emails at the configured interval.
     """
     if email_service.is_polling:

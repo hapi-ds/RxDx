@@ -61,7 +61,7 @@ TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 class DocumentService:
     """
     Service for generating compliance documents.
-    
+
     Supports PDF, Excel, and Word document generation with
     digital signature inclusion and audit logging.
     """
@@ -75,7 +75,7 @@ class DocumentService:
     ):
         """
         Initialize DocumentService.
-        
+
         Args:
             graph_service: Service for graph database operations
             audit_service: Service for audit logging
@@ -235,11 +235,11 @@ class DocumentService:
     ) -> DesignReviewResponse:
         """
         Generate a design phase review PDF document.
-        
+
         Args:
             request: Design review generation request
             user: User generating the document
-            
+
         Returns:
             Design review response with document details
         """
@@ -394,11 +394,11 @@ class DocumentService:
     ) -> TraceabilityMatrixResponse:
         """
         Generate a requirements traceability matrix PDF.
-        
+
         Args:
             request: Traceability matrix generation request
             user: User generating the document
-            
+
         Returns:
             Traceability matrix response with document details
         """
@@ -564,11 +564,11 @@ class DocumentService:
     ) -> FMEAResponse:
         """
         Generate an FMEA Excel document with risk chains.
-        
+
         Args:
             request: FMEA generation request
             user: User generating the document
-            
+
         Returns:
             FMEA response with document details
         """
@@ -838,11 +838,11 @@ class DocumentService:
     ) -> InvoiceResponse:
         """
         Generate an invoice Word document using a template.
-        
+
         Args:
             request: Invoice generation request
             user: User generating the document
-            
+
         Returns:
             Invoice response with document details
         """
@@ -1183,11 +1183,11 @@ class DocumentService:
     ) -> DocumentRecord | None:
         """
         Retrieve a document record by ID.
-        
+
         Args:
             document_id: Document ID
             user: User requesting the document
-            
+
         Returns:
             Document record if found, None otherwise
         """
@@ -1212,11 +1212,11 @@ class DocumentService:
     ) -> bytes | None:
         """
         Retrieve document content by ID.
-        
+
         Args:
             document_id: Document ID
             user: User requesting the document
-            
+
         Returns:
             Document content bytes if found, None otherwise
         """
@@ -1238,13 +1238,13 @@ class DocumentService:
     ) -> list[DocumentRecord]:
         """
         List documents with optional filtering.
-        
+
         Args:
             project_id: Filter by project ID
             document_type: Filter by document type
             limit: Maximum number of results
             offset: Number of results to skip
-            
+
         Returns:
             List of document records
         """
@@ -1275,12 +1275,12 @@ def get_document_service(
 ) -> DocumentService:
     """
     Factory function for DocumentService dependency injection.
-    
+
     Args:
         graph_service: Graph database service
         audit_service: Audit logging service
         signature_service: Digital signature service
-        
+
     Returns:
         DocumentService instance
     """

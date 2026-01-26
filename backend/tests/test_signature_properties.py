@@ -60,7 +60,7 @@ class TestSignatureServiceProperties:
     def test_content_hash_deterministic(self, signature_service, content):
         """
         **Validates: Requirements 2.1, 2.4**
-        
+
         Property: Content hash generation is deterministic.
         For any given content, the hash should always be the same.
         """
@@ -79,7 +79,7 @@ class TestSignatureServiceProperties:
     def test_content_hash_uniqueness(self, signature_service, content1, content2):
         """
         **Validates: Requirements 2.1, 2.4**
-        
+
         Property: Different content produces different hashes (collision resistance).
         """
         assume(content1 != content2)  # Only test when contents are actually different
@@ -94,7 +94,7 @@ class TestSignatureServiceProperties:
     def test_signature_creation_deterministic(self, signature_service, rsa_key_pair, content):
         """
         **Validates: Requirements 2.1, 2.2**
-        
+
         Property: Signature creation produces valid signatures that can be verified.
         Note: RSA-PSS signatures are not deterministic due to random salt.
         """
@@ -120,7 +120,7 @@ class TestSignatureServiceProperties:
     def test_signature_verification_roundtrip(self, signature_service, rsa_key_pair, content):
         """
         **Validates: Requirements 2.1, 2.4**
-        
+
         Property: A signature created with a private key can be verified with the corresponding public key.
         """
         private_pem, public_pem = rsa_key_pair
@@ -144,7 +144,7 @@ class TestSignatureServiceProperties:
     def test_signature_content_binding(self, signature_service, rsa_key_pair, content1, content2):
         """
         **Validates: Requirements 2.3, 2.4**
-        
+
         Property: A signature is bound to specific content and cannot be used for different content.
         """
         assume(content1 != content2)
@@ -168,7 +168,7 @@ class TestSignatureServiceProperties:
     def test_signature_with_different_keys(self, signature_service, content_hash):
         """
         **Validates: Requirements 2.1, 2.4**
-        
+
         Property: A signature created with one key pair cannot be verified with a different key pair.
         """
         # Generate two different key pairs
@@ -201,7 +201,7 @@ class TestSignatureServiceProperties:
     def test_json_serialization_consistency(self, signature_service, content):
         """
         **Validates: Requirements 2.1, 2.4**
-        
+
         Property: JSON serialization with sorted keys produces consistent hashes
         regardless of dictionary key order.
         """
@@ -225,7 +225,7 @@ class TestSignatureServiceProperties:
     def test_signature_tampering_detection(self, signature_service, rsa_key_pair, content, corrupted_signature):
         """
         **Validates: Requirements 2.4**
-        
+
         Property: Tampered signatures should be detected and rejected.
         """
         assume(all(c in "0123456789abcdef" for c in corrupted_signature))  # Valid hex
@@ -254,7 +254,7 @@ class TestSignatureServiceProperties:
     def test_invalid_signature_format_handling(self, signature_service, rsa_key_pair, content, invalid_hex):
         """
         **Validates: Requirements 2.4**
-        
+
         Property: Invalid signature formats should be handled gracefully.
         """
         _, public_pem = rsa_key_pair
@@ -272,7 +272,7 @@ class TestSignatureServiceProperties:
     def test_signature_non_repudiation(self, signature_service, content):
         """
         **Validates: Requirements 2.1, 2.2**
-        
+
         Property: Each key pair produces unique signatures (non-repudiation).
         Different private keys should produce different signatures for the same content.
         """
@@ -308,7 +308,7 @@ class TestSignatureServiceProperties:
     def test_content_modification_detection(self, signature_service, rsa_key_pair, content, modification):
         """
         **Validates: Requirements 2.3, 2.4**
-        
+
         Property: Any modification to signed content should be detectable.
         """
         private_pem, public_pem = rsa_key_pair
@@ -345,7 +345,7 @@ class TestSignatureServiceCryptographicProperties:
     def test_hash_avalanche_effect(self, signature_service, data):
         """
         **Validates: Requirements 2.1, 2.4**
-        
+
         Property: Small changes in input should produce dramatically different hashes (avalanche effect).
         """
         # Generate content using data strategy
@@ -394,7 +394,7 @@ class TestSignatureServiceCryptographicProperties:
     def test_hash_distribution_uniformity(self, signature_service, content):
         """
         **Validates: Requirements 2.1**
-        
+
         Property: Hash function should produce uniformly distributed outputs.
         """
         hash_result = signature_service._generate_content_hash(content)
@@ -415,7 +415,7 @@ class TestSignatureServiceCryptographicProperties:
     def test_signature_security_across_key_sizes(self, signature_service, key_size, content):
         """
         **Validates: Requirements 2.1, 2.2**
-        
+
         Property: Signature verification should work correctly across different RSA key sizes.
         """
         # Generate key pair with specified size

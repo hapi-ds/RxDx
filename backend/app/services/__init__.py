@@ -1,22 +1,22 @@
 """Business logic services"""
 
-from .workitem_service import WorkItemService, get_workitem_service
-from .requirement_service import RequirementService, get_requirement_service
-from .auth_service import AuthService
 from .audit_service import AuditService
-from .version_service import VersionService, get_version_service
-from .signature_service import SignatureService, get_signature_service
-from .risk_service import RiskService, get_risk_service
-from .llm_service import LLMService, get_llm_service
-from .scheduler_service import SchedulerService, get_scheduler_service
+from .auth_service import AuthService
 from .document_service import DocumentService, get_document_service
+from .llm_service import LLMService, get_llm_service
+from .requirement_service import RequirementService, get_requirement_service
+from .risk_service import RiskService, get_risk_service
+from .scheduler_service import SchedulerService, get_scheduler_service
+from .signature_service import SignatureService, get_signature_service
+from .version_service import VersionService, get_version_service
+from .workitem_service import WorkItemService, get_workitem_service
 
 __all__ = [
     "WorkItemService",
     "get_workitem_service",
     "RequirementService",
     "get_requirement_service",
-    "AuthService", 
+    "AuthService",
     "AuditService",
     "VersionService",
     "get_version_service",

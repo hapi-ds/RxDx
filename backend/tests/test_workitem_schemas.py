@@ -1,30 +1,31 @@
 """Unit tests for WorkItem Pydantic schemas"""
 
-import pytest
 from datetime import datetime
 from uuid import uuid4
+
+import pytest
 from pydantic import ValidationError
 
 from app.schemas.workitem import (
+    DocumentCreate,
+    DocumentResponse,
+    DocumentUpdate,
+    RequirementCreate,
+    RequirementResponse,
+    RequirementUpdate,
+    RiskCreate,
+    RiskResponse,
+    RiskUpdate,
+    TaskCreate,
+    TaskResponse,
+    TaskUpdate,
+    TestSpecCreate,
+    TestSpecResponse,
+    TestSpecUpdate,
     WorkItemBase,
     WorkItemCreate,
-    WorkItemUpdate,
     WorkItemResponse,
-    RequirementCreate,
-    RequirementUpdate,
-    RequirementResponse,
-    TaskCreate,
-    TaskUpdate,
-    TaskResponse,
-    TestSpecCreate,
-    TestSpecUpdate,
-    TestSpecResponse,
-    RiskCreate,
-    RiskUpdate,
-    RiskResponse,
-    DocumentCreate,
-    DocumentUpdate,
-    DocumentResponse,
+    WorkItemUpdate,
 )
 
 
@@ -84,7 +85,7 @@ class TestWorkItemBaseSchema:
     def test_status_validation(self):
         """Test status field validation"""
         valid_statuses = ["draft", "active", "completed", "archived", "rejected"]
-        
+
         for status in valid_statuses:
             workitem = WorkItemBase(title="Test Title", status=status)
             assert workitem.status == status
@@ -135,7 +136,7 @@ class TestWorkItemCreateSchema:
     def test_type_validation(self):
         """Test type field validation"""
         valid_types = ["requirement", "task", "test", "risk", "document"]
-        
+
         for workitem_type in valid_types:
             workitem = WorkItemCreate(
                 title="Test Title",
@@ -262,7 +263,7 @@ class TestTestSchemas:
     def test_test_status_validation(self):
         """Test test_status validation"""
         valid_statuses = ["not_run", "passed", "failed", "blocked"]
-        
+
         for status in valid_statuses:
             test = TestSpecCreate(
                 title="Test Title Here",
@@ -393,7 +394,7 @@ class TestComprehensiveWorkItemValidation:
 
     def test_comprehensive_validation_and_functionality(self):
         """Test all WorkItem schemas work together correctly with proper validation"""
-        
+
         # Test validation works correctly for status
         with pytest.raises(ValidationError) as exc_info:
             WorkItemBase(title='Test Title Here', status='invalid_status')
@@ -411,16 +412,16 @@ class TestComprehensiveWorkItemValidation:
 
         # Test all specialized create schemas work
         req = RequirementCreate(
-            title='Test Requirement Title', 
-            status='draft', 
+            title='Test Requirement Title',
+            status='draft',
             acceptance_criteria='Given proper conditions, when action is taken, then system must work correctly'
         )
         assert req.type == 'requirement'
         assert req.acceptance_criteria == 'Given proper conditions, when action is taken, then system must work correctly'
 
         task = TaskCreate(
-            title='Test Task Title', 
-            status='draft', 
+            title='Test Task Title',
+            status='draft',
             estimated_hours=8.0,
             due_date=datetime.now()
         )
@@ -428,8 +429,8 @@ class TestComprehensiveWorkItemValidation:
         assert task.estimated_hours == 8.0
 
         test = TestSpecCreate(
-            title='Test Test Case Title', 
-            status='draft', 
+            title='Test Test Case Title',
+            status='draft',
             test_status='not_run',
             test_type='integration'
         )
@@ -437,10 +438,10 @@ class TestComprehensiveWorkItemValidation:
         assert test.test_status == 'not_run'
 
         risk = RiskCreate(
-            title='Test Risk Assessment Title', 
-            status='draft', 
-            severity=5, 
-            occurrence=3, 
+            title='Test Risk Assessment Title',
+            status='draft',
+            severity=5,
+            occurrence=3,
             detection=7,
             mitigation_actions='Implement safeguards'
         )
@@ -450,8 +451,8 @@ class TestComprehensiveWorkItemValidation:
         assert risk.detection == 7
 
         doc = DocumentCreate(
-            title='Test Document Title', 
-            status='draft', 
+            title='Test Document Title',
+            status='draft',
             file_size=1024,
             mime_type='application/pdf'
         )
@@ -460,7 +461,7 @@ class TestComprehensiveWorkItemValidation:
 
     def test_comprehensive_update_schemas(self):
         """Test all update schemas work correctly"""
-        
+
         # Test base update schema
         update = WorkItemUpdate(title='Updated Title Here', status='completed')
         assert update.title == 'Updated Title Here'
@@ -493,7 +494,7 @@ class TestComprehensiveWorkItemValidation:
 
     def test_comprehensive_response_schemas(self):
         """Test all response schemas work correctly"""
-        
+
         base_data = {
             "id": uuid4(),
             "version": "1.0",
@@ -568,7 +569,7 @@ class TestComprehensiveWorkItemValidation:
 
     def test_field_validation_edge_cases(self):
         """Test edge cases for field validation"""
-        
+
         # Test priority bounds
         valid_priorities = [1, 2, 3, 4, 5]
         for priority in valid_priorities:
@@ -578,7 +579,7 @@ class TestComprehensiveWorkItemValidation:
         # Test invalid priorities
         with pytest.raises(ValidationError):
             WorkItemBase(title="Test Title Here", status="draft", priority=0)
-        
+
         with pytest.raises(ValidationError):
             WorkItemBase(title="Test Title Here", status="draft", priority=6)
 
@@ -612,48 +613,48 @@ class TestComprehensiveWorkItemValidation:
 
     def test_all_schemas_integration(self):
         """Integration test ensuring all schemas work together seamlessly"""
-        
+
         # Create instances of all schema types
         schemas_created = []
-        
+
         # Base schemas
         workitem_base = WorkItemBase(title="Base WorkItem Title", status="draft")
         schemas_created.append(("WorkItemBase", workitem_base))
-        
+
         workitem_create = WorkItemCreate(title="Create WorkItem Title", status="draft", type="requirement")
         schemas_created.append(("WorkItemCreate", workitem_create))
-        
+
         # Specialized create schemas
         req_create = RequirementCreate(title="Requirement Title", status="draft")
         schemas_created.append(("RequirementCreate", req_create))
-        
+
         task_create = TaskCreate(title="Task Title", status="draft")
         schemas_created.append(("TaskCreate", task_create))
-        
+
         test_create = TestSpecCreate(title="Test Title", status="draft")
         schemas_created.append(("TestSpecCreate", test_create))
-        
+
         risk_create = RiskCreate(title="Risk Title", status="draft", severity=5, occurrence=3, detection=7)
         schemas_created.append(("RiskCreate", risk_create))
-        
+
         doc_create = DocumentCreate(title="Document Title", status="draft")
         schemas_created.append(("DocumentCreate", doc_create))
-        
+
         # Verify all schemas were created successfully
         assert len(schemas_created) == 7
-        
+
         # Verify each schema has the expected attributes
         for schema_name, schema_instance in schemas_created:
             assert hasattr(schema_instance, 'title')
             assert hasattr(schema_instance, 'status')
             assert schema_instance.title is not None
             assert schema_instance.status == 'draft'
-            
+
             # Verify type-specific schemas have their type set correctly
             if hasattr(schema_instance, 'type'):
                 expected_types = {
                     'RequirementCreate': 'requirement',
-                    'TaskCreate': 'task', 
+                    'TaskCreate': 'task',
                     'TestSpecCreate': 'test',
                     'RiskCreate': 'risk',
                     'DocumentCreate': 'document'

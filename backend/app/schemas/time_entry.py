@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -12,15 +11,15 @@ class TimeEntryBase(BaseModel):
     """Base TimeEntry schema with common fields"""
 
     project_id: UUID = Field(..., description="UUID of the project")
-    task_id: Optional[UUID] = Field(None, description="UUID of the associated task (optional)")
+    task_id: UUID | None = Field(None, description="UUID of the associated task (optional)")
     start_time: datetime = Field(..., description="Start time of the time entry")
-    end_time: Optional[datetime] = Field(None, description="End time of the time entry (optional for running entries)")
-    description: Optional[str] = Field(None, max_length=2000, description="Description of work performed")
-    category: Optional[str] = Field(None, max_length=100, description="Category of work (e.g., development, meeting, review)")
+    end_time: datetime | None = Field(None, description="End time of the time entry (optional for running entries)")
+    description: str | None = Field(None, max_length=2000, description="Description of work performed")
+    category: str | None = Field(None, max_length=100, description="Category of work (e.g., development, meeting, review)")
 
     @field_validator("description")
     @classmethod
-    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+    def validate_description(cls, v: str | None) -> str | None:
         """Validate description content"""
         if v is None:
             return v
@@ -33,7 +32,7 @@ class TimeEntryBase(BaseModel):
 
     @field_validator("category")
     @classmethod
-    def validate_category(cls, v: Optional[str]) -> Optional[str]:
+    def validate_category(cls, v: str | None) -> str | None:
         """Validate category"""
         if v is None:
             return v
@@ -66,16 +65,16 @@ class TimeEntryCreate(TimeEntryBase):
 class TimeEntryUpdate(BaseModel):
     """Schema for updating a TimeEntry"""
 
-    project_id: Optional[UUID] = Field(None, description="UUID of the project")
-    task_id: Optional[UUID] = Field(None, description="UUID of the associated task")
-    start_time: Optional[datetime] = Field(None, description="Start time of the time entry")
-    end_time: Optional[datetime] = Field(None, description="End time of the time entry")
-    description: Optional[str] = Field(None, max_length=2000, description="Description of work performed")
-    category: Optional[str] = Field(None, max_length=100, description="Category of work")
+    project_id: UUID | None = Field(None, description="UUID of the project")
+    task_id: UUID | None = Field(None, description="UUID of the associated task")
+    start_time: datetime | None = Field(None, description="Start time of the time entry")
+    end_time: datetime | None = Field(None, description="End time of the time entry")
+    description: str | None = Field(None, max_length=2000, description="Description of work performed")
+    category: str | None = Field(None, max_length=100, description="Category of work")
 
     @field_validator("description")
     @classmethod
-    def validate_description(cls, v: Optional[str]) -> Optional[str]:
+    def validate_description(cls, v: str | None) -> str | None:
         """Validate description content"""
         if v is None:
             return v
@@ -88,7 +87,7 @@ class TimeEntryUpdate(BaseModel):
 
     @field_validator("category")
     @classmethod
-    def validate_category(cls, v: Optional[str]) -> Optional[str]:
+    def validate_category(cls, v: str | None) -> str | None:
         """Validate category"""
         if v is None:
             return v
@@ -111,10 +110,10 @@ class TimeEntryResponse(TimeEntryBase):
 
     id: UUID = Field(..., description="Unique identifier for the time entry")
     user_id: UUID = Field(..., description="UUID of the user who created the entry")
-    duration_hours: Optional[Decimal] = Field(None, description="Duration in hours (calculated)")
+    duration_hours: Decimal | None = Field(None, description="Duration in hours (calculated)")
     synced: bool = Field(default=False, description="Whether the entry has been synced from mobile")
     created_at: datetime = Field(..., description="When the entry was created")
-    updated_at: Optional[datetime] = Field(None, description="When the entry was last updated")
+    updated_at: datetime | None = Field(None, description="When the entry was last updated")
 
     model_config = {"from_attributes": True}
 
@@ -122,8 +121,8 @@ class TimeEntryResponse(TimeEntryBase):
 class TimeEntrySyncRequest(BaseModel):
     """Schema for syncing time entries from mobile devices"""
 
-    entries: List["TimeEntrySyncItem"] = Field(..., description="List of time entries to sync")
-    device_id: Optional[str] = Field(None, max_length=100, description="Identifier of the mobile device")
+    entries: list["TimeEntrySyncItem"] = Field(..., description="List of time entries to sync")
+    device_id: str | None = Field(None, max_length=100, description="Identifier of the mobile device")
     sync_timestamp: datetime = Field(..., description="Timestamp when sync was initiated")
 
 
@@ -132,15 +131,15 @@ class TimeEntrySyncItem(BaseModel):
 
     local_id: str = Field(..., max_length=100, description="Local ID from mobile device")
     project_id: UUID = Field(..., description="UUID of the project")
-    task_id: Optional[UUID] = Field(None, description="UUID of the associated task")
+    task_id: UUID | None = Field(None, description="UUID of the associated task")
     start_time: datetime = Field(..., description="Start time of the time entry")
-    end_time: Optional[datetime] = Field(None, description="End time of the time entry")
-    description: Optional[str] = Field(None, max_length=2000, description="Description of work performed")
-    category: Optional[str] = Field(None, max_length=100, description="Category of work")
+    end_time: datetime | None = Field(None, description="End time of the time entry")
+    description: str | None = Field(None, max_length=2000, description="Description of work performed")
+    category: str | None = Field(None, max_length=100, description="Category of work")
 
     @field_validator("category")
     @classmethod
-    def validate_category(cls, v: Optional[str]) -> Optional[str]:
+    def validate_category(cls, v: str | None) -> str | None:
         """Validate category"""
         if v is None:
             return v
@@ -170,7 +169,7 @@ class TimeEntrySyncResponse(BaseModel):
 
     synced_count: int = Field(..., description="Number of entries successfully synced")
     failed_count: int = Field(..., description="Number of entries that failed to sync")
-    synced_entries: List["TimeEntrySyncResult"] = Field(..., description="Results for each synced entry")
+    synced_entries: list["TimeEntrySyncResult"] = Field(..., description="Results for each synced entry")
     sync_timestamp: datetime = Field(..., description="Server timestamp of sync completion")
 
 
@@ -178,9 +177,9 @@ class TimeEntrySyncResult(BaseModel):
     """Schema for individual sync result"""
 
     local_id: str = Field(..., description="Local ID from mobile device")
-    server_id: Optional[UUID] = Field(None, description="Server-assigned UUID (if successful)")
+    server_id: UUID | None = Field(None, description="Server-assigned UUID (if successful)")
     success: bool = Field(..., description="Whether sync was successful")
-    error: Optional[str] = Field(None, description="Error message if sync failed")
+    error: str | None = Field(None, description="Error message if sync failed")
 
 
 class TimeAggregation(BaseModel):
@@ -188,8 +187,8 @@ class TimeAggregation(BaseModel):
 
     project_id: UUID = Field(..., description="UUID of the project")
     user_id: UUID = Field(..., description="UUID of the user")
-    task_id: Optional[UUID] = Field(None, description="UUID of the task (if grouped by task)")
-    category: Optional[str] = Field(None, description="Category (if grouped by category)")
+    task_id: UUID | None = Field(None, description="UUID of the task (if grouped by task)")
+    category: str | None = Field(None, description="Category (if grouped by category)")
     total_hours: Decimal = Field(..., description="Total hours worked")
     entry_count: int = Field(..., description="Number of time entries")
     start_date: datetime = Field(..., description="Start of aggregation period")
@@ -199,18 +198,18 @@ class TimeAggregation(BaseModel):
 class TimeAggregationRequest(BaseModel):
     """Schema for requesting time aggregation"""
 
-    project_id: Optional[UUID] = Field(None, description="Filter by project")
-    user_id: Optional[UUID] = Field(None, description="Filter by user")
+    project_id: UUID | None = Field(None, description="Filter by project")
+    user_id: UUID | None = Field(None, description="Filter by user")
     start_date: datetime = Field(..., description="Start of period")
     end_date: datetime = Field(..., description="End of period")
-    group_by: List[str] = Field(
+    group_by: list[str] = Field(
         default=["project_id", "user_id"],
         description="Fields to group by (project_id, user_id, task_id, category)"
     )
 
     @field_validator("group_by")
     @classmethod
-    def validate_group_by(cls, v: List[str]) -> List[str]:
+    def validate_group_by(cls, v: list[str]) -> list[str]:
         """Validate group_by fields"""
         valid_fields = {"project_id", "user_id", "task_id", "category"}
         for field in v:
@@ -231,7 +230,7 @@ class TimeAggregationRequest(BaseModel):
 class TimeAggregationResponse(BaseModel):
     """Schema for time aggregation response"""
 
-    aggregations: List[TimeAggregation] = Field(..., description="Aggregated time data")
+    aggregations: list[TimeAggregation] = Field(..., description="Aggregated time data")
     total_hours: Decimal = Field(..., description="Total hours across all aggregations")
     period_start: datetime = Field(..., description="Start of aggregation period")
     period_end: datetime = Field(..., description="End of aggregation period")

@@ -1,7 +1,7 @@
 """Audit service for compliance tracking and logging"""
 
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.audit import AuditLog
-from app.schemas.audit import AuditLogCreate, AuditLogFilter, AuditLogResponse
+from app.schemas.audit import AuditLogFilter, AuditLogResponse
 
 
 class AuditService:
@@ -35,10 +35,10 @@ class AuditService:
         self,
         action: str,
         entity_type: str,
-        user_id: Optional[UUID] = None,
-        entity_id: Optional[UUID] = None,
-        ip_address: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        user_id: UUID | None = None,
+        entity_id: UUID | None = None,
+        ip_address: str | None = None,
+        details: dict[str, Any] | None = None,
     ) -> AuditLog:
         """
         Create an immutable audit log entry.
@@ -73,20 +73,20 @@ class AuditService:
             details=details,
             timestamp=datetime.now(UTC),
         )
-        
+
         self.db.add(audit_log)
         await self.db.commit()
         await self.db.refresh(audit_log)
-        
+
         return audit_log
 
     async def log_auth_attempt(
         self,
         email: str,
         success: bool,
-        user_id: Optional[UUID] = None,
-        ip_address: Optional[str] = None,
-        failure_reason: Optional[str] = None,
+        user_id: UUID | None = None,
+        ip_address: str | None = None,
+        failure_reason: str | None = None,
     ) -> AuditLog:
         """
         Log authentication attempts for security monitoring.
@@ -103,10 +103,10 @@ class AuditService:
         """
         action = "AUTH_SUCCESS" if success else "AUTH_FAILURE"
         details = {"email": email}
-        
+
         if not success and failure_reason:
             details["failure_reason"] = failure_reason
-            
+
         return await self.log(
             action=action,
             entity_type="User",
@@ -121,7 +121,7 @@ class AuditService:
         permission: str,
         resource: str,
         granted: bool,
-        ip_address: Optional[str] = None,
+        ip_address: str | None = None,
     ) -> AuditLog:
         """
         Log authorization decisions for compliance tracking.
@@ -141,7 +141,7 @@ class AuditService:
             "permission": permission,
             "resource": resource,
         }
-        
+
         return await self.log(
             action=action,
             entity_type="Authorization",
@@ -156,8 +156,8 @@ class AuditService:
         entity_type: str,
         entity_id: UUID,
         user_id: UUID,
-        ip_address: Optional[str] = None,
-        changes: Optional[Dict[str, Any]] = None,
+        ip_address: str | None = None,
+        changes: dict[str, Any] | None = None,
     ) -> AuditLog:
         """
         Log CRUD operations on entities.
@@ -176,7 +176,7 @@ class AuditService:
         details = {}
         if changes:
             details["changes"] = changes
-            
+
         return await self.log(
             action=operation.upper(),
             entity_type=entity_type,
@@ -191,9 +191,9 @@ class AuditService:
         event_type: str,
         workitem_id: UUID,
         user_id: UUID,
-        signature_id: Optional[UUID] = None,
-        ip_address: Optional[str] = None,
-        verification_result: Optional[bool] = None,
+        signature_id: UUID | None = None,
+        ip_address: str | None = None,
+        verification_result: bool | None = None,
     ) -> AuditLog:
         """
         Log digital signature events.
@@ -210,13 +210,13 @@ class AuditService:
             Created AuditLog instance
         """
         details = {"workitem_id": str(workitem_id)}
-        
+
         if signature_id:
             details["signature_id"] = str(signature_id)
-            
+
         if verification_result is not None:
             details["verification_result"] = verification_result
-            
+
         return await self.log(
             action=f"SIGNATURE_{event_type.upper()}",
             entity_type="DigitalSignature",
@@ -229,7 +229,7 @@ class AuditService:
     async def get_audit_logs(
         self,
         filters: AuditLogFilter,
-    ) -> List[AuditLogResponse]:
+    ) -> list[AuditLogResponse]:
         """
         Retrieve audit logs with filtering.
         
@@ -240,40 +240,40 @@ class AuditService:
             List of audit log entries matching the filters
         """
         query = select(AuditLog)
-        
+
         # Apply filters
         conditions = []
-        
+
         if filters.user_id:
             conditions.append(AuditLog.user_id == filters.user_id)
-            
+
         if filters.action:
             conditions.append(AuditLog.action == filters.action.upper())
-            
+
         if filters.entity_type:
             conditions.append(AuditLog.entity_type == filters.entity_type)
-            
+
         if filters.entity_id:
             conditions.append(AuditLog.entity_id == filters.entity_id)
-            
+
         if filters.start_date:
             conditions.append(AuditLog.timestamp >= filters.start_date)
-            
+
         if filters.end_date:
             conditions.append(AuditLog.timestamp <= filters.end_date)
-            
+
         if conditions:
             query = query.where(and_(*conditions))
-            
+
         # Order by timestamp (newest first)
         query = query.order_by(desc(AuditLog.timestamp))
-        
+
         # Apply pagination
         query = query.offset(filters.offset).limit(filters.limit)
-        
+
         result = await self.db.execute(query)
         audit_logs = result.scalars().all()
-        
+
         return [AuditLogResponse.model_validate(log) for log in audit_logs]
 
     async def get_audit_log_count(
@@ -290,38 +290,38 @@ class AuditService:
             Total count of matching audit log entries
         """
         query = select(func.count(AuditLog.id))
-        
+
         # Apply same filters as get_audit_logs
         conditions = []
-        
+
         if filters.user_id:
             conditions.append(AuditLog.user_id == filters.user_id)
-            
+
         if filters.action:
             conditions.append(AuditLog.action == filters.action.upper())
-            
+
         if filters.entity_type:
             conditions.append(AuditLog.entity_type == filters.entity_type)
-            
+
         if filters.entity_id:
             conditions.append(AuditLog.entity_id == filters.entity_id)
-            
+
         if filters.start_date:
             conditions.append(AuditLog.timestamp >= filters.start_date)
-            
+
         if filters.end_date:
             conditions.append(AuditLog.timestamp <= filters.end_date)
-            
+
         if conditions:
             query = query.where(and_(*conditions))
-            
+
         result = await self.db.execute(query)
         return result.scalar() or 0
 
     async def export_audit_logs(
         self,
         filters: AuditLogFilter,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Export audit logs for compliance reporting.
         
@@ -333,40 +333,40 @@ class AuditService:
         """
         # Create export filters with larger limit (bypass validation)
         query = select(AuditLog)
-        
+
         # Apply same filters as get_audit_logs
         conditions = []
-        
+
         if filters.user_id:
             conditions.append(AuditLog.user_id == filters.user_id)
-            
+
         if filters.action:
             conditions.append(AuditLog.action == filters.action.upper())
-            
+
         if filters.entity_type:
             conditions.append(AuditLog.entity_type == filters.entity_type)
-            
+
         if filters.entity_id:
             conditions.append(AuditLog.entity_id == filters.entity_id)
-            
+
         if filters.start_date:
             conditions.append(AuditLog.timestamp >= filters.start_date)
-            
+
         if filters.end_date:
             conditions.append(AuditLog.timestamp <= filters.end_date)
-            
+
         if conditions:
             query = query.where(and_(*conditions))
-            
+
         # Order by timestamp (newest first)
         query = query.order_by(desc(AuditLog.timestamp))
-        
+
         # Apply large limit for export (no pagination)
         query = query.limit(10000)
-        
+
         result = await self.db.execute(query)
         audit_logs = result.scalars().all()
-        
+
         return [
             {
                 "id": str(log.id),
@@ -399,17 +399,18 @@ class AuditService:
             compliance with audit log retention policies.
         """
         from datetime import datetime, timedelta
+
         from sqlalchemy import delete
-        
+
         cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
-        
+
         # Delete old audit logs
         delete_stmt = delete(AuditLog).where(AuditLog.timestamp < cutoff_date)
         result = await self.db.execute(delete_stmt)
         await self.db.commit()
-        
+
         deleted_count = result.rowcount
-        
+
         # Log the cleanup operation
         if deleted_count > 0:
             await self.log(
@@ -421,7 +422,7 @@ class AuditService:
                     "deleted_count": deleted_count,
                 }
             )
-        
+
         return deleted_count
 
     # Note: No update or delete methods - audit logs are immutable

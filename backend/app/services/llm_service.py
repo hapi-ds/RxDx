@@ -12,12 +12,11 @@ when LLM is unavailable.
 
 import json
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any
 
 import aiohttp
 
 from app.core.config import settings
-
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +49,12 @@ class LLMService:
         enabled: Whether LLM integration is enabled
         timeout: Request timeout in seconds
     """
-    
+
     def __init__(
         self,
-        base_url: Optional[str] = None,
-        model: Optional[str] = None,
-        enabled: Optional[bool] = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        enabled: bool | None = None,
         timeout: int = 30,
     ):
         """
@@ -71,8 +70,8 @@ class LLMService:
         self.model = model or settings.LLM_MODEL_NAME
         self.enabled = enabled if enabled is not None else settings.LLM_ENABLED
         self.timeout = timeout
-        
-    async def _call_llm(self, prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+
+    async def _call_llm(self, prompt: str, system_prompt: str | None = None) -> str | None:
         """
         Make a call to the LM-Studio compatible API.
         
@@ -90,17 +89,17 @@ class LLMService:
         if not self.enabled:
             logger.debug("LLM service is disabled, returning None")
             return None
-            
+
         default_system = (
             "You are a helpful assistant that extracts structured data from text. "
             "Always respond with valid JSON only, no additional text or explanation."
         )
-        
+
         messages = [
             {"role": "system", "content": system_prompt or default_system},
             {"role": "user", "content": prompt}
         ]
-        
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -117,30 +116,30 @@ class LLMService:
                         error_text = await response.text()
                         logger.error(f"LLM API error: {response.status} - {error_text}")
                         raise LLMResponseError(f"LLM API returned status {response.status}")
-                        
+
                     result = await response.json()
-                    
+
                     # Extract content from OpenAI-compatible response format
                     choices = result.get("choices", [])
                     if not choices:
                         logger.error("LLM response has no choices")
                         raise LLMResponseError("LLM response has no choices")
-                        
+
                     content = choices[0].get("message", {}).get("content", "")
                     if not content:
                         logger.error("LLM response has no content")
                         raise LLMResponseError("LLM response has no content")
-                        
+
                     return content.strip()
-                    
+
         except aiohttp.ClientError as e:
             logger.error(f"LLM connection error: {e}")
             raise LLMConnectionError(f"Failed to connect to LLM service: {e}")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("LLM request timed out")
             raise LLMConnectionError("LLM request timed out")
-    
-    def _parse_json_response(self, response: str) -> Optional[Any]:
+
+    def _parse_json_response(self, response: str) -> Any | None:
         """
         Parse JSON from LLM response, handling common formatting issues.
         
@@ -152,13 +151,13 @@ class LLMService:
         """
         if not response:
             return None
-            
+
         # Try direct parsing first
         try:
             return json.loads(response)
         except json.JSONDecodeError:
             pass
-            
+
         # Try to extract JSON from markdown code blocks
         if "```json" in response:
             try:
@@ -168,7 +167,7 @@ class LLMService:
                 return json.loads(json_str)
             except (ValueError, json.JSONDecodeError):
                 pass
-                
+
         # Try to extract JSON from generic code blocks
         if "```" in response:
             try:
@@ -181,7 +180,7 @@ class LLMService:
                 return json.loads(json_str)
             except (ValueError, json.JSONDecodeError):
                 pass
-        
+
         # Try to find JSON object or array in response
         for start_char, end_char in [("{", "}"), ("[", "]")]:
             try:
@@ -198,11 +197,11 @@ class LLMService:
                             return json.loads(json_str)
             except (ValueError, json.JSONDecodeError):
                 continue
-                
+
         logger.warning(f"Failed to parse JSON from LLM response: {response[:200]}...")
         return None
 
-    async def extract_work_instruction(self, email_body: str) -> Optional[Dict[str, Any]]:
+    async def extract_work_instruction(self, email_body: str) -> dict[str, Any] | None:
         """
         Extract structured work instruction data from email content.
         
@@ -222,11 +221,11 @@ class LLMService:
         if not self.enabled:
             logger.debug("LLM disabled, skipping work instruction extraction")
             return None
-            
+
         if not email_body or not email_body.strip():
             logger.warning("Empty email body provided for extraction")
             return None
-            
+
         prompt = f"""Extract work instruction information from this email:
 
 {email_body}
@@ -246,23 +245,23 @@ If a field is not mentioned in the email, omit it from the response."""
             response = await self._call_llm(prompt)
             if not response:
                 return None
-                
+
             result = self._parse_json_response(response)
             if not result:
                 logger.warning("Failed to parse work instruction from LLM response")
                 return None
-                
+
             # Validate and normalize the result
             validated = {}
-            
+
             if "status" in result:
                 status = str(result["status"]).lower()
                 if status in ("draft", "active", "completed"):
                     validated["status"] = status
-                    
+
             if "comment" in result and result["comment"]:
                 validated["comment"] = str(result["comment"]).strip()
-                
+
             if "time_spent" in result:
                 try:
                     time_spent = float(result["time_spent"])
@@ -270,12 +269,12 @@ If a field is not mentioned in the email, omit it from the response."""
                         validated["time_spent"] = time_spent
                 except (ValueError, TypeError):
                     pass
-                    
+
             if "next_steps" in result and result["next_steps"]:
                 validated["next_steps"] = str(result["next_steps"]).strip()
-                
+
             return validated if validated else None
-            
+
         except LLMServiceError as e:
             logger.error(f"LLM service error during work instruction extraction: {e}")
             return None
@@ -284,9 +283,9 @@ If a field is not mentioned in the email, omit it from the response."""
             return None
 
     async def extract_meeting_knowledge(
-        self, 
+        self,
         meeting_text: str
-    ) -> Dict[str, List[Dict[str, Any]]]:
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Extract entities and relationships from meeting minutes.
         
@@ -309,15 +308,15 @@ If a field is not mentioned in the email, omit it from the response."""
             "decisions": [],
             "actions": []
         }
-        
+
         if not self.enabled:
             logger.debug("LLM disabled, returning empty meeting knowledge")
             return empty_result
-            
+
         if not meeting_text or not meeting_text.strip():
             logger.warning("Empty meeting text provided for extraction")
             return empty_result
-            
+
         prompt = f"""Analyze these meeting minutes and extract structured information:
 
 {meeting_text}
@@ -345,12 +344,12 @@ Return only valid JSON, no other text."""
             response = await self._call_llm(prompt)
             if not response:
                 return empty_result
-                
+
             result = self._parse_json_response(response)
             if not result or not isinstance(result, dict):
                 logger.warning("Failed to parse meeting knowledge from LLM response")
                 return empty_result
-                
+
             # Validate and normalize the result
             validated = {
                 "entities": [],
@@ -358,7 +357,7 @@ Return only valid JSON, no other text."""
                 "decisions": [],
                 "actions": []
             }
-            
+
             # Validate entities
             for entity in result.get("entities", []):
                 if isinstance(entity, dict) and "name" in entity:
@@ -366,7 +365,7 @@ Return only valid JSON, no other text."""
                         "name": str(entity["name"]).strip(),
                         "type": str(entity.get("type", "unknown")).lower()
                     })
-                    
+
             # Validate decisions
             for decision in result.get("decisions", []):
                 if isinstance(decision, dict) and "description" in decision:
@@ -374,7 +373,7 @@ Return only valid JSON, no other text."""
                         "description": str(decision["description"]).strip(),
                         "owner": str(decision.get("owner", "")).strip() or None
                     })
-                    
+
             # Validate actions
             for action in result.get("actions", []):
                 if isinstance(action, dict) and "description" in action:
@@ -383,7 +382,7 @@ Return only valid JSON, no other text."""
                         "assignee": str(action.get("assignee", "")).strip() or None,
                         "deadline": str(action.get("deadline", "")).strip() or None
                     })
-                    
+
             # Validate relationships
             for rel in result.get("relationships", []):
                 if isinstance(rel, dict) and "from" in rel and "to" in rel:
@@ -392,9 +391,9 @@ Return only valid JSON, no other text."""
                         "to": str(rel["to"]).strip(),
                         "type": str(rel.get("type", "relates_to")).lower()
                     })
-                    
+
             return validated
-            
+
         except LLMServiceError as e:
             logger.error(f"LLM service error during meeting knowledge extraction: {e}")
             return empty_result
@@ -403,9 +402,9 @@ Return only valid JSON, no other text."""
             return empty_result
 
     async def suggest_requirement_improvements(
-        self, 
+        self,
         requirement_text: str
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Analyze requirement quality and suggest improvements.
         
@@ -425,11 +424,11 @@ Return only valid JSON, no other text."""
         if not self.enabled:
             logger.debug("LLM disabled, returning empty suggestions")
             return []
-            
+
         if not requirement_text or not requirement_text.strip():
             logger.warning("Empty requirement text provided for analysis")
             return []
-            
+
         prompt = f"""Analyze this requirement for quality and suggest specific improvements:
 
 {requirement_text}
@@ -454,22 +453,22 @@ Return only the JSON array, no other text."""
             response = await self._call_llm(prompt)
             if not response:
                 return []
-                
+
             result = self._parse_json_response(response)
-            
+
             # Handle case where result is a list
             if isinstance(result, list):
                 return [str(item).strip() for item in result if item and str(item).strip()]
-                
+
             # Handle case where result is a dict with suggestions key
             if isinstance(result, dict) and "suggestions" in result:
                 suggestions = result["suggestions"]
                 if isinstance(suggestions, list):
                     return [str(item).strip() for item in suggestions if item and str(item).strip()]
-                    
+
             logger.warning("Unexpected format in requirement improvement response")
             return []
-            
+
         except LLMServiceError as e:
             logger.error(f"LLM service error during requirement analysis: {e}")
             return []
@@ -486,7 +485,7 @@ Return only the JSON array, no other text."""
         """
         if not self.enabled:
             return False
-            
+
         try:
             # Try a simple completion to verify connectivity
             async with aiohttp.ClientSession() as session:
@@ -501,11 +500,9 @@ Return only the JSON array, no other text."""
 
 
 # Import asyncio for timeout handling
-import asyncio
-
 
 # Dependency injection helper
-_llm_service_instance: Optional[LLMService] = None
+_llm_service_instance: LLMService | None = None
 
 
 async def get_llm_service() -> LLMService:

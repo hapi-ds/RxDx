@@ -1,15 +1,16 @@
 """Integration tests for DigitalSignature complete workflow"""
 
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import uuid4
+
+import pytest
 
 from app.models.signature import DigitalSignature
 from app.schemas.signature import (
     DigitalSignatureCreate,
-    DigitalSignatureUpdate,
-    DigitalSignatureResponse,
     DigitalSignatureFilter,
+    DigitalSignatureResponse,
+    DigitalSignatureUpdate,
     SignatureVerificationRequest,
     SignatureVerificationResponse,
 )
@@ -66,12 +67,12 @@ class TestDigitalSignatureIntegration:
             is_valid=False,
             invalidation_reason='WorkItem modified'
         )
-        
+
         # Apply update to model
         model.is_valid = False
         model.invalidated_at = datetime.now(UTC)
         model.invalidation_reason = 'WorkItem modified'
-        
+
         # Step 6: Verify invalidated signature response
         invalidated_response = DigitalSignatureResponse.model_validate(model)
         assert invalidated_response.is_valid is False
@@ -292,7 +293,7 @@ class TestDigitalSignatureDataConsistency:
         # Test round-trip consistency
         response_dict = response.model_dump()
         new_response = DigitalSignatureResponse(**response_dict)
-        
+
         # Verify round-trip preserves all data
         assert new_response.id == response.id
         assert new_response.workitem_id == response.workitem_id

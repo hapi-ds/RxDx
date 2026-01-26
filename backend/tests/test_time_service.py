@@ -1,22 +1,22 @@
 """Unit tests for TimeService"""
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from hypothesis import given, strategies as st, settings
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
+from app.models.user import User, UserRole
 from app.schemas.time_entry import (
-    TimeEntryCreate,
-    TimeEntryUpdate,
-    TimeEntryResponse,
-    TimeEntrySyncItem,
     TimeAggregationRequest,
+    TimeEntryCreate,
+    TimeEntrySyncItem,
+    TimeEntryUpdate,
 )
 from app.services.time_service import TimeService
-from app.models.user import User, UserRole
 
 
 # Test fixtures
@@ -55,8 +55,8 @@ class TestTimeEntrySchemas:
         entry = TimeEntryCreate(
             project_id=uuid.uuid4(),
             task_id=uuid.uuid4(),
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc) + timedelta(hours=2),
+            start_time=datetime.now(UTC),
+            end_time=datetime.now(UTC) + timedelta(hours=2),
             description="Working on feature",
             category="development"
         )
@@ -67,7 +67,7 @@ class TestTimeEntrySchemas:
         """Test creating TimeEntry without end_time (running entry)"""
         entry = TimeEntryCreate(
             project_id=uuid.uuid4(),
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
             description="In progress work"
         )
         assert entry.end_time is None
@@ -77,13 +77,13 @@ class TestTimeEntrySchemas:
         with pytest.raises(ValueError, match="Invalid category"):
             TimeEntryCreate(
                 project_id=uuid.uuid4(),
-                start_time=datetime.now(timezone.utc),
+                start_time=datetime.now(UTC),
                 category="invalid_category"
             )
 
     def test_time_entry_create_end_before_start(self):
         """Test that end_time before start_time raises error"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with pytest.raises(ValueError, match="End time must be after start time"):
             TimeEntryCreate(
                 project_id=uuid.uuid4(),
@@ -117,7 +117,7 @@ class TestTimeEntrySchemas:
         for category in valid_categories:
             entry = TimeEntryCreate(
                 project_id=uuid.uuid4(),
-                start_time=datetime.now(timezone.utc),
+                start_time=datetime.now(UTC),
                 category=category
             )
             assert entry.category == category
@@ -131,15 +131,15 @@ class TestTimeEntrySyncSchemas:
         item = TimeEntrySyncItem(
             local_id="local-123",
             project_id=uuid.uuid4(),
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc) + timedelta(hours=1),
+            start_time=datetime.now(UTC),
+            end_time=datetime.now(UTC) + timedelta(hours=1),
             category="development"
         )
         assert item.local_id == "local-123"
 
     def test_sync_item_end_before_start(self):
         """Test sync item validation for times"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with pytest.raises(ValueError, match="End time must be after start time"):
             TimeEntrySyncItem(
                 local_id="local-123",
@@ -155,8 +155,8 @@ class TestTimeAggregationSchemas:
     def test_aggregation_request_valid(self):
         """Test creating a valid aggregation request"""
         request = TimeAggregationRequest(
-            start_date=datetime.now(timezone.utc) - timedelta(days=30),
-            end_date=datetime.now(timezone.utc),
+            start_date=datetime.now(UTC) - timedelta(days=30),
+            end_date=datetime.now(UTC),
             group_by=["project_id", "user_id"]
         )
         assert len(request.group_by) == 2
@@ -165,14 +165,14 @@ class TestTimeAggregationSchemas:
         """Test invalid group_by field raises error"""
         with pytest.raises(ValueError, match="Invalid group_by field"):
             TimeAggregationRequest(
-                start_date=datetime.now(timezone.utc) - timedelta(days=30),
-                end_date=datetime.now(timezone.utc),
+                start_date=datetime.now(UTC) - timedelta(days=30),
+                end_date=datetime.now(UTC),
                 group_by=["invalid_field"]
             )
 
     def test_aggregation_request_end_before_start(self):
         """Test end_date before start_date raises error"""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with pytest.raises(ValueError, match="End date must be after start date"):
             TimeAggregationRequest(
                 start_date=now,
@@ -190,8 +190,8 @@ class TestTimeServiceCreate:
         """Test successful time entry creation"""
         entry_data = TimeEntryCreate(
             project_id=uuid.uuid4(),
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime.now(timezone.utc) + timedelta(hours=2),
+            start_time=datetime.now(UTC),
+            end_time=datetime.now(UTC) + timedelta(hours=2),
             description="Test work",
             category="development"
         )
@@ -209,7 +209,7 @@ class TestTimeServiceCreate:
     @pytest.mark.asyncio
     async def test_create_time_entry_calculates_duration(self, time_service, mock_user):
         """Test that duration is calculated correctly"""
-        start = datetime.now(timezone.utc)
+        start = datetime.now(UTC)
         end = start + timedelta(hours=2, minutes=30)
 
         entry_data = TimeEntryCreate(
@@ -228,7 +228,7 @@ class TestTimeServiceCreate:
         """Test creating entry without end time (running entry)"""
         entry_data = TimeEntryCreate(
             project_id=uuid.uuid4(),
-            start_time=datetime.now(timezone.utc)
+            start_time=datetime.now(UTC)
         )
 
         result = await time_service.create_time_entry(entry_data, mock_user)
@@ -315,8 +315,8 @@ class TestTimeServiceSync:
             TimeEntrySyncItem(
                 local_id="local-1",
                 project_id=uuid.uuid4(),
-                start_time=datetime.now(timezone.utc),
-                end_time=datetime.now(timezone.utc) + timedelta(hours=1)
+                start_time=datetime.now(UTC),
+                end_time=datetime.now(UTC) + timedelta(hours=1)
             )
         ]
 
@@ -334,8 +334,8 @@ class TestTimeServiceSync:
             TimeEntrySyncItem(
                 local_id=f"local-{i}",
                 project_id=uuid.uuid4(),
-                start_time=datetime.now(timezone.utc),
-                end_time=datetime.now(timezone.utc) + timedelta(hours=1)
+                start_time=datetime.now(UTC),
+                end_time=datetime.now(UTC) + timedelta(hours=1)
             )
             for i in range(3)
         ]
@@ -360,7 +360,7 @@ class TestTimeEntryProperties:
 
         **Validates: Requirement 4.3** (Time Recording)
         """
-        start = datetime.now(timezone.utc)
+        start = datetime.now(UTC)
         end = start + timedelta(hours=hours)
 
         duration_seconds = (end - start).total_seconds()
@@ -380,7 +380,7 @@ class TestTimeEntryProperties:
 
         **Validates: Requirement 4.3** (Time Recording)
         """
-        base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        base_time = datetime(2024, 1, 1, tzinfo=UTC)
         start = base_time + timedelta(minutes=start_offset)
         end = start + timedelta(minutes=duration_minutes)
 
@@ -408,7 +408,7 @@ class TestTimeEntryProperties:
         """
         entry = TimeEntryCreate(
             project_id=uuid.uuid4(),
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
             category=category
         )
         assert entry.category == category
@@ -428,8 +428,8 @@ class TestSyncIdempotency:
             TimeEntrySyncItem(
                 local_id=f"local-{i}",
                 project_id=uuid.uuid4(),
-                start_time=datetime.now(timezone.utc),
-                end_time=datetime.now(timezone.utc) + timedelta(hours=1)
+                start_time=datetime.now(UTC),
+                end_time=datetime.now(UTC) + timedelta(hours=1)
             )
             for i in range(5)
         ]

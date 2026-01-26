@@ -1,7 +1,6 @@
 """Pydantic schemas for User model"""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -38,15 +37,15 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """Schema for updating a user"""
 
-    email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
-    password: Optional[str] = Field(None, min_length=8, max_length=100)
+    email: EmailStr | None = None
+    full_name: str | None = Field(None, min_length=1, max_length=200)
+    role: UserRole | None = None
+    is_active: bool | None = None
+    password: str | None = Field(None, min_length=8, max_length=100)
 
     @field_validator("password")
     @classmethod
-    def validate_password(cls, v: Optional[str]) -> Optional[str]:
+    def validate_password(cls, v: str | None) -> str | None:
         """Validate password strength if provided"""
         if v is None:
             return v
@@ -65,7 +64,7 @@ class UserResponse(UserBase):
     id: UUID
     is_active: bool
     failed_login_attempts: int
-    locked_until: Optional[datetime] = None
+    locked_until: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

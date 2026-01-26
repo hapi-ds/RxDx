@@ -1,12 +1,12 @@
 """Version control service for WorkItem versioning"""
 
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Any
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from app.db.graph import GraphService, get_graph_service
-from app.services.audit_service import AuditService, get_audit_service
 from app.models.user import User
+from app.services.audit_service import AuditService, get_audit_service
 
 
 class VersionService:
@@ -33,10 +33,10 @@ class VersionService:
     async def create_version(
         self,
         workitem_id: UUID,
-        updates: Dict[str, Any],
+        updates: dict[str, Any],
         user: User,
         change_description: str = "WorkItem updated"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a new version of a WorkItem.
         
@@ -71,21 +71,21 @@ class VersionService:
         current_workitem = await self.graph_service.get_workitem(str(workitem_id))
         if not current_workitem:
             raise ValueError(f"WorkItem {workitem_id} not found")
-        
+
         # Calculate new version number
         current_version = current_workitem.get("version", "1.0")
         new_version = self._calculate_next_version(current_version)
-        
+
         # Merge current data with updates
         new_workitem_data = {**current_workitem}
         new_workitem_data.update(updates)
         new_workitem_data.update({
             "version": new_version,
             "updated_by": str(user.id),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "change_description": change_description
         })
-        
+
         # Create new version node in graph
         await self.graph_service.create_workitem_version(
             workitem_id=str(workitem_id),
@@ -94,7 +94,7 @@ class VersionService:
             user_id=str(user.id),
             change_description=change_description
         )
-        
+
         # Create NEXT_VERSION relationship from current to new version
         await self.graph_service.create_relationship(
             from_id=str(workitem_id),  # Current version node
@@ -103,12 +103,12 @@ class VersionService:
             properties={
                 'from_version': current_version,
                 'to_version': new_version,
-                'created_at': datetime.now(timezone.utc).isoformat(),
+                'created_at': datetime.now(UTC).isoformat(),
                 'created_by': str(user.id),
                 'change_description': change_description
             }
         )
-        
+
         # Log audit event
         await self.audit_service.log(
             action="VERSION_CREATE",
@@ -122,7 +122,7 @@ class VersionService:
                 'updated_fields': list(updates.keys())
             }
         )
-        
+
         return new_workitem_data
 
     def _calculate_next_version(self, current_version: str) -> str:
@@ -150,32 +150,32 @@ class VersionService:
             # Parse current version
             if not current_version or current_version == "":
                 return "1.0"
-            
+
             # Handle None explicitly
             if current_version is None:
                 raise ValueError("Version cannot be None")
-            
+
             # Handle version strings like "1.0", "2.5", etc.
             parts = current_version.split('.')
             if len(parts) != 2:
                 # Invalid format, raise error
                 raise ValueError(f"Version must be in 'major.minor' format, got '{current_version}'")
-            
+
             major = int(parts[0])
             minor = int(parts[1])
-            
+
             # Increment minor version
             new_minor = minor + 1
-            
+
             return f"{major}.{new_minor}"
-            
+
         except (ValueError, AttributeError) as e:
             # Re-raise ValueError with more context
             if isinstance(e, ValueError) and "Version" in str(e):
                 raise e
             raise ValueError(f"Invalid version format '{current_version}': {e}")
 
-    async def get_version_history(self, workitem_id: UUID) -> List[Dict[str, Any]]:
+    async def get_version_history(self, workitem_id: UUID) -> list[dict[str, Any]]:
         """
         Get complete version history for a WorkItem.
         
@@ -200,12 +200,12 @@ class VersionService:
         RETURN DISTINCT version
         ORDER BY version.version DESC
         """
-        
+
         results = await self.graph_service.execute_query(
             query,
             {'workitem_id': str(workitem_id)}
         )
-        
+
         # Extract version data from results
         versions = []
         for result in results:
@@ -213,13 +213,13 @@ class VersionService:
                 version_data = result['properties']
             else:
                 version_data = result
-                
+
             if version_data:
                 versions.append(version_data)
-        
+
         # Sort by version number (newest first)
         versions.sort(key=lambda v: self._version_sort_key(v.get('version', '1.0')), reverse=True)
-        
+
         return versions
 
     def _version_sort_key(self, version: str) -> tuple:
@@ -242,10 +242,10 @@ class VersionService:
             return (1, 0)  # Default for invalid versions
 
     async def get_version_by_number(
-        self, 
-        workitem_id: UUID, 
+        self,
+        workitem_id: UUID,
         version: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Get a specific version of a WorkItem by version number.
         
@@ -263,7 +263,7 @@ class VersionService:
         workitem_id: UUID,
         version1: str,
         version2: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Compare two versions of a WorkItem and return the differences.
         
@@ -278,10 +278,10 @@ class VersionService:
         # Get both versions
         v1_data = await self.get_version_by_number(workitem_id, version1)
         v2_data = await self.get_version_by_number(workitem_id, version2)
-        
+
         if not v1_data or not v2_data:
             raise ValueError("One or both versions not found")
-        
+
         # Compare the versions
         differences = {
             'version1': version1,
@@ -291,18 +291,18 @@ class VersionService:
             'changed_fields': {},
             'unchanged_fields': {}
         }
-        
+
         # Get all unique keys from both versions
         all_keys = set(v1_data.keys()) | set(v2_data.keys())
-        
+
         for key in all_keys:
             if key in ['version', 'updated_at', 'updated_by', 'change_description']:
                 # Skip metadata fields
                 continue
-                
+
             v1_value = v1_data.get(key)
             v2_value = v2_data.get(key)
-            
+
             if key not in v1_data:
                 differences['added_fields'][key] = v2_value
             elif key not in v2_data:
@@ -314,7 +314,7 @@ class VersionService:
                 }
             else:
                 differences['unchanged_fields'][key] = v1_value
-        
+
         return differences
 
     async def restore_version(
@@ -322,8 +322,8 @@ class VersionService:
         workitem_id: UUID,
         target_version: str,
         user: User,
-        change_description: Optional[str] = None
-    ) -> Dict[str, Any]:
+        change_description: str | None = None
+    ) -> dict[str, Any]:
         """
         Restore a WorkItem to a previous version by creating a new version with old data.
         
@@ -340,15 +340,15 @@ class VersionService:
         target_data = await self.get_version_by_number(workitem_id, target_version)
         if not target_data:
             raise ValueError(f"Version {target_version} not found")
-        
+
         # Remove version metadata from target data
-        restore_data = {k: v for k, v in target_data.items() 
+        restore_data = {k: v for k, v in target_data.items()
                       if k not in ['version', 'updated_at', 'updated_by', 'change_description']}
-        
+
         # Create description if not provided
         if not change_description:
             change_description = f"Restored to version {target_version}"
-        
+
         # Create new version with restored data
         return await self.create_version(
             workitem_id=workitem_id,
@@ -374,12 +374,12 @@ async def get_version_service(
     """
     if graph_service is None:
         graph_service = await get_graph_service()
-    
+
     if audit_service is None:
         # Note: This would need proper dependency injection in a real FastAPI app
         # For now, we'll create a minimal audit service
         from app.db.session import get_db
         db = await get_db().__anext__()  # Get async session
         audit_service = await get_audit_service(db)
-    
+
     return VersionService(graph_service, audit_service)

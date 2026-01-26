@@ -5,32 +5,30 @@ This module provides REST API endpoints for test specification and test run mana
 as per Requirement 9 (Verification and Validation Management).
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.security import Permission, require_permission
+from app.db.graph import get_graph_service
 from app.models.user import User
 from app.schemas.test import (
-    TestSpecCreate,
-    TestSpecUpdate,
-    TestSpecResponse,
-    TestRunCreate,
-    TestRunUpdate,
-    TestRunResponse,
     TestCoverageResponse,
-    TestSpecListResponse,
+    TestRunCreate,
     TestRunListResponse,
+    TestRunResponse,
+    TestRunUpdate,
+    TestSpecCreate,
+    TestSpecListResponse,
+    TestSpecResponse,
+    TestSpecUpdate,
 )
-from app.services.test_service import TestService
-from app.db.graph import get_graph_service
 from app.services.audit_service import get_audit_service
 from app.services.signature_service import get_signature_service
+from app.services.test_service import TestService
 from app.services.version_service import get_version_service
-from app.core.security import require_permission, Permission
-
 
 router = APIRouter()
 
@@ -43,7 +41,7 @@ async def get_test_service(
     audit_service = await get_audit_service(db)
     signature_service = await get_signature_service(db)
     version_service = await get_version_service()
-    
+
     return TestService(
         graph_service=graph_service,
         audit_service=audit_service,
@@ -57,8 +55,8 @@ async def get_test_service(
 async def get_test_specs(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(50, ge=1, le=100, description="Page size"),
-    test_type: Optional[str] = Query(None, description="Filter by test type"),
-    linked_requirement_id: Optional[UUID] = Query(None, description="Filter by linked requirement"),
+    test_type: str | None = Query(None, description="Filter by test type"),
+    linked_requirement_id: UUID | None = Query(None, description="Filter by linked requirement"),
     test_service: TestService = Depends(get_test_service),
     current_user: User = Depends(get_current_user),
 ) -> TestSpecListResponse:
@@ -71,18 +69,18 @@ async def get_test_specs(
     - **linked_requirement_id**: Filter by linked requirement ID
     """
     offset = (page - 1) * size
-    
+
     test_specs = await test_service.get_test_specs(
         limit=size,
         offset=offset,
         test_type=test_type,
         linked_requirement_id=linked_requirement_id,
     )
-    
+
     # Calculate total count for pagination (simplified for now)
     total = len(test_specs)  # In production, this should be a separate count query
     pages = (total + size - 1) // size
-    
+
     return TestSpecListResponse(
         items=test_specs,
         total=total,
@@ -234,7 +232,7 @@ async def create_test_run(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Test spec ID in URL must match test spec ID in request body"
         )
-    
+
     try:
         return await test_service.create_test_run(test_run_data, current_user)
     except ValueError as e:
@@ -261,15 +259,15 @@ async def get_test_runs(
     - **size**: Number of items per page (1-100)
     """
     offset = (page - 1) * size
-    
+
     test_runs = await test_service.get_test_runs_for_spec(
         test_spec_id, limit=size, offset=offset
     )
-    
+
     # Calculate total count for pagination (simplified for now)
     total = len(test_runs)  # In production, this should be a separate count query
     pages = (total + size - 1) // size
-    
+
     return TestRunListResponse(
         items=test_runs,
         total=total,

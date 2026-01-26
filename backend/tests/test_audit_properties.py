@@ -1,14 +1,15 @@
 """Property-based tests for audit log integrity"""
 
-import pytest
-from datetime import datetime, UTC
-from uuid import uuid4
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
-from hypothesis import given, strategies as st, assume, settings, HealthCheck
+from uuid import uuid4
 
-from app.services.audit_service import AuditService
+import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
 from app.models.audit import AuditLog
-from app.schemas.audit import AuditLogFilter
+from app.services.audit_service import AuditService
 
 
 class TestAuditLogProperties:
@@ -30,13 +31,13 @@ class TestAuditLogProperties:
 
     # Strategy for generating valid action strings
     action_strategy = st.sampled_from([
-        "CREATE", "READ", "UPDATE", "DELETE", "SIGN", "AUTH", 
+        "CREATE", "READ", "UPDATE", "DELETE", "SIGN", "AUTH",
         "AUTHZ_GRANTED", "AUTHZ_DENIED", "SIGNATURE_SIGN", "SIGNATURE_VERIFY"
     ])
 
     # Strategy for generating valid entity types
     entity_type_strategy = st.sampled_from([
-        "User", "WorkItem", "Requirement", "Test", "Risk", "Document", 
+        "User", "WorkItem", "Requirement", "Test", "Risk", "Document",
         "DigitalSignature", "Authorization", "System"
     ])
 
@@ -72,8 +73,8 @@ class TestAuditLogProperties:
     @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
     async def test_audit_log_completeness_property(
-        self, 
-        audit_service, 
+        self,
+        audit_service,
         mock_db,
         action,
         entity_type,
@@ -89,7 +90,7 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         # Execute the audit logging operation
         result = await audit_service.log(
             action=action,
@@ -99,16 +100,16 @@ class TestAuditLogProperties:
             ip_address=ip_address,
             details=details
         )
-        
+
         # Verify that a log entry was created
         mock_db.add.assert_called_once()
         mock_db.commit.assert_called_once()
         mock_db.refresh.assert_called_once()
-        
+
         # Get the created audit log
         created_log = mock_db.add.call_args[0][0]
         assert isinstance(created_log, AuditLog)
-        
+
         # Property: All required fields are present and correct
         assert created_log.action == action.upper()  # Action is normalized
         assert created_log.entity_type == entity_type
@@ -116,7 +117,7 @@ class TestAuditLogProperties:
         assert created_log.entity_id == entity_id
         assert created_log.ip_address == ip_address
         assert created_log.details == details
-        
+
         # Property: Timestamp is automatically set and valid
         assert isinstance(created_log.timestamp, datetime)
         assert created_log.timestamp.tzinfo is not None  # Has timezone info
@@ -147,38 +148,38 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         # Create first audit log
         await audit_service.log(
             action=action1,
             entity_type=entity_type1,
             user_id=user_id
         )
-        
+
         first_call_args = mock_db.add.call_args[0][0]
         first_timestamp = first_call_args.timestamp
-        
+
         # Reset mocks
         mock_db.reset_mock()
-        
+
         # Create second audit log
         await audit_service.log(
             action=action2,
             entity_type=entity_type2,
             user_id=user_id
         )
-        
+
         second_call_args = mock_db.add.call_args[0][0]
-        
+
         # Property: Each log entry is independent and immutable
         # (We verify this by ensuring the service has no update/delete methods)
         assert not hasattr(audit_service, 'update_audit_log')
         assert not hasattr(audit_service, 'delete_audit_log')
         assert not hasattr(audit_service, 'modify_audit_log')
-        
+
         # Property: Each log entry has its own timestamp
         assert isinstance(second_call_args.timestamp, datetime)
-        
+
         # Property: Multiple logs can be created without affecting previous ones
         assert mock_db.add.call_count == 1  # Only the second log in this call
         assert mock_db.commit.call_count == 1
@@ -204,9 +205,9 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         timestamps = []
-        
+
         # Create multiple audit logs in sequence
         for action, entity_type, user_id in log_entries:
             await audit_service.log(
@@ -214,14 +215,14 @@ class TestAuditLogProperties:
                 entity_type=entity_type,
                 user_id=user_id
             )
-            
+
             # Capture the timestamp of each created log
             created_log = mock_db.add.call_args[0][0]
             timestamps.append(created_log.timestamp)
-            
+
             # Reset mock for next iteration
             mock_db.reset_mock()
-        
+
         # Property: Timestamps are in chronological order (or equal for very fast operations)
         for i in range(1, len(timestamps)):
             assert timestamps[i] >= timestamps[i-1], \
@@ -250,27 +251,27 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         await audit_service.log_auth_attempt(
             email=email,
             success=success,
             user_id=user_id if success else None,  # User ID only for successful auth
             failure_reason=failure_reason if not success else None
         )
-        
+
         created_log = mock_db.add.call_args[0][0]
-        
+
         # Property: Action type matches authentication result
         expected_action = "AUTH_SUCCESS" if success else "AUTH_FAILURE"
         assert created_log.action == expected_action
-        
+
         # Property: Entity type is always User for auth events
         assert created_log.entity_type == "User"
-        
+
         # Property: Email is always recorded in details
         assert created_log.details is not None
         assert created_log.details["email"] == email
-        
+
         # Property: Failure reason is recorded for failed attempts
         if not success and failure_reason:
             assert created_log.details["failure_reason"] == failure_reason
@@ -298,26 +299,26 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         await audit_service.log_authorization_decision(
             user_id=user_id,
             permission=permission,
             resource=resource,
             granted=granted
         )
-        
+
         created_log = mock_db.add.call_args[0][0]
-        
+
         # Property: Action type matches authorization result
         expected_action = "AUTHZ_GRANTED" if granted else "AUTHZ_DENIED"
         assert created_log.action == expected_action
-        
+
         # Property: Entity type is always Authorization
         assert created_log.entity_type == "Authorization"
-        
+
         # Property: User ID is always recorded
         assert created_log.user_id == user_id
-        
+
         # Property: Permission and resource are always recorded in details
         assert created_log.details is not None
         assert created_log.details["permission"] == permission
@@ -348,7 +349,7 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         await audit_service.log_crud_operation(
             operation=operation,
             entity_type=entity_type,
@@ -356,17 +357,17 @@ class TestAuditLogProperties:
             user_id=user_id,
             changes=changes
         )
-        
+
         created_log = mock_db.add.call_args[0][0]
-        
+
         # Property: Operation is recorded correctly
         assert created_log.action == operation.upper()
-        
+
         # Property: Entity information is complete
         assert created_log.entity_type == entity_type
         assert created_log.entity_id == entity_id
         assert created_log.user_id == user_id
-        
+
         # Property: Changes are recorded when provided
         if changes:
             assert created_log.details is not None
@@ -397,7 +398,7 @@ class TestAuditLogProperties:
         """
         # Reset mock for each test iteration
         mock_db.reset_mock()
-        
+
         await audit_service.log_signature_event(
             event_type=event_type,
             workitem_id=workitem_id,
@@ -405,27 +406,27 @@ class TestAuditLogProperties:
             signature_id=signature_id,
             verification_result=verification_result
         )
-        
+
         created_log = mock_db.add.call_args[0][0]
-        
+
         # Property: Action type includes signature prefix
         assert created_log.action == f"SIGNATURE_{event_type.upper()}"
-        
+
         # Property: Entity type is always DigitalSignature
         assert created_log.entity_type == "DigitalSignature"
-        
+
         # Property: User ID is always recorded
         assert created_log.user_id == user_id
-        
+
         # Property: WorkItem ID is always recorded in details
         assert created_log.details is not None
         assert created_log.details["workitem_id"] == str(workitem_id)
-        
+
         # Property: Signature ID is recorded when provided
         if signature_id:
             assert created_log.details["signature_id"] == str(signature_id)
             assert created_log.entity_id == signature_id
-        
+
         # Property: Verification result is recorded when provided
         if verification_result is not None:
             assert created_log.details["verification_result"] == verification_result

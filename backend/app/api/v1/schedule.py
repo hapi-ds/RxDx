@@ -5,22 +5,20 @@ This module provides REST API endpoints for project scheduling using constraint
 programming with OR-Tools as per Requirement 7 (Offline Project Scheduling).
 """
 
-from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.models.user import User
 from app.schemas.schedule import (
+    ProjectSchedule,
     ScheduleRequest,
     ScheduleResponse,
     ScheduleUpdate,
-    ProjectSchedule,
 )
 from app.services.scheduler_service import SchedulerService, get_scheduler_service
-from app.core.security import require_permission, Permission
-
 
 router = APIRouter()
 
@@ -116,13 +114,13 @@ async def get_schedule(
     Raises 404 if no schedule exists for the project.
     """
     schedule = await scheduler_service.get_schedule(project_id)
-    
+
     if not schedule:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No schedule found for project {project_id}"
         )
-    
+
     return schedule
 
 
@@ -167,11 +165,11 @@ async def update_schedule(
     Raises 404 if no schedule exists for the project.
     """
     result = await scheduler_service.update_schedule(project_id, updates)
-    
+
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No schedule found for project {project_id}"
         )
-    
+
     return result

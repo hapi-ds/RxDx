@@ -2,7 +2,21 @@
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, audit, documents, email, graph, requirements, risks, signatures, workitems, tests, llm, schedule, time_entries
+from app.api.v1 import (
+    audit,
+    auth,
+    documents,
+    email,
+    graph,
+    llm,
+    requirements,
+    risks,
+    schedule,
+    signatures,
+    tests,
+    time_entries,
+    workitems,
+)
 
 api_router = APIRouter()
 

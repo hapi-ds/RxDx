@@ -1,9 +1,9 @@
 """Unit tests for AuthService"""
 
-import pytest
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash, verify_password
@@ -45,7 +45,7 @@ class TestPasswordHashing:
         """Test that password hashing works correctly"""
         password = "SecurePass123"
         hashed = get_password_hash(password)
-        
+
         assert hashed != password
         assert len(hashed) > 0
         assert verify_password(password, hashed)
@@ -55,7 +55,7 @@ class TestPasswordHashing:
         password = "SecurePass123"
         wrong_password = "WrongPass456"
         hashed = get_password_hash(password)
-        
+
         assert not verify_password(wrong_password, hashed)
 
     def test_different_hashes_for_same_password(self):
@@ -63,7 +63,7 @@ class TestPasswordHashing:
         password = "SecurePass123"
         hash1 = get_password_hash(password)
         hash2 = get_password_hash(password)
-        
+
         assert hash1 != hash2
         assert verify_password(password, hash1)
         assert verify_password(password, hash2)
@@ -78,9 +78,9 @@ class TestAuthServiceUserRetrieval:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.get_user_by_email("test@example.com")
-        
+
         assert user == sample_user
         assert user.email == "test@example.com"
 
@@ -90,9 +90,9 @@ class TestAuthServiceUserRetrieval:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.get_user_by_email("nonexistent@example.com")
-        
+
         assert user is None
 
     @pytest.mark.asyncio
@@ -101,9 +101,9 @@ class TestAuthServiceUserRetrieval:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.get_user_by_id(sample_user.id)
-        
+
         assert user == sample_user
 
 
@@ -116,9 +116,9 @@ class TestAuthServiceAuthentication:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.authenticate_user("test@example.com", "SecurePass123")
-        
+
         assert user == sample_user
         assert user.failed_login_attempts == 0
 
@@ -128,9 +128,9 @@ class TestAuthServiceAuthentication:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.authenticate_user("test@example.com", "WrongPass456")
-        
+
         assert user is None
         assert sample_user.failed_login_attempts == 1
 
@@ -140,9 +140,9 @@ class TestAuthServiceAuthentication:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = None
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.authenticate_user("nonexistent@example.com", "SecurePass123")
-        
+
         assert user is None
 
     @pytest.mark.asyncio
@@ -152,9 +152,9 @@ class TestAuthServiceAuthentication:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.authenticate_user("test@example.com", "SecurePass123")
-        
+
         assert user is None
 
 
@@ -165,7 +165,7 @@ class TestAccountLocking:
     async def test_increment_failed_attempts(self, auth_service, mock_db, sample_user):
         """Test incrementing failed login attempts"""
         await auth_service.increment_failed_attempts(sample_user)
-        
+
         assert sample_user.failed_login_attempts == 1
         assert sample_user.locked_until is None
 
@@ -173,9 +173,9 @@ class TestAccountLocking:
     async def test_account_locked_after_three_attempts(self, auth_service, mock_db, sample_user):
         """Test account is locked after 3 failed attempts"""
         sample_user.failed_login_attempts = 2
-        
+
         await auth_service.increment_failed_attempts(sample_user)
-        
+
         assert sample_user.failed_login_attempts == 3
         assert sample_user.locked_until is not None
         assert sample_user.locked_until > datetime.now(UTC)
@@ -187,10 +187,10 @@ class TestAccountLocking:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         with pytest.raises(AccountLockedException) as exc_info:
             await auth_service.authenticate_user("test@example.com", "SecurePass123")
-        
+
         assert "locked until" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
@@ -202,9 +202,9 @@ class TestAccountLocking:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = sample_user
         mock_db.execute.return_value = mock_result
-        
+
         user = await auth_service.authenticate_user("test@example.com", "SecurePass123")
-        
+
         assert user == sample_user
         assert sample_user.failed_login_attempts == 0
         assert sample_user.locked_until is None
@@ -213,9 +213,9 @@ class TestAccountLocking:
     async def test_reset_failed_attempts(self, auth_service, mock_db, sample_user):
         """Test resetting failed login attempts"""
         sample_user.failed_login_attempts = 2
-        
+
         await auth_service.reset_failed_attempts(sample_user)
-        
+
         assert sample_user.failed_login_attempts == 0
         assert sample_user.locked_until is None
 
@@ -226,7 +226,7 @@ class TestTokenGeneration:
     def test_create_token_for_user(self, auth_service, sample_user):
         """Test creating JWT token for user"""
         token = auth_service.create_token_for_user(sample_user)
-        
+
         assert token is not None
         assert isinstance(token, str)
         assert len(token) > 0
@@ -234,10 +234,10 @@ class TestTokenGeneration:
     def test_token_contains_user_data(self, auth_service, sample_user):
         """Test that token contains user data"""
         from app.core.security import decode_access_token
-        
+
         token = auth_service.create_token_for_user(sample_user)
         payload = decode_access_token(token)
-        
+
         assert payload is not None
         assert payload["sub"] == str(sample_user.id)
         assert payload["email"] == sample_user.email
@@ -246,10 +246,10 @@ class TestTokenGeneration:
     def test_token_has_expiration(self, auth_service, sample_user):
         """Test that token has expiration time"""
         from app.core.security import decode_access_token
-        
+
         token = auth_service.create_token_for_user(sample_user)
         payload = decode_access_token(token)
-        
+
         assert "exp" in payload
         assert "iat" in payload
 
@@ -262,9 +262,9 @@ class TestPasswordManagement:
         """Test successful password change"""
         old_password = "SecurePass123"
         new_password = "NewSecure456"
-        
+
         result = await auth_service.change_password(sample_user, old_password, new_password)
-        
+
         assert result is True
         assert verify_password(new_password, sample_user.hashed_password)
         assert not verify_password(old_password, sample_user.hashed_password)
@@ -274,9 +274,9 @@ class TestPasswordManagement:
         """Test password change fails with wrong old password"""
         old_password = "WrongPass456"
         new_password = "NewSecure456"
-        
+
         result = await auth_service.change_password(sample_user, old_password, new_password)
-        
+
         assert result is False
         assert verify_password("SecurePass123", sample_user.hashed_password)
 
@@ -284,7 +284,7 @@ class TestPasswordManagement:
     async def test_reset_password(self, auth_service, mock_db, sample_user):
         """Test admin password reset"""
         new_password = "AdminReset789"
-        
+
         await auth_service.reset_password(sample_user, new_password)
-        
+
         assert verify_password(new_password, sample_user.hashed_password)

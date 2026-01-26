@@ -14,7 +14,6 @@ Options:
 
 import asyncio
 import sys
-from datetime import datetime, timezone
 from uuid import UUID
 
 from passlib.context import CryptContext
@@ -313,10 +312,11 @@ def print_workitems_summary():
 async def seed_users_to_db():
     """Seed users to the database using SQLAlchemy."""
     try:
+        from sqlalchemy import select
+
         from app.db.session import async_session_maker
         from app.models.user import User
-        from sqlalchemy import select
-        
+
         async with async_session_maker() as session:
             for user_data in SEED_USERS:
                 # Check if user already exists
@@ -324,11 +324,11 @@ async def seed_users_to_db():
                     select(User).where(User.email == user_data["email"])
                 )
                 existing_user = result.scalar_one_or_none()
-                
+
                 if existing_user:
                     print(f"User {user_data['email']} already exists, skipping...")
                     continue
-                
+
                 # Create new user
                 user = User(
                     id=user_data["id"],
@@ -340,10 +340,10 @@ async def seed_users_to_db():
                 )
                 session.add(user)
                 print(f"Created user: {user_data['email']}")
-            
+
             await session.commit()
             print("\nUsers seeded successfully!")
-            
+
     except ImportError as e:
         print(f"Error importing database modules: {e}")
         print("Make sure you're running from the backend directory with the correct environment.")
@@ -356,19 +356,19 @@ async def seed_users_to_db():
 async def main():
     """Main entry point for the seed script."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Seed RxDx database with example data")
     parser.add_argument("--reset", action="store_true", help="Clear existing data before seeding")
     parser.add_argument("--dry-run", action="store_true", help="Print seed data without inserting")
     args = parser.parse_args()
-    
+
     print_users_table()
     print_workitems_summary()
-    
+
     if args.dry_run:
         print("Dry run mode - no data was inserted.")
         return
-    
+
     print("Seeding database...")
     await seed_users_to_db()
     print("\nSeed complete!")

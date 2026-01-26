@@ -1,38 +1,35 @@
 """Requirements API endpoints"""
 
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import JSONResponse
 
 from app.api.deps import get_current_user
 from app.core.security import Permission, has_permission
 from app.models.user import User
 from app.schemas.workitem import (
-    RequirementCreate,
-    RequirementUpdate,
-    RequirementResponse,
     CommentCreate,
-    CommentUpdate,
-    CommentResponse,
     CommentListResponse,
+    CommentResponse,
+    RequirementCreate,
+    RequirementResponse,
+    RequirementUpdate,
 )
-from app.services.requirement_service import RequirementService, get_requirement_service
 from app.services.audit_service import AuditService, get_audit_service
+from app.services.requirement_service import RequirementService, get_requirement_service
 
 router = APIRouter()
 
 
-@router.get("/requirements", response_model=List[RequirementResponse])
+@router.get("/requirements", response_model=list[RequirementResponse])
 async def get_requirements(
-    search: Optional[str] = Query(None, description="Search text for title, description, and acceptance criteria"),
-    status: Optional[str] = Query(None, description="Filter by status (draft, active, completed, archived, rejected)"),
-    assigned_to: Optional[UUID] = Query(None, description="Filter by assigned user UUID"),
-    created_by: Optional[UUID] = Query(None, description="Filter by creator UUID"),
-    priority: Optional[int] = Query(None, ge=1, le=5, description="Filter by priority level (1-5)"),
-    source: Optional[str] = Query(None, description="Filter by requirement source"),
-    has_acceptance_criteria: Optional[bool] = Query(None, description="Filter by presence of acceptance criteria"),
+    search: str | None = Query(None, description="Search text for title, description, and acceptance criteria"),
+    status: str | None = Query(None, description="Filter by status (draft, active, completed, archived, rejected)"),
+    assigned_to: UUID | None = Query(None, description="Filter by assigned user UUID"),
+    created_by: UUID | None = Query(None, description="Filter by creator UUID"),
+    priority: int | None = Query(None, ge=1, le=5, description="Filter by priority level (1-5)"),
+    source: str | None = Query(None, description="Filter by requirement source"),
+    has_acceptance_criteria: bool | None = Query(None, description="Filter by presence of acceptance criteria"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip for pagination"),
     current_user: User = Depends(get_current_user),
@@ -76,7 +73,7 @@ async def get_requirements(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read requirements"
         )
-    
+
     try:
         # Search requirements with comprehensive filters
         requirements = await requirement_service.search_requirements(
@@ -90,7 +87,7 @@ async def get_requirements(
             limit=limit,
             offset=offset
         )
-        
+
         # Log audit event for compliance
         await audit_service.log(
             user_id=current_user.id,
@@ -114,16 +111,16 @@ async def get_requirements(
                 "endpoint": "GET /api/v1/requirements"
             }
         )
-        
+
         return requirements
-        
+
     except ValueError as e:
         # Handle validation errors (e.g., invalid filter values)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid filter parameters: {str(e)}"
         )
-    except Exception as e:
+    except Exception:
         # Log error for debugging while protecting sensitive information
         await audit_service.log(
             user_id=current_user.id,
@@ -136,7 +133,7 @@ async def get_requirements(
                 "user_role": current_user.role.value
             }
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail="Error retrieving requirements. Please try again later."
@@ -193,14 +190,14 @@ async def create_requirement(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to create requirements"
         )
-    
+
     try:
         # Create the requirement with comprehensive validation
         requirement = await requirement_service.create_requirement(
             requirement_data=requirement_data,
             current_user=current_user
         )
-        
+
         # Log successful creation for audit trail
         await audit_service.log(
             user_id=current_user.id,
@@ -219,16 +216,16 @@ async def create_requirement(
                 "endpoint": "POST /api/v1/requirements"
             }
         )
-        
+
         return requirement
-        
+
     except ValueError as e:
         # Handle validation errors with detailed feedback
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Requirement validation failed: {str(e)}"
         )
-    except Exception as e:
+    except Exception:
         # Log error for debugging
         await audit_service.log(
             user_id=current_user.id,
@@ -242,7 +239,7 @@ async def create_requirement(
                 "user_role": current_user.role.value
             }
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail="Error creating requirement. Please try again later."
@@ -250,7 +247,7 @@ async def create_requirement(
 
 
 @router.get(
-    "/requirements/{requirement_id}", 
+    "/requirements/{requirement_id}",
     response_model=RequirementResponse,
     responses={
         404: {"description": "Requirement not found"},
@@ -297,17 +294,17 @@ async def get_requirement(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read requirements"
         )
-    
+
     try:
         # Get the requirement
         requirement = await requirement_service.get_requirement(requirement_id)
-        
+
         if not requirement:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found"
             )
-        
+
         # Log access for audit trail
         await audit_service.log(
             user_id=current_user.id,
@@ -323,13 +320,13 @@ async def get_requirement(
                 "endpoint": "GET /api/v1/requirements/{id}"
             }
         )
-        
+
         return requirement
-        
+
     except HTTPException:
         # Re-raise HTTP exceptions (404, 403)
         raise
-    except Exception as e:
+    except Exception:
         # Log error for debugging
         await audit_service.log(
             user_id=current_user.id,
@@ -342,7 +339,7 @@ async def get_requirement(
                 "user_role": current_user.role.value
             }
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail="Error retrieving requirement. Please try again later."
@@ -409,14 +406,14 @@ async def update_requirement(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to update requirements"
         )
-    
+
     # Validate change description
     if not change_description or not change_description.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Change description is required for audit compliance"
         )
-    
+
     try:
         # Update the requirement
         requirement = await requirement_service.update_requirement(
@@ -425,19 +422,19 @@ async def update_requirement(
             current_user=current_user,
             change_description=change_description.strip()
         )
-        
+
         if not requirement:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found"
             )
-        
+
         # Log successful update
         updated_fields = [
             field for field, value in updates.model_dump(exclude_unset=True).items()
             if value is not None
         ]
-        
+
         await audit_service.log(
             user_id=current_user.id,
             action="UPDATE",
@@ -453,9 +450,9 @@ async def update_requirement(
                 "endpoint": "PATCH /api/v1/requirements/{id}"
             }
         )
-        
+
         return requirement
-        
+
     except ValueError as e:
         # Handle validation errors
         raise HTTPException(
@@ -465,7 +462,7 @@ async def update_requirement(
     except HTTPException:
         # Re-raise HTTP exceptions (404)
         raise
-    except Exception as e:
+    except Exception:
         # Log error for debugging
         await audit_service.log(
             user_id=current_user.id,
@@ -479,7 +476,7 @@ async def update_requirement(
                 "user_role": current_user.role.value
             }
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail="Error updating requirement. Please try again later."
@@ -541,7 +538,7 @@ async def add_requirement_comment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to comment on requirements"
         )
-    
+
     try:
         # Add the comment with comprehensive validation
         comment = await requirement_service.add_comment(
@@ -549,7 +546,7 @@ async def add_requirement_comment(
             comment_data=comment_data,
             current_user=current_user
         )
-        
+
         # Log successful comment creation
         await audit_service.log(
             user_id=current_user.id,
@@ -564,9 +561,9 @@ async def add_requirement_comment(
                 "endpoint": "POST /api/v1/requirements/{id}/comments"
             }
         )
-        
+
         return comment
-        
+
     except ValueError as e:
         # Handle validation errors (requirement not found, validation failures)
         if "not found" in str(e).lower():
@@ -585,7 +582,7 @@ async def add_requirement_comment(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=str(e)
         )
-    except Exception as e:
+    except Exception:
         # Log error for debugging
         await audit_service.log(
             user_id=current_user.id,
@@ -599,7 +596,7 @@ async def add_requirement_comment(
                 "user_role": current_user.role.value
             }
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail="Error creating comment. Please try again later."
@@ -660,7 +657,7 @@ async def get_requirement_comments(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read requirement comments"
         )
-    
+
     try:
         # Get paginated comments
         comments_response = await requirement_service.get_requirement_comments(
@@ -669,7 +666,7 @@ async def get_requirement_comments(
             page_size=page_size,
             include_user_info=include_user_info
         )
-        
+
         # Log access for audit trail
         await audit_service.log(
             user_id=current_user.id,
@@ -686,16 +683,16 @@ async def get_requirement_comments(
                 "endpoint": "GET /api/v1/requirements/{id}/comments"
             }
         )
-        
+
         return comments_response
-        
+
     except ValueError as e:
         # Handle validation errors (invalid pagination parameters)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid parameters: {str(e)}"
         )
-    except Exception as e:
+    except Exception:
         # Log error for debugging
         await audit_service.log(
             user_id=current_user.id,
@@ -709,7 +706,7 @@ async def get_requirement_comments(
                 "user_role": current_user.role.value
             }
         )
-        
+
         raise HTTPException(
             status_code=500,
             detail="Error retrieving comments. Please try again later."

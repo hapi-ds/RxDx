@@ -1,17 +1,17 @@
 """Unit tests for DigitalSignature model and schemas"""
 
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from pydantic import ValidationError
 
 from app.models.signature import DigitalSignature
 from app.schemas.signature import (
     DigitalSignatureCreate,
-    DigitalSignatureUpdate,
-    DigitalSignatureResponse,
     DigitalSignatureFilter,
+    DigitalSignatureResponse,
+    DigitalSignatureUpdate,
     SignatureVerificationRequest,
     SignatureVerificationResponse,
 )
@@ -36,7 +36,7 @@ class TestDigitalSignatureModel:
             content_hash=VALID_CONTENT_HASH,
             is_valid=True,  # Explicitly set for testing since defaults only apply when saved to DB
         )
-        
+
         assert signature.workitem_id == workitem_id
         assert signature.workitem_version == "1.0"
         assert signature.user_id == user_id
@@ -55,7 +55,7 @@ class TestDigitalSignatureModel:
             signature_hash="test_signature_hash",
             content_hash=VALID_CONTENT_HASH,
         )
-        
+
         # For non-persisted objects, SQLAlchemy defaults are not applied
         # The database columns have defaults, but these are only applied on INSERT
         assert signature.invalidated_at is None
@@ -76,7 +76,7 @@ class TestDigitalSignatureModel:
             content_hash=VALID_CONTENT_HASH,
             is_valid=False,
         )
-        
+
         repr_str = repr(signature)
         assert "DigitalSignature" in repr_str
         assert str(signature_id) in repr_str
@@ -97,7 +97,7 @@ class TestDigitalSignatureModel:
             invalidated_at=datetime.now(UTC),
             invalidation_reason="WorkItem modified",
         )
-        
+
         assert signature.is_valid is False
         assert signature.invalidated_at is not None
         assert signature.invalidation_reason == "WorkItem modified"
@@ -118,9 +118,9 @@ class TestDigitalSignatureCreateSchema:
             "signature_hash": "abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
             "content_hash": VALID_CONTENT_HASH,
         }
-        
+
         signature = DigitalSignatureCreate(**signature_data)
-        
+
         assert signature.workitem_id == workitem_id
         assert signature.workitem_version == "1.0"
         assert signature.user_id == user_id
@@ -136,10 +136,10 @@ class TestDigitalSignatureCreateSchema:
             "signature_hash": "test_signature_hash",
             "content_hash": VALID_CONTENT_HASH,
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureCreate(**signature_data)
-        
+
         assert "workitem_version" in str(exc_info.value).lower()
 
     def test_long_workitem_version(self):
@@ -151,10 +151,10 @@ class TestDigitalSignatureCreateSchema:
             "signature_hash": "test_signature_hash",
             "content_hash": VALID_CONTENT_HASH,
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureCreate(**signature_data)
-        
+
         assert "workitem_version" in str(exc_info.value).lower()
 
     def test_empty_signature_hash(self):
@@ -166,10 +166,10 @@ class TestDigitalSignatureCreateSchema:
             "signature_hash": "",
             "content_hash": VALID_CONTENT_HASH,
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureCreate(**signature_data)
-        
+
         assert "signature_hash" in str(exc_info.value).lower()
 
     def test_invalid_content_hash_length(self):
@@ -181,10 +181,10 @@ class TestDigitalSignatureCreateSchema:
             "signature_hash": "test_signature_hash",
             "content_hash": "short_hash",  # Should be 64 characters
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureCreate(**signature_data)
-        
+
         assert "content_hash" in str(exc_info.value).lower()
 
     def test_content_hash_too_long(self):
@@ -196,10 +196,10 @@ class TestDigitalSignatureCreateSchema:
             "signature_hash": "test_signature_hash",
             "content_hash": "a" * 65,  # Should be exactly 64 characters
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureCreate(**signature_data)
-        
+
         assert "content_hash" in str(exc_info.value).lower()
 
 
@@ -213,9 +213,9 @@ class TestDigitalSignatureUpdateSchema:
             "is_valid": False,
             "invalidation_reason": "WorkItem was modified",
         }
-        
+
         signature_update = DigitalSignatureUpdate(**update_data)
-        
+
         assert signature_update.is_valid is False
         assert signature_update.invalidation_reason == "WorkItem was modified"
 
@@ -224,9 +224,9 @@ class TestDigitalSignatureUpdateSchema:
         update_data = {
             "is_valid": True,
         }
-        
+
         signature_update = DigitalSignatureUpdate(**update_data)
-        
+
         assert signature_update.is_valid is True
         assert signature_update.invalidation_reason is None
 
@@ -236,10 +236,10 @@ class TestDigitalSignatureUpdateSchema:
             "is_valid": False,
             "invalidation_reason": "a" * 501,  # Max is 500
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureUpdate(**update_data)
-        
+
         assert "invalidation_reason" in str(exc_info.value).lower()
 
 
@@ -253,7 +253,7 @@ class TestDigitalSignatureResponseSchema:
         workitem_id = uuid4()
         user_id = uuid4()
         signed_at = datetime.now(UTC)
-        
+
         signature = DigitalSignature(
             id=signature_id,
             workitem_id=workitem_id,
@@ -264,9 +264,9 @@ class TestDigitalSignatureResponseSchema:
             signed_at=signed_at,
             is_valid=True,
         )
-        
+
         signature_response = DigitalSignatureResponse.model_validate(signature)
-        
+
         assert signature_response.id == signature_id
         assert signature_response.workitem_id == workitem_id
         assert signature_response.workitem_version == "1.0"
@@ -293,9 +293,9 @@ class TestDigitalSignatureResponseSchema:
             "invalidated_at": invalidated_at,
             "invalidation_reason": "WorkItem modified",
         }
-        
+
         signature_response = DigitalSignatureResponse(**signature_dict)
-        
+
         assert signature_response.is_valid is False
         assert signature_response.invalidated_at == invalidated_at
         assert signature_response.invalidation_reason == "WorkItem modified"
@@ -308,9 +308,9 @@ class TestDigitalSignatureFilterSchema:
     def test_empty_filter(self):
         """Test DigitalSignatureFilter with no filters"""
         filter_data = {}
-        
+
         signature_filter = DigitalSignatureFilter(**filter_data)
-        
+
         assert signature_filter.workitem_id is None
         assert signature_filter.user_id is None
         assert signature_filter.workitem_version is None
@@ -326,7 +326,7 @@ class TestDigitalSignatureFilterSchema:
         user_id = uuid4()
         start_date = datetime.now(UTC)
         end_date = datetime.now(UTC)
-        
+
         filter_data = {
             "workitem_id": workitem_id,
             "user_id": user_id,
@@ -337,9 +337,9 @@ class TestDigitalSignatureFilterSchema:
             "limit": 50,
             "offset": 10,
         }
-        
+
         signature_filter = DigitalSignatureFilter(**filter_data)
-        
+
         assert signature_filter.workitem_id == workitem_id
         assert signature_filter.user_id == user_id
         assert signature_filter.workitem_version == "1.0"
@@ -352,28 +352,28 @@ class TestDigitalSignatureFilterSchema:
     def test_invalid_limit(self):
         """Test DigitalSignatureFilter with invalid limit"""
         filter_data = {"limit": 0}
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureFilter(**filter_data)
-        
+
         assert "limit" in str(exc_info.value).lower()
 
     def test_limit_too_high(self):
         """Test DigitalSignatureFilter with limit too high"""
         filter_data = {"limit": 1001}
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureFilter(**filter_data)
-        
+
         assert "limit" in str(exc_info.value).lower()
 
     def test_negative_offset(self):
         """Test DigitalSignatureFilter with negative offset"""
         filter_data = {"offset": -1}
-        
+
         with pytest.raises(ValidationError) as exc_info:
             DigitalSignatureFilter(**filter_data)
-        
+
         assert "offset" in str(exc_info.value).lower()
 
 
@@ -385,16 +385,16 @@ class TestSignatureVerificationSchemas:
         """Test SignatureVerificationRequest schema"""
         signature_id = uuid4()
         request_data = {"signature_id": signature_id}
-        
+
         verification_request = SignatureVerificationRequest(**request_data)
-        
+
         assert verification_request.signature_id == signature_id
 
     def test_verification_response_valid(self):
         """Test SignatureVerificationResponse for valid signature"""
         signature_id = uuid4()
         verification_timestamp = datetime.now(UTC)
-        
+
         response_data = {
             "signature_id": signature_id,
             "is_valid": True,
@@ -402,9 +402,9 @@ class TestSignatureVerificationSchemas:
             "content_matches": True,
             "signature_intact": True,
         }
-        
+
         verification_response = SignatureVerificationResponse(**response_data)
-        
+
         assert verification_response.signature_id == signature_id
         assert verification_response.is_valid is True
         assert verification_response.verification_timestamp == verification_timestamp
@@ -416,7 +416,7 @@ class TestSignatureVerificationSchemas:
         """Test SignatureVerificationResponse for invalid signature"""
         signature_id = uuid4()
         verification_timestamp = datetime.now(UTC)
-        
+
         response_data = {
             "signature_id": signature_id,
             "is_valid": False,
@@ -425,9 +425,9 @@ class TestSignatureVerificationSchemas:
             "signature_intact": True,
             "error_message": "Content hash mismatch",
         }
-        
+
         verification_response = SignatureVerificationResponse(**response_data)
-        
+
         assert verification_response.signature_id == signature_id
         assert verification_response.is_valid is False
         assert verification_response.content_matches is False

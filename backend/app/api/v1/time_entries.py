@@ -1,8 +1,6 @@
 """Time Entry API endpoints"""
 
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import List, Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -12,16 +10,16 @@ from app.api.deps import get_current_user
 from app.core.security import Permission, has_permission
 from app.models.user import User
 from app.schemas.time_entry import (
+    TimeAggregationRequest,
+    TimeAggregationResponse,
     TimeEntryCreate,
-    TimeEntryUpdate,
     TimeEntryResponse,
     TimeEntrySyncRequest,
     TimeEntrySyncResponse,
-    TimeAggregationRequest,
-    TimeAggregationResponse,
+    TimeEntryUpdate,
 )
-from app.services.time_service import TimeService, get_time_service
 from app.services.audit_service import AuditService, get_audit_service
+from app.services.time_service import TimeService, get_time_service
 
 router = APIRouter()
 
@@ -85,14 +83,14 @@ async def create_time_entry(
         )
 
 
-@router.get("/time-entries", response_model=List[TimeEntryResponse])
+@router.get("/time-entries", response_model=list[TimeEntryResponse])
 async def get_time_entries(
-    project_id: Optional[UUID] = Query(None, description="Filter by project"),
-    task_id: Optional[UUID] = Query(None, description="Filter by task"),
-    start_date: Optional[datetime] = Query(None, description="Filter entries starting after this date"),
-    end_date: Optional[datetime] = Query(None, description="Filter entries ending before this date"),
-    category: Optional[str] = Query(None, description="Filter by category"),
-    synced: Optional[bool] = Query(None, description="Filter by sync status"),
+    project_id: UUID | None = Query(None, description="Filter by project"),
+    task_id: UUID | None = Query(None, description="Filter by task"),
+    start_date: datetime | None = Query(None, description="Filter entries starting after this date"),
+    end_date: datetime | None = Query(None, description="Filter entries ending before this date"),
+    category: str | None = Query(None, description="Filter by category"),
+    synced: bool | None = Query(None, description="Filter by sync status"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     current_user: User = Depends(get_current_user),
@@ -394,7 +392,7 @@ async def sync_time_entries(
             synced_count=synced_count,
             failed_count=failed_count,
             synced_entries=results,
-            sync_timestamp=datetime.now(timezone.utc)
+            sync_timestamp=datetime.now(UTC)
         )
 
     except ValueError as e:

@@ -4,9 +4,8 @@ This module defines schemas for document generation requests and responses
 as per Requirement 8 (Document Generation).
 """
 
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
-from typing import Optional, List
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -41,21 +40,21 @@ class DocumentStatus(str, Enum):
 
 class DesignReviewRequest(BaseModel):
     """Request schema for generating a design review PDF."""
-    
+
     project_id: UUID = Field(..., description="ID of the project for the design review")
     include_signatures: bool = Field(
-        default=True, 
+        default=True,
         description="Whether to include digital signatures in the document"
     )
     include_version_history: bool = Field(
         default=False,
         description="Whether to include version history for each requirement"
     )
-    requirement_ids: Optional[List[UUID]] = Field(
+    requirement_ids: list[UUID] | None = Field(
         default=None,
         description="Specific requirement IDs to include (None = all requirements)"
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         default=None,
         max_length=200,
         description="Custom document title"
@@ -64,19 +63,19 @@ class DesignReviewRequest(BaseModel):
 
 class DesignReviewResponse(BaseModel):
     """Response schema for design review generation."""
-    
+
     document_id: UUID
     project_id: UUID
     document_type: DocumentType = DocumentType.DESIGN_REVIEW
     format: DocumentFormat = DocumentFormat.PDF
     status: DocumentStatus
     filename: str
-    file_size_bytes: Optional[int] = None
+    file_size_bytes: int | None = None
     requirement_count: int
     signature_count: int
     generated_at: datetime
     generated_by: UUID
-    download_url: Optional[str] = None
+    download_url: str | None = None
 
 
 # ============================================================================
@@ -85,7 +84,7 @@ class DesignReviewResponse(BaseModel):
 
 class TraceabilityMatrixRequest(BaseModel):
     """Request schema for generating a traceability matrix PDF."""
-    
+
     project_id: UUID = Field(..., description="ID of the project")
     include_tests: bool = Field(
         default=True,
@@ -99,7 +98,7 @@ class TraceabilityMatrixRequest(BaseModel):
         default=True,
         description="Include signature status for each item"
     )
-    requirement_ids: Optional[List[UUID]] = Field(
+    requirement_ids: list[UUID] | None = Field(
         default=None,
         description="Specific requirement IDs to include (None = all)"
     )
@@ -107,21 +106,21 @@ class TraceabilityMatrixRequest(BaseModel):
 
 class TraceabilityMatrixResponse(BaseModel):
     """Response schema for traceability matrix generation."""
-    
+
     document_id: UUID
     project_id: UUID
     document_type: DocumentType = DocumentType.TRACEABILITY_MATRIX
     format: DocumentFormat = DocumentFormat.PDF
     status: DocumentStatus
     filename: str
-    file_size_bytes: Optional[int] = None
+    file_size_bytes: int | None = None
     requirement_count: int
     test_count: int
     risk_count: int
     coverage_percentage: float
     generated_at: datetime
     generated_by: UUID
-    download_url: Optional[str] = None
+    download_url: str | None = None
 
 
 # ============================================================================
@@ -130,7 +129,7 @@ class TraceabilityMatrixResponse(BaseModel):
 
 class FMEARequest(BaseModel):
     """Request schema for generating an FMEA Excel document."""
-    
+
     project_id: UUID = Field(..., description="ID of the project")
     include_failure_chains: bool = Field(
         default=True,
@@ -140,11 +139,11 @@ class FMEARequest(BaseModel):
         default=True,
         description="Include mitigation actions"
     )
-    risk_ids: Optional[List[UUID]] = Field(
+    risk_ids: list[UUID] | None = Field(
         default=None,
         description="Specific risk IDs to include (None = all)"
     )
-    min_rpn: Optional[int] = Field(
+    min_rpn: int | None = Field(
         default=None,
         ge=1,
         le=1000,
@@ -154,14 +153,14 @@ class FMEARequest(BaseModel):
 
 class FMEAResponse(BaseModel):
     """Response schema for FMEA document generation."""
-    
+
     document_id: UUID
     project_id: UUID
     document_type: DocumentType = DocumentType.FMEA
     format: DocumentFormat = DocumentFormat.EXCEL
     status: DocumentStatus
     filename: str
-    file_size_bytes: Optional[int] = None
+    file_size_bytes: int | None = None
     risk_count: int
     failure_count: int
     mitigation_count: int
@@ -169,7 +168,7 @@ class FMEAResponse(BaseModel):
     max_rpn: int
     generated_at: datetime
     generated_by: UUID
-    download_url: Optional[str] = None
+    download_url: str | None = None
 
 
 # ============================================================================
@@ -178,14 +177,14 @@ class FMEAResponse(BaseModel):
 
 class BillingPeriod(BaseModel):
     """Billing period specification."""
-    
+
     start_date: date = Field(..., description="Start date of billing period")
     end_date: date = Field(..., description="End date of billing period")
 
 
 class InvoiceLineItem(BaseModel):
     """Line item in an invoice."""
-    
+
     description: str
     hours: float
     rate: float
@@ -194,20 +193,20 @@ class InvoiceLineItem(BaseModel):
 
 class InvoiceRequest(BaseModel):
     """Request schema for generating an invoice Word document."""
-    
+
     project_id: UUID = Field(..., description="ID of the project")
     billing_period: BillingPeriod = Field(..., description="Billing period for the invoice")
-    template_name: Optional[str] = Field(
+    template_name: str | None = Field(
         default="default_invoice",
         max_length=100,
         description="Name of the Word template to use"
     )
-    client_name: Optional[str] = Field(
+    client_name: str | None = Field(
         default=None,
         max_length=200,
         description="Client name for the invoice"
     )
-    client_address: Optional[str] = Field(
+    client_address: str | None = Field(
         default=None,
         max_length=500,
         description="Client address for the invoice"
@@ -223,7 +222,7 @@ class InvoiceRequest(BaseModel):
         max_length=3,
         description="Currency code (ISO 4217)"
     )
-    notes: Optional[str] = Field(
+    notes: str | None = Field(
         default=None,
         max_length=1000,
         description="Additional notes for the invoice"
@@ -232,14 +231,14 @@ class InvoiceRequest(BaseModel):
 
 class InvoiceResponse(BaseModel):
     """Response schema for invoice generation."""
-    
+
     document_id: UUID
     project_id: UUID
     document_type: DocumentType = DocumentType.INVOICE
     format: DocumentFormat = DocumentFormat.WORD
     status: DocumentStatus
     filename: str
-    file_size_bytes: Optional[int] = None
+    file_size_bytes: int | None = None
     billing_period_start: date
     billing_period_end: date
     total_hours: float
@@ -249,7 +248,7 @@ class InvoiceResponse(BaseModel):
     line_item_count: int
     generated_at: datetime
     generated_by: UUID
-    download_url: Optional[str] = None
+    download_url: str | None = None
 
 
 # ============================================================================
@@ -258,7 +257,7 @@ class InvoiceResponse(BaseModel):
 
 class DocumentRecord(BaseModel):
     """Schema for a stored document record."""
-    
+
     id: UUID
     project_id: UUID
     document_type: DocumentType
@@ -272,32 +271,32 @@ class DocumentRecord(BaseModel):
     metadata: dict
     generated_at: datetime
     generated_by: UUID
-    expires_at: Optional[datetime] = None
-    
+    expires_at: datetime | None = None
+
     model_config = {"from_attributes": True}
 
 
 class DocumentFilter(BaseModel):
     """Schema for filtering documents."""
-    
-    project_id: Optional[UUID] = None
-    document_type: Optional[DocumentType] = None
-    format: Optional[DocumentFormat] = None
-    status: Optional[DocumentStatus] = None
-    generated_by: Optional[UUID] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+
+    project_id: UUID | None = None
+    document_type: DocumentType | None = None
+    format: DocumentFormat | None = None
+    status: DocumentStatus | None = None
+    generated_by: UUID | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     limit: int = Field(default=100, ge=1, le=1000)
     offset: int = Field(default=0, ge=0)
 
 
 class DocumentDownloadResponse(BaseModel):
     """Response schema for document download."""
-    
+
     document_id: UUID
     filename: str
     content_type: str
     file_size_bytes: int
     content: bytes
-    
+
     model_config = {"arbitrary_types_allowed": True}

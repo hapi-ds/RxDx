@@ -1,21 +1,20 @@
 """Project Scheduler Service using Google OR-Tools for constraint-based scheduling"""
 
-from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Optional, Tuple
-from uuid import UUID
 import logging
+from datetime import UTC, datetime, timedelta
+from typing import Any
+from uuid import UUID
 
 from ortools.sat.python import cp_model
 
 from app.schemas.schedule import (
-    ScheduleTaskCreate,
+    ProjectSchedule,
     ResourceCreate,
+    ScheduleConflict,
     ScheduleConstraints,
     ScheduledTask,
     ScheduleResponse,
-    ScheduleConflict,
-    TaskDependency,
-    ProjectSchedule,
+    ScheduleTaskCreate,
     ScheduleUpdate,
 )
 
@@ -32,16 +31,16 @@ class SchedulerService:
     - Schedule optimization (minimize project duration)
     - Conflict identification
     """
-    
+
     def __init__(self):
         """Initialize the scheduler service"""
-        self._schedules: Dict[str, ProjectSchedule] = {}  # In-memory storage for schedules
-    
+        self._schedules: dict[str, ProjectSchedule] = {}  # In-memory storage for schedules
+
     async def schedule_project(
         self,
         project_id: UUID,
-        tasks: List[ScheduleTaskCreate],
-        resources: List[ResourceCreate],
+        tasks: list[ScheduleTaskCreate],
+        resources: list[ResourceCreate],
         constraints: ScheduleConstraints
     ) -> ScheduleResponse:
         """
@@ -62,16 +61,16 @@ class SchedulerService:
                 project_id=project_id,
                 message="No tasks provided for scheduling"
             )
-        
+
         # Create the constraint programming model
         model = cp_model.CpModel()
-        
+
         # Calculate horizon in hours
         horizon = constraints.horizon_days * constraints.working_hours_per_day
-        
+
         # Create task variables
         task_vars = self._create_task_variables(model, tasks, horizon)
-        
+
         # Add dependency constraints
         dependency_conflicts = self._add_dependency_constraints(model, tasks, task_vars)
         if dependency_conflicts:
@@ -81,7 +80,7 @@ class SchedulerService:
                 conflicts=dependency_conflicts,
                 message="Dependency constraints cannot be satisfied"
             )
-        
+
         # Add resource constraints
         resource_conflicts = self._add_resource_constraints(model, tasks, resources, task_vars)
         if resource_conflicts:
@@ -91,31 +90,31 @@ class SchedulerService:
                 conflicts=resource_conflicts,
                 message="Resource constraints cannot be satisfied"
             )
-        
+
         # Add deadline constraints if specified
         self._add_deadline_constraints(model, tasks, task_vars, constraints)
-        
+
         # Set optimization objective: minimize project duration
         project_end = self._add_optimization_objective(model, tasks, task_vars, horizon)
-        
+
         # Solve the model
         solver = cp_model.CpSolver()
         solver.parameters.max_time_in_seconds = 60.0  # Timeout after 60 seconds
-        
+
         status = solver.Solve(model)
-        
+
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             schedule = self._extract_schedule(solver, tasks, task_vars, constraints)
             project_duration = solver.Value(project_end)
-            
+
             # Calculate project dates
-            project_start_date = constraints.project_start or datetime.now(timezone.utc)
+            project_start_date = constraints.project_start or datetime.now(UTC)
             project_end_date = self._hours_to_datetime(
-                project_duration, 
-                project_start_date, 
+                project_duration,
+                project_start_date,
                 constraints
             )
-            
+
             response = ScheduleResponse(
                 status="success" if status == cp_model.OPTIMAL else "feasible",
                 project_id=project_id,
@@ -125,10 +124,10 @@ class SchedulerService:
                 project_end_date=project_end_date,
                 message="Optimal schedule found" if status == cp_model.OPTIMAL else "Feasible schedule found"
             )
-            
+
             # Store the schedule
             await self._store_schedule(project_id, response, resources, constraints)
-            
+
             return response
         else:
             conflicts = self._identify_conflicts(tasks, resources, constraints)
@@ -138,39 +137,39 @@ class SchedulerService:
                 conflicts=conflicts,
                 message="No feasible schedule found. Check conflicts for details."
             )
-    
+
     def _create_task_variables(
         self,
         model: cp_model.CpModel,
-        tasks: List[ScheduleTaskCreate],
+        tasks: list[ScheduleTaskCreate],
         horizon: int
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Create CP variables for each task"""
         task_vars = {}
-        
+
         for task in tasks:
             start_var = model.NewIntVar(0, horizon, f"start_{task.id}")
             end_var = model.NewIntVar(0, horizon, f"end_{task.id}")
             duration = task.estimated_hours
-            
+
             # Constraint: end = start + duration
             model.Add(end_var == start_var + duration)
-            
+
             task_vars[task.id] = {
                 'start': start_var,
                 'end': end_var,
                 'duration': duration,
                 'task': task
             }
-        
+
         return task_vars
-    
+
     def _add_dependency_constraints(
         self,
         model: cp_model.CpModel,
-        tasks: List[ScheduleTaskCreate],
-        task_vars: Dict[str, Dict[str, Any]]
-    ) -> List[ScheduleConflict]:
+        tasks: list[ScheduleTaskCreate],
+        task_vars: dict[str, dict[str, Any]]
+    ) -> list[ScheduleConflict]:
         """
         Add task dependency constraints to the model.
         
@@ -181,11 +180,11 @@ class SchedulerService:
         """
         conflicts = []
         task_ids = set(task_vars.keys())
-        
+
         for task in tasks:
             for dep in task.dependencies:
                 predecessor_id = dep.predecessor_id
-                
+
                 # Check if predecessor exists
                 if predecessor_id not in task_ids:
                     conflicts.append(ScheduleConflict(
@@ -195,11 +194,11 @@ class SchedulerService:
                         suggestion=f"Add task '{predecessor_id}' or remove the dependency"
                     ))
                     continue
-                
+
                 predecessor_vars = task_vars[predecessor_id]
                 successor_vars = task_vars[task.id]
                 lag = dep.lag
-                
+
                 if dep.dependency_type == "finish_to_start":
                     # Successor can't start until predecessor finishes (+ lag)
                     model.Add(
@@ -215,28 +214,28 @@ class SchedulerService:
                     model.Add(
                         successor_vars['end'] >= predecessor_vars['end'] + lag
                     )
-        
+
         return conflicts
-    
+
     def _add_resource_constraints(
         self,
         model: cp_model.CpModel,
-        tasks: List[ScheduleTaskCreate],
-        resources: List[ResourceCreate],
-        task_vars: Dict[str, Dict[str, Any]]
-    ) -> List[ScheduleConflict]:
+        tasks: list[ScheduleTaskCreate],
+        resources: list[ResourceCreate],
+        task_vars: dict[str, dict[str, Any]]
+    ) -> list[ScheduleConflict]:
         """Add resource capacity constraints using cumulative constraints"""
         conflicts = []
         resource_map = {r.id: r for r in resources}
-        
+
         for resource in resources:
             intervals = []
             demands = []
-            
+
             for task in tasks:
                 if resource.id in task.required_resources:
                     task_var = task_vars[task.id]
-                    
+
                     # Create interval variable for this task-resource combination
                     interval = model.NewIntervalVar(
                         task_var['start'],
@@ -245,15 +244,15 @@ class SchedulerService:
                         f"interval_{task.id}_{resource.id}"
                     )
                     intervals.append(interval)
-                    
+
                     # Get resource demand (default to 1)
                     demand = task.resource_demand.get(resource.id, 1)
                     demands.append(demand)
-            
+
             if intervals:
                 # Add cumulative constraint: sum of demands at any time <= capacity
                 model.AddCumulative(intervals, demands, resource.capacity)
-        
+
         # Check for tasks requiring non-existent resources
         for task in tasks:
             for resource_id in task.required_resources:
@@ -265,41 +264,41 @@ class SchedulerService:
                         affected_resources=[resource_id],
                         suggestion=f"Add resource '{resource_id}' or remove it from task requirements"
                     ))
-        
+
         return conflicts
-    
+
     def _add_deadline_constraints(
         self,
         model: cp_model.CpModel,
-        tasks: List[ScheduleTaskCreate],
-        task_vars: Dict[str, Dict[str, Any]],
+        tasks: list[ScheduleTaskCreate],
+        task_vars: dict[str, dict[str, Any]],
         constraints: ScheduleConstraints
     ) -> None:
         """Add deadline constraints for tasks and project"""
-        project_start = constraints.project_start or datetime.now(timezone.utc)
-        
+        project_start = constraints.project_start or datetime.now(UTC)
+
         for task in tasks:
             task_var = task_vars[task.id]
-            
+
             # Add earliest start constraint
             if task.earliest_start:
                 earliest_hours = self._datetime_to_hours(
-                    task.earliest_start, 
-                    project_start, 
+                    task.earliest_start,
+                    project_start,
                     constraints
                 )
                 if earliest_hours > 0:
                     model.Add(task_var['start'] >= earliest_hours)
-            
+
             # Add task deadline constraint
             if task.deadline:
                 deadline_hours = self._datetime_to_hours(
-                    task.deadline, 
-                    project_start, 
+                    task.deadline,
+                    project_start,
                     constraints
                 )
                 model.Add(task_var['end'] <= deadline_hours)
-        
+
         # Add project deadline constraint
         if constraints.project_deadline:
             project_deadline_hours = self._datetime_to_hours(
@@ -309,49 +308,49 @@ class SchedulerService:
             )
             for task_var in task_vars.values():
                 model.Add(task_var['end'] <= project_deadline_hours)
-    
+
     def _add_optimization_objective(
         self,
         model: cp_model.CpModel,
-        tasks: List[ScheduleTaskCreate],
-        task_vars: Dict[str, Dict[str, Any]],
+        tasks: list[ScheduleTaskCreate],
+        task_vars: dict[str, dict[str, Any]],
         horizon: int
     ) -> cp_model.IntVar:
         """Add optimization objective to minimize project duration"""
         # Create variable for project end time
         project_end = model.NewIntVar(0, horizon, 'project_end')
-        
+
         # Project end is the maximum of all task end times
         model.AddMaxEquality(
             project_end,
             [task_vars[task.id]['end'] for task in tasks]
         )
-        
+
         # Minimize project end time
         model.Minimize(project_end)
-        
+
         return project_end
-    
+
     def _extract_schedule(
         self,
         solver: cp_model.CpSolver,
-        tasks: List[ScheduleTaskCreate],
-        task_vars: Dict[str, Dict[str, Any]],
+        tasks: list[ScheduleTaskCreate],
+        task_vars: dict[str, dict[str, Any]],
         constraints: ScheduleConstraints
-    ) -> List[ScheduledTask]:
+    ) -> list[ScheduledTask]:
         """Extract the schedule from the solved model"""
         schedule = []
-        project_start = constraints.project_start or datetime.now(timezone.utc)
-        
+        project_start = constraints.project_start or datetime.now(UTC)
+
         for task in tasks:
             task_var = task_vars[task.id]
             start_hours = solver.Value(task_var['start'])
             end_hours = solver.Value(task_var['end'])
-            
+
             # Convert hours to calendar dates
             start_date = self._hours_to_datetime(start_hours, project_start, constraints)
             end_date = self._hours_to_datetime(end_hours, project_start, constraints)
-            
+
             schedule.append(ScheduledTask(
                 task_id=task.id,
                 task_title=task.title,
@@ -360,24 +359,24 @@ class SchedulerService:
                 duration_hours=end_hours - start_hours,
                 assigned_resources=task.required_resources
             ))
-        
+
         # Sort by start date
         schedule.sort(key=lambda x: x.start_date)
-        
+
         return schedule
 
-    
+
     def _identify_conflicts(
         self,
-        tasks: List[ScheduleTaskCreate],
-        resources: List[ResourceCreate],
+        tasks: list[ScheduleTaskCreate],
+        resources: list[ResourceCreate],
         constraints: ScheduleConstraints
-    ) -> List[ScheduleConflict]:
+    ) -> list[ScheduleConflict]:
         """Identify potential conflicts when scheduling fails"""
         conflicts = []
         task_ids = {task.id for task in tasks}
         resource_ids = {r.id for r in resources}
-        
+
         # Check for circular dependencies
         circular = self._detect_circular_dependencies(tasks)
         if circular:
@@ -387,7 +386,7 @@ class SchedulerService:
                 affected_tasks=circular,
                 suggestion="Remove one of the dependencies to break the cycle"
             ))
-        
+
         # Check for missing dependencies
         for task in tasks:
             for dep in task.dependencies:
@@ -398,7 +397,7 @@ class SchedulerService:
                         affected_tasks=[task.id, dep.predecessor_id],
                         suggestion=f"Add task '{dep.predecessor_id}' or remove the dependency"
                     ))
-        
+
         # Check for missing resources
         for task in tasks:
             for resource_id in task.required_resources:
@@ -410,7 +409,7 @@ class SchedulerService:
                         affected_resources=[resource_id],
                         suggestion=f"Add resource '{resource_id}' or remove it from task requirements"
                     ))
-        
+
         # Check for resource over-allocation
         for resource in resources:
             total_demand = sum(
@@ -426,7 +425,7 @@ class SchedulerService:
                     affected_tasks=[t.id for t in tasks if resource.id in t.required_resources],
                     suggestion="Increase resource capacity or reduce task demands"
                 ))
-        
+
         # Check for impossible deadlines
         for task in tasks:
             if task.deadline and task.earliest_start:
@@ -442,24 +441,24 @@ class SchedulerService:
                         affected_tasks=[task.id],
                         suggestion="Extend the deadline or reduce task duration"
                     ))
-        
+
         return conflicts
-    
+
     def _detect_circular_dependencies(
         self,
-        tasks: List[ScheduleTaskCreate]
-    ) -> Optional[List[str]]:
+        tasks: list[ScheduleTaskCreate]
+    ) -> list[str] | None:
         """Detect circular dependencies using DFS"""
         task_map = {task.id: task for task in tasks}
         visited = set()
         rec_stack = set()
         path = []
-        
-        def dfs(task_id: str) -> Optional[List[str]]:
+
+        def dfs(task_id: str) -> list[str] | None:
             visited.add(task_id)
             rec_stack.add(task_id)
             path.append(task_id)
-            
+
             task = task_map.get(task_id)
             if task:
                 for dep in task.dependencies:
@@ -471,19 +470,19 @@ class SchedulerService:
                         # Found cycle
                         cycle_start = path.index(dep.predecessor_id)
                         return path[cycle_start:] + [dep.predecessor_id]
-            
+
             path.pop()
             rec_stack.remove(task_id)
             return None
-        
+
         for task in tasks:
             if task.id not in visited:
                 result = dfs(task.id)
                 if result:
                     return result
-        
+
         return None
-    
+
     def _datetime_to_hours(
         self,
         target: datetime,
@@ -492,25 +491,25 @@ class SchedulerService:
     ) -> int:
         """Convert a datetime to hours from project start"""
         if target.tzinfo is None:
-            target = target.replace(tzinfo=timezone.utc)
+            target = target.replace(tzinfo=UTC)
         if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
-        
+            start = start.replace(tzinfo=UTC)
+
         delta = target - start
         total_hours = int(delta.total_seconds() / 3600)
-        
+
         if constraints.respect_weekends:
             # Adjust for weekends (simplified calculation)
             days = total_hours // 24
             weeks = days // 7
             remaining_days = days % 7
-            
+
             # Subtract weekend days
             working_days = weeks * 5 + min(remaining_days, 5)
             return working_days * constraints.working_hours_per_day
-        
+
         return total_hours
-    
+
     def _hours_to_datetime(
         self,
         hours: int,
@@ -519,16 +518,16 @@ class SchedulerService:
     ) -> datetime:
         """Convert hours from project start to a datetime"""
         if start.tzinfo is None:
-            start = start.replace(tzinfo=timezone.utc)
-        
+            start = start.replace(tzinfo=UTC)
+
         if constraints.respect_weekends:
             # Calculate working days needed
             working_days = hours // constraints.working_hours_per_day
             remaining_hours = hours % constraints.working_hours_per_day
-            
+
             # Start from the beginning of the project start day
             result = start.replace(hour=0, minute=0, second=0, microsecond=0)
-            
+
             # Add working days, accounting for weekends
             days_added = 0
             while days_added < working_days:
@@ -536,47 +535,47 @@ class SchedulerService:
                 # Only count weekdays
                 if result.weekday() < 5:  # Monday = 0, Friday = 4
                     days_added += 1
-            
+
             # Skip to next weekday if we landed on a weekend
             while result.weekday() >= 5:
                 result += timedelta(days=1)
-            
+
             # Add the remaining hours to the start of the working day
             # Assuming work starts at 9 AM
             work_start_hour = 9
             result = result.replace(hour=work_start_hour)
             result = result + timedelta(hours=remaining_hours)
-            
+
             return result
-        
+
         return start + timedelta(hours=hours)
-    
+
     async def _store_schedule(
         self,
         project_id: UUID,
         response: ScheduleResponse,
-        resources: List[ResourceCreate],
+        resources: list[ResourceCreate],
         constraints: ScheduleConstraints
     ) -> None:
         """Store the calculated schedule"""
         from app.schemas.schedule import ResourceResponse
-        
+
         schedule = ProjectSchedule(
             project_id=project_id,
             schedule=response.schedule,
             resources=[ResourceResponse(**r.model_dump()) for r in resources],
             constraints=constraints,
             project_duration_hours=response.project_duration_hours or 0,
-            project_start_date=response.project_start_date or datetime.now(timezone.utc),
-            project_end_date=response.project_end_date or datetime.now(timezone.utc),
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            project_start_date=response.project_start_date or datetime.now(UTC),
+            project_end_date=response.project_end_date or datetime.now(UTC),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             version=1
         )
-        
+
         self._schedules[str(project_id)] = schedule
-    
-    async def get_schedule(self, project_id: UUID) -> Optional[ProjectSchedule]:
+
+    async def get_schedule(self, project_id: UUID) -> ProjectSchedule | None:
         """
         Get the stored schedule for a project.
         
@@ -587,12 +586,12 @@ class SchedulerService:
             ProjectSchedule if found, None otherwise
         """
         return self._schedules.get(str(project_id))
-    
+
     async def update_schedule(
         self,
         project_id: UUID,
         updates: ScheduleUpdate
-    ) -> Optional[ScheduleResponse]:
+    ) -> ScheduleResponse | None:
         """
         Apply manual adjustments to a schedule.
         
@@ -606,40 +605,40 @@ class SchedulerService:
         schedule = self._schedules.get(str(project_id))
         if not schedule:
             return None
-        
+
         # Apply task adjustments
         updated_tasks = []
         for task in schedule.schedule:
             task_dict = task.model_dump()
-            
+
             if task.task_id in updates.task_adjustments:
                 adjustments = updates.task_adjustments[task.task_id]
-                
+
                 # Apply start_date adjustment
                 if 'start_date' in adjustments:
                     new_start = adjustments['start_date']
                     if isinstance(new_start, str):
                         new_start = datetime.fromisoformat(new_start)
                     task_dict['start_date'] = new_start
-                    
+
                     # Recalculate end_date based on duration
                     task_dict['end_date'] = new_start + timedelta(hours=task.duration_hours)
-                
+
                 # Apply end_date adjustment
                 if 'end_date' in adjustments:
                     new_end = adjustments['end_date']
                     if isinstance(new_end, str):
                         new_end = datetime.fromisoformat(new_end)
                     task_dict['end_date'] = new_end
-            
+
             updated_tasks.append(ScheduledTask(**task_dict))
-        
+
         # Update stored schedule
         schedule.schedule = updated_tasks
-        schedule.updated_at = datetime.now(timezone.utc)
+        schedule.updated_at = datetime.now(UTC)
         schedule.version += 1
         schedule.manual_adjustments.update(updates.task_adjustments)
-        
+
         # Recalculate project dates
         if updated_tasks:
             schedule.project_start_date = min(t.start_date for t in updated_tasks)
@@ -647,9 +646,9 @@ class SchedulerService:
             schedule.project_duration_hours = int(
                 (schedule.project_end_date - schedule.project_start_date).total_seconds() / 3600
             )
-        
+
         self._schedules[str(project_id)] = schedule
-        
+
         return ScheduleResponse(
             status="success",
             project_id=project_id,
@@ -662,7 +661,7 @@ class SchedulerService:
 
 
 # Singleton instance
-_scheduler_service: Optional[SchedulerService] = None
+_scheduler_service: SchedulerService | None = None
 
 
 async def get_scheduler_service() -> SchedulerService:

@@ -1,7 +1,6 @@
 """Pydantic schemas for DigitalSignature model"""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -26,7 +25,7 @@ class DigitalSignatureUpdate(BaseModel):
     """Schema for updating a digital signature (limited to invalidation)"""
 
     is_valid: bool = Field(..., description="Whether the signature is currently valid")
-    invalidation_reason: Optional[str] = Field(None, max_length=500, description="Reason for signature invalidation")
+    invalidation_reason: str | None = Field(None, max_length=500, description="Reason for signature invalidation")
 
 
 class DigitalSignatureResponse(DigitalSignatureBase):
@@ -36,8 +35,8 @@ class DigitalSignatureResponse(DigitalSignatureBase):
     user_id: UUID
     signed_at: datetime
     is_valid: bool
-    invalidated_at: Optional[datetime] = None
-    invalidation_reason: Optional[str] = None
+    invalidated_at: datetime | None = None
+    invalidation_reason: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -45,12 +44,12 @@ class DigitalSignatureResponse(DigitalSignatureBase):
 class DigitalSignatureFilter(BaseModel):
     """Schema for filtering digital signatures"""
 
-    workitem_id: Optional[UUID] = None
-    user_id: Optional[UUID] = None
-    workitem_version: Optional[str] = None
-    is_valid: Optional[bool] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
+    workitem_id: UUID | None = None
+    user_id: UUID | None = None
+    workitem_version: str | None = None
+    is_valid: bool | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     limit: int = Field(default=100, ge=1, le=1000, description="Maximum number of results")
     offset: int = Field(default=0, ge=0, description="Number of results to skip")
 
@@ -69,7 +68,7 @@ class SignatureVerificationResponse(BaseModel):
     verification_timestamp: datetime
     content_matches: bool
     signature_intact: bool
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
 
 class SignWorkItemRequest(BaseModel):

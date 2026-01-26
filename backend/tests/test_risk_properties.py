@@ -7,21 +7,13 @@ and mitigation requirements as per Requirement 10.
 **Validates: Requirements 10.3, 10.4, 10.6**
 """
 
-import pytest
-from hypothesis import given, strategies as st, assume, settings
-from uuid import uuid4
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
-from app.services.risk_service import RiskService, DEFAULT_RPN_THRESHOLDS
 from app.schemas.risk import (
-    RiskNodeCreate,
-    RiskNodeUpdate,
-    FailureNodeCreate,
-    LeadsToRelationshipCreate,
     RPNThresholdConfig,
-    RiskStatus,
-    FailureType,
 )
-
+from app.services.risk_service import RiskService
 
 # ============================================================================
 # Strategies for generating test data
@@ -59,7 +51,7 @@ class TestRPNCalculationProperties:
     **Statement**: RPN is always severity × occurrence × detection
     **Formal**: ∀ risk r, rpn(r) = severity(r) × occurrence(r) × detection(r)
     """
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -78,12 +70,12 @@ class TestRPNCalculationProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         rpn = service.calculate_rpn(severity, occurrence, detection)
         expected = severity * occurrence * detection
-        
+
         assert rpn == expected, f"RPN {rpn} != {severity} × {occurrence} × {detection} = {expected}"
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -102,11 +94,11 @@ class TestRPNCalculationProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         rpn = service.calculate_rpn(severity, occurrence, detection)
-        
+
         assert 1 <= rpn <= 1000, f"RPN {rpn} out of valid range [1, 1000]"
-    
+
     @given(
         s1=rating_strategy,
         o1=rating_strategy,
@@ -128,13 +120,13 @@ class TestRPNCalculationProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         # Calculate twice with same inputs
         rpn1 = service.calculate_rpn(s1, o1, d1)
         rpn2 = service.calculate_rpn(s1, o1, d1)
-        
+
         assert rpn1 == rpn2, "RPN calculation is not deterministic"
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -153,19 +145,19 @@ class TestRPNCalculationProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         base_rpn = service.calculate_rpn(severity, occurrence, detection)
-        
+
         # Increasing severity (if possible)
         if severity < 10:
             higher_severity_rpn = service.calculate_rpn(severity + 1, occurrence, detection)
             assert higher_severity_rpn > base_rpn
-        
+
         # Increasing occurrence (if possible)
         if occurrence < 10:
             higher_occurrence_rpn = service.calculate_rpn(severity, occurrence + 1, detection)
             assert higher_occurrence_rpn > base_rpn
-        
+
         # Increasing detection (if possible)
         if detection < 10:
             higher_detection_rpn = service.calculate_rpn(severity, occurrence, detection + 1)
@@ -191,14 +183,14 @@ def calculate_chain_probability(probabilities):
     """
     if not probabilities:
         return 0.0
-        
+
     total_prob = 1.0
     for prob in probabilities:
         if isinstance(prob, (int, float)) and 0 <= prob <= 1:
             total_prob *= prob
         else:
             return 0.0
-            
+
     return total_prob
 
 
@@ -210,7 +202,7 @@ class TestFailureChainProbabilityProperties:
     **Statement**: Chain probability is product of individual probabilities
     **Formal**: P(chain) = ∏ P(step_i) for all steps i in chain
     """
-    
+
     @given(probabilities=st.lists(probability_strategy, min_size=1, max_size=10))
     @settings(max_examples=100)
     def test_chain_probability_is_product(self, probabilities):
@@ -223,13 +215,13 @@ class TestFailureChainProbabilityProperties:
         expected = 1.0
         for p in probabilities:
             expected *= p
-        
+
         # Use the standalone function
         result = calculate_chain_probability(probabilities)
-        
+
         # Allow small floating point differences
         assert abs(result - expected) < 1e-10, f"Chain probability {result} != expected {expected}"
-    
+
     @given(probabilities=st.lists(probability_strategy, min_size=1, max_size=10))
     @settings(max_examples=100)
     def test_chain_probability_range(self, probabilities):
@@ -239,9 +231,9 @@ class TestFailureChainProbabilityProperties:
         **Validates: Requirement 10.3**
         """
         result = calculate_chain_probability(probabilities)
-        
+
         assert 0.0 <= result <= 1.0, f"Chain probability {result} out of range [0, 1]"
-    
+
     @given(probabilities=st.lists(probability_strategy, min_size=2, max_size=10))
     @settings(max_examples=100)
     def test_chain_probability_decreases_with_length(self, probabilities):
@@ -253,15 +245,15 @@ class TestFailureChainProbabilityProperties:
         # Skip if any probability is 1.0 (wouldn't decrease)
         assume(all(p < 1.0 for p in probabilities))
         assume(all(p > 0.0 for p in probabilities))
-        
+
         # Calculate with all probabilities
         full_chain = calculate_chain_probability(probabilities)
-        
+
         # Calculate with one less step
         shorter_chain = calculate_chain_probability(probabilities[:-1])
-        
+
         assert full_chain <= shorter_chain, "Longer chain should have lower or equal probability"
-    
+
     @given(probability=probability_strategy)
     @settings(max_examples=50)
     def test_single_step_chain_equals_step_probability(self, probability):
@@ -271,9 +263,9 @@ class TestFailureChainProbabilityProperties:
         **Validates: Requirement 10.3**
         """
         result = calculate_chain_probability([probability])
-        
+
         assert abs(result - probability) < 1e-10
-    
+
     def test_empty_chain_returns_zero(self):
         """
         Property: Empty chain has zero probability.
@@ -281,7 +273,7 @@ class TestFailureChainProbabilityProperties:
         **Validates: Requirement 10.3**
         """
         result = calculate_chain_probability([])
-        
+
         assert result == 0.0
 
 
@@ -297,7 +289,7 @@ class TestMitigationRequirementProperties:
     **Statement**: High RPN risks require mitigation actions
     **Formal**: ∀ risk r, rpn(r) > threshold → requires_mitigation(r)
     """
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -318,15 +310,15 @@ class TestMitigationRequirementProperties:
             version_service=None,
             rpn_thresholds=thresholds,
         )
-        
+
         rpn = service.calculate_rpn(severity, occurrence, detection)
         requires_mitigation = service.requires_mitigation(rpn)
-        
+
         if rpn >= thresholds.high_threshold:
             assert requires_mitigation, f"RPN {rpn} >= {thresholds.high_threshold} should require mitigation"
         else:
             assert not requires_mitigation, f"RPN {rpn} < {thresholds.high_threshold} should not require mitigation"
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -347,10 +339,10 @@ class TestMitigationRequirementProperties:
             version_service=None,
             rpn_thresholds=thresholds,
         )
-        
+
         rpn = service.calculate_rpn(severity, occurrence, detection)
         risk_level = service.get_risk_level(rpn)
-        
+
         if rpn >= thresholds.critical_threshold:
             assert risk_level == "critical"
         elif rpn >= thresholds.high_threshold:
@@ -359,7 +351,7 @@ class TestMitigationRequirementProperties:
             assert risk_level == "medium"
         else:
             assert risk_level == "low"
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -378,14 +370,14 @@ class TestMitigationRequirementProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         rpn = service.calculate_rpn(severity, occurrence, detection)
         risk_level = service.get_risk_level(rpn)
         requires_mitigation = service.requires_mitigation(rpn)
-        
+
         if risk_level == "critical":
             assert requires_mitigation, "Critical risks must require mitigation"
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -404,11 +396,11 @@ class TestMitigationRequirementProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         rpn = service.calculate_rpn(severity, occurrence, detection)
         risk_level = service.get_risk_level(rpn)
         requires_mitigation = service.requires_mitigation(rpn)
-        
+
         if risk_level == "low":
             assert not requires_mitigation, "Low risks should not require mitigation"
 
@@ -423,7 +415,7 @@ class TestRPNReductionProperties:
     
     **Validates: Requirement 10.8**
     """
-    
+
     @given(
         old_severity=rating_strategy,
         old_occurrence=rating_strategy,
@@ -434,9 +426,9 @@ class TestRPNReductionProperties:
     )
     @settings(max_examples=100)
     def test_mitigation_reduces_or_maintains_rpn(
-        self, 
-        old_severity, 
-        old_occurrence, 
+        self,
+        old_severity,
+        old_occurrence,
         old_detection,
         severity_reduction,
         occurrence_reduction,
@@ -453,20 +445,20 @@ class TestRPNReductionProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         # Calculate old RPN
         old_rpn = service.calculate_rpn(old_severity, old_occurrence, old_detection)
-        
+
         # Calculate new ratings (ensuring they stay in valid range)
         new_severity = max(1, old_severity - severity_reduction)
         new_occurrence = max(1, old_occurrence - occurrence_reduction)
         new_detection = max(1, old_detection - detection_improvement)
-        
+
         # Calculate new RPN
         new_rpn = service.calculate_rpn(new_severity, new_occurrence, new_detection)
-        
+
         assert new_rpn <= old_rpn, f"Mitigation should not increase RPN: {new_rpn} > {old_rpn}"
-    
+
     @given(
         severity=rating_strategy,
         occurrence=rating_strategy,
@@ -474,9 +466,9 @@ class TestRPNReductionProperties:
     )
     @settings(max_examples=50)
     def test_maximum_mitigation_achieves_minimum_rpn(
-        self, 
-        severity, 
-        occurrence, 
+        self,
+        severity,
+        occurrence,
         detection
     ):
         """
@@ -490,8 +482,8 @@ class TestRPNReductionProperties:
             signature_service=None,
             version_service=None,
         )
-        
+
         # Minimum possible RPN
         min_rpn = service.calculate_rpn(1, 1, 1)
-        
+
         assert min_rpn == 1, "Minimum RPN should be 1"

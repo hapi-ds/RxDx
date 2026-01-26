@@ -1,11 +1,9 @@
 """Authentication API endpoints"""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_auth_service, get_current_user
 from app.core.config import settings
-from app.db.session import get_db
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
 from app.services.auth_service import AccountLockedException, AuthService
@@ -41,23 +39,23 @@ async def login(
             email=login_data.email,
             password=login_data.password,
         )
-        
+
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         # Create access token
         access_token = auth_service.create_token_for_user(user)
-        
+
         return TokenResponse(
             access_token=access_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
-        
+
     except AccountLockedException as e:
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
@@ -84,7 +82,7 @@ async def refresh_token(
     """
     # Create new access token
     access_token = auth_service.create_token_for_user(current_user)
-    
+
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",

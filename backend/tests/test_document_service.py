@@ -8,27 +8,24 @@ Tests document generation functionality including:
 - Invoice Word document generation
 """
 
-import io
-from datetime import datetime, date, UTC
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, date, datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
-from openpyxl import load_workbook
 
+from app.models.user import User
 from app.schemas.document import (
-    DocumentType,
+    BillingPeriod,
+    DesignReviewRequest,
     DocumentFormat,
     DocumentStatus,
-    DesignReviewRequest,
-    TraceabilityMatrixRequest,
+    DocumentType,
     FMEARequest,
     InvoiceRequest,
-    BillingPeriod,
+    TraceabilityMatrixRequest,
 )
 from app.services.document_service import DocumentService
-from app.models.user import User
-
 
 # ============================================================================
 # Fixtures
@@ -169,7 +166,7 @@ def sample_risks():
 
 class TestDesignReviewPDF:
     """Tests for design review PDF generation."""
-    
+
     @pytest.mark.asyncio
     async def test_generate_design_review_pdf_empty_project(
         self,
@@ -179,14 +176,14 @@ class TestDesignReviewPDF:
     ):
         """Test generating design review PDF with no requirements."""
         mock_graph_service.get_workitems_by_type.return_value = []
-        
+
         request = DesignReviewRequest(
             project_id=uuid4(),
             include_signatures=True,
         )
-        
+
         response = await document_service.generate_design_review_pdf(request, test_user)
-        
+
         assert response.document_type == DocumentType.DESIGN_REVIEW
         assert response.format == DocumentFormat.PDF
         assert response.status == DocumentStatus.COMPLETED
@@ -194,7 +191,7 @@ class TestDesignReviewPDF:
         assert response.signature_count == 0
         assert response.filename.endswith('.pdf')
         assert response.file_size_bytes > 0
-    
+
     @pytest.mark.asyncio
     async def test_generate_design_review_pdf_with_requirements(
         self,
@@ -205,19 +202,19 @@ class TestDesignReviewPDF:
     ):
         """Test generating design review PDF with requirements."""
         mock_graph_service.get_workitems_by_type.return_value = sample_requirements
-        
+
         request = DesignReviewRequest(
             project_id=uuid4(),
             include_signatures=False,
             title="Custom Design Review",
         )
-        
+
         response = await document_service.generate_design_review_pdf(request, test_user)
-        
+
         assert response.requirement_count == 2
         assert response.status == DocumentStatus.COMPLETED
         assert response.file_size_bytes > 0
-    
+
     @pytest.mark.asyncio
     async def test_generate_design_review_pdf_with_signatures(
         self,
@@ -229,7 +226,7 @@ class TestDesignReviewPDF:
     ):
         """Test generating design review PDF with signature information."""
         mock_graph_service.get_workitems_by_type.return_value = sample_requirements
-        
+
         # Mock signature data
         mock_sig = MagicMock()
         mock_sig.user_name = "John Doe"
@@ -237,17 +234,17 @@ class TestDesignReviewPDF:
         mock_sig.is_valid = True
         mock_sig.workitem_version = "1.0"
         mock_signature_service.get_workitem_signatures.return_value = [mock_sig]
-        
+
         request = DesignReviewRequest(
             project_id=uuid4(),
             include_signatures=True,
         )
-        
+
         response = await document_service.generate_design_review_pdf(request, test_user)
-        
+
         assert response.requirement_count == 2
         assert response.signature_count >= 0  # May vary based on implementation
-    
+
     @pytest.mark.asyncio
     async def test_generate_design_review_pdf_audit_logging(
         self,
@@ -258,11 +255,11 @@ class TestDesignReviewPDF:
     ):
         """Test that design review generation is audit logged."""
         mock_graph_service.get_workitems_by_type.return_value = []
-        
+
         request = DesignReviewRequest(project_id=uuid4())
-        
+
         await document_service.generate_design_review_pdf(request, test_user)
-        
+
         mock_audit_service.log.assert_called_once()
         call_args = mock_audit_service.log.call_args
         assert call_args.kwargs['action'] == 'GENERATE'
@@ -275,7 +272,7 @@ class TestDesignReviewPDF:
 
 class TestTraceabilityMatrixPDF:
     """Tests for traceability matrix PDF generation."""
-    
+
     @pytest.mark.asyncio
     async def test_generate_traceability_matrix_empty(
         self,
@@ -285,21 +282,21 @@ class TestTraceabilityMatrixPDF:
     ):
         """Test generating traceability matrix with no data."""
         mock_graph_service.get_traceability_matrix.return_value = []
-        
+
         request = TraceabilityMatrixRequest(
             project_id=uuid4(),
             include_tests=True,
             include_risks=True,
         )
-        
+
         response = await document_service.generate_traceability_matrix_pdf(request, test_user)
-        
+
         assert response.document_type == DocumentType.TRACEABILITY_MATRIX
         assert response.format == DocumentFormat.PDF
         assert response.status == DocumentStatus.COMPLETED
         assert response.requirement_count == 0
         assert response.coverage_percentage == 0.0
-    
+
     @pytest.mark.asyncio
     async def test_generate_traceability_matrix_with_data(
         self,
@@ -310,21 +307,21 @@ class TestTraceabilityMatrixPDF:
     ):
         """Test generating traceability matrix with data."""
         mock_graph_service.get_traceability_matrix.return_value = sample_traceability_data
-        
+
         request = TraceabilityMatrixRequest(
             project_id=uuid4(),
             include_tests=True,
             include_risks=True,
             include_signatures=True,
         )
-        
+
         response = await document_service.generate_traceability_matrix_pdf(request, test_user)
-        
+
         assert response.requirement_count == 2
         assert response.test_count == 2  # TEST-001, TEST-002
         assert response.risk_count == 3  # RISK-001, RISK-002, RISK-003
         assert response.coverage_percentage == 50.0  # 1 out of 2 has tests
-    
+
     @pytest.mark.asyncio
     async def test_generate_traceability_matrix_filtered(
         self,
@@ -335,17 +332,17 @@ class TestTraceabilityMatrixPDF:
     ):
         """Test generating traceability matrix with requirement filter."""
         mock_graph_service.get_traceability_matrix.return_value = sample_traceability_data
-        
+
         # Filter to only first requirement
         first_req_id = sample_traceability_data[0]['requirement_id']
-        
+
         request = TraceabilityMatrixRequest(
             project_id=uuid4(),
             requirement_ids=[first_req_id],
         )
-        
+
         response = await document_service.generate_traceability_matrix_pdf(request, test_user)
-        
+
         assert response.requirement_count == 1
 
 
@@ -355,7 +352,7 @@ class TestTraceabilityMatrixPDF:
 
 class TestFMEAExcel:
     """Tests for FMEA Excel generation."""
-    
+
     @pytest.mark.asyncio
     async def test_generate_fmea_excel_empty(
         self,
@@ -365,17 +362,17 @@ class TestFMEAExcel:
     ):
         """Test generating FMEA Excel with no risks."""
         mock_graph_service.get_all_risks.return_value = []
-        
+
         request = FMEARequest(project_id=uuid4())
-        
+
         response = await document_service.generate_fmea_excel(request, test_user)
-        
+
         assert response.document_type == DocumentType.FMEA
         assert response.format == DocumentFormat.EXCEL
         assert response.status == DocumentStatus.COMPLETED
         assert response.risk_count == 0
         assert response.filename.endswith('.xlsx')
-    
+
     @pytest.mark.asyncio
     async def test_generate_fmea_excel_with_risks(
         self,
@@ -387,20 +384,20 @@ class TestFMEAExcel:
         """Test generating FMEA Excel with risk data."""
         mock_graph_service.get_all_risks.return_value = sample_risks
         mock_graph_service.get_risk_chains.return_value = []
-        
+
         request = FMEARequest(
             project_id=uuid4(),
             include_failure_chains=True,
             include_mitigations=True,
         )
-        
+
         response = await document_service.generate_fmea_excel(request, test_user)
-        
+
         assert response.risk_count == 2
         assert response.max_rpn == 120
         assert response.average_rpn == 96.0  # (120 + 72) / 2
         assert response.mitigation_count == 1
-    
+
     @pytest.mark.asyncio
     async def test_generate_fmea_excel_min_rpn_filter(
         self,
@@ -411,17 +408,17 @@ class TestFMEAExcel:
     ):
         """Test generating FMEA Excel with minimum RPN filter."""
         mock_graph_service.get_all_risks.return_value = sample_risks
-        
+
         request = FMEARequest(
             project_id=uuid4(),
             min_rpn=100,  # Should filter out the 72 RPN risk
         )
-        
+
         response = await document_service.generate_fmea_excel(request, test_user)
-        
+
         assert response.risk_count == 1
         assert response.max_rpn == 120
-    
+
     @pytest.mark.asyncio
     async def test_generate_fmea_excel_valid_workbook(
         self,
@@ -433,11 +430,11 @@ class TestFMEAExcel:
         """Test that generated FMEA Excel is a valid workbook."""
         mock_graph_service.get_all_risks.return_value = sample_risks
         mock_graph_service.get_risk_chains.return_value = []
-        
+
         request = FMEARequest(project_id=uuid4())
-        
+
         response = await document_service.generate_fmea_excel(request, test_user)
-        
+
         # The document is stored internally, verify it was created
         assert response.file_size_bytes > 0
         assert response.status == DocumentStatus.COMPLETED
@@ -449,7 +446,7 @@ class TestFMEAExcel:
 
 class TestInvoiceWord:
     """Tests for invoice Word document generation."""
-    
+
     @pytest.mark.asyncio
     async def test_generate_invoice_empty_time_entries(
         self,
@@ -466,9 +463,9 @@ class TestInvoiceWord:
             client_name="Test Client",
             tax_rate=0.19,
         )
-        
+
         response = await document_service.generate_invoice_word(request, test_user)
-        
+
         assert response.document_type == DocumentType.INVOICE
         assert response.format == DocumentFormat.WORD
         assert response.status == DocumentStatus.COMPLETED
@@ -476,7 +473,7 @@ class TestInvoiceWord:
         assert response.subtotal == 0.0
         assert response.line_item_count == 0
         assert response.filename.endswith('.docx')
-    
+
     @pytest.mark.asyncio
     async def test_generate_invoice_with_custom_template(
         self,
@@ -497,14 +494,14 @@ class TestInvoiceWord:
             currency="USD",
             notes="Thank you for your business!",
         )
-        
+
         response = await document_service.generate_invoice_word(request, test_user)
-        
+
         # Should fall back to simple document since template doesn't exist
         assert response.status == DocumentStatus.COMPLETED
         assert response.billing_period_start == date(2026, 1, 1)
         assert response.billing_period_end == date(2026, 1, 31)
-    
+
     @pytest.mark.asyncio
     async def test_generate_invoice_tax_calculation(
         self,
@@ -520,9 +517,9 @@ class TestInvoiceWord:
             ),
             tax_rate=0.19,
         )
-        
+
         response = await document_service.generate_invoice_word(request, test_user)
-        
+
         # With no time entries, all amounts should be 0
         assert response.subtotal == 0.0
         assert response.tax_amount == 0.0
@@ -535,7 +532,7 @@ class TestInvoiceWord:
 
 class TestDocumentRetrieval:
     """Tests for document retrieval functionality."""
-    
+
     @pytest.mark.asyncio
     async def test_get_document_not_found(
         self,
@@ -545,7 +542,7 @@ class TestDocumentRetrieval:
         """Test retrieving a non-existent document."""
         result = await document_service.get_document(uuid4(), test_user)
         assert result is None
-    
+
     @pytest.mark.asyncio
     async def test_list_documents_empty(
         self,
@@ -554,7 +551,7 @@ class TestDocumentRetrieval:
         """Test listing documents when none exist."""
         result = await document_service.list_documents()
         assert result == []
-    
+
     @pytest.mark.asyncio
     async def test_list_documents_with_filter(
         self,
@@ -565,15 +562,15 @@ class TestDocumentRetrieval:
         """Test listing documents with type filter."""
         # Generate a document first
         mock_graph_service.get_workitems_by_type.return_value = []
-        
+
         request = DesignReviewRequest(project_id=uuid4())
         await document_service.generate_design_review_pdf(request, test_user)
-        
+
         # List with filter
         result = await document_service.list_documents(
             document_type=DocumentType.DESIGN_REVIEW
         )
-        
+
         assert len(result) == 1
         assert result[0].document_type == DocumentType.DESIGN_REVIEW
 
@@ -584,35 +581,35 @@ class TestDocumentRetrieval:
 
 class TestHelperMethods:
     """Tests for DocumentService helper methods."""
-    
+
     def test_calculate_content_hash(self, document_service):
         """Test content hash calculation."""
         content = b"test content"
         hash1 = document_service._calculate_content_hash(content)
         hash2 = document_service._calculate_content_hash(content)
-        
+
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA-256 produces 64 hex characters
-    
+
     def test_calculate_content_hash_different_content(self, document_service):
         """Test that different content produces different hashes."""
         hash1 = document_service._calculate_content_hash(b"content1")
         hash2 = document_service._calculate_content_hash(b"content2")
-        
+
         assert hash1 != hash2
-    
+
     def test_get_styles(self, document_service):
         """Test custom style generation."""
         styles = document_service._get_styles()
-        
+
         assert 'CustomTitle' in [s.name for s in styles.byName.values()]
         assert 'CustomHeading' in [s.name for s in styles.byName.values()]
         assert 'CustomBody' in [s.name for s in styles.byName.values()]
-    
+
     def test_create_header_table_style(self, document_service):
         """Test table style creation."""
         style = document_service._create_header_table_style()
-        
+
         assert style is not None
         # TableStyle should have commands
         assert len(style.getCommands()) > 0

@@ -5,38 +5,37 @@ This service handles risk node management, failure chain creation,
 RPN calculation, and mitigation tracking as per Requirement 10.
 """
 
-from typing import List, Optional, Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
-from datetime import datetime, UTC
 
+from app.db.graph import GraphService
+from app.models.user import User
 from app.schemas.risk import (
-    RiskStatus,
-    MitigationStatus,
-    RiskNodeCreate,
-    RiskNodeUpdate,
-    RiskNodeResponse,
     FailureNodeCreate,
-    FailureNodeUpdate,
     FailureNodeResponse,
+    FailureNodeUpdate,
     LeadsToRelationshipCreate,
     LeadsToRelationshipResponse,
     MitigationActionCreate,
-    MitigationActionUpdate,
     MitigationActionResponse,
-    RiskChainResponse,
-    RiskChainNode,
+    MitigationActionUpdate,
+    MitigationStatus,
     RiskChainEdge,
+    RiskChainNode,
+    RiskChainResponse,
+    RiskNodeCreate,
+    RiskNodeResponse,
+    RiskNodeUpdate,
     RiskReassessmentRequest,
     RiskReassessmentResponse,
-    RPNThresholdConfig,
+    RiskStatus,
     RPNAnalysisResponse,
+    RPNThresholdConfig,
 )
 from app.services.audit_service import AuditService
 from app.services.signature_service import SignatureService
 from app.services.version_service import VersionService
-from app.db.graph import GraphService
-from app.models.user import User
-
 
 # Default RPN thresholds
 DEFAULT_RPN_THRESHOLDS = RPNThresholdConfig(
@@ -48,7 +47,7 @@ DEFAULT_RPN_THRESHOLDS = RPNThresholdConfig(
 
 class RiskService:
     """Service for managing risks, failures, and mitigations in FMEA analysis."""
-    
+
     def __init__(
         self,
         graph_service: GraphService,
@@ -62,11 +61,11 @@ class RiskService:
         self.signature_service = signature_service
         self.version_service = version_service
         self.rpn_thresholds = rpn_thresholds
-    
+
     # ========================================================================
     # RPN Calculation
     # ========================================================================
-    
+
     @staticmethod
     def calculate_rpn(severity: int, occurrence: int, detection: int) -> int:
         """
@@ -83,7 +82,7 @@ class RiskService:
             RPN value (1-1000)
         """
         return severity * occurrence * detection
-    
+
     def get_risk_level(self, rpn: int) -> str:
         """
         Determine risk level based on RPN and configured thresholds.
@@ -102,7 +101,7 @@ class RiskService:
             return "medium"
         else:
             return "low"
-    
+
     def requires_mitigation(self, rpn: int) -> bool:
         """
         Determine if a risk requires mitigation based on RPN.
@@ -118,7 +117,7 @@ class RiskService:
     # ========================================================================
     # Risk Node Operations
     # ========================================================================
-    
+
     async def create_risk(
         self,
         risk_data: RiskNodeCreate,
@@ -142,24 +141,24 @@ class RiskService:
             item = await self.graph_service.get_workitem(str(item_id))
             if not item:
                 raise ValueError(f"Linked design item {item_id} does not exist")
-        
+
         # Validate linked process items exist
         for item_id in risk_data.linked_process_items:
             item = await self.graph_service.get_workitem(str(item_id))
             if not item:
                 raise ValueError(f"Linked process item {item_id} does not exist")
-        
+
         # Calculate RPN
         rpn = self.calculate_rpn(
             risk_data.severity,
             risk_data.occurrence,
             risk_data.detection
         )
-        
+
         # Generate risk ID and prepare data
         risk_id = uuid4()
         now = datetime.now(UTC)
-        
+
         risk_dict = risk_data.model_dump()
         risk_dict.update({
             'id': str(risk_id),
@@ -173,7 +172,7 @@ class RiskService:
             'mitigation_count': 0,
             'has_open_mitigations': False,
         })
-        
+
         # Create risk node in graph database
         await self.graph_service.create_node(
             label="Risk",
@@ -200,7 +199,7 @@ class RiskService:
                 'is_signed': False,
             }
         )
-        
+
         # Create relationships to linked design items
         for item_id in risk_data.linked_design_items:
             await self.graph_service.create_relationship(
@@ -209,7 +208,7 @@ class RiskService:
                 rel_type="MITIGATES",
                 properties={'created_at': now.isoformat()}
             )
-        
+
         # Create relationships to linked process items
         for item_id in risk_data.linked_process_items:
             await self.graph_service.create_relationship(
@@ -218,7 +217,7 @@ class RiskService:
                 rel_type="MITIGATES",
                 properties={'created_at': now.isoformat(), 'item_type': 'process'}
             )
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -234,10 +233,10 @@ class RiskService:
                 'risk_level': self.get_risk_level(rpn),
             }
         )
-        
+
         return RiskNodeResponse(**risk_dict)
 
-    async def get_risk(self, risk_id: UUID) -> Optional[RiskNodeResponse]:
+    async def get_risk(self, risk_id: UUID) -> RiskNodeResponse | None:
         """
         Retrieve a risk node by ID.
         
@@ -250,14 +249,14 @@ class RiskService:
         risk = await self.graph_service.get_node(str(risk_id))
         if not risk or risk.get('type') != 'risk':
             return None
-        
+
         # Get properties from node
         props = risk.get('properties', risk)
-        
+
         # Check for valid signatures
         signatures = await self.signature_service.get_workitem_signatures(risk_id)
         props['is_signed'] = any(sig.is_valid for sig in signatures)
-        
+
         # Get mitigation count
         mitigations = await self._get_risk_mitigations(risk_id)
         props['mitigation_count'] = len(mitigations)
@@ -265,13 +264,13 @@ class RiskService:
             m.get('status') not in ['completed', 'verified', 'cancelled']
             for m in mitigations
         )
-        
+
         # Get linked items
         props['linked_design_items'] = await self._get_linked_items(risk_id, 'design')
         props['linked_process_items'] = await self._get_linked_items(risk_id, 'process')
-        
+
         return RiskNodeResponse(**props)
-    
+
     async def update_risk(
         self,
         risk_id: UUID,
@@ -298,24 +297,24 @@ class RiskService:
         current_risk = await self.graph_service.get_node(str(risk_id))
         if not current_risk or current_risk.get('type') != 'risk':
             raise ValueError(f"Risk {risk_id} not found")
-        
+
         props = current_risk.get('properties', current_risk)
-        
+
         # Prepare update data
         update_dict = {k: v for k, v in updates.model_dump().items() if v is not None}
-        
+
         # Handle enum conversion
         if 'status' in update_dict and hasattr(update_dict['status'], 'value'):
             update_dict['status'] = update_dict['status'].value
-        
+
         # Recalculate RPN if any rating changed
         severity = update_dict.get('severity', props.get('severity'))
         occurrence = update_dict.get('occurrence', props.get('occurrence'))
         detection = update_dict.get('detection', props.get('detection'))
-        
+
         if any(field in update_dict for field in ['severity', 'occurrence', 'detection']):
             update_dict['rpn'] = self.calculate_rpn(severity, occurrence, detection)
-        
+
         # Create new version
         new_version = await self.version_service.create_version(
             workitem_id=risk_id,
@@ -323,7 +322,7 @@ class RiskService:
             user=user,
             change_description=change_description
         )
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -337,9 +336,9 @@ class RiskService:
                 'new_rpn': update_dict.get('rpn'),
             }
         )
-        
+
         return await self.get_risk(risk_id)
-    
+
     async def delete_risk(self, risk_id: UUID, user: User) -> bool:
         """
         Delete a risk node if it has no valid signatures.
@@ -358,15 +357,15 @@ class RiskService:
         risk = await self.graph_service.get_node(str(risk_id))
         if not risk or risk.get('type') != 'risk':
             raise ValueError(f"Risk {risk_id} not found")
-        
+
         # Check for valid signatures
         signatures = await self.signature_service.get_workitem_signatures(risk_id)
         if any(sig.is_valid for sig in signatures):
             raise ValueError("Cannot delete risk with valid signatures")
-        
+
         # Delete risk and all relationships
         await self.graph_service.delete_node(str(risk_id))
-        
+
         # Log audit event
         props = risk.get('properties', risk)
         await self.audit_service.log(
@@ -376,13 +375,13 @@ class RiskService:
             entity_id=risk_id,
             details={'title': props.get('title', 'Unknown')}
         )
-        
+
         return True
 
     # ========================================================================
     # Failure Node Operations
     # ========================================================================
-    
+
     async def create_failure(
         self,
         failure_data: FailureNodeCreate,
@@ -401,7 +400,7 @@ class RiskService:
         # Generate failure ID and prepare data
         failure_id = uuid4()
         now = datetime.now(UTC)
-        
+
         failure_dict = failure_data.model_dump()
         failure_dict.update({
             'id': str(failure_id),
@@ -412,11 +411,11 @@ class RiskService:
             'source_risk_id': None,
             'downstream_failure_count': 0,
         })
-        
+
         # Handle enum conversion
         if 'failure_type' in failure_dict and hasattr(failure_dict['failure_type'], 'value'):
             failure_dict['failure_type'] = failure_dict['failure_type'].value
-        
+
         # Create failure node in graph database
         await self.graph_service.create_node(
             label="Failure",
@@ -434,7 +433,7 @@ class RiskService:
                 'updated_at': now.isoformat(),
             }
         )
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -446,10 +445,10 @@ class RiskService:
                 'failure_type': failure_dict['failure_type'],
             }
         )
-        
+
         return FailureNodeResponse(**failure_dict)
-    
-    async def get_failure(self, failure_id: UUID) -> Optional[FailureNodeResponse]:
+
+    async def get_failure(self, failure_id: UUID) -> FailureNodeResponse | None:
         """
         Retrieve a failure node by ID.
         
@@ -462,19 +461,19 @@ class RiskService:
         failure = await self.graph_service.get_node(str(failure_id))
         if not failure or failure.get('type') != 'failure':
             return None
-        
+
         props = failure.get('properties', failure)
-        
+
         # Get source risk
         source_risk = await self._get_source_risk(failure_id)
         props['source_risk_id'] = source_risk
-        
+
         # Get downstream failure count
         downstream = await self._get_downstream_failures(failure_id)
         props['downstream_failure_count'] = len(downstream)
-        
+
         return FailureNodeResponse(**props)
-    
+
     async def update_failure(
         self,
         failure_id: UUID,
@@ -499,18 +498,18 @@ class RiskService:
         failure = await self.graph_service.get_node(str(failure_id))
         if not failure or failure.get('type') != 'failure':
             raise ValueError(f"Failure {failure_id} not found")
-        
+
         # Prepare update data
         update_dict = {k: v for k, v in updates.model_dump().items() if v is not None}
         update_dict['updated_at'] = datetime.now(UTC).isoformat()
-        
+
         # Handle enum conversion
         if 'failure_type' in update_dict and hasattr(update_dict['failure_type'], 'value'):
             update_dict['failure_type'] = update_dict['failure_type'].value
-        
+
         # Update failure in graph database
         await self.graph_service.update_node(str(failure_id), update_dict)
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -519,13 +518,13 @@ class RiskService:
             entity_id=failure_id,
             details={'updated_fields': list(update_dict.keys())}
         )
-        
+
         return await self.get_failure(failure_id)
 
     # ========================================================================
     # Failure Chain Operations (LEADS_TO relationships)
     # ========================================================================
-    
+
     async def create_failure_chain(
         self,
         relationship_data: LeadsToRelationshipCreate,
@@ -548,26 +547,26 @@ class RiskService:
         source = await self.graph_service.get_node(str(relationship_data.from_id))
         if not source:
             raise ValueError(f"Source node {relationship_data.from_id} not found")
-        
+
         source_props = source.get('properties', source)
         source_type = source_props.get('type')
         if source_type not in ['risk', 'failure']:
             raise ValueError(f"Source node must be Risk or Failure, got {source_type}")
-        
+
         # Validate target node exists and is Failure
         target = await self.graph_service.get_node(str(relationship_data.to_id))
         if not target:
             raise ValueError(f"Target node {relationship_data.to_id} not found")
-        
+
         target_props = target.get('properties', target)
         target_type = target_props.get('type')
         if target_type != 'failure':
             raise ValueError(f"Target node must be Failure, got {target_type}")
-        
+
         # Create LEADS_TO relationship
         now = datetime.now(UTC)
         rel_id = f"{relationship_data.from_id}-{relationship_data.to_id}-LEADS_TO"
-        
+
         await self.graph_service.create_relationship(
             from_id=str(relationship_data.from_id),
             to_id=str(relationship_data.to_id),
@@ -579,7 +578,7 @@ class RiskService:
                 'created_by': str(user.id),
             }
         )
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -592,7 +591,7 @@ class RiskService:
                 'probability': relationship_data.probability,
             }
         )
-        
+
         return LeadsToRelationshipResponse(
             id=rel_id,
             from_id=relationship_data.from_id,
@@ -603,12 +602,12 @@ class RiskService:
             rationale=relationship_data.rationale,
             created_at=now,
         )
-    
+
     async def get_risk_chains(
         self,
-        risk_id: Optional[UUID] = None,
+        risk_id: UUID | None = None,
         max_depth: int = 5,
-    ) -> List[RiskChainResponse]:
+    ) -> list[RiskChainResponse]:
         """
         Get failure chains showing risk propagation paths.
         
@@ -624,16 +623,16 @@ class RiskService:
             risk_id=str(risk_id) if risk_id else None,
             max_depth=max_depth
         )
-        
+
         chains = []
         for raw_chain in raw_chains:
             # Parse chain data
             nodes = []
             edges = []
-            
+
             path = raw_chain.get('path', [])
             probabilities = raw_chain.get('probabilities', [])
-            
+
             # Extract nodes from path
             for i, node in enumerate(path):
                 node_props = node.get('properties', node) if isinstance(node, dict) else {}
@@ -645,29 +644,29 @@ class RiskService:
                     severity=node_props.get('severity'),
                     rpn=node_props.get('rpn'),
                 ))
-            
+
             # Extract edges from path
             for i in range(len(path) - 1):
                 from_node = path[i]
                 to_node = path[i + 1]
                 from_props = from_node.get('properties', from_node) if isinstance(from_node, dict) else {}
                 to_props = to_node.get('properties', to_node) if isinstance(to_node, dict) else {}
-                
+
                 prob = probabilities[i] if i < len(probabilities) else 1.0
-                
+
                 edges.append(RiskChainEdge(
                     from_id=UUID(from_props.get('id', str(uuid4()))),
                     to_id=UUID(to_props.get('id', str(uuid4()))),
                     probability=prob,
                 ))
-            
+
             # Calculate total probability
             total_prob = raw_chain.get('total_probability', 1.0)
-            
+
             # Get start risk ID
             start_risk = path[0] if path else {}
             start_props = start_risk.get('properties', start_risk) if isinstance(start_risk, dict) else {}
-            
+
             chains.append(RiskChainResponse(
                 start_risk_id=UUID(start_props.get('id', str(risk_id or uuid4()))),
                 chain_length=raw_chain.get('chain_length', len(path) - 1),
@@ -675,13 +674,13 @@ class RiskService:
                 nodes=nodes,
                 edges=edges,
             ))
-        
+
         return chains
 
     # ========================================================================
     # Mitigation Action Operations
     # ========================================================================
-    
+
     async def create_mitigation(
         self,
         mitigation_data: MitigationActionCreate,
@@ -704,11 +703,11 @@ class RiskService:
         risk = await self.graph_service.get_node(str(mitigation_data.risk_id))
         if not risk or risk.get('type') != 'risk':
             raise ValueError(f"Risk {mitigation_data.risk_id} not found")
-        
+
         # Generate mitigation ID and prepare data
         mitigation_id = uuid4()
         now = datetime.now(UTC)
-        
+
         mitigation_dict = mitigation_data.model_dump()
         mitigation_dict.update({
             'id': str(mitigation_id),
@@ -717,11 +716,11 @@ class RiskService:
             'created_at': now.isoformat(),
             'updated_at': now.isoformat(),
         })
-        
+
         # Handle enum conversion
         if 'status' in mitigation_dict and hasattr(mitigation_dict['status'], 'value'):
             mitigation_dict['status'] = mitigation_dict['status'].value
-        
+
         # Create mitigation node in graph database
         await self.graph_service.create_node(
             label="Mitigation",
@@ -746,7 +745,7 @@ class RiskService:
                 'updated_at': now.isoformat(),
             }
         )
-        
+
         # Create relationship to risk
         await self.graph_service.create_relationship(
             from_id=str(mitigation_data.risk_id),
@@ -754,7 +753,7 @@ class RiskService:
             rel_type="HAS_MITIGATION",
             properties={'created_at': now.isoformat()}
         )
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -767,9 +766,9 @@ class RiskService:
                 'action_type': mitigation_data.action_type,
             }
         )
-        
+
         return MitigationActionResponse(**mitigation_dict)
-    
+
     async def update_mitigation(
         self,
         mitigation_id: UUID,
@@ -794,24 +793,24 @@ class RiskService:
         mitigation = await self.graph_service.get_node(str(mitigation_id))
         if not mitigation or mitigation.get('type') != 'mitigation':
             raise ValueError(f"Mitigation {mitigation_id} not found")
-        
+
         # Prepare update data
         update_dict = {k: v for k, v in updates.model_dump().items() if v is not None}
         update_dict['updated_at'] = datetime.now(UTC).isoformat()
-        
+
         # Handle enum conversion
         if 'status' in update_dict and hasattr(update_dict['status'], 'value'):
             update_dict['status'] = update_dict['status'].value
-        
+
         # Handle datetime conversion
         if 'due_date' in update_dict and update_dict['due_date']:
             update_dict['due_date'] = update_dict['due_date'].isoformat()
         if 'completed_date' in update_dict and update_dict['completed_date']:
             update_dict['completed_date'] = update_dict['completed_date'].isoformat()
-        
+
         # Update mitigation in graph database
         await self.graph_service.update_node(str(mitigation_id), update_dict)
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -823,10 +822,10 @@ class RiskService:
                 'new_status': update_dict.get('status'),
             }
         )
-        
+
         return await self.get_mitigation(mitigation_id)
-    
-    async def get_mitigation(self, mitigation_id: UUID) -> Optional[MitigationActionResponse]:
+
+    async def get_mitigation(self, mitigation_id: UUID) -> MitigationActionResponse | None:
         """
         Retrieve a mitigation action by ID.
         
@@ -839,15 +838,15 @@ class RiskService:
         mitigation = await self.graph_service.get_node(str(mitigation_id))
         if not mitigation or mitigation.get('type') != 'mitigation':
             return None
-        
+
         props = mitigation.get('properties', mitigation)
         return MitigationActionResponse(**props)
-    
+
     async def get_risk_mitigations(
         self,
         risk_id: UUID,
-        status: Optional[MitigationStatus] = None,
-    ) -> List[MitigationActionResponse]:
+        status: MitigationStatus | None = None,
+    ) -> list[MitigationActionResponse]:
         """
         Get all mitigation actions for a risk.
         
@@ -859,19 +858,19 @@ class RiskService:
             List of mitigation actions
         """
         mitigations = await self._get_risk_mitigations(risk_id)
-        
+
         results = []
         for m in mitigations:
             if status and m.get('status') != status.value:
                 continue
             results.append(MitigationActionResponse(**m))
-        
+
         return results
 
     # ========================================================================
     # Risk Reassessment
     # ========================================================================
-    
+
     async def reassess_risk(
         self,
         reassessment: RiskReassessmentRequest,
@@ -894,21 +893,21 @@ class RiskService:
         risk = await self.graph_service.get_node(str(reassessment.risk_id))
         if not risk or risk.get('type') != 'risk':
             raise ValueError(f"Risk {reassessment.risk_id} not found")
-        
+
         props = risk.get('properties', risk)
-        
+
         # Store previous values
         previous_severity = props.get('severity', 1)
         previous_occurrence = props.get('occurrence', 1)
         previous_detection = props.get('detection', 1)
         previous_rpn = self.calculate_rpn(previous_severity, previous_occurrence, previous_detection)
-        
+
         # Calculate new values
         new_severity = reassessment.new_severity or previous_severity
         new_occurrence = reassessment.new_occurrence or previous_occurrence
         new_detection = reassessment.new_detection or previous_detection
         new_rpn = self.calculate_rpn(new_severity, new_occurrence, new_detection)
-        
+
         # Update risk with new values
         now = datetime.now(UTC)
         update_data = {
@@ -920,9 +919,9 @@ class RiskService:
             'last_reassessment': now.isoformat(),
             'reassessment_notes': reassessment.reassessment_notes,
         }
-        
+
         await self.graph_service.update_node(str(reassessment.risk_id), update_data)
-        
+
         # Link reassessment to mitigations
         for mitigation_id in reassessment.mitigation_ids:
             await self.graph_service.create_relationship(
@@ -935,7 +934,7 @@ class RiskService:
                     'rpn_after': new_rpn,
                 }
             )
-        
+
         # Log audit event
         await self.audit_service.log(
             user_id=user.id,
@@ -949,11 +948,11 @@ class RiskService:
                 'mitigation_ids': [str(m) for m in reassessment.mitigation_ids],
             }
         )
-        
+
         # Calculate reduction percentage
         rpn_reduction = previous_rpn - new_rpn
         rpn_reduction_percentage = (rpn_reduction / previous_rpn * 100) if previous_rpn > 0 else 0.0
-        
+
         return RiskReassessmentResponse(
             risk_id=reassessment.risk_id,
             previous_rpn=previous_rpn,
@@ -974,16 +973,16 @@ class RiskService:
     # ========================================================================
     # Query Methods
     # ========================================================================
-    
+
     async def get_risks(
         self,
-        status: Optional[RiskStatus] = None,
-        min_rpn: Optional[int] = None,
-        max_rpn: Optional[int] = None,
-        risk_owner: Optional[UUID] = None,
+        status: RiskStatus | None = None,
+        min_rpn: int | None = None,
+        max_rpn: int | None = None,
+        risk_owner: UUID | None = None,
         limit: int = 50,
         offset: int = 0,
-    ) -> List[RiskNodeResponse]:
+    ) -> list[RiskNodeResponse]:
         """
         Get risks with optional filtering.
         
@@ -1004,48 +1003,48 @@ class RiskService:
             properties={'type': 'risk'},
             limit=limit + offset  # Get extra to handle offset
         )
-        
+
         risks = []
         for result in results:
             props = result.get('properties', result)
-            
+
             # Apply filters
             if status and props.get('status') != status.value:
                 continue
-            
+
             rpn = props.get('rpn', 0)
             if min_rpn and rpn < min_rpn:
                 continue
             if max_rpn and rpn > max_rpn:
                 continue
-            
+
             if risk_owner and props.get('risk_owner') != str(risk_owner):
                 continue
-            
+
             # Get additional data
             risk_id = UUID(props.get('id'))
             signatures = await self.signature_service.get_workitem_signatures(risk_id)
             props['is_signed'] = any(sig.is_valid for sig in signatures)
-            
+
             mitigations = await self._get_risk_mitigations(risk_id)
             props['mitigation_count'] = len(mitigations)
             props['has_open_mitigations'] = any(
                 m.get('status') not in ['completed', 'verified', 'cancelled']
                 for m in mitigations
             )
-            
+
             props['linked_design_items'] = await self._get_linked_items(risk_id, 'design')
             props['linked_process_items'] = await self._get_linked_items(risk_id, 'process')
-            
+
             risks.append(RiskNodeResponse(**props))
-        
+
         # Apply offset and limit
         return risks[offset:offset + limit]
-    
+
     async def get_high_rpn_risks(
         self,
-        threshold: Optional[int] = None,
-    ) -> List[RiskNodeResponse]:
+        threshold: int | None = None,
+    ) -> list[RiskNodeResponse]:
         """
         Get risks with RPN above threshold that require mitigation.
         
@@ -1057,7 +1056,7 @@ class RiskService:
         """
         threshold = threshold or self.rpn_thresholds.high_threshold
         return await self.get_risks(min_rpn=threshold)
-    
+
     async def analyze_risk(self, risk_id: UUID) -> RPNAnalysisResponse:
         """
         Analyze a risk and provide RPN-based recommendations.
@@ -1074,11 +1073,11 @@ class RiskService:
         risk = await self.get_risk(risk_id)
         if not risk:
             raise ValueError(f"Risk {risk_id} not found")
-        
+
         rpn = risk.rpn
         risk_level = self.get_risk_level(rpn)
         requires_mitigation = self.requires_mitigation(rpn)
-        
+
         # Calculate recommended mitigation deadline based on risk level
         mitigation_deadline = None
         if requires_mitigation:
@@ -1088,7 +1087,7 @@ class RiskService:
                 mitigation_deadline = now + timedelta(days=7)
             elif risk_level == "high":
                 mitigation_deadline = now + timedelta(days=30)
-        
+
         return RPNAnalysisResponse(
             risk_id=risk_id,
             rpn=rpn,
@@ -1103,8 +1102,8 @@ class RiskService:
     # ========================================================================
     # Helper Methods
     # ========================================================================
-    
-    async def _get_risk_mitigations(self, risk_id: UUID) -> List[Dict[str, Any]]:
+
+    async def _get_risk_mitigations(self, risk_id: UUID) -> list[dict[str, Any]]:
         """Get all mitigations for a risk."""
         query = f"""
         MATCH (r:Risk {{id: '{risk_id}'}})-[:HAS_MITIGATION]->(m:Mitigation)
@@ -1115,8 +1114,8 @@ class RiskService:
             return [r.get('m', r) for r in results]
         except Exception:
             return []
-    
-    async def _get_linked_items(self, risk_id: UUID, item_type: str) -> List[UUID]:
+
+    async def _get_linked_items(self, risk_id: UUID, item_type: str) -> list[UUID]:
         """Get linked design or process items for a risk."""
         query = f"""
         MATCH (w:WorkItem)-[:MITIGATES]->(r:Risk {{id: '{risk_id}'}})
@@ -1127,8 +1126,8 @@ class RiskService:
             return [UUID(r.get('item_id')) for r in results if r.get('item_id')]
         except Exception:
             return []
-    
-    async def _get_source_risk(self, failure_id: UUID) -> Optional[UUID]:
+
+    async def _get_source_risk(self, failure_id: UUID) -> UUID | None:
         """Get the source risk for a failure node."""
         query = f"""
         MATCH (r:Risk)-[:LEADS_TO]->(f:Failure {{id: '{failure_id}'}})
@@ -1142,8 +1141,8 @@ class RiskService:
         except Exception:
             pass
         return None
-    
-    async def _get_downstream_failures(self, failure_id: UUID) -> List[Dict[str, Any]]:
+
+    async def _get_downstream_failures(self, failure_id: UUID) -> list[dict[str, Any]]:
         """Get downstream failures from a failure node."""
         query = f"""
         MATCH (f:Failure {{id: '{failure_id}'}})-[:LEADS_TO]->(downstream:Failure)

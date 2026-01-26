@@ -9,27 +9,26 @@ This module provides REST API endpoints for:
 Implements Requirement 12 (Local LLM Integration).
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
 from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.models.user import User
 from app.schemas.llm import (
-    RequirementAnalysisRequest,
-    RequirementAnalysisResponse,
-    MeetingExtractionRequest,
-    MeetingExtractionResponse,
+    ActionInfo,
+    DecisionInfo,
     EmailParseRequest,
     EmailParseResponse,
-    WorkInstructionData,
     EntityInfo,
-    DecisionInfo,
-    ActionInfo,
-    RelationshipInfo,
     LLMStatusResponse,
+    MeetingExtractionRequest,
+    MeetingExtractionResponse,
+    RelationshipInfo,
+    RequirementAnalysisRequest,
+    RequirementAnalysisResponse,
+    WorkInstructionData,
 )
-from app.services.llm_service import LLMService, get_llm_service, LLMServiceError
-from app.core.security import require_permission, Permission
-
+from app.services.llm_service import LLMService, LLMServiceError, get_llm_service
 
 router = APIRouter()
 
@@ -50,7 +49,7 @@ async def get_llm_status(
     - **endpoint**: Configured LLM endpoint URL
     """
     available = await llm_service.is_available()
-    
+
     return LLMStatusResponse(
         enabled=llm_service.enabled,
         available=available,
@@ -91,17 +90,17 @@ async def analyze_requirement(
             suggestions=[],
             llm_available=False,
         )
-    
+
     try:
         suggestions = await llm_service.suggest_requirement_improvements(
             request.requirement_text
         )
-        
+
         return RequirementAnalysisResponse(
             suggestions=suggestions,
             llm_available=True,
         )
-        
+
     except LLMServiceError:
         # Graceful degradation - return empty results instead of error
         return RequirementAnalysisResponse(
@@ -144,21 +143,21 @@ async def extract_meeting_knowledge(
             relationships=[],
             llm_available=False,
         )
-    
+
     try:
         result = await llm_service.extract_meeting_knowledge(request.meeting_text)
-        
+
         # Convert raw dicts to Pydantic models
         entities = [
             EntityInfo(name=e["name"], type=e.get("type", "unknown"))
             for e in result.get("entities", [])
         ]
-        
+
         decisions = [
             DecisionInfo(description=d["description"], owner=d.get("owner"))
             for d in result.get("decisions", [])
         ]
-        
+
         actions = [
             ActionInfo(
                 description=a["description"],
@@ -167,14 +166,14 @@ async def extract_meeting_knowledge(
             )
             for a in result.get("actions", [])
         ]
-        
+
         relationships = [
             RelationshipInfo(
                 **{"from": r["from"], "to": r["to"], "type": r.get("type", "relates_to")}
             )
             for r in result.get("relationships", [])
         ]
-        
+
         return MeetingExtractionResponse(
             entities=entities,
             decisions=decisions,
@@ -182,7 +181,7 @@ async def extract_meeting_knowledge(
             relationships=relationships,
             llm_available=True,
         )
-        
+
     except LLMServiceError:
         # Graceful degradation - return empty results instead of error
         return MeetingExtractionResponse(
@@ -227,10 +226,10 @@ async def parse_email_work_instruction(
             parsed=False,
             llm_available=False,
         )
-    
+
     try:
         result = await llm_service.extract_work_instruction(request.email_body)
-        
+
         if result:
             work_instruction = WorkInstructionData(
                 status=result.get("status"),
@@ -238,7 +237,7 @@ async def parse_email_work_instruction(
                 time_spent=result.get("time_spent"),
                 next_steps=result.get("next_steps"),
             )
-            
+
             return EmailParseResponse(
                 data=work_instruction,
                 parsed=True,
@@ -250,7 +249,7 @@ async def parse_email_work_instruction(
                 parsed=False,
                 llm_available=True,
             )
-        
+
     except LLMServiceError:
         # Graceful degradation - return empty results instead of error
         return EmailParseResponse(

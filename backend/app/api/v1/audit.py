@@ -1,12 +1,11 @@
 """Audit API endpoints for compliance tracking and reporting"""
 
-from typing import List
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
@@ -77,7 +76,7 @@ async def get_audit_service(db: AsyncSession = Depends(get_db)) -> AuditService:
     return AuditService(db)
 
 
-@router.get("/audit", response_model=List[AuditLogResponse])
+@router.get("/audit", response_model=list[AuditLogResponse])
 async def get_audit_logs(
     user_id: UUID = Query(None, description="Filter by user ID"),
     action: str = Query(None, description="Filter by action type (CREATE, READ, UPDATE, DELETE, SIGN, AUTH)"),
@@ -89,7 +88,7 @@ async def get_audit_logs(
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     audit_service: AuditService = Depends(get_audit_service),
     current_user: User = Depends(require_audit_permission),
-) -> List[AuditLogResponse]:
+) -> list[AuditLogResponse]:
     """
     Retrieve audit logs with filtering capabilities.
     
@@ -122,13 +121,13 @@ async def get_audit_logs(
         # Parse date strings if provided
         parsed_start_date = None
         parsed_end_date = None
-        
+
         if start_date:
             parsed_start_date = parse_iso_date(start_date, "start_date")
-        
+
         if end_date:
             parsed_end_date = parse_iso_date(end_date, "end_date")
-        
+
         # Create filter object
         filters = AuditLogFilter(
             user_id=user_id,
@@ -140,10 +139,10 @@ async def get_audit_logs(
             limit=limit,
             offset=offset,
         )
-        
+
         # Get audit logs
         audit_logs = await audit_service.get_audit_logs(filters)
-        
+
         # Log the audit query itself
         await audit_service.log(
             action="READ",
@@ -163,9 +162,9 @@ async def get_audit_logs(
                 "result_count": len(audit_logs),
             }
         )
-        
+
         return audit_logs
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -202,10 +201,10 @@ async def get_audit_log_count(
     try:
         # Parse date strings if provided
         from datetime import datetime
-        
+
         parsed_start_date = None
         parsed_end_date = None
-        
+
         if start_date:
             try:
                 parsed_start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
@@ -214,7 +213,7 @@ async def get_audit_log_count(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid start_date format. Use ISO 8601 format"
                 )
-        
+
         if end_date:
             try:
                 parsed_end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
@@ -223,7 +222,7 @@ async def get_audit_log_count(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid end_date format. Use ISO 8601 format"
                 )
-        
+
         # Create filter object (no limit/offset for count)
         filters = AuditLogFilter(
             user_id=user_id,
@@ -235,12 +234,12 @@ async def get_audit_log_count(
             limit=1,  # Not used for count
             offset=0,  # Not used for count
         )
-        
+
         # Get count
         total_count = await audit_service.get_audit_log_count(filters)
-        
+
         return {"total_count": total_count}
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -286,10 +285,10 @@ async def export_audit_logs(
     try:
         # Parse date strings if provided
         from datetime import datetime
-        
+
         parsed_start_date = None
         parsed_end_date = None
-        
+
         if start_date:
             try:
                 parsed_start_date = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
@@ -298,7 +297,7 @@ async def export_audit_logs(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid start_date format. Use ISO 8601 format"
                 )
-        
+
         if end_date:
             try:
                 parsed_end_date = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
@@ -307,7 +306,7 @@ async def export_audit_logs(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid end_date format. Use ISO 8601 format"
                 )
-        
+
         # Create filter object for export
         filters = AuditLogFilter(
             user_id=user_id,
@@ -319,10 +318,10 @@ async def export_audit_logs(
             limit=1000,  # Use max allowed limit
             offset=0,
         )
-        
+
         # Get audit logs for export
         audit_logs = await audit_service.export_audit_logs(filters)
-        
+
         # Log the export operation
         await audit_service.log(
             action="EXPORT",
@@ -341,22 +340,22 @@ async def export_audit_logs(
                 "record_count": len(audit_logs),
             }
         )
-        
+
         if format == "csv":
             # Convert to CSV format
             import csv
             import io
-            
+
             output = io.StringIO()
             if audit_logs:
                 fieldnames = audit_logs[0].keys()
                 writer = csv.DictWriter(output, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(audit_logs)
-            
+
             csv_content = output.getvalue()
             output.close()
-            
+
             return JSONResponse(
                 content=csv_content,
                 media_type="text/csv",
@@ -367,7 +366,7 @@ async def export_audit_logs(
         else:
             # Return JSON format
             return audit_logs
-            
+
     except HTTPException:
         raise
     except Exception as e:
@@ -417,20 +416,20 @@ async def cleanup_old_audit_logs(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only administrators can perform audit log cleanup"
         )
-    
+
     try:
-        from datetime import datetime, timedelta, UTC
-        
+        from datetime import UTC, datetime, timedelta
+
         cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
         deleted_count = await audit_service.cleanup_old_audit_logs(retention_days)
-        
+
         return {
             "deleted_count": deleted_count,
             "retention_days": retention_days,
             "cutoff_date": cutoff_date.isoformat() + "Z",
             "message": f"Successfully cleaned up {deleted_count} audit log entries older than {retention_days} days"
         }
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

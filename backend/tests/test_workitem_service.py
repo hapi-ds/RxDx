@@ -1,20 +1,20 @@
 """Unit tests for WorkItem service"""
 
-import pytest
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
+from uuid import uuid4
 
-from app.services.workitem_service import WorkItemService
-from app.services.version_service import VersionService
-from app.schemas.workitem import (
-    WorkItemCreate, 
-    WorkItemUpdate, 
-    RequirementCreate,
-    TaskCreate,
-    RiskCreate
-)
+import pytest
+
 from app.models.user import User
+from app.schemas.workitem import (
+    RequirementCreate,
+    RiskCreate,
+    TaskCreate,
+    WorkItemCreate,
+    WorkItemUpdate,
+)
+from app.services.workitem_service import WorkItemService
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def sample_task_create():
         status="draft",
         priority=2,
         estimated_hours=8.0,
-        due_date=datetime.now(timezone.utc)
+        due_date=datetime.now(UTC)
     )
 
 
@@ -110,25 +110,25 @@ def sample_risk_create():
 
 class TestWorkItemService:
     """Test cases for WorkItemService"""
-    
+
     @pytest.mark.asyncio
     async def test_create_workitem_basic(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
-        sample_workitem_create, 
+        self,
+        workitem_service,
+        mock_graph_service,
+        sample_workitem_create,
         sample_user
     ):
         """Test basic WorkItem creation"""
         # Setup mock
         mock_graph_service.create_workitem_node.return_value = {"id": "test-id"}
-        
+
         # Execute
         result = await workitem_service.create_workitem(
-            sample_workitem_create, 
+            sample_workitem_create,
             sample_user
         )
-        
+
         # Verify
         assert result is not None
         assert result.type == "requirement"
@@ -139,99 +139,99 @@ class TestWorkItemService:
         assert result.version == "1.0"
         assert result.created_by == sample_user.id
         assert result.is_signed is False
-        
+
         # Verify graph service was called
         mock_graph_service.create_workitem_node.assert_called_once()
-        
+
     @pytest.mark.asyncio
     async def test_create_requirement_with_specific_fields(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
-        sample_requirement_create, 
+        self,
+        workitem_service,
+        mock_graph_service,
+        sample_requirement_create,
         sample_user
     ):
         """Test Requirement creation with specific fields"""
         # Setup mock
         mock_graph_service.create_workitem_node.return_value = {"id": "test-id"}
-        
+
         # Execute
         result = await workitem_service.create_workitem(
-            sample_requirement_create, 
+            sample_requirement_create,
             sample_user
         )
-        
+
         # Verify
         assert result is not None
         assert result.type == "requirement"
         assert result.title == "Test Requirement Title"
-        
+
         # Verify graph service was called with correct parameters
         call_args = mock_graph_service.create_workitem_node.call_args
         assert call_args[1]["workitem_type"] == "requirement"
         assert call_args[1]["title"] == "Test Requirement Title"
-        
+
     @pytest.mark.asyncio
     async def test_create_task_with_time_tracking(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
-        sample_task_create, 
+        self,
+        workitem_service,
+        mock_graph_service,
+        sample_task_create,
         sample_user
     ):
         """Test Task creation with time tracking fields"""
         # Setup mock
         mock_graph_service.create_workitem_node.return_value = {"id": "test-id"}
-        
+
         # Execute
         result = await workitem_service.create_workitem(
-            sample_task_create, 
+            sample_task_create,
             sample_user
         )
-        
+
         # Verify
         assert result is not None
         assert result.type == "task"
         assert result.title == "Test Task"
-        
+
         # Verify graph service was called
         mock_graph_service.create_workitem_node.assert_called_once()
-        
+
     @pytest.mark.asyncio
     async def test_create_risk_with_rpn_calculation(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
-        sample_risk_create, 
+        self,
+        workitem_service,
+        mock_graph_service,
+        sample_risk_create,
         sample_user
     ):
         """Test Risk creation with RPN calculation"""
         # Setup mock
         mock_graph_service.create_workitem_node.return_value = {"id": "test-id"}
-        
+
         # Execute
         result = await workitem_service.create_workitem(
-            sample_risk_create, 
+            sample_risk_create,
             sample_user
         )
-        
+
         # Verify
         assert result is not None
         assert result.type == "risk"
         assert result.title == "Test Risk"
-        
+
         # Verify RPN calculation (7 * 3 * 4 = 84)
         call_args = mock_graph_service.create_workitem_node.call_args
         # RPN should be calculated and passed in additional properties
-        
+
         # Verify graph service was called
         mock_graph_service.create_workitem_node.assert_called_once()
-        
+
     @pytest.mark.asyncio
     async def test_get_workitem_success(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test successful WorkItem retrieval"""
@@ -247,48 +247,48 @@ class TestWorkItemService:
             "assigned_to": None,
             "version": "1.0",
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
         mock_graph_service.get_workitem.return_value = mock_data
-        
+
         # Execute
         result = await workitem_service.get_workitem(workitem_id)
-        
+
         # Verify
         assert result is not None
         assert result.id == workitem_id
         assert result.type == "requirement"
         assert result.title == "Test Requirement"
         assert result.status == "active"
-        
+
         # Verify graph service was called
         mock_graph_service.get_workitem.assert_called_once_with(str(workitem_id))
-        
+
     @pytest.mark.asyncio
     async def test_get_workitem_not_found(
-        self, 
-        workitem_service, 
+        self,
+        workitem_service,
         mock_graph_service
     ):
         """Test WorkItem retrieval when not found"""
         # Setup mock
         workitem_id = uuid4()
         mock_graph_service.get_workitem.return_value = None
-        
+
         # Execute
         result = await workitem_service.get_workitem(workitem_id)
-        
+
         # Verify
         assert result is None
         mock_graph_service.get_workitem.assert_called_once_with(str(workitem_id))
-        
+
     @pytest.mark.asyncio
     async def test_update_workitem_success(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test successful WorkItem update"""
@@ -303,69 +303,69 @@ class TestWorkItemService:
             "priority": 3,
             "version": "1.0",
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
         mock_graph_service.get_workitem.return_value = current_data
         mock_graph_service.create_workitem_version.return_value = {"id": str(workitem_id)}
         mock_graph_service.create_relationship.return_value = {"type": "NEXT_VERSION"}
-        
+
         # Prepare update data
         updates = WorkItemUpdate(
             title="Updated Title",
             status="active"
         )
-        
+
         # Execute
         result = await workitem_service.update_workitem(
-            workitem_id, 
-            updates, 
+            workitem_id,
+            updates,
             sample_user,
             "Updated title and status"
         )
-        
+
         # Verify
         assert result is not None
         assert result.title == "Updated Title"
         assert result.status == "active"
         assert result.version == "1.1"  # Version should increment
-        
+
         # Verify graph service calls
         mock_graph_service.get_workitem.assert_called_once()
         mock_graph_service.create_workitem_version.assert_called_once()
         mock_graph_service.create_relationship.assert_called_once()
-        
+
     @pytest.mark.asyncio
     async def test_update_workitem_not_found(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test WorkItem update when not found"""
         # Setup mock
         workitem_id = uuid4()
         mock_graph_service.get_workitem.return_value = None
-        
+
         updates = WorkItemUpdate(title="Updated Title")
-        
+
         # Execute
         result = await workitem_service.update_workitem(
-            workitem_id, 
-            updates, 
+            workitem_id,
+            updates,
             sample_user
         )
-        
+
         # Verify
         assert result is None
         mock_graph_service.get_workitem.assert_called_once()
-        
+
     @pytest.mark.asyncio
     async def test_delete_workitem_success(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test successful WorkItem deletion"""
@@ -379,20 +379,20 @@ class TestWorkItemService:
         }
         mock_graph_service.get_workitem.return_value = mock_data
         mock_graph_service.delete_node.return_value = True
-        
+
         # Execute
         result = await workitem_service.delete_workitem(workitem_id, sample_user)
-        
+
         # Verify
         assert result is True
         mock_graph_service.get_workitem.assert_called_once()
         mock_graph_service.delete_node.assert_called_once_with(str(workitem_id))
-        
+
     @pytest.mark.asyncio
     async def test_delete_signed_workitem_fails(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test deletion fails for signed WorkItem"""
@@ -405,20 +405,20 @@ class TestWorkItemService:
             "is_signed": True
         }
         mock_graph_service.get_workitem.return_value = mock_data
-        
+
         # Execute and verify exception
         with pytest.raises(ValueError, match="Cannot delete signed WorkItem"):
             await workitem_service.delete_workitem(workitem_id, sample_user)
-            
+
         # Verify graph service was called but delete was not
         mock_graph_service.get_workitem.assert_called_once()
         mock_graph_service.delete_node.assert_not_called()
-        
+
     @pytest.mark.asyncio
     async def test_delete_signed_workitem_with_force(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test forced deletion of signed WorkItem"""
@@ -432,23 +432,23 @@ class TestWorkItemService:
         }
         mock_graph_service.get_workitem.return_value = mock_data
         mock_graph_service.delete_node.return_value = True
-        
+
         # Execute with force=True
         result = await workitem_service.delete_workitem(
-            workitem_id, 
-            sample_user, 
+            workitem_id,
+            sample_user,
             force=True
         )
-        
+
         # Verify
         assert result is True
         mock_graph_service.delete_node.assert_called_once_with(str(workitem_id))
-        
+
     @pytest.mark.asyncio
     async def test_search_workitems(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test WorkItem search functionality"""
@@ -463,8 +463,8 @@ class TestWorkItemService:
                 "priority": 3,
                 "version": "1.0",
                 "created_by": str(sample_user.id),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
                 "is_signed": False
             },
             {
@@ -476,13 +476,13 @@ class TestWorkItemService:
                 "priority": 2,
                 "version": "1.0",
                 "created_by": str(sample_user.id),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
                 "is_signed": False
             }
         ]
         mock_graph_service.search_workitems.return_value = mock_results
-        
+
         # Execute
         results = await workitem_service.search_workitems(
             search_text="test",
@@ -490,16 +490,16 @@ class TestWorkItemService:
             status="active",
             limit=10
         )
-        
+
         # Verify
         assert len(results) >= 0  # Results depend on filtering
         mock_graph_service.search_workitems.assert_called_once()
-        
+
     @pytest.mark.asyncio
     async def test_get_workitem_version(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test getting specific WorkItem version"""
@@ -515,34 +515,34 @@ class TestWorkItemService:
             "priority": 3,
             "version": version,
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
         mock_graph_service.get_workitem_version.return_value = mock_data
-        
+
         # Execute
         result = await workitem_service.get_workitem_version(workitem_id, version)
-        
+
         # Verify
         assert result is not None
         assert result.id == workitem_id
         assert result.version == version
         assert result.title == "Test Requirement v1.2"
-        
+
         # Verify graph service was called
         mock_graph_service.get_workitem_version.assert_called_once_with(
-            str(workitem_id), 
+            str(workitem_id),
             version
         )
 
 
 class TestWorkItemServiceEdgeCases:
     """Test edge cases and error conditions"""
-    
+
     @pytest.mark.asyncio
     async def test_graph_data_conversion_with_invalid_data(
-        self, 
+        self,
         workitem_service
     ):
         """Test handling of invalid graph data"""
@@ -552,15 +552,15 @@ class TestWorkItemServiceEdgeCases:
             "title": "Test"
             # Missing id, created_by, etc.
         }
-        
+
         result = workitem_service._graph_data_to_response(invalid_data)
         assert result is None
-        
+
     @pytest.mark.asyncio
     async def test_version_number_parsing_edge_cases(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test version number parsing with edge cases"""
@@ -573,32 +573,32 @@ class TestWorkItemServiceEdgeCases:
             "status": "draft",
             "version": "invalid_version",  # Invalid version format
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
         mock_graph_service.get_workitem.return_value = current_data
         mock_graph_service.create_workitem_version.return_value = {"id": str(workitem_id)}
         mock_graph_service.create_relationship.return_value = {"type": "NEXT_VERSION"}
-        
+
         updates = WorkItemUpdate(title="Updated")
-        
+
         # Execute
         result = await workitem_service.update_workitem(
-            workitem_id, 
-            updates, 
+            workitem_id,
+            updates,
             sample_user
         )
-        
+
         # Verify it defaults to 1.1 for invalid versions
         assert result is not None
         assert result.version == "1.1"
-        
+
     @pytest.mark.asyncio
     async def test_rpn_calculation_with_missing_values(
-        self, 
-        workitem_service, 
-        mock_graph_service, 
+        self,
+        workitem_service,
+        mock_graph_service,
         sample_user
     ):
         """Test RPN calculation when some values are missing"""
@@ -612,12 +612,12 @@ class TestWorkItemServiceEdgeCases:
             occurrence=3,
             detection=2  # All values present for valid RPN calculation
         )
-        
+
         mock_graph_service.create_workitem_node.return_value = {"id": "test-id"}
-        
+
         # Execute
         result = await workitem_service.create_workitem(risk_data, sample_user)
-        
+
         # Verify it creates the risk with calculated RPN
         assert result is not None
         assert result.type == "risk"
@@ -626,12 +626,12 @@ class TestWorkItemServiceEdgeCases:
 
 class TestWorkItemServiceVersionIntegration:
     """Test WorkItem service integration with VersionService"""
-    
+
     @pytest.mark.asyncio
     async def test_update_workitem_uses_version_service(
-        self, 
-        workitem_service_with_versioning, 
-        mock_graph_service, 
+        self,
+        workitem_service_with_versioning,
+        mock_graph_service,
         mock_version_service,
         sample_user
     ):
@@ -647,11 +647,11 @@ class TestWorkItemServiceVersionIntegration:
             "priority": 3,
             "version": "1.0",
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
-        
+
         new_version_data = {
             **current_data,
             "title": "Updated Title",
@@ -660,30 +660,30 @@ class TestWorkItemServiceVersionIntegration:
             "updated_by": str(sample_user.id),
             "change_description": "Updated title and status"
         }
-        
+
         mock_graph_service.get_workitem.return_value = current_data
         mock_version_service.create_version.return_value = new_version_data
-        
+
         # Prepare update data
         updates = WorkItemUpdate(
             title="Updated Title",
             status="active"
         )
-        
+
         # Execute
         result = await workitem_service_with_versioning.update_workitem(
-            workitem_id, 
-            updates, 
+            workitem_id,
+            updates,
             sample_user,
             "Updated title and status"
         )
-        
+
         # Verify
         assert result is not None
         assert result.title == "Updated Title"
         assert result.status == "active"
         assert result.version == "1.1"
-        
+
         # Verify VersionService was called instead of manual versioning
         mock_version_service.create_version.assert_called_once_with(
             workitem_id=workitem_id,
@@ -694,16 +694,16 @@ class TestWorkItemServiceVersionIntegration:
             user=sample_user,
             change_description="Updated title and status"
         )
-        
+
         # Verify graph service was NOT called for manual versioning
         mock_graph_service.create_workitem_version.assert_not_called()
         mock_graph_service.create_relationship.assert_not_called()
-    
+
     @pytest.mark.asyncio
     async def test_update_workitem_fallback_when_version_service_fails(
-        self, 
-        workitem_service_with_versioning, 
-        mock_graph_service, 
+        self,
+        workitem_service_with_versioning,
+        mock_graph_service,
         mock_version_service,
         sample_user
     ):
@@ -717,41 +717,41 @@ class TestWorkItemServiceVersionIntegration:
             "status": "draft",
             "version": "1.0",
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
-        
+
         mock_graph_service.get_workitem.return_value = current_data
         mock_version_service.create_version.side_effect = Exception("VersionService failed")
         mock_graph_service.create_workitem_version.return_value = {"id": str(workitem_id)}
         mock_graph_service.create_relationship.return_value = {"type": "NEXT_VERSION"}
-        
+
         updates = WorkItemUpdate(title="Updated Title")
-        
+
         # Execute
         result = await workitem_service_with_versioning.update_workitem(
-            workitem_id, 
-            updates, 
+            workitem_id,
+            updates,
             sample_user
         )
-        
+
         # Verify fallback behavior
         assert result is not None
         assert result.title == "Updated Title"
         assert result.version == "1.1"
-        
+
         # Verify VersionService was attempted
         mock_version_service.create_version.assert_called_once()
-        
+
         # Verify fallback to manual versioning
         mock_graph_service.create_workitem_version.assert_called_once()
         mock_graph_service.create_relationship.assert_called_once()
-    
+
     @pytest.mark.asyncio
     async def test_get_workitem_history_uses_version_service(
-        self, 
-        workitem_service_with_versioning, 
+        self,
+        workitem_service_with_versioning,
         mock_version_service,
         sample_user
     ):
@@ -768,8 +768,8 @@ class TestWorkItemServiceVersionIntegration:
                 "priority": 3,
                 "version": "1.2",
                 "created_by": str(sample_user.id),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
                 "is_signed": False
             },
             {
@@ -781,8 +781,8 @@ class TestWorkItemServiceVersionIntegration:
                 "priority": 3,
                 "version": "1.1",
                 "created_by": str(sample_user.id),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
                 "is_signed": False
             },
             {
@@ -794,30 +794,30 @@ class TestWorkItemServiceVersionIntegration:
                 "priority": 3,
                 "version": "1.0",
                 "created_by": str(sample_user.id),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
                 "is_signed": False
             }
         ]
-        
+
         mock_version_service.get_version_history.return_value = version_history
-        
+
         # Execute
         result = await workitem_service_with_versioning.get_workitem_history(workitem_id)
-        
+
         # Verify
         assert len(result) == 3
         assert result[0].version == "1.2"
         assert result[1].version == "1.1"
         assert result[2].version == "1.0"
-        
+
         # Verify VersionService was called
         mock_version_service.get_version_history.assert_called_once_with(workitem_id)
-    
+
     @pytest.mark.asyncio
     async def test_get_workitem_version_uses_version_service(
-        self, 
-        workitem_service_with_versioning, 
+        self,
+        workitem_service_with_versioning,
         mock_version_service,
         sample_user
     ):
@@ -834,28 +834,28 @@ class TestWorkItemServiceVersionIntegration:
             "priority": 3,
             "version": version,
             "created_by": str(sample_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
-        
+
         mock_version_service.get_version_by_number.return_value = version_data
-        
+
         # Execute
         result = await workitem_service_with_versioning.get_workitem_version(workitem_id, version)
-        
+
         # Verify
         assert result is not None
         assert result.version == version
         assert result.title == "Test Requirement v1.1"
-        
+
         # Verify VersionService was called
         mock_version_service.get_version_by_number.assert_called_once_with(workitem_id, version)
-    
+
     @pytest.mark.asyncio
     async def test_compare_workitem_versions(
-        self, 
-        workitem_service_with_versioning, 
+        self,
+        workitem_service_with_versioning,
         mock_version_service
     ):
         """Test version comparison functionality"""
@@ -881,28 +881,28 @@ class TestWorkItemServiceVersionIntegration:
             "added_fields": {},
             "removed_fields": {}
         }
-        
+
         mock_version_service.compare_versions.return_value = comparison_result
-        
+
         # Execute
         result = await workitem_service_with_versioning.compare_workitem_versions(
             workitem_id, "1.0", "1.1"
         )
-        
+
         # Verify
         assert result is not None
         assert result["version1"] == "1.0"
         assert result["version2"] == "1.1"
         assert "title" in result["changed_fields"]
         assert "status" in result["changed_fields"]
-        
+
         # Verify VersionService was called
         mock_version_service.compare_versions.assert_called_once_with(workitem_id, "1.0", "1.1")
-    
+
     @pytest.mark.asyncio
     async def test_compare_workitem_versions_without_version_service(
-        self, 
-        workitem_service, 
+        self,
+        workitem_service,
         mock_graph_service
     ):
         """Test version comparison returns None when VersionService not available"""
@@ -910,33 +910,33 @@ class TestWorkItemServiceVersionIntegration:
         result = await workitem_service.compare_workitem_versions(
             uuid4(), "1.0", "1.1"
         )
-        
+
         # Verify
         assert result is None
-    
+
     @pytest.mark.asyncio
     async def test_workitem_service_initialization_with_version_service(
-        self, 
-        mock_graph_service, 
+        self,
+        mock_graph_service,
         mock_version_service
     ):
         """Test WorkItemService initialization with VersionService"""
         # Execute
         service = WorkItemService(mock_graph_service, mock_version_service)
-        
+
         # Verify
         assert service.graph_service == mock_graph_service
         assert service.version_service == mock_version_service
-    
+
     @pytest.mark.asyncio
     async def test_workitem_service_initialization_without_version_service(
-        self, 
+        self,
         mock_graph_service
     ):
         """Test WorkItemService initialization without VersionService"""
         # Execute
         service = WorkItemService(mock_graph_service)
-        
+
         # Verify
         assert service.graph_service == mock_graph_service
         assert service.version_service is None

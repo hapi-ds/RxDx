@@ -1,11 +1,13 @@
 """Graph API endpoints for visualization and knowledge management"""
 
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.db.graph import GraphService, get_graph_service
 from app.models.user import User
-from app.api.deps import get_current_user
-from app.core.security import require_permission, Permission
 
 router = APIRouter()
 
@@ -13,14 +15,14 @@ router = APIRouter()
 @router.get("/visualization")
 @require_permission(Permission.READ_WORKITEM)
 async def get_graph_visualization(
-    center_node_id: Optional[str] = Query(None, description="Center node ID for subgraph"),
+    center_node_id: str | None = Query(None, description="Center node ID for subgraph"),
     depth: int = Query(2, ge=1, le=5, description="Traversal depth (1-5)"),
-    node_types: Optional[List[str]] = Query(None, description="Filter by node types"),
-    relationship_types: Optional[List[str]] = Query(None, description="Filter by relationship types"),
+    node_types: list[str] | None = Query(None, description="Filter by node types"),
+    relationship_types: list[str] | None = Query(None, description="Filter by relationship types"),
     limit: int = Query(1000, ge=10, le=5000, description="Maximum nodes to return"),
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get graph data formatted for visualization in 2D (react-flow) and 3D (R3F)
     
@@ -44,7 +46,7 @@ async def get_graph_visualization(
     # Validate node types if provided
     if node_types:
         valid_types = [
-            "WorkItem", "Requirement", "Task", "Test", "Risk", 
+            "WorkItem", "Requirement", "Task", "Test", "Risk",
             "Failure", "Document", "Entity", "User"
         ]
         invalid_types = [t for t in node_types if t not in valid_types]
@@ -53,11 +55,11 @@ async def get_graph_visualization(
                 status_code=400,
                 detail=f"Invalid node types: {invalid_types}. Valid types: {valid_types}"
             )
-    
+
     # Validate relationship types if provided
     if relationship_types:
         valid_rels = [
-            "TESTED_BY", "MITIGATES", "DEPENDS_ON", "IMPLEMENTS", 
+            "TESTED_BY", "MITIGATES", "DEPENDS_ON", "IMPLEMENTS",
             "LEADS_TO", "RELATES_TO", "MENTIONED_IN", "REFERENCES",
             "NEXT_VERSION", "CREATED_BY", "ASSIGNED_TO"
         ]
@@ -67,7 +69,7 @@ async def get_graph_visualization(
                 status_code=400,
                 detail=f"Invalid relationship types: {invalid_rels}. Valid types: {valid_rels}"
             )
-    
+
     try:
         # Get visualization data from graph service
         graph_data = await graph_service.get_graph_for_visualization(
@@ -77,9 +79,9 @@ async def get_graph_visualization(
             relationship_types=relationship_types,
             limit=limit
         )
-        
+
         return graph_data
-        
+
     except HTTPException:
         raise  # Re-raise HTTP exceptions
     except Exception as e:
@@ -96,7 +98,7 @@ async def get_node_details(
     include_relationships: bool = Query(True, description="Include node relationships"),
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get detailed information about a specific node
     
@@ -115,9 +117,9 @@ async def get_node_details(
                 status_code=404,
                 detail=f"Node with ID {node_id} not found"
             )
-        
+
         result = {"node": node}
-        
+
         # Include relationships if requested
         if include_relationships:
             relationships = await graph_service.find_related_nodes(
@@ -126,9 +128,9 @@ async def get_node_details(
                 depth=1
             )
             result["relationships"] = relationships
-            
+
         return result
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -142,11 +144,11 @@ async def get_node_details(
 @require_permission(Permission.READ_WORKITEM)
 async def search_graph(
     query: str = Query(..., min_length=1, description="Search query"),
-    node_types: Optional[List[str]] = Query(None, description="Filter by node types"),
+    node_types: list[str] | None = Query(None, description="Filter by node types"),
     limit: int = Query(50, ge=1, le=200, description="Maximum results to return"),
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Search nodes in the graph by text content
     
@@ -167,7 +169,7 @@ async def search_graph(
             )
         else:
             workitems = []
-        
+
         # Search other node types if specified
         other_nodes = []
         if node_types:
@@ -185,21 +187,21 @@ async def search_graph(
                            query.lower() in str(node.get('description', '')).lower()
                     ]
                     other_nodes.extend(filtered_nodes)
-        
+
         # Combine results
         all_results = workitems + other_nodes
-        
+
         # Limit total results
         if len(all_results) > limit:
             all_results = all_results[:limit]
-            
+
         return {
             "query": query,
             "results": all_results,
             "total_found": len(all_results),
             "truncated": len(workitems + other_nodes) > limit
         }
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -210,10 +212,10 @@ async def search_graph(
 @router.get("/traceability")
 @require_permission(Permission.READ_WORKITEM)
 async def get_traceability_matrix(
-    project_id: Optional[str] = Query(None, description="Filter by project ID"),
+    project_id: str | None = Query(None, description="Filter by project ID"),
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get traceability matrix showing relationships between requirements, tests, and risks
     
@@ -226,7 +228,7 @@ async def get_traceability_matrix(
     try:
         matrix = await graph_service.get_traceability_matrix(project_id=project_id)
         return matrix
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -237,11 +239,11 @@ async def get_traceability_matrix(
 @router.get("/risk-chains")
 @require_permission(Permission.READ_WORKITEM)
 async def get_risk_chains(
-    risk_id: Optional[str] = Query(None, description="Starting risk ID"),
+    risk_id: str | None = Query(None, description="Starting risk ID"),
     max_depth: int = Query(5, ge=1, le=10, description="Maximum chain depth"),
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get FMEA failure chains showing risk propagation paths
     
@@ -257,14 +259,14 @@ async def get_risk_chains(
             risk_id=risk_id,
             max_depth=max_depth
         )
-        
+
         return {
             "risk_id": risk_id,
             "max_depth": max_depth,
             "chains": chains,
             "total_chains": len(chains)
         }
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -277,7 +279,7 @@ async def get_risk_chains(
 async def get_graph_schema(
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get graph schema information including supported node types and relationships
     
@@ -287,7 +289,7 @@ async def get_graph_schema(
     try:
         schema = await graph_service.initialize_graph_schema()
         return schema
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,

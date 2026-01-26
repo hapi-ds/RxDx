@@ -5,38 +5,35 @@ This module provides REST API endpoints for risk node management, failure chains
 and mitigation tracking as per Requirement 10 (Risk Management with FMEA).
 """
 
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.security import Permission, require_permission
+from app.db.graph import get_graph_service
 from app.models.user import User
 from app.schemas.risk import (
-    RiskStatus,
-    MitigationStatus,
-    RiskNodeCreate,
-    RiskNodeUpdate,
-    RiskNodeResponse,
-    RiskNodeListResponse,
     FailureNodeCreate,
-    FailureNodeResponse,
     LeadsToRelationshipCreate,
     LeadsToRelationshipResponse,
     MitigationActionCreate,
-    MitigationActionResponse,
     MitigationActionListResponse,
+    MitigationActionResponse,
+    MitigationStatus,
     RiskChainResponse,
+    RiskNodeCreate,
+    RiskNodeListResponse,
+    RiskNodeResponse,
+    RiskNodeUpdate,
+    RiskStatus,
     RPNAnalysisResponse,
 )
-from app.services.risk_service import RiskService
-from app.db.graph import get_graph_service
 from app.services.audit_service import get_audit_service
+from app.services.risk_service import RiskService
 from app.services.signature_service import get_signature_service
 from app.services.version_service import get_version_service
-from app.core.security import require_permission, Permission
-
 
 router = APIRouter()
 
@@ -49,7 +46,7 @@ async def get_risk_service(
     audit_service = await get_audit_service(db)
     signature_service = await get_signature_service(db)
     version_service = await get_version_service()
-    
+
     return RiskService(
         graph_service=graph_service,
         audit_service=audit_service,
@@ -67,10 +64,10 @@ async def get_risk_service(
 async def get_risks(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(50, ge=1, le=100, description="Page size"),
-    risk_status: Optional[RiskStatus] = Query(None, alias="status", description="Filter by risk status"),
-    min_rpn: Optional[int] = Query(None, ge=1, le=1000, description="Minimum RPN filter"),
-    max_rpn: Optional[int] = Query(None, ge=1, le=1000, description="Maximum RPN filter"),
-    risk_owner: Optional[UUID] = Query(None, description="Filter by risk owner"),
+    risk_status: RiskStatus | None = Query(None, alias="status", description="Filter by risk status"),
+    min_rpn: int | None = Query(None, ge=1, le=1000, description="Minimum RPN filter"),
+    max_rpn: int | None = Query(None, ge=1, le=1000, description="Maximum RPN filter"),
+    risk_owner: UUID | None = Query(None, description="Filter by risk owner"),
     risk_service: RiskService = Depends(get_risk_service),
     current_user: User = Depends(get_current_user),
 ) -> RiskNodeListResponse:
@@ -87,7 +84,7 @@ async def get_risks(
     Returns paginated list of risk nodes with RPN calculations.
     """
     offset = (page - 1) * size
-    
+
     risks = await risk_service.get_risks(
         status=risk_status,
         min_rpn=min_rpn,
@@ -96,11 +93,11 @@ async def get_risks(
         limit=size,
         offset=offset,
     )
-    
+
     # Calculate total count for pagination
     total = len(risks)
     pages = (total + size - 1) // size if total > 0 else 0
-    
+
     return RiskNodeListResponse(
         items=risks,
         total=total,
@@ -111,13 +108,13 @@ async def get_risks(
 
 
 # NOTE: /high-rpn must be defined BEFORE /{risk_id} to avoid route conflicts
-@router.get("/high-rpn", response_model=List[RiskNodeResponse])
+@router.get("/high-rpn", response_model=list[RiskNodeResponse])
 @require_permission(Permission.READ_WORKITEM)
 async def get_high_rpn_risks(
-    threshold: Optional[int] = Query(None, ge=1, le=1000, description="RPN threshold (default: 100)"),
+    threshold: int | None = Query(None, ge=1, le=1000, description="RPN threshold (default: 100)"),
     risk_service: RiskService = Depends(get_risk_service),
     current_user: User = Depends(get_current_user),
-) -> List[RiskNodeResponse]:
+) -> list[RiskNodeResponse]:
     """
     Get risks with RPN above threshold that require mitigation.
     
@@ -249,7 +246,7 @@ async def create_failure_chain(
     risk_id: UUID,
     failure_data: FailureNodeCreate,
     probability: float = Query(..., ge=0.0, le=1.0, description="Probability of failure occurring"),
-    rationale: Optional[str] = Query(None, description="Rationale for probability assessment"),
+    rationale: str | None = Query(None, description="Rationale for probability assessment"),
     risk_service: RiskService = Depends(get_risk_service),
     current_user: User = Depends(get_current_user),
 ) -> LeadsToRelationshipResponse:
@@ -270,11 +267,11 @@ async def create_failure_chain(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Risk {risk_id} not found"
         )
-    
+
     try:
         # Create the failure node
         failure = await risk_service.create_failure(failure_data, current_user)
-        
+
         # Create the LEADS_TO relationship
         relationship_data = LeadsToRelationshipCreate(
             from_id=risk_id,
@@ -282,7 +279,7 @@ async def create_failure_chain(
             probability=probability,
             rationale=rationale,
         )
-        
+
         return await risk_service.create_failure_chain(relationship_data, current_user)
     except ValueError as e:
         raise HTTPException(
@@ -291,14 +288,14 @@ async def create_failure_chain(
         )
 
 
-@router.get("/{risk_id}/chains", response_model=List[RiskChainResponse])
+@router.get("/{risk_id}/chains", response_model=list[RiskChainResponse])
 @require_permission(Permission.READ_WORKITEM)
 async def get_risk_chains(
     risk_id: UUID,
     max_depth: int = Query(5, ge=1, le=10, description="Maximum chain depth to traverse"),
     risk_service: RiskService = Depends(get_risk_service),
     current_user: User = Depends(get_current_user),
-) -> List[RiskChainResponse]:
+) -> list[RiskChainResponse]:
     """
     Get failure chains showing risk propagation paths.
     
@@ -318,7 +315,7 @@ async def get_risk_chains(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Risk {risk_id} not found"
         )
-    
+
     return await risk_service.get_risk_chains(risk_id=risk_id, max_depth=max_depth)
 
 
@@ -355,7 +352,7 @@ async def create_mitigation(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Risk ID in URL must match risk ID in request body"
         )
-    
+
     # Verify the risk exists
     risk = await risk_service.get_risk(risk_id)
     if not risk:
@@ -363,7 +360,7 @@ async def create_mitigation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Risk {risk_id} not found"
         )
-    
+
     try:
         return await risk_service.create_mitigation(mitigation_data, current_user)
     except ValueError as e:
@@ -379,7 +376,7 @@ async def get_risk_mitigations(
     risk_id: UUID,
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(50, ge=1, le=100, description="Page size"),
-    mitigation_status: Optional[MitigationStatus] = Query(None, alias="status", description="Filter by mitigation status"),
+    mitigation_status: MitigationStatus | None = Query(None, alias="status", description="Filter by mitigation status"),
     risk_service: RiskService = Depends(get_risk_service),
     current_user: User = Depends(get_current_user),
 ) -> MitigationActionListResponse:
@@ -398,16 +395,16 @@ async def get_risk_mitigations(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Risk {risk_id} not found"
         )
-    
+
     mitigations = await risk_service.get_risk_mitigations(risk_id, status=mitigation_status)
-    
+
     # Apply pagination
     offset = (page - 1) * size
     paginated = mitigations[offset:offset + size]
-    
+
     total = len(mitigations)
     pages = (total + size - 1) // size if total > 0 else 0
-    
+
     return MitigationActionListResponse(
         items=paginated,
         total=total,

@@ -7,20 +7,19 @@ These schemas define the request and response models for:
 - Email work instruction parsing
 """
 
-from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 
 
 class RequirementAnalysisRequest(BaseModel):
     """Request schema for analyzing a requirement."""
-    
+
     requirement_text: str = Field(
         ...,
         min_length=10,
         max_length=5000,
         description="The requirement text to analyze for quality improvements"
     )
-    
+
     @field_validator("requirement_text")
     @classmethod
     def validate_requirement_text(cls, v: str) -> str:
@@ -32,8 +31,8 @@ class RequirementAnalysisRequest(BaseModel):
 
 class RequirementAnalysisResponse(BaseModel):
     """Response schema for requirement analysis."""
-    
-    suggestions: List[str] = Field(
+
+    suggestions: list[str] = Field(
         default_factory=list,
         description="List of improvement suggestions for the requirement"
     )
@@ -41,20 +40,20 @@ class RequirementAnalysisResponse(BaseModel):
         default=True,
         description="Whether the LLM service was available for analysis"
     )
-    
+
     model_config = {"from_attributes": True}
 
 
 class MeetingExtractionRequest(BaseModel):
     """Request schema for extracting knowledge from meeting minutes."""
-    
+
     meeting_text: str = Field(
         ...,
         min_length=20,
         max_length=50000,
         description="The meeting minutes text to analyze"
     )
-    
+
     @field_validator("meeting_text")
     @classmethod
     def validate_meeting_text(cls, v: str) -> str:
@@ -66,7 +65,7 @@ class MeetingExtractionRequest(BaseModel):
 
 class EntityInfo(BaseModel):
     """Schema for an extracted entity."""
-    
+
     name: str = Field(..., description="Name of the entity")
     type: str = Field(
         default="unknown",
@@ -76,9 +75,9 @@ class EntityInfo(BaseModel):
 
 class DecisionInfo(BaseModel):
     """Schema for an extracted decision."""
-    
+
     description: str = Field(..., description="Description of the decision")
-    owner: Optional[str] = Field(
+    owner: str | None = Field(
         None,
         description="Person responsible for the decision"
     )
@@ -86,13 +85,13 @@ class DecisionInfo(BaseModel):
 
 class ActionInfo(BaseModel):
     """Schema for an extracted action item."""
-    
+
     description: str = Field(..., description="Description of the action item")
-    assignee: Optional[str] = Field(
+    assignee: str | None = Field(
         None,
         description="Person assigned to the action"
     )
-    deadline: Optional[str] = Field(
+    deadline: str | None = Field(
         None,
         description="Deadline for the action (if mentioned)"
     )
@@ -100,33 +99,33 @@ class ActionInfo(BaseModel):
 
 class RelationshipInfo(BaseModel):
     """Schema for an extracted relationship."""
-    
+
     from_entity: str = Field(..., alias="from", description="Source entity")
     to_entity: str = Field(..., alias="to", description="Target entity")
     type: str = Field(
         default="relates_to",
         description="Type of relationship"
     )
-    
+
     model_config = {"populate_by_name": True}
 
 
 class MeetingExtractionResponse(BaseModel):
     """Response schema for meeting knowledge extraction."""
-    
-    entities: List[EntityInfo] = Field(
+
+    entities: list[EntityInfo] = Field(
         default_factory=list,
         description="Extracted entities (people, components, systems)"
     )
-    decisions: List[DecisionInfo] = Field(
+    decisions: list[DecisionInfo] = Field(
         default_factory=list,
         description="Decisions made during the meeting"
     )
-    actions: List[ActionInfo] = Field(
+    actions: list[ActionInfo] = Field(
         default_factory=list,
         description="Action items with assignees and deadlines"
     )
-    relationships: List[RelationshipInfo] = Field(
+    relationships: list[RelationshipInfo] = Field(
         default_factory=list,
         description="Relationships between entities"
     )
@@ -134,20 +133,20 @@ class MeetingExtractionResponse(BaseModel):
         default=True,
         description="Whether the LLM service was available for extraction"
     )
-    
+
     model_config = {"from_attributes": True}
 
 
 class EmailParseRequest(BaseModel):
     """Request schema for parsing work instruction from email."""
-    
+
     email_body: str = Field(
         ...,
         min_length=5,
         max_length=50000,
         description="The email body text to parse"
     )
-    
+
     @field_validator("email_body")
     @classmethod
     def validate_email_body(cls, v: str) -> str:
@@ -159,21 +158,21 @@ class EmailParseRequest(BaseModel):
 
 class WorkInstructionData(BaseModel):
     """Schema for extracted work instruction data."""
-    
-    status: Optional[str] = Field(
+
+    status: str | None = Field(
         None,
         description="Current status (draft, active, completed)"
     )
-    comment: Optional[str] = Field(
+    comment: str | None = Field(
         None,
         description="Comments or updates from the email"
     )
-    time_spent: Optional[float] = Field(
+    time_spent: float | None = Field(
         None,
         ge=0,
         description="Hours worked (as a number)"
     )
-    next_steps: Optional[str] = Field(
+    next_steps: str | None = Field(
         None,
         description="Planned next actions"
     )
@@ -181,8 +180,8 @@ class WorkInstructionData(BaseModel):
 
 class EmailParseResponse(BaseModel):
     """Response schema for email parsing."""
-    
-    data: Optional[WorkInstructionData] = Field(
+
+    data: WorkInstructionData | None = Field(
         None,
         description="Extracted work instruction data"
     )
@@ -194,13 +193,13 @@ class EmailParseResponse(BaseModel):
         default=True,
         description="Whether the LLM service was available for parsing"
     )
-    
+
     model_config = {"from_attributes": True}
 
 
 class LLMStatusResponse(BaseModel):
     """Response schema for LLM service status."""
-    
+
     enabled: bool = Field(
         ...,
         description="Whether LLM integration is enabled in configuration"
@@ -217,5 +216,5 @@ class LLMStatusResponse(BaseModel):
         ...,
         description="Configured LLM endpoint URL"
     )
-    
+
     model_config = {"from_attributes": True}

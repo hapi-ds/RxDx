@@ -15,11 +15,11 @@ import asyncio
 import email
 import logging
 import re
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Any, Callable, Dict, List, Optional
-from uuid import UUID
+from typing import Any
 
 import aiosmtplib
 from aioimaplib import aioimaplib
@@ -27,7 +27,6 @@ from email_validator import EmailNotValidError, validate_email
 
 from app.core.config import settings
 from app.services.llm_service import LLMService, get_llm_service
-
 
 logger = logging.getLogger(__name__)
 
@@ -54,24 +53,24 @@ class EmailParseError(EmailServiceError):
 
 class EmailThread:
     """Represents an email thread linked to a WorkItem."""
-    
+
     def __init__(
         self,
         thread_id: str,
         workitem_id: str,
         subject: str,
-        emails: Optional[List[Dict[str, Any]]] = None,
+        emails: list[dict[str, Any]] | None = None,
     ):
         self.thread_id = thread_id
         self.workitem_id = workitem_id
         self.subject = subject
         self.emails = emails or []
-        
+
     def add_email(
         self,
         message_id: str,
         sender: str,
-        recipients: List[str],
+        recipients: list[str],
         body: str,
         timestamp: datetime,
         direction: str = "outgoing",
@@ -85,17 +84,17 @@ class EmailThread:
             "timestamp": timestamp.isoformat(),
             "direction": direction,
         }
-        
+
         # Insert in chronological order
         insert_idx = 0
         for i, existing in enumerate(self.emails):
             existing_ts = datetime.fromisoformat(existing["timestamp"])
             if timestamp > existing_ts:
                 insert_idx = i + 1
-                
+
         self.emails.insert(insert_idx, email_entry)
-        
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert thread to dictionary for storage."""
         return {
             "thread_id": self.thread_id,
@@ -103,9 +102,9 @@ class EmailThread:
             "subject": self.subject,
             "emails": self.emails,
         }
-        
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EmailThread":
+    def from_dict(cls, data: dict[str, Any]) -> "EmailThread":
         """Create thread from dictionary."""
         return cls(
             thread_id=data["thread_id"],
@@ -136,28 +135,28 @@ class EmailService:
         email_reply_to: Reply-to email address
         llm_service: LLM service for unstructured parsing
     """
-    
+
     # Pattern for extracting WorkItem ID from email subject
     WORKITEM_ID_PATTERN = re.compile(r"\[WorkItem-([a-f0-9-]{36})\]", re.IGNORECASE)
-    
+
     # Patterns for structured reply parsing
     STATUS_PATTERN = re.compile(r"STATUS:\s*(\w+)", re.IGNORECASE)
     COMMENT_PATTERN = re.compile(
-        r"COMMENT:\s*(.+?)(?=(?:STATUS:|TIME:|$))", 
+        r"COMMENT:\s*(.+?)(?=(?:STATUS:|TIME:|$))",
         re.IGNORECASE | re.DOTALL
     )
     TIME_PATTERN = re.compile(r"TIME:\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
-    
+
     def __init__(
         self,
-        smtp_host: Optional[str] = None,
-        smtp_port: Optional[int] = None,
-        smtp_user: Optional[str] = None,
-        smtp_password: Optional[str] = None,
-        smtp_tls: Optional[bool] = None,
-        email_from: Optional[str] = None,
-        email_reply_to: Optional[str] = None,
-        llm_service: Optional[LLMService] = None,
+        smtp_host: str | None = None,
+        smtp_port: int | None = None,
+        smtp_user: str | None = None,
+        smtp_password: str | None = None,
+        smtp_tls: bool | None = None,
+        email_from: str | None = None,
+        email_reply_to: str | None = None,
+        llm_service: LLMService | None = None,
     ):
         """
         Initialize the email service.
@@ -180,10 +179,10 @@ class EmailService:
         self.email_from = email_from or settings.EMAIL_FROM
         self.email_reply_to = email_reply_to or settings.EMAIL_REPLY_TO
         self.llm_service = llm_service
-        
+
         # In-memory thread storage (would be replaced with DB in production)
-        self._threads: Dict[str, EmailThread] = {}
-        
+        self._threads: dict[str, EmailThread] = {}
+
         # IMAP configuration for incoming emails
         self.imap_host = settings.IMAP_HOST
         self.imap_port = settings.IMAP_PORT
@@ -192,13 +191,13 @@ class EmailService:
         self.imap_tls = settings.IMAP_TLS
         self.imap_mailbox = settings.IMAP_MAILBOX
         self.poll_interval = settings.EMAIL_POLL_INTERVAL_SECONDS
-        
-        # Background polling state
-        self._polling_task: Optional[asyncio.Task] = None
-        self._polling_active = False
-        self._email_callback: Optional[Callable] = None
 
-    
+        # Background polling state
+        self._polling_task: asyncio.Task | None = None
+        self._polling_active = False
+        self._email_callback: Callable | None = None
+
+
     def _validate_email(self, email_address: str) -> bool:
         """
         Validate an email address.
@@ -214,18 +213,18 @@ class EmailService:
             return True
         except EmailNotValidError:
             return False
-            
+
     def _generate_message_id(self) -> str:
         """Generate a unique message ID for email tracking."""
         import uuid
         domain = self.email_from.split("@")[-1] if "@" in self.email_from else "rxdx.local"
         return f"<{uuid.uuid4()}@{domain}>"
-        
+
     async def send_work_instruction(
         self,
-        workitem: Dict[str, Any],
-        recipients: List[str],
-    ) -> Dict[str, Any]:
+        workitem: dict[str, Any],
+        recipients: list[str],
+    ) -> dict[str, Any]:
         """
         Send a work instruction email for a WorkItem.
         
@@ -256,30 +255,30 @@ class EmailService:
         """
         if not recipients:
             raise ValueError("At least one recipient is required")
-            
+
         # Validate recipients
         valid_recipients = []
         invalid_recipients = []
-        
+
         for recipient in recipients:
             if self._validate_email(recipient):
                 valid_recipients.append(recipient)
             else:
                 invalid_recipients.append(recipient)
-                
+
         if not valid_recipients:
             raise ValueError(f"No valid recipients. Invalid: {invalid_recipients}")
-            
+
         # Extract WorkItem details
         workitem_id = str(workitem.get("id", ""))
         title = workitem.get("title", "Work Instruction")
         description = workitem.get("description", "No description provided")
         status = workitem.get("status", "draft")
         priority = workitem.get("priority", "N/A")
-        
+
         # Create email subject with WorkItem ID for tracking
         subject = f"[WorkItem-{workitem_id}] {title}"
-        
+
         # Create email body
         body = self._create_work_instruction_body(
             title=title,
@@ -288,23 +287,23 @@ class EmailService:
             priority=priority,
             workitem_id=workitem_id,
         )
-        
+
         # Create message
         message = MIMEMultipart()
         message["Subject"] = subject
         message["From"] = self.email_from
         message["To"] = ", ".join(valid_recipients)
         message["Reply-To"] = self.email_reply_to
-        
+
         message_id = self._generate_message_id()
         message["Message-ID"] = message_id
-        
+
         message.attach(MIMEText(body, "plain"))
-        
+
         # Send email
         try:
             await self._send_email(message)
-            
+
             # Track in thread history
             thread_id = f"thread-{workitem_id}"
             thread = self._get_or_create_thread(thread_id, workitem_id, subject)
@@ -313,12 +312,12 @@ class EmailService:
                 sender=self.email_from,
                 recipients=valid_recipients,
                 body=body,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 direction="outgoing",
             )
-            
+
             logger.info(f"Sent work instruction email for WorkItem {workitem_id}")
-            
+
             return {
                 "success": True,
                 "message_id": message_id,
@@ -327,12 +326,12 @@ class EmailService:
                 "invalid_recipients": invalid_recipients,
                 "errors": [],
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to send work instruction email: {e}")
             raise EmailSendError(f"Failed to send email: {e}")
 
-    
+
     def _create_work_instruction_body(
         self,
         title: str,
@@ -387,12 +386,12 @@ WorkItem ID: {workitem_id}
                     hostname=self.smtp_host,
                     port=self.smtp_port,
                 )
-                
+
             async with smtp:
                 if self.smtp_user and self.smtp_password:
                     await smtp.login(self.smtp_user, self.smtp_password)
                 await smtp.send_message(message)
-                
+
         except aiosmtplib.SMTPConnectError as e:
             logger.error(f"SMTP connection error: {e}")
             raise EmailConnectionError(f"Failed to connect to SMTP server: {e}")
@@ -403,11 +402,11 @@ WorkItem ID: {workitem_id}
             logger.error(f"SMTP send error: {e}")
             raise EmailSendError(f"Failed to send email: {e}")
 
-    
+
     async def process_incoming_email(
         self,
         raw_email: bytes,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Process an incoming email reply.
         
@@ -433,18 +432,18 @@ WorkItem ID: {workitem_id}
         try:
             # Parse raw email
             msg = email.message_from_bytes(raw_email)
-            
+
             subject = msg.get("Subject", "")
             sender = msg.get("From", "")
             message_id = msg.get("Message-ID", self._generate_message_id())
-            
+
             # Extract WorkItem ID from subject
             workitem_id = self._extract_workitem_id(subject)
-            
+
             if not workitem_id:
                 error_msg = "Could not identify WorkItem from email subject"
                 logger.warning(f"{error_msg}: {subject}")
-                
+
                 # Send parsing error notification
                 if sender and self._validate_email(sender):
                     await self.send_parsing_error(
@@ -452,7 +451,7 @@ WorkItem ID: {workitem_id}
                         original_subject=subject,
                         error_message=error_msg,
                     )
-                    
+
                 return {
                     "success": False,
                     "workitem_id": None,
@@ -461,14 +460,14 @@ WorkItem ID: {workitem_id}
                     "subject": subject,
                     "error": error_msg,
                 }
-                
+
             # Get email body
             body = self._get_email_body(msg)
-            
+
             if not body:
                 error_msg = "Email body is empty"
                 logger.warning(f"{error_msg} for WorkItem {workitem_id}")
-                
+
                 return {
                     "success": False,
                     "workitem_id": workitem_id,
@@ -477,20 +476,20 @@ WorkItem ID: {workitem_id}
                     "subject": subject,
                     "error": error_msg,
                 }
-                
+
             # Try structured parsing first
             parsed_data = self.parse_structured_reply(body)
             parse_method = "structured"
-            
+
             # If structured parsing fails, try LLM
             if not parsed_data and self.llm_service:
                 parsed_data = await self._parse_with_llm(body)
                 parse_method = "llm" if parsed_data else None
-                
+
             if not parsed_data:
                 error_msg = "Could not parse email content"
                 logger.warning(f"{error_msg} for WorkItem {workitem_id}")
-                
+
                 # Send parsing error notification
                 if sender and self._validate_email(sender):
                     await self.send_parsing_error(
@@ -499,7 +498,7 @@ WorkItem ID: {workitem_id}
                         error_message=error_msg,
                         workitem_id=workitem_id,
                     )
-                    
+
                 return {
                     "success": False,
                     "workitem_id": workitem_id,
@@ -508,7 +507,7 @@ WorkItem ID: {workitem_id}
                     "subject": subject,
                     "error": error_msg,
                 }
-                
+
             # Track in thread history
             thread_id = f"thread-{workitem_id}"
             thread = self._get_or_create_thread(thread_id, workitem_id, subject)
@@ -517,15 +516,15 @@ WorkItem ID: {workitem_id}
                 sender=sender,
                 recipients=[self.email_reply_to],
                 body=body,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 direction="incoming",
             )
-            
+
             logger.info(
                 f"Successfully parsed email for WorkItem {workitem_id} "
                 f"using {parse_method} method"
             )
-            
+
             return {
                 "success": True,
                 "workitem_id": workitem_id,
@@ -535,13 +534,13 @@ WorkItem ID: {workitem_id}
                 "parse_method": parse_method,
                 "error": None,
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to process incoming email: {e}")
             raise EmailParseError(f"Failed to process email: {e}")
 
-    
-    def _extract_workitem_id(self, subject: str) -> Optional[str]:
+
+    def _extract_workitem_id(self, subject: str) -> str | None:
         """
         Extract WorkItem ID from email subject.
         
@@ -555,7 +554,7 @@ WorkItem ID: {workitem_id}
         if match:
             return match.group(1)
         return None
-        
+
     def _get_email_body(self, msg: email.message.Message) -> str:
         """
         Extract the text body from an email message.
@@ -569,16 +568,16 @@ WorkItem ID: {workitem_id}
             Email body text
         """
         body = ""
-        
+
         if msg.is_multipart():
             for part in msg.walk():
                 content_type = part.get_content_type()
                 content_disposition = str(part.get("Content-Disposition", ""))
-                
+
                 # Skip attachments
                 if "attachment" in content_disposition:
                     continue
-                    
+
                 # Get text content
                 if content_type == "text/plain":
                     try:
@@ -599,11 +598,11 @@ WorkItem ID: {workitem_id}
             except Exception as e:
                 logger.warning(f"Failed to decode email body: {e}")
                 body = str(msg.get_payload())
-                
+
         return body.strip()
 
-    
-    def parse_structured_reply(self, body: str) -> Optional[Dict[str, Any]]:
+
+    def parse_structured_reply(self, body: str) -> dict[str, Any] | None:
         """
         Parse a structured email reply.
         
@@ -625,9 +624,9 @@ WorkItem ID: {workitem_id}
         """
         if not body:
             return None
-            
+
         result = {}
-        
+
         # Extract status
         status_match = self.STATUS_PATTERN.search(body)
         if status_match:
@@ -640,7 +639,7 @@ WorkItem ID: {workitem_id}
                 result["status"] = "completed"
             elif status in {"started", "working", "ongoing"}:
                 result["status"] = "active"
-                
+
         # Extract comment
         comment_match = self.COMMENT_PATTERN.search(body)
         if comment_match:
@@ -649,7 +648,7 @@ WorkItem ID: {workitem_id}
             comment = re.sub(r"\s*\|\s*$", "", comment)
             if comment:
                 result["comment"] = comment
-                
+
         # Extract time
         time_match = self.TIME_PATTERN.search(body)
         if time_match:
@@ -659,10 +658,10 @@ WorkItem ID: {workitem_id}
                     result["time_spent"] = time_spent
             except ValueError:
                 pass
-                
+
         return result if result else None
-        
-    async def _parse_with_llm(self, body: str) -> Optional[Dict[str, Any]]:
+
+    async def _parse_with_llm(self, body: str) -> dict[str, Any] | None:
         """
         Parse email body using LLM for unstructured content.
         
@@ -674,7 +673,7 @@ WorkItem ID: {workitem_id}
         """
         if not self.llm_service:
             return None
-            
+
         try:
             result = await self.llm_service.extract_work_instruction(body)
             return result
@@ -682,13 +681,13 @@ WorkItem ID: {workitem_id}
             logger.warning(f"LLM parsing failed: {e}")
             return None
 
-    
+
     async def send_parsing_error(
         self,
         recipient: str,
         original_subject: str,
         error_message: str,
-        workitem_id: Optional[str] = None,
+        workitem_id: str | None = None,
     ) -> bool:
         """
         Send a parsing error notification to the email sender.
@@ -708,9 +707,9 @@ WorkItem ID: {workitem_id}
         if not self._validate_email(recipient):
             logger.warning(f"Invalid recipient for parsing error: {recipient}")
             return False
-            
+
         subject = f"Re: {original_subject} - Parsing Error"
-        
+
         body = f"""Your email could not be processed.
 
 Error: {error_message}
@@ -718,7 +717,7 @@ Error: {error_message}
 """
         if workitem_id:
             body += f"WorkItem ID: {workitem_id}\n\n"
-            
+
         body += """To update a work item via email, please use one of these formats:
 
 1. Structured Format (recommended):
@@ -738,9 +737,9 @@ If you continue to experience issues, please contact support.
         message["From"] = self.email_from
         message["To"] = recipient
         message["Message-ID"] = self._generate_message_id()
-        
+
         message.attach(MIMEText(body, "plain"))
-        
+
         try:
             await self._send_email(message)
             logger.info(f"Sent parsing error notification to {recipient}")
@@ -749,7 +748,7 @@ If you continue to experience issues, please contact support.
             logger.error(f"Failed to send parsing error notification: {e}")
             return False
 
-    
+
     def _get_or_create_thread(
         self,
         thread_id: str,
@@ -774,8 +773,8 @@ If you continue to experience issues, please contact support.
                 subject=subject,
             )
         return self._threads[thread_id]
-        
-    def get_thread_history(self, workitem_id: str) -> Optional[EmailThread]:
+
+    def get_thread_history(self, workitem_id: str) -> EmailThread | None:
         """
         Get email thread history for a WorkItem.
         
@@ -787,8 +786,8 @@ If you continue to experience issues, please contact support.
         """
         thread_id = f"thread-{workitem_id}"
         return self._threads.get(thread_id)
-        
-    def get_all_threads(self) -> List[EmailThread]:
+
+    def get_all_threads(self) -> list[EmailThread]:
         """
         Get all email threads.
         
@@ -796,11 +795,11 @@ If you continue to experience issues, please contact support.
             List of all EmailThread instances
         """
         return list(self._threads.values())
-        
+
     async def extract_knowledge_from_email(
         self,
         email_body: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Extract knowledge from email content using LLM.
         
@@ -823,21 +822,21 @@ If you continue to experience issues, please contact support.
             "actions": [],
             "relationships": [],
         }
-        
+
         if not self.llm_service:
             logger.debug("LLM service not available for knowledge extraction")
             return empty_result
-            
+
         if not email_body or not email_body.strip():
             return empty_result
-            
+
         try:
             result = await self.llm_service.extract_meeting_knowledge(email_body)
             return result
         except Exception as e:
             logger.error(f"Knowledge extraction failed: {e}")
             return empty_result
-            
+
     async def connect_imap(self) -> aioimaplib.IMAP4_SSL:
         """
         Connect to IMAP server.
@@ -859,19 +858,19 @@ If you continue to experience issues, please contact support.
                     host=self.imap_host,
                     port=self.imap_port,
                 )
-                
+
             await imap_client.wait_hello_from_server()
-            
+
             if self.imap_user and self.imap_password:
                 await imap_client.login(self.imap_user, self.imap_password)
-                
+
             return imap_client
-            
+
         except Exception as e:
             logger.error(f"IMAP connection error: {e}")
             raise EmailConnectionError(f"Failed to connect to IMAP server: {e}")
-            
-    async def fetch_new_emails(self) -> List[bytes]:
+
+    async def fetch_new_emails(self) -> list[bytes]:
         """
         Fetch new (unseen) emails from the IMAP server.
         
@@ -879,31 +878,31 @@ If you continue to experience issues, please contact support.
             List of raw email bytes
         """
         emails = []
-        
+
         try:
             imap_client = await self.connect_imap()
-            
+
             try:
                 # Select mailbox
                 await imap_client.select(self.imap_mailbox)
-                
+
                 # Search for unseen emails
                 response = await imap_client.search("UNSEEN")
-                
+
                 if response.result != "OK":
                     logger.warning(f"IMAP search failed: {response}")
                     return emails
-                    
+
                 # Parse message IDs
                 message_ids = response.lines[0].decode().split()
-                
+
                 for msg_id in message_ids:
                     if not msg_id:
                         continue
-                        
+
                     # Fetch email
                     fetch_response = await imap_client.fetch(msg_id, "(RFC822)")
-                    
+
                     if fetch_response.result == "OK":
                         # Extract raw email from response
                         for line in fetch_response.lines:
@@ -916,23 +915,23 @@ If you continue to experience issues, please contact support.
                                 if isinstance(line, bytes) and len(line) > 100:
                                     emails.append(line)
                                     break
-                                    
+
                         # Mark as seen
                         await imap_client.store(msg_id, "+FLAGS", "\\Seen")
-                        
+
             finally:
                 await imap_client.logout()
-                
+
         except EmailConnectionError:
             raise
         except Exception as e:
             logger.error(f"Failed to fetch emails: {e}")
-            
+
         return emails
-        
+
     async def start_polling(
         self,
-        callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         """
         Start background email polling.
@@ -944,16 +943,16 @@ If you continue to experience issues, please contact support.
         if self._polling_active:
             logger.warning("Email polling is already active")
             return
-            
+
         self._polling_active = True
         self._email_callback = callback
         self._polling_task = asyncio.create_task(self._poll_emails())
         logger.info(f"Started email polling with {self.poll_interval}s interval")
-        
+
     async def stop_polling(self) -> None:
         """Stop background email polling."""
         self._polling_active = False
-        
+
         if self._polling_task:
             self._polling_task.cancel()
             try:
@@ -961,21 +960,21 @@ If you continue to experience issues, please contact support.
             except asyncio.CancelledError:
                 pass
             self._polling_task = None
-            
+
         logger.info("Stopped email polling")
-        
+
     async def _poll_emails(self) -> None:
         """Background task for polling emails."""
         while self._polling_active:
             try:
                 # Fetch new emails
                 raw_emails = await self.fetch_new_emails()
-                
+
                 # Process each email
                 for raw_email in raw_emails:
                     try:
                         result = await self.process_incoming_email(raw_email)
-                        
+
                         # Call callback if provided
                         if self._email_callback and result.get("success"):
                             try:
@@ -985,18 +984,18 @@ If you continue to experience issues, please contact support.
                                     self._email_callback(result)
                             except Exception as e:
                                 logger.error(f"Email callback error: {e}")
-                                
+
                     except EmailParseError as e:
                         logger.error(f"Failed to process email: {e}")
-                        
+
             except EmailConnectionError as e:
                 logger.error(f"Email polling connection error: {e}")
             except Exception as e:
                 logger.error(f"Email polling error: {e}")
-                
+
             # Wait before next poll
             await asyncio.sleep(self.poll_interval)
-            
+
     @property
     def is_polling(self) -> bool:
         """Check if email polling is active."""
@@ -1005,7 +1004,7 @@ If you continue to experience issues, please contact support.
 
 
 # Dependency injection helpers
-_email_service_instance: Optional[EmailService] = None
+_email_service_instance: EmailService | None = None
 
 
 async def get_email_service() -> EmailService:

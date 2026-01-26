@@ -1,13 +1,13 @@
 """Unit tests for User model and schemas"""
 
-import pytest
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from pydantic import ValidationError
 
 from app.models.user import User, UserRole
-from app.schemas.user import UserCreate, UserUpdate, UserResponse
+from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 
 class TestUserModel:
@@ -23,7 +23,7 @@ class TestUserModel:
             is_active=True,
             failed_login_attempts=0,
         )
-        
+
         assert user.email == "test@example.com"
         assert user.hashed_password == "hashed_password_here"
         assert user.full_name == "Test User"
@@ -42,7 +42,7 @@ class TestUserModel:
             is_active=True,
             failed_login_attempts=0,
         )
-        
+
         assert user.role == UserRole.USER
         assert user.is_active is True
         assert user.failed_login_attempts == 0
@@ -57,7 +57,7 @@ class TestUserModel:
             full_name="Test User",
             role=UserRole.ADMIN,
         )
-        
+
         repr_str = repr(user)
         assert "User" in repr_str
         assert str(user_id) in repr_str
@@ -76,9 +76,9 @@ class TestUserCreateSchema:
             "password": "SecurePass123",
             "role": UserRole.USER,
         }
-        
+
         user = UserCreate(**user_data)
-        
+
         assert user.email == "test@example.com"
         assert user.full_name == "Test User"
         assert user.password == "SecurePass123"
@@ -91,10 +91,10 @@ class TestUserCreateSchema:
             "full_name": "Test User",
             "password": "SecurePass123",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(**user_data)
-        
+
         assert "email" in str(exc_info.value).lower()
 
     def test_password_too_short(self):
@@ -104,10 +104,10 @@ class TestUserCreateSchema:
             "full_name": "Test User",
             "password": "Short1",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(**user_data)
-        
+
         assert "password" in str(exc_info.value).lower()
 
     def test_password_no_uppercase(self):
@@ -117,10 +117,10 @@ class TestUserCreateSchema:
             "full_name": "Test User",
             "password": "securepass123",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(**user_data)
-        
+
         error_msg = str(exc_info.value).lower()
         assert "uppercase" in error_msg
 
@@ -131,10 +131,10 @@ class TestUserCreateSchema:
             "full_name": "Test User",
             "password": "SECUREPASS123",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(**user_data)
-        
+
         error_msg = str(exc_info.value).lower()
         assert "lowercase" in error_msg
 
@@ -145,10 +145,10 @@ class TestUserCreateSchema:
             "full_name": "Test User",
             "password": "SecurePassword",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(**user_data)
-        
+
         error_msg = str(exc_info.value).lower()
         assert "digit" in error_msg
 
@@ -159,10 +159,10 @@ class TestUserCreateSchema:
             "full_name": "",
             "password": "SecurePass123",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(**user_data)
-        
+
         assert "full_name" in str(exc_info.value).lower()
 
     def test_default_role(self):
@@ -172,7 +172,7 @@ class TestUserCreateSchema:
             "full_name": "Test User",
             "password": "SecurePass123",
         }
-        
+
         user = UserCreate(**user_data)
         assert user.role == UserRole.USER
 
@@ -183,9 +183,9 @@ class TestUserUpdateSchema:
     def test_partial_update(self):
         """Test UserUpdate with partial fields"""
         update_data = {"full_name": "Updated Name"}
-        
+
         user_update = UserUpdate(**update_data)
-        
+
         assert user_update.full_name == "Updated Name"
         assert user_update.email is None
         assert user_update.role is None
@@ -193,10 +193,10 @@ class TestUserUpdateSchema:
     def test_update_password_validation(self):
         """Test UserUpdate password validation"""
         update_data = {"password": "weakpass"}
-        
+
         with pytest.raises(ValidationError) as exc_info:
             UserUpdate(**update_data)
-        
+
         error_msg = str(exc_info.value).lower()
         assert "uppercase" in error_msg or "digit" in error_msg
 
@@ -209,9 +209,9 @@ class TestUserUpdateSchema:
             "is_active": False,
             "password": "NewSecure123",
         }
-        
+
         user_update = UserUpdate(**update_data)
-        
+
         assert user_update.email == "newemail@example.com"
         assert user_update.full_name == "New Name"
         assert user_update.role == UserRole.ADMIN
@@ -235,9 +235,9 @@ class TestUserResponseSchema:
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
-        
+
         user_response = UserResponse.model_validate(user)
-        
+
         assert user_response.email == "test@example.com"
         assert user_response.full_name == "Test User"
         assert user_response.role == UserRole.USER
@@ -258,9 +258,9 @@ class TestUserResponseSchema:
             "created_at": datetime.now(UTC),
             "updated_at": datetime.now(UTC),
         }
-        
+
         user_response = UserResponse(**user_dict)
         response_dict = user_response.model_dump()
-        
+
         assert "hashed_password" not in response_dict
         assert "password" not in response_dict

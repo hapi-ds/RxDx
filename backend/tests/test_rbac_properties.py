@@ -1,7 +1,7 @@
 """Property-based tests for RBAC system using Hypothesis"""
 
-from hypothesis import given, strategies as st
-import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from app.core.security import (
     ROLE_PERMISSIONS,
@@ -9,7 +9,6 @@ from app.core.security import (
     has_permission,
 )
 from app.models.user import UserRole
-
 
 # Strategy for generating user roles
 user_role_strategy = st.sampled_from(list(UserRole))

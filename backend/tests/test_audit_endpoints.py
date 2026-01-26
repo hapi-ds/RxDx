@@ -1,20 +1,19 @@
 """Integration tests for audit API endpoints"""
 
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
-from uuid import uuid4
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.core.config import settings
 from app.db.session import Base, get_db
 from app.main import app
-from app.models.user import User, UserRole
 from app.models.audit import AuditLog
-from app.services.auth_service import AuthService
+from app.models.user import User, UserRole
 from app.services.audit_service import AuditService
-
+from app.services.auth_service import AuthService
 
 # Test database setup
 TEST_DATABASE_URL = "postgresql+asyncpg://rxdx:rxdx_dev_password@localhost:5432/test_rxdx"
@@ -29,18 +28,18 @@ async def test_engine():
         pool_pre_ping=True,
         poolclass=None,  # Use NullPool to avoid connection pool issues
     )
-    
+
     # Create tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     yield engine
-    
+
     # Drop tables and dispose engine
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     await engine.dispose()
 
 
@@ -52,7 +51,7 @@ async def db_session(test_engine):
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    
+
     async with async_session() as session:
         yield session
 
@@ -65,7 +64,7 @@ async def client(test_engine):
         class_=AsyncSession,
         expire_on_commit=False,
     )
-    
+
     async def override_get_db():
         async with async_session() as session:
             try:
@@ -73,13 +72,13 @@ async def client(test_engine):
             except Exception:
                 await session.rollback()
                 raise
-    
+
     app.dependency_overrides[get_db] = override_get_db
-    
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
-    
+
     # Clean up override
     app.dependency_overrides.clear()
 
@@ -152,9 +151,9 @@ class TestAuditEndpoints:
     async def sample_audit_logs(self, db_session: AsyncSession, admin_user: User, regular_user: User) -> list[AuditLog]:
         """Create sample audit logs for testing"""
         audit_service = AuditService(db_session)
-        
+
         logs = []
-        
+
         # Create various types of audit logs
         logs.append(await audit_service.log(
             action="CREATE",
@@ -163,7 +162,7 @@ class TestAuditEndpoints:
             entity_id=uuid4(),
             details={"title": "Test Requirement"}
         ))
-        
+
         logs.append(await audit_service.log(
             action="UPDATE",
             entity_type="WorkItem",
@@ -171,7 +170,7 @@ class TestAuditEndpoints:
             entity_id=uuid4(),
             details={"changes": {"status": "completed"}}
         ))
-        
+
         logs.append(await audit_service.log(
             action="SIGN",
             entity_type="DigitalSignature",
@@ -179,32 +178,32 @@ class TestAuditEndpoints:
             entity_id=uuid4(),
             details={"workitem_id": str(uuid4())}
         ))
-        
+
         logs.append(await audit_service.log_auth_attempt(
             email="test@example.com",
             success=True,
             user_id=regular_user.id,
             ip_address="192.168.1.100"
         ))
-        
+
         return logs
 
     async def test_get_audit_logs_admin_access(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test that admin users can access audit logs"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get("/api/v1/audit", headers=headers)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
         assert len(data) >= len(sample_audit_logs)  # May include logs from test setup
-        
+
         # Check that audit logs have expected structure
         if data:
             log = data[0]
@@ -214,49 +213,49 @@ class TestAuditEndpoints:
             assert "timestamp" in log
 
     async def test_get_audit_logs_auditor_access(
-        self, 
-        client: AsyncClient, 
-        auditor_token: str, 
+        self,
+        client: AsyncClient,
+        auditor_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test that auditor users can access audit logs"""
         headers = {"Authorization": f"Bearer {auditor_token}"}
-        
+
         response = await client.get("/api/v1/audit", headers=headers)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
 
     async def test_get_audit_logs_regular_user_denied(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         regular_token: str
     ):
         """Test that regular users cannot access audit logs"""
         headers = {"Authorization": f"Bearer {regular_token}"}
-        
+
         response = await client.get("/api/v1/audit", headers=headers)
-        
+
         assert response.status_code == 403
         assert "Insufficient permissions" in response.json()["detail"]
 
     async def test_get_audit_logs_unauthenticated(self, client: AsyncClient):
         """Test that unauthenticated requests are rejected"""
         response = await client.get("/api/v1/audit")
-        
+
         assert response.status_code == 401
 
     async def test_get_audit_logs_with_filters(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog],
         admin_user: User
     ):
         """Test audit log filtering functionality"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         # Test filter by action
         response = await client.get(
             "/api/v1/audit",
@@ -267,7 +266,7 @@ class TestAuditEndpoints:
         data = response.json()
         for log in data:
             assert log["action"] == "CREATE"
-        
+
         # Test filter by entity_type
         response = await client.get(
             "/api/v1/audit",
@@ -278,7 +277,7 @@ class TestAuditEndpoints:
         data = response.json()
         for log in data:
             assert log["entity_type"] == "WorkItem"
-        
+
         # Test filter by user_id
         response = await client.get(
             "/api/v1/audit",
@@ -292,17 +291,17 @@ class TestAuditEndpoints:
                 assert log["user_id"] == str(admin_user.id)
 
     async def test_get_audit_logs_with_date_filters(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         admin_token: str
     ):
         """Test audit log date filtering"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         # Test with date range - use proper ISO 8601 format
-        start_date = (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
-        end_date = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-        
+        start_date = (datetime.now(UTC) - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ')
+        end_date = datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')
+
         response = await client.get(
             "/api/v1/audit",
             headers=headers,
@@ -311,10 +310,10 @@ class TestAuditEndpoints:
                 "end_date": end_date
             }
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify all logs are within date range
         for log in data:
             log_time = datetime.fromisoformat(log["timestamp"].replace("Z", "+00:00"))
@@ -322,13 +321,13 @@ class TestAuditEndpoints:
             assert log_time <= datetime.fromisoformat(end_date.replace("Z", "+00:00"))
 
     async def test_get_audit_logs_invalid_date_format(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         admin_token: str
     ):
         """Test handling of invalid date formats"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get(
             "/api/v1/audit",
             headers=headers,
@@ -338,14 +337,14 @@ class TestAuditEndpoints:
         assert "Invalid start_date format" in response.json()["detail"]
 
     async def test_get_audit_logs_pagination(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test audit log pagination"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         # Test with limit
         response = await client.get(
             "/api/v1/audit",
@@ -355,7 +354,7 @@ class TestAuditEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert len(data) <= 2
-        
+
         # Test with offset
         response = await client.get(
             "/api/v1/audit",
@@ -367,16 +366,16 @@ class TestAuditEndpoints:
         assert len(data) <= 1
 
     async def test_get_audit_log_count(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test audit log count endpoint"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get("/api/v1/audit/count", headers=headers)
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "total_count" in data
@@ -384,44 +383,44 @@ class TestAuditEndpoints:
         assert data["total_count"] >= len(sample_audit_logs)
 
     async def test_get_audit_log_count_with_filters(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test audit log count with filters"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get(
             "/api/v1/audit/count",
             headers=headers,
             params={"action": "CREATE"}
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "total_count" in data
         assert isinstance(data["total_count"], int)
 
     async def test_export_audit_logs_json(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test audit log export in JSON format"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get(
             "/api/v1/audit/export",
             headers=headers,
             params={"format": "json"}
         )
-        
+
         assert response.status_code == 200, f"Response: {response.status_code} - {response.text}"
         data = response.json()
         assert isinstance(data, list)
-        
+
         # Check structure of exported data
         if data:
             log = data[0]
@@ -431,24 +430,24 @@ class TestAuditEndpoints:
             assert "timestamp" in log
 
     async def test_export_audit_logs_csv(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         sample_audit_logs: list[AuditLog]
     ):
         """Test audit log export in CSV format"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get(
             "/api/v1/audit/export",
             headers=headers,
             params={"format": "csv"}
         )
-        
+
         assert response.status_code == 200
         assert response.headers["content-type"] == "text/csv; charset=utf-8"
         assert "attachment" in response.headers.get("content-disposition", "")
-        
+
         # Check CSV content structure
         csv_content = response.json()  # FastAPI returns CSV as JSON string
         assert isinstance(csv_content, str)
@@ -462,71 +461,71 @@ class TestAuditEndpoints:
             assert "timestamp" in header
 
     async def test_export_audit_logs_invalid_format(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         admin_token: str
     ):
         """Test export with invalid format"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         response = await client.get(
             "/api/v1/audit/export",
             headers=headers,
             params={"format": "xml"}  # Invalid format
         )
-        
+
         assert response.status_code == 422  # Validation error
 
     async def test_export_audit_logs_regular_user_denied(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         regular_token: str
     ):
         """Test that regular users cannot export audit logs"""
         headers = {"Authorization": f"Bearer {regular_token}"}
-        
+
         response = await client.get("/api/v1/audit/export", headers=headers)
-        
+
         assert response.status_code == 403
         assert "Insufficient permissions" in response.json()["detail"]
 
     async def test_audit_operations_are_logged(
-        self, 
-        client: AsyncClient, 
-        admin_token: str, 
+        self,
+        client: AsyncClient,
+        admin_token: str,
         db_session: AsyncSession
     ):
         """Test that audit operations themselves are logged"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         # Perform an audit query
         response = await client.get("/api/v1/audit", headers=headers)
         assert response.status_code == 200
-        
+
         # Check that the audit query was logged
         audit_service = AuditService(db_session)
         from app.schemas.audit import AuditLogFilter
-        
+
         filters = AuditLogFilter(
             user_id=None,
             action="READ",
             entity_type="AuditLog",
             entity_id=None,
-            start_date=datetime.now(timezone.utc) - timedelta(minutes=1),
+            start_date=datetime.now(UTC) - timedelta(minutes=1),
             end_date=None,
             limit=10,
             offset=0
         )
-        
+
         recent_logs = await audit_service.get_audit_logs(filters)
-        
+
         # Should find at least one READ operation on AuditLog
         read_operations = [log for log in recent_logs if log.action == "READ" and log.entity_type == "AuditLog"]
         assert len(read_operations) >= 1
 
     async def test_cleanup_audit_logs_admin_only(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         admin_token: str,
         auditor_token: str
     ):
@@ -543,7 +542,7 @@ class TestAuditEndpoints:
         assert "deleted_count" in data
         assert "retention_days" in data
         assert data["retention_days"] == 1
-        
+
         # Test auditor user denied (has audit permission but not admin)
         headers = {"Authorization": f"Bearer {auditor_token}"}
         response = await client.post(
@@ -555,13 +554,13 @@ class TestAuditEndpoints:
         assert "Only administrators" in response.json()["detail"]
 
     async def test_cleanup_audit_logs_validation(
-        self, 
-        client: AsyncClient, 
+        self,
+        client: AsyncClient,
         admin_token: str
     ):
         """Test cleanup validation"""
         headers = {"Authorization": f"Bearer {admin_token}"}
-        
+
         # Test invalid retention days (too low)
         response = await client.post(
             "/api/v1/audit/cleanup",
@@ -569,7 +568,7 @@ class TestAuditEndpoints:
             params={"retention_days": 0}
         )
         assert response.status_code == 422  # Validation error
-        
+
         # Test invalid retention days (too high)
         response = await client.post(
             "/api/v1/audit/cleanup",

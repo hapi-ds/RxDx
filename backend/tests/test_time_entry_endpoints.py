@@ -1,22 +1,18 @@
 """Integration tests for Time Entry API endpoints"""
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
 from app.main import app
 from app.models.user import User, UserRole
 from app.schemas.time_entry import (
-    TimeEntryCreate,
     TimeEntryResponse,
-    TimeEntrySyncRequest,
-    TimeEntrySyncItem,
 )
 
 
@@ -51,13 +47,13 @@ def sample_time_entry():
         user_id=uuid.uuid4(),
         project_id=uuid.uuid4(),
         task_id=uuid.uuid4(),
-        start_time=datetime.now(timezone.utc) - timedelta(hours=2),
-        end_time=datetime.now(timezone.utc),
+        start_time=datetime.now(UTC) - timedelta(hours=2),
+        end_time=datetime.now(UTC),
         duration_hours=Decimal("2.0"),
         description="Test work",
         category="development",
         synced=False,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         updated_at=None
     )
 
@@ -98,8 +94,8 @@ class TestCreateTimeEntry:
     def test_create_time_entry_success(self, client, mock_user, sample_time_entry):
         """Test successful time entry creation"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.create_time_entry = AsyncMock(return_value=sample_time_entry)
@@ -113,8 +109,8 @@ class TestCreateTimeEntry:
                 "/api/v1/time-entries",
                 json={
                     "project_id": str(uuid.uuid4()),
-                    "start_time": datetime.now(timezone.utc).isoformat(),
-                    "end_time": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+                    "start_time": datetime.now(UTC).isoformat(),
+                    "end_time": (datetime.now(UTC) + timedelta(hours=2)).isoformat(),
                     "description": "Test work",
                     "category": "development"
                 }
@@ -130,8 +126,8 @@ class TestCreateTimeEntry:
     def test_create_time_entry_invalid_category(self, client, mock_user):
         """Test creating entry with invalid category"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         app.dependency_overrides[get_current_user] = override_get_current_user(mock_user)
@@ -143,7 +139,7 @@ class TestCreateTimeEntry:
                 "/api/v1/time-entries",
                 json={
                     "project_id": str(uuid.uuid4()),
-                    "start_time": datetime.now(timezone.utc).isoformat(),
+                    "start_time": datetime.now(UTC).isoformat(),
                     "category": "invalid_category"
                 }
             )
@@ -155,15 +151,15 @@ class TestCreateTimeEntry:
     def test_create_time_entry_end_before_start(self, client, mock_user):
         """Test creating entry with end_time before start_time"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         app.dependency_overrides[get_current_user] = override_get_current_user(mock_user)
         app.dependency_overrides[get_time_service] = override_get_time_service(mock_service)
         app.dependency_overrides[get_audit_service] = override_get_audit_service()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         try:
             response = client.post(
                 "/api/v1/time-entries",
@@ -185,8 +181,8 @@ class TestGetTimeEntries:
     def test_get_time_entries_success(self, client, mock_user, sample_time_entry):
         """Test successful retrieval of time entries"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entries = AsyncMock(return_value=[sample_time_entry])
@@ -208,8 +204,8 @@ class TestGetTimeEntries:
     def test_get_time_entries_with_filters(self, client, mock_user, sample_time_entry):
         """Test retrieval with filters"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entries = AsyncMock(return_value=[sample_time_entry])
@@ -232,8 +228,8 @@ class TestGetTimeEntries:
     def test_get_time_entries_empty(self, client, mock_user):
         """Test retrieval when no entries exist"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entries = AsyncMock(return_value=[])
@@ -258,8 +254,8 @@ class TestGetTimeEntry:
     def test_get_time_entry_success(self, client, mock_user, sample_time_entry):
         """Test successful retrieval of single entry"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entry = AsyncMock(return_value=sample_time_entry)
@@ -280,8 +276,8 @@ class TestGetTimeEntry:
     def test_get_time_entry_not_found(self, client, mock_user):
         """Test retrieval of non-existent entry"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entry = AsyncMock(return_value=None)
@@ -304,8 +300,8 @@ class TestUpdateTimeEntry:
     def test_update_time_entry_success(self, client, mock_user, sample_time_entry):
         """Test successful update"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         updated_entry = sample_time_entry.model_copy()
         updated_entry.description = "Updated description"
@@ -332,8 +328,8 @@ class TestUpdateTimeEntry:
     def test_update_time_entry_not_found(self, client, mock_user):
         """Test update of non-existent entry"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.update_time_entry = AsyncMock(return_value=None)
@@ -359,8 +355,8 @@ class TestDeleteTimeEntry:
     def test_delete_time_entry_success(self, client, mock_admin_user, sample_time_entry):
         """Test successful deletion"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entry = AsyncMock(return_value=sample_time_entry)
@@ -380,8 +376,8 @@ class TestDeleteTimeEntry:
     def test_delete_time_entry_not_found(self, client, mock_admin_user):
         """Test deletion of non-existent entry"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.get_time_entry = AsyncMock(return_value=None)
@@ -404,9 +400,9 @@ class TestSyncTimeEntries:
     def test_sync_time_entries_success(self, client, mock_user):
         """Test successful sync"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
-        from app.services.audit_service import get_audit_service
         from app.schemas.time_entry import TimeEntrySyncResult
+        from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.sync_time_entries = AsyncMock(return_value=[
@@ -430,12 +426,12 @@ class TestSyncTimeEntries:
                         {
                             "local_id": "local-1",
                             "project_id": str(uuid.uuid4()),
-                            "start_time": datetime.now(timezone.utc).isoformat(),
-                            "end_time": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+                            "start_time": datetime.now(UTC).isoformat(),
+                            "end_time": (datetime.now(UTC) + timedelta(hours=1)).isoformat()
                         }
                     ],
                     "device_id": "test-device",
-                    "sync_timestamp": datetime.now(timezone.utc).isoformat()
+                    "sync_timestamp": datetime.now(UTC).isoformat()
                 }
             )
 
@@ -449,9 +445,9 @@ class TestSyncTimeEntries:
     def test_sync_time_entries_partial_failure(self, client, mock_user):
         """Test sync with some failures"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
-        from app.services.audit_service import get_audit_service
         from app.schemas.time_entry import TimeEntrySyncResult
+        from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
         mock_service.sync_time_entries = AsyncMock(return_value=[
@@ -481,15 +477,15 @@ class TestSyncTimeEntries:
                         {
                             "local_id": "local-1",
                             "project_id": str(uuid.uuid4()),
-                            "start_time": datetime.now(timezone.utc).isoformat()
+                            "start_time": datetime.now(UTC).isoformat()
                         },
                         {
                             "local_id": "local-2",
                             "project_id": str(uuid.uuid4()),
-                            "start_time": datetime.now(timezone.utc).isoformat()
+                            "start_time": datetime.now(UTC).isoformat()
                         }
                     ],
-                    "sync_timestamp": datetime.now(timezone.utc).isoformat()
+                    "sync_timestamp": datetime.now(UTC).isoformat()
                 }
             )
 
@@ -507,11 +503,11 @@ class TestAggregateTimeEntries:
     def test_aggregate_time_entries_success(self, client, mock_user):
         """Test successful aggregation"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
-        from app.services.audit_service import get_audit_service
         from app.schemas.time_entry import TimeAggregation
+        from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         mock_service = AsyncMock()
         mock_service.aggregate_time_entries = AsyncMock(return_value=[
             TimeAggregation(
@@ -551,8 +547,8 @@ class TestAggregateTimeEntries:
     def test_aggregate_time_entries_invalid_group_by(self, client, mock_user):
         """Test aggregation with invalid group_by field"""
         from app.api.deps import get_current_user
-        from app.services.time_service import get_time_service
         from app.services.audit_service import get_audit_service
+        from app.services.time_service import get_time_service
 
         mock_service = AsyncMock()
 
@@ -560,7 +556,7 @@ class TestAggregateTimeEntries:
         app.dependency_overrides[get_time_service] = override_get_time_service(mock_service)
         app.dependency_overrides[get_audit_service] = override_get_audit_service()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         try:
             response = client.post(
                 "/api/v1/time-entries/aggregate",

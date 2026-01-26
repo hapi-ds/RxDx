@@ -1,9 +1,9 @@
 """Security utilities for authentication and authorization"""
 
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
-from typing import Callable, Optional
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -53,7 +53,7 @@ def get_password_hash(password: str) -> str:
 
 
 def create_access_token(
-    data: dict, expires_delta: Optional[timedelta] = None
+    data: dict, expires_delta: timedelta | None = None
 ) -> str:
     """
     Create a JWT access token.
@@ -66,21 +66,21 @@ def create_access_token(
         The encoded JWT token
     """
     to_encode = data.copy()
-    
+
     if expires_delta:
         expire = datetime.now(UTC) + expires_delta
     else:
         expire = datetime.now(UTC) + timedelta(minutes=30)
-    
+
     to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
-    
+
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[dict]:
+def decode_access_token(token: str) -> dict | None:
     """
     Decode and verify a JWT access token.
     
@@ -99,7 +99,7 @@ def decode_access_token(token: str) -> Optional[dict]:
         return None
 
 
-def extract_user_id_from_token(token: str) -> Optional[UUID]:
+def extract_user_id_from_token(token: str) -> UUID | None:
     """
     Extract user ID from a JWT token.
     
@@ -112,11 +112,11 @@ def extract_user_id_from_token(token: str) -> Optional[UUID]:
     payload = decode_access_token(token)
     if payload is None:
         return None
-    
+
     user_id_str = payload.get("sub")
     if user_id_str is None:
         return None
-    
+
     try:
         return UUID(user_id_str)
     except (ValueError, AttributeError):

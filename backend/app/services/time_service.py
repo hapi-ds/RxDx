@@ -1,9 +1,9 @@
 """Time Entry service for CRUD operations and business logic"""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends
@@ -13,13 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.time_entry import (
+    TimeAggregation,
+    TimeAggregationRequest,
     TimeEntryCreate,
-    TimeEntryUpdate,
     TimeEntryResponse,
     TimeEntrySyncItem,
     TimeEntrySyncResult,
-    TimeAggregation,
-    TimeAggregationRequest,
+    TimeEntryUpdate,
 )
 
 
@@ -45,7 +45,7 @@ class TimeService:
             Created time entry with metadata
         """
         entry_id = uuid.uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Calculate duration if end_time is provided
         duration_hours = None
@@ -101,7 +101,7 @@ class TimeService:
         entry_id: UUID,
         updates: TimeEntryUpdate,
         current_user: User
-    ) -> Optional[TimeEntryResponse]:
+    ) -> TimeEntryResponse | None:
         """
         Update a time entry
 
@@ -145,7 +145,7 @@ class TimeService:
         else:
             update_fields["duration_hours"] = None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         update_fields["updated_at"] = now
 
         # Build and execute update query
@@ -168,7 +168,7 @@ class TimeService:
         self,
         entry_id: UUID,
         current_user: User
-    ) -> Optional[TimeEntryResponse]:
+    ) -> TimeEntryResponse | None:
         """
         Get a time entry by ID
 
@@ -199,15 +199,15 @@ class TimeService:
     async def get_time_entries(
         self,
         current_user: User,
-        project_id: Optional[UUID] = None,
-        task_id: Optional[UUID] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        category: Optional[str] = None,
-        synced: Optional[bool] = None,
+        project_id: UUID | None = None,
+        task_id: UUID | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        category: str | None = None,
+        synced: bool | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[TimeEntryResponse]:
+    ) -> list[TimeEntryResponse]:
         """
         Get time entries with filtering
 
@@ -226,7 +226,7 @@ class TimeService:
             List of matching time entries
         """
         conditions = ["user_id = :user_id"]
-        params: Dict[str, Any] = {"user_id": current_user.id}
+        params: dict[str, Any] = {"user_id": current_user.id}
 
         if project_id:
             conditions.append("project_id = :project_id")
@@ -293,10 +293,10 @@ class TimeService:
 
     async def sync_time_entries(
         self,
-        entries: List[TimeEntrySyncItem],
+        entries: list[TimeEntrySyncItem],
         current_user: User,
-        device_id: Optional[str] = None
-    ) -> List[TimeEntrySyncResult]:
+        device_id: str | None = None
+    ) -> list[TimeEntrySyncResult]:
         """
         Sync time entries from mobile device
 
@@ -309,7 +309,7 @@ class TimeService:
             List of sync results for each entry
         """
         results = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for entry in entries:
             try:
@@ -370,7 +370,7 @@ class TimeService:
         self,
         request: TimeAggregationRequest,
         current_user: User
-    ) -> List[TimeAggregation]:
+    ) -> list[TimeAggregation]:
         """
         Aggregate time entries for invoicing
 
@@ -392,7 +392,7 @@ class TimeService:
 
         # Build conditions
         conditions = ["user_id = :user_id"]
-        params: Dict[str, Any] = {"user_id": current_user.id}
+        params: dict[str, Any] = {"user_id": current_user.id}
 
         conditions.append("start_time >= :start_date")
         params["start_date"] = request.start_date

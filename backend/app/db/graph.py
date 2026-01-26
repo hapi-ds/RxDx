@@ -1,19 +1,21 @@
 """Apache AGE graph database operations"""
 
-import asyncpg
-from typing import Any, Dict, List, Optional
-from datetime import datetime, timezone
-from app.core.config import settings
 import json
+from datetime import UTC, datetime
+from typing import Any
+
+import asyncpg
+
+from app.core.config import settings
 
 
 class GraphService:
     """Service for interacting with Apache AGE graph database"""
-    
+
     def __init__(self):
-        self.pool: Optional[asyncpg.Pool] = None
+        self.pool: asyncpg.Pool | None = None
         self.graph_name = settings.AGE_GRAPH_NAME
-        
+
     async def connect(self):
         """Create connection pool to PostgreSQL with AGE"""
         if self.pool is None:
@@ -26,22 +28,22 @@ class GraphService:
                 max_size=20,
                 command_timeout=60,
             )
-            
+
             # Load AGE extension and set search path for each connection
             async def init_connection(conn):
                 await conn.execute("LOAD 'age';")
                 await conn.execute("SET search_path = ag_catalog, '$user', public;")
-                
+
             # Apply initialization to all connections in the pool
             async with self.pool.acquire() as conn:
                 await init_connection(conn)
-                
+
     async def close(self):
         """Close connection pool"""
         if self.pool:
             await self.pool.close()
             self.pool = None
-            
+
     async def _ensure_graph_exists(self):
         """Ensure the graph database exists"""
         async with self.pool.acquire() as conn:
@@ -49,22 +51,22 @@ class GraphService:
                 # Ensure AGE is loaded and search path is set
                 await conn.execute("LOAD 'age';")
                 await conn.execute("SET search_path = ag_catalog, '$user', public;")
-                
+
                 # Check if graph exists
                 check_query = f"SELECT * FROM ag_catalog.ag_graph WHERE name = '{self.graph_name}'"
                 result = await conn.fetch(check_query)
-                
+
                 if not result:
                     # Create the graph using the correct function
                     create_query = f"SELECT ag_catalog.create_graph('{self.graph_name}')"
                     await conn.fetch(create_query)
                     print(f"Created graph: {self.graph_name}")
-                    
+
             except Exception as e:
                 print(f"Graph creation error: {e}")
                 # Graph might already exist, continue
-            
-    async def execute_query(self, query: str, params: Optional[Dict[str, Any]] = None) -> List[Dict]:
+
+    async def execute_query(self, query: str, params: dict[str, Any] | None = None) -> list[dict]:
         """
         Execute a Cypher query using Apache AGE
         
@@ -77,25 +79,25 @@ class GraphService:
         """
         if not self.pool:
             await self.connect()
-            
+
         # Ensure the graph exists before executing queries
         await self._ensure_graph_exists()
-            
+
         # Use the full ag_catalog.cypher function with explicit type casting
         sql_query = f"""
         SELECT * FROM ag_catalog.cypher('{self.graph_name}', $$
             {query}
         $$) as (result ag_catalog.agtype);
         """
-        
+
         async with self.pool.acquire() as conn:
             try:
                 # Ensure AGE is loaded and search path is set for this connection
                 await conn.execute("LOAD 'age';")
                 await conn.execute("SET search_path = ag_catalog, '$user', public;")
-                
+
                 rows = await conn.fetch(sql_query)
-                
+
                 # Parse AGE agtype results to Python dicts
                 results = []
                 for row in rows:
@@ -103,19 +105,19 @@ class GraphService:
                     # AGE returns results as agtype, convert to dict
                     if result:
                         results.append(self._parse_agtype(result))
-                        
+
                 return results
             except Exception as e:
                 # Log the error for debugging
                 print(f"Query execution error: {e}")
                 print(f"Query: {sql_query}")
                 raise
-            
+
     async def create_node(
         self,
         label: str,
-        properties: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Create a node in the graph
         
@@ -128,17 +130,17 @@ class GraphService:
         """
         props_str = self._dict_to_cypher_props(properties)
         query = f"CREATE (n:{label} {props_str}) RETURN n"
-        
+
         results = await self.execute_query(query)
         return results[0] if results else {}
-        
+
     async def create_relationship(
         self,
         from_id: str,
         to_id: str,
         rel_type: str,
-        properties: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """
         Create a relationship between two nodes
         
@@ -152,27 +154,27 @@ class GraphService:
             Created relationship
         """
         props_str = self._dict_to_cypher_props(properties) if properties else ""
-        
+
         query = f"""
         MATCH (a {{id: '{from_id}'}}), (b {{id: '{to_id}'}})
         CREATE (a)-[r:{rel_type} {props_str}]->(b)
         RETURN r
         """
-        
+
         results = await self.execute_query(query)
         return results[0] if results else {}
-        
-    async def get_node(self, node_id: str) -> Optional[Dict[str, Any]]:
+
+    async def get_node(self, node_id: str) -> dict[str, Any] | None:
         """Get a node by ID"""
         query = f"MATCH (n {{id: '{node_id}'}}) RETURN n"
         results = await self.execute_query(query)
         return results[0] if results else None
-        
+
     async def update_node(
         self,
         node_id: str,
-        properties: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        properties: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update node properties"""
         set_clauses = ", ".join([f"n.{k} = '{v}'" for k, v in properties.items()])
         query = f"""
@@ -180,27 +182,27 @@ class GraphService:
         SET {set_clauses}
         RETURN n
         """
-        
+
         results = await self.execute_query(query)
         return results[0] if results else {}
-        
+
     async def delete_node(self, node_id: str) -> bool:
         """Delete a node and its relationships"""
         query = f"""
         MATCH (n {{id: '{node_id}'}})
         DETACH DELETE n
         """
-        
+
         await self.execute_query(query)
         return True
-        
+
     async def find_related_nodes(
         self,
         node_id: str,
-        relationship_type: Optional[str] = None,
+        relationship_type: str | None = None,
         direction: str = "both",
         depth: int = 1
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find nodes related to a given node
         
@@ -214,29 +216,29 @@ class GraphService:
             List of related nodes
         """
         rel_pattern = f"[:{relationship_type}]" if relationship_type else "[]"
-        
+
         if direction == "outgoing":
             pattern = f"-{rel_pattern}->"
         elif direction == "incoming":
             pattern = f"<-{rel_pattern}-"
         else:  # both
             pattern = f"-{rel_pattern}-"
-            
+
         depth_pattern = f"*1..{depth}" if depth > 1 else ""
-        
+
         query = f"""
         MATCH (n {{id: '{node_id}'}}){pattern}{depth_pattern}(related)
         RETURN DISTINCT related
         """
-        
+
         return await self.execute_query(query)
-        
+
     async def search_nodes(
         self,
-        label: Optional[str] = None,
-        properties: Optional[Dict[str, Any]] = None,
+        label: str | None = None,
+        properties: dict[str, Any] | None = None,
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search for nodes by label and/or properties
         
@@ -250,13 +252,13 @@ class GraphService:
         """
         label_str = f":{label}" if label else ""
         props_str = self._dict_to_cypher_props(properties) if properties else ""
-        
+
         query = f"""
         MATCH (n{label_str} {props_str})
         RETURN n
         LIMIT {limit}
         """
-        
+
         return await self.execute_query(query)
 
     async def create_workitem_node(
@@ -264,14 +266,14 @@ class GraphService:
         workitem_id: str,
         workitem_type: str,
         title: str,
-        description: Optional[str] = None,
+        description: str | None = None,
         status: str = "draft",
-        priority: Optional[int] = None,
+        priority: int | None = None,
         version: str = "1.0",
         created_by: str = None,
-        assigned_to: Optional[str] = None,
+        assigned_to: str | None = None,
         **additional_props
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a WorkItem node in the graph database
         
@@ -297,7 +299,7 @@ class GraphService:
             "status": status,
             "version": version
         }
-        
+
         if description:
             properties["description"] = description
         if priority:
@@ -306,21 +308,21 @@ class GraphService:
             properties["created_by"] = created_by
         if assigned_to:
             properties["assigned_to"] = assigned_to
-            
+
         # Add any additional properties
         properties.update(additional_props)
-        
+
         # Add timestamps
-        properties["created_at"] = datetime.now(timezone.utc).isoformat()
-        properties["updated_at"] = datetime.now(timezone.utc).isoformat()
-        
+        properties["created_at"] = datetime.now(UTC).isoformat()
+        properties["updated_at"] = datetime.now(UTC).isoformat()
+
         return await self.create_node("WorkItem", properties)
 
-    async def get_workitem(self, workitem_id: str) -> Optional[Dict[str, Any]]:
+    async def get_workitem(self, workitem_id: str) -> dict[str, Any] | None:
         """Get a WorkItem node by ID"""
         query = f"MATCH (w:WorkItem {{id: '{workitem_id}'}}) RETURN w"
         results = await self.execute_query(query)
-        
+
         if results:
             # Extract the node data from the parsed result
             node_data = results[0]
@@ -329,12 +331,12 @@ class GraphService:
             else:
                 return node_data
         return None
-        
-    async def get_workitem_version(self, workitem_id: str, version: str) -> Optional[Dict[str, Any]]:
+
+    async def get_workitem_version(self, workitem_id: str, version: str) -> dict[str, Any] | None:
         """Get a specific version of a WorkItem"""
         query = f"MATCH (w:WorkItem {{id: '{workitem_id}', version: '{version}'}}) RETURN w"
         results = await self.execute_query(query)
-        
+
         if results:
             # Extract the node data from the parsed result
             node_data = results[0]
@@ -343,35 +345,35 @@ class GraphService:
             else:
                 return node_data
         return None
-        
+
     async def create_workitem_version(
         self,
         workitem_id: str,
         version: str,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         user_id: str,
         change_description: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new version of a WorkItem"""
         # Update the data with new version info
         version_data = {**data}
         version_data.update({
             "version": version,
             "updated_by": user_id,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "change_description": change_description
         })
-        
+
         return await self.create_node("WorkItem", version_data)
-        
+
     async def search_workitems(
         self,
-        search_text: Optional[str] = None,
-        workitem_type: Optional[str] = None,
-        status: Optional[str] = None,
-        assigned_to: Optional[str] = None,
+        search_text: str | None = None,
+        workitem_type: str | None = None,
+        status: str | None = None,
+        assigned_to: str | None = None,
         limit: int = 100
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Search WorkItems with full-text search and filters
         
@@ -387,14 +389,14 @@ class GraphService:
         """
         # Build WHERE clauses
         where_clauses = []
-        
+
         if workitem_type:
             where_clauses.append(f"w.type = '{workitem_type}'")
         if status:
             where_clauses.append(f"w.status = '{status}'")
         if assigned_to:
             where_clauses.append(f"w.assigned_to = '{assigned_to}'")
-            
+
         # Add text search (case-insensitive contains)
         if search_text:
             escaped_text = search_text.replace("'", "\\'").lower()
@@ -402,9 +404,9 @@ class GraphService:
                 f"(toLower(w.title) CONTAINS '{escaped_text}' OR "
                 f"toLower(w.description) CONTAINS '{escaped_text}')"
             )
-            
+
         where_clause = " AND ".join(where_clauses) if where_clauses else "true"
-        
+
         query = f"""
         MATCH (w:WorkItem)
         WHERE {where_clause}
@@ -412,9 +414,9 @@ class GraphService:
         ORDER BY w.updated_at DESC
         LIMIT {limit}
         """
-        
+
         results = await self.execute_query(query)
-        
+
         # Extract WorkItem data from results
         workitems = []
         for result in results:
@@ -422,13 +424,13 @@ class GraphService:
                 workitems.append(result['properties'])
             else:
                 workitems.append(result)
-                
+
         return workitems
-        
+
     async def get_traceability_matrix(
         self,
-        project_id: Optional[str] = None
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        project_id: str | None = None
+    ) -> dict[str, list[dict[str, Any]]]:
         """
         Get traceability matrix showing relationships between requirements, tests, and risks
         
@@ -440,7 +442,7 @@ class GraphService:
         """
         # Build project filter if provided
         project_filter = f"AND r.project_id = '{project_id}'" if project_id else ""
-        
+
         # Get requirements and their relationships
         requirements_query = f"""
         MATCH (r:WorkItem {{type: 'requirement'}})
@@ -451,9 +453,9 @@ class GraphService:
                COLLECT(DISTINCT t) as tests,
                COLLECT(DISTINCT risk) as risks
         """
-        
+
         requirements_results = await self.execute_query(requirements_query)
-        
+
         # Get all tests and their coverage
         tests_query = f"""
         MATCH (t:WorkItem {{type: 'test'}})
@@ -462,9 +464,9 @@ class GraphService:
         RETURN t,
                COLLECT(DISTINCT r) as requirements
         """
-        
+
         tests_results = await self.execute_query(tests_query)
-        
+
         # Get all risks and their mitigations
         risks_query = f"""
         MATCH (risk:WorkItem {{type: 'risk'}})
@@ -473,20 +475,20 @@ class GraphService:
         RETURN risk,
                COLLECT(DISTINCT r) as requirements
         """
-        
+
         risks_results = await self.execute_query(risks_query)
-        
+
         return {
             "requirements": requirements_results,
             "tests": tests_results,
             "risks": risks_results
         }
-        
+
     async def get_risk_chains(
         self,
-        risk_id: Optional[str] = None,
+        risk_id: str | None = None,
         max_depth: int = 5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get FMEA failure chains showing risk propagation paths
         
@@ -518,9 +520,9 @@ class GraphService:
                    start.id as start_risk_id
             ORDER BY start_risk_id, chain_length
             """
-            
+
         results = await self.execute_query(query)
-        
+
         # Process results to extract chain information
         chains = []
         for result in results:
@@ -532,15 +534,15 @@ class GraphService:
                     result.get("probabilities", [])
                 )
             }
-            
+
             if "start_risk_id" in result:
                 chain_data["start_risk_id"] = result["start_risk_id"]
-                
+
             chains.append(chain_data)
-            
+
         return chains
-        
-    def _calculate_chain_probability(self, probabilities: List[float]) -> float:
+
+    def _calculate_chain_probability(self, probabilities: list[float]) -> float:
         """
         Calculate total probability for a failure chain
         
@@ -552,7 +554,7 @@ class GraphService:
         """
         if not probabilities:
             return 0.0
-            
+
         total_prob = 1.0
         for prob in probabilities:
             if isinstance(prob, (int, float)) and 0 <= prob <= 1:
@@ -560,10 +562,10 @@ class GraphService:
             else:
                 # Invalid probability, return 0
                 return 0.0
-                
+
         return total_prob
-        
-    async def initialize_graph_schema(self) -> Dict[str, List[str]]:
+
+    async def initialize_graph_schema(self) -> dict[str, list[str]]:
         """
         Initialize the graph schema with supported node types and relationships
         
@@ -582,7 +584,7 @@ class GraphService:
             "Entity",        # Entities extracted from emails/meetings
             "User"           # User nodes for relationships
         ]
-        
+
         # Define supported relationship types
         relationship_types = [
             "TESTED_BY",     # Requirement -> Test
@@ -597,20 +599,20 @@ class GraphService:
             "CREATED_BY",    # WorkItem -> User
             "ASSIGNED_TO"    # WorkItem -> User
         ]
-        
+
         # Note: AGE doesn't support CREATE INDEX in Cypher queries like Neo4j
         # Indexes would need to be created using PostgreSQL syntax if needed
-        
+
         return {
             "node_types": node_types,
             "relationship_types": relationship_types
         }
-        
-    def _dict_to_cypher_props(self, props: Dict[str, Any]) -> str:
+
+    def _dict_to_cypher_props(self, props: dict[str, Any]) -> str:
         """Convert Python dict to Cypher properties string"""
         if not props:
             return ""
-            
+
         items = []
         for k, v in props.items():
             if isinstance(v, str):
@@ -628,17 +630,17 @@ class GraphService:
                 # For complex types, serialize to JSON string
                 escaped_json = json.dumps(v).replace("'", "\\'")
                 items.append(f"{k}: '{escaped_json}'")
-                
+
         return "{" + ", ".join(items) + "}"
-        
+
     async def get_graph_for_visualization(
         self,
-        center_node_id: Optional[str] = None,
+        center_node_id: str | None = None,
         depth: int = 2,
-        node_types: Optional[List[str]] = None,
-        relationship_types: Optional[List[str]] = None,
+        node_types: list[str] | None = None,
+        relationship_types: list[str] | None = None,
         limit: int = 1000
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get graph data formatted for visualization in react-flow and R3F
         
@@ -661,10 +663,10 @@ class GraphService:
         # Performance optimization: Early validation to avoid expensive queries
         if limit > 5000:
             limit = 5000  # Hard cap for performance
-            
+
         if depth > 5:
             depth = 5  # Limit depth to prevent exponential growth
-            
+
         if center_node_id:
             # Get subgraph around a specific node (more efficient for large graphs)
             nodes, edges = await self._get_subgraph_around_node(
@@ -675,7 +677,7 @@ class GraphService:
             nodes, edges = await self._get_full_graph(
                 node_types, relationship_types, limit
             )
-            
+
         # Performance optimization: Early termination if we hit the limit
         truncated = len(nodes) >= limit
         if truncated:
@@ -683,24 +685,24 @@ class GraphService:
             # Filter edges to only include those between remaining nodes
             node_ids = {node.get('id') for node in nodes}
             edges = [
-                edge for edge in edges 
+                edge for edge in edges
                 if edge.get('start_id') in node_ids and edge.get('end_id') in node_ids
             ]
-            
+
         # Format for visualization libraries
         formatted_nodes = []
         formatted_edges = []
-        
+
         # Process nodes for visualization
         for node in nodes:
             node_data = self._format_node_for_visualization(node)
             formatted_nodes.append(node_data)
-            
+
         # Process edges for visualization
         for edge in edges:
             edge_data = self._format_edge_for_visualization(edge)
             formatted_edges.append(edge_data)
-            
+
         return {
             "nodes": formatted_nodes,
             "edges": formatted_edges,
@@ -717,29 +719,29 @@ class GraphService:
                 }
             }
         }
-        
+
     async def _get_subgraph_around_node(
         self,
         center_node_id: str,
         depth: int,
-        node_types: Optional[List[str]],
-        relationship_types: Optional[List[str]],
+        node_types: list[str] | None,
+        relationship_types: list[str] | None,
         limit: int
-    ) -> tuple[List[Dict], List[Dict]]:
+    ) -> tuple[list[dict], list[dict]]:
         """Get subgraph around a center node"""
-        
+
         # Build node type filter
         node_filter = ""
         if node_types:
             type_conditions = " OR ".join([f"n:{node_type}" for node_type in node_types])
             node_filter = f" AND ({type_conditions})"
-            
+
         # Build relationship type filter
         rel_filter = ""
         if relationship_types:
             rel_types_str = "|".join(relationship_types)
             rel_filter = f":{rel_types_str}"
-            
+
         # Query to get nodes within depth - return as single result map
         node_query = f"""
         MATCH (center {{id: '{center_node_id}'}})
@@ -749,18 +751,18 @@ class GraphService:
         LIMIT {limit}
         RETURN n
         """
-        
+
         node_results = await self.execute_query(node_query)
-        
+
         nodes = []
         seen_nodes = set()
-        
+
         # Add center node first
         center_node = await self.get_node(center_node_id)
         if center_node:
             nodes.append(center_node)
             seen_nodes.add(center_node_id)
-        
+
         # Process node results
         for result in node_results:
             if result:
@@ -769,11 +771,11 @@ class GraphService:
                     node_id = node['properties'].get('id')
                 else:
                     node_id = node.get('id')
-                    
+
                 if node_id and node_id not in seen_nodes:
                     nodes.append(node)
                     seen_nodes.add(node_id)
-        
+
         # Now get relationships between the found nodes
         edges = []
         if len(seen_nodes) > 1:
@@ -785,10 +787,10 @@ class GraphService:
             RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r)}}
             LIMIT {limit * 2}
             """
-            
+
             rel_results = await self.execute_query(rel_query)
             seen_edges = set()
-            
+
             for result in rel_results:
                 if result:
                     edge_data = {}
@@ -798,34 +800,34 @@ class GraphService:
                     edge_data['start_id'] = result.get('start_id')
                     edge_data['end_id'] = result.get('end_id')
                     edge_data['type'] = result.get('rel_type', 'RELATED')
-                    
+
                     if edge_data.get('start_id') and edge_data.get('end_id'):
                         edge_key = f"{edge_data['start_id']}-{edge_data['end_id']}-{edge_data['type']}"
                         if edge_key not in seen_edges:
                             edges.append(edge_data)
                             seen_edges.add(edge_key)
-                        
+
         return nodes, edges
-        
+
     async def _get_full_graph(
         self,
-        node_types: Optional[List[str]],
-        relationship_types: Optional[List[str]],
+        node_types: list[str] | None,
+        relationship_types: list[str] | None,
         limit: int
-    ) -> tuple[List[Dict], List[Dict]]:
+    ) -> tuple[list[dict], list[dict]]:
         """Get full graph with optional filters"""
-        
+
         # Build node query with type filter
         node_query = "MATCH (n)"
         if node_types:
             type_conditions = " OR ".join([f"n:{node_type}" for node_type in node_types])
             node_query += f" WHERE {type_conditions}"
         node_query += f" RETURN n LIMIT {limit}"
-        
+
         # Get nodes
         node_results = await self.execute_query(node_query)
         nodes = [result for result in node_results if result]
-        
+
         # Build relationship query - return only the relationship with embedded start/end info
         # We need to collect start_id and end_id within the relationship properties
         rel_query = "MATCH (a)-[r]->(b)"
@@ -834,11 +836,11 @@ class GraphService:
             rel_query = f"MATCH (a)-[r:{rel_types_str}]->(b)"
         # Return a map containing all needed info as a single result
         rel_query += f" RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r)}} LIMIT {limit * 2}"
-        
+
         # Get relationships
         rel_results = await self.execute_query(rel_query)
         edges = []
-        
+
         for result in rel_results:
             if result:
                 # Result is now a map with rel, start_id, end_id, rel_type
@@ -853,25 +855,25 @@ class GraphService:
                 edge_data['type'] = result.get('rel_type', 'RELATED')
                 if edge_data.get('start_id') and edge_data.get('end_id'):
                     edges.append(edge_data)
-                
+
         return nodes, edges
-        
-    def _format_node_for_visualization(self, node: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _format_node_for_visualization(self, node: dict[str, Any]) -> dict[str, Any]:
         """Format node data for react-flow and R3F visualization"""
-        
+
         # Extract node properties
         if 'properties' in node:
             props = node['properties']
         else:
             props = node
-            
+
         node_id = props.get('id', str(node.get('id', '')))
         node_type = props.get('type', node.get('label', 'Unknown'))
         title = props.get('title', props.get('name', f"{node_type} {node_id[:8]}"))
         description = props.get('description', '')
         status = props.get('status', 'unknown')
         priority = props.get('priority', 3)
-        
+
         # Determine node color based on type and status
         color_map = {
             'requirement': {'active': '#3B82F6', 'draft': '#93C5FD', 'completed': '#1E40AF', 'archived': '#6B7280'},
@@ -883,15 +885,15 @@ class GraphService:
             'entity': {'active': '#6B7280', 'draft': '#9CA3AF', 'completed': '#4B5563', 'archived': '#6B7280'},
             'user': {'active': '#06B6D4', 'draft': '#67E8F9', 'completed': '#0891B2', 'archived': '#6B7280'}
         }
-        
+
         node_colors = color_map.get(node_type.lower(), color_map['entity'])
         node_color = node_colors.get(status, node_colors['active'])
-        
+
         # Calculate node size based on priority and connections
         base_size = 50
         priority_multiplier = (6 - min(priority, 5)) * 0.2  # Higher priority = larger
         node_size = int(base_size * (1 + priority_multiplier))
-        
+
         # Format for react-flow (2D)
         react_flow_data = {
             'id': node_id,
@@ -920,7 +922,7 @@ class GraphService:
             },
             'className': f'node-{node_type.lower()} node-{status}'
         }
-        
+
         # Format for R3F (3D)
         r3f_data = {
             'id': node_id,
@@ -950,7 +952,7 @@ class GraphService:
                 'selectable': True
             }
         }
-        
+
         return {
             'id': node_id,
             'type': node_type,
@@ -964,27 +966,27 @@ class GraphService:
             'reactFlow': react_flow_data,
             'r3f': r3f_data
         }
-        
-    def _format_edge_for_visualization(self, edge: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _format_edge_for_visualization(self, edge: dict[str, Any]) -> dict[str, Any]:
         """Format edge data for react-flow and R3F visualization"""
-        
+
         # Extract edge properties
         if 'properties' in edge:
             props = edge['properties']
         else:
             props = edge
-            
+
         start_id = edge.get('start_id', props.get('start_id'))
         end_id = edge.get('end_id', props.get('end_id'))
         edge_type = edge.get('type', props.get('type', 'RELATED'))
-        
+
         # Generate edge ID
         edge_id = f"{start_id}-{end_id}-{edge_type}"
-        
+
         # Determine edge color, style, and properties based on type
         edge_styles = {
             'TESTED_BY': {
-                'color': '#F59E0B', 'style': 'solid', 'width': 2, 
+                'color': '#F59E0B', 'style': 'solid', 'width': 2,
                 'animated': False, 'label': 'Tested By', 'importance': 'high'
             },
             'MITIGATES': {
@@ -1020,12 +1022,12 @@ class GraphService:
                 'animated': False, 'label': 'References', 'importance': 'medium'
             }
         }
-        
+
         style = edge_styles.get(edge_type, {
             'color': '#6B7280', 'style': 'solid', 'width': 1,
             'animated': False, 'label': edge_type.replace('_', ' ').title(), 'importance': 'low'
         })
-        
+
         # Format for react-flow (2D)
         react_flow_data = {
             'id': edge_id,
@@ -1037,7 +1039,7 @@ class GraphService:
                 'stroke': style['color'],
                 'strokeWidth': style['width'],
                 'strokeDasharray': (
-                    '5,5' if style['style'] == 'dashed' else 
+                    '5,5' if style['style'] == 'dashed' else
                     '2,2' if style['style'] == 'dotted' else None
                 )
             },
@@ -1060,7 +1062,7 @@ class GraphService:
                 'properties': props
             }
         }
-        
+
         # Format for R3F (3D)
         r3f_data = {
             'id': edge_id,
@@ -1090,7 +1092,7 @@ class GraphService:
                 'selectable': False
             }
         }
-        
+
         return {
             'id': edge_id,
             'source': start_id,
@@ -1107,10 +1109,10 @@ class GraphService:
             'r3f': r3f_data
         }
 
-    def _parse_agtype(self, agtype_value: Any) -> Dict[str, Any]:
+    def _parse_agtype(self, agtype_value: Any) -> dict[str, Any]:
         """Parse AGE agtype value to Python dict"""
         if isinstance(agtype_value, str):
-            # AGE returns vertex/edge data as strings like: 
+            # AGE returns vertex/edge data as strings like:
             # '{"id": 1125899906842625, "label": "WorkItem", "properties": {...}}::vertex'
             if '::vertex' in agtype_value or '::edge' in agtype_value:
                 # Remove the type suffix and parse JSON

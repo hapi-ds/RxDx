@@ -1,7 +1,6 @@
 """Authentication service for user authentication and session management"""
 
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import select
@@ -48,7 +47,7 @@ class AuthService:
         """
         self.db = db
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> User | None:
         """
         Retrieve a user by email address.
         
@@ -61,7 +60,7 @@ class AuthService:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
-    async def get_user_by_id(self, user_id: UUID) -> Optional[User]:
+    async def get_user_by_id(self, user_id: UUID) -> User | None:
         """
         Retrieve a user by ID.
         
@@ -103,7 +102,7 @@ class AuthService:
 
     async def authenticate_user(
         self, email: str, password: str
-    ) -> Optional[User]:
+    ) -> User | None:
         """
         Authenticate a user with email and password.
         
@@ -124,15 +123,15 @@ class AuthService:
             AccountLockedException: If the account is currently locked
         """
         user = await self.get_user_by_email(email)
-        
+
         # User not found
         if not user:
             return None
-        
+
         # Check if user is active
         if not user.is_active:
             return None
-        
+
         # Check if account is locked
         if user.locked_until:
             if user.locked_until > datetime.now(UTC):
@@ -142,12 +141,12 @@ class AuthService:
                 user.locked_until = None
                 user.failed_login_attempts = 0
                 await self.db.commit()
-        
+
         # Verify password
         if not verify_password(password, user.hashed_password):
             await self.increment_failed_attempts(user)
             return None
-        
+
         # Authentication successful, reset failed attempts
         await self.reset_failed_attempts(user)
         return user
@@ -162,12 +161,12 @@ class AuthService:
             user: User object to update
         """
         user.failed_login_attempts += 1
-        
+
         if user.failed_login_attempts >= settings.MAX_LOGIN_ATTEMPTS:
             user.locked_until = datetime.now(UTC) + timedelta(
                 hours=settings.ACCOUNT_LOCK_DURATION_HOURS
             )
-        
+
         await self.db.commit()
 
     async def reset_failed_attempts(self, user: User) -> None:
@@ -201,7 +200,7 @@ class AuthService:
             "email": user.email,
             "role": user.role.value,
         }
-        
+
         expires_delta = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         return create_access_token(token_data, expires_delta)
 
@@ -221,7 +220,7 @@ class AuthService:
         """
         if not verify_password(old_password, user.hashed_password):
             return False
-        
+
         user.hashed_password = get_password_hash(new_password)
         await self.db.commit()
         return True

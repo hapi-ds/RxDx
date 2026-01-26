@@ -1,37 +1,27 @@
 """WorkItem service for CRUD operations and business logic"""
 
 import uuid
-from datetime import datetime, timezone
-from typing import List, Optional, Dict, Any
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from app.db.graph import GraphService, get_graph_service
-from app.services.version_service import VersionService, get_version_service
-from app.schemas.workitem import (
-    WorkItemCreate, 
-    WorkItemUpdate, 
-    WorkItemResponse,
-    RequirementCreate,
-    RequirementUpdate,
-    TaskCreate,
-    TaskUpdate,
-    TestSpecCreate,
-    TestSpecUpdate,
-    RiskCreate,
-    RiskUpdate,
-    DocumentCreate,
-    DocumentUpdate
-)
 from app.models.user import User
+from app.schemas.workitem import (
+    WorkItemCreate,
+    WorkItemResponse,
+    WorkItemUpdate,
+)
+from app.services.version_service import VersionService, get_version_service
 
 
 class WorkItemService:
     """Service for managing WorkItems with graph database storage"""
-    
+
     def __init__(self, graph_service: GraphService, version_service: VersionService = None):
         self.graph_service = graph_service
         self.version_service = version_service
-        
+
     async def create_workitem(
         self,
         workitem_data: WorkItemCreate,
@@ -49,7 +39,7 @@ class WorkItemService:
         """
         # Generate unique ID for the WorkItem
         workitem_id = str(uuid.uuid4())
-        
+
         # Prepare node properties
         properties = {
             "id": workitem_id,
@@ -61,11 +51,11 @@ class WorkItemService:
             "assigned_to": str(workitem_data.assigned_to) if workitem_data.assigned_to else None,
             "version": "1.0",
             "created_by": str(current_user.id),
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "is_signed": False
         }
-        
+
         # Add type-specific properties
         if hasattr(workitem_data, 'acceptance_criteria'):
             properties["acceptance_criteria"] = workitem_data.acceptance_criteria
@@ -111,12 +101,12 @@ class WorkItemService:
             properties["mime_type"] = workitem_data.mime_type
         if hasattr(workitem_data, 'checksum'):
             properties["checksum"] = workitem_data.checksum
-            
+
         # Calculate RPN for risk items
         if workitem_data.type == "risk" and hasattr(workitem_data, 'severity') and hasattr(workitem_data, 'occurrence') and hasattr(workitem_data, 'detection'):
             if workitem_data.severity and workitem_data.occurrence and workitem_data.detection:
                 properties["rpn"] = workitem_data.severity * workitem_data.occurrence * workitem_data.detection
-        
+
         # Create the WorkItem node in graph database
         await self.graph_service.create_workitem_node(
             workitem_id=workitem_id,
@@ -129,11 +119,11 @@ class WorkItemService:
             created_by=str(current_user.id),
             assigned_to=str(workitem_data.assigned_to) if workitem_data.assigned_to else None,
             **{k: v for k, v in properties.items() if k not in [
-                'id', 'type', 'title', 'description', 'status', 'priority', 
+                'id', 'type', 'title', 'description', 'status', 'priority',
                 'version', 'created_by', 'assigned_to'
             ]}
         )
-        
+
         # Return the created WorkItem
         return WorkItemResponse(
             id=UUID(workitem_id),
@@ -145,12 +135,12 @@ class WorkItemService:
             assigned_to=workitem_data.assigned_to,
             version="1.0",
             created_by=current_user.id,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             is_signed=False
         )
-        
-    async def get_workitem(self, workitem_id: UUID) -> Optional[WorkItemResponse]:
+
+    async def get_workitem(self, workitem_id: UUID) -> WorkItemResponse | None:
         """
         Get a WorkItem by ID
         
@@ -162,18 +152,18 @@ class WorkItemService:
         """
         # Get the WorkItem from graph database
         workitem_data = await self.graph_service.get_workitem(str(workitem_id))
-        
+
         if not workitem_data:
             return None
-            
+
         # Convert graph data to WorkItemResponse
         return self._graph_data_to_response(workitem_data)
-        
+
     async def get_workitem_version(
-        self, 
-        workitem_id: UUID, 
+        self,
+        workitem_id: UUID,
         version: str
-    ) -> Optional[WorkItemResponse]:
+    ) -> WorkItemResponse | None:
         """
         Get a specific version of a WorkItem using VersionService
         
@@ -192,25 +182,25 @@ class WorkItemService:
                     return self._graph_data_to_response(version_data)
             except Exception as e:
                 print(f"VersionService failed, falling back to graph service: {e}")
-        
+
         # Fallback: Use graph service directly
         workitem_data = await self.graph_service.get_workitem_version(
-            str(workitem_id), 
+            str(workitem_id),
             version
         )
-        
+
         if not workitem_data:
             return None
-            
+
         return self._graph_data_to_response(workitem_data)
-        
+
     async def update_workitem(
         self,
         workitem_id: UUID,
         updates: WorkItemUpdate,
         current_user: User,
         change_description: str = "WorkItem updated"
-    ) -> Optional[WorkItemResponse]:
+    ) -> WorkItemResponse | None:
         """
         Update a WorkItem using the VersionService for proper version control
         
@@ -227,7 +217,7 @@ class WorkItemService:
         current_workitem = await self.graph_service.get_workitem(str(workitem_id))
         if not current_workitem:
             return None
-            
+
         # Prepare update data
         update_data = {}
         if updates.title is not None:
@@ -240,7 +230,7 @@ class WorkItemService:
             update_data["priority"] = updates.priority
         if updates.assigned_to is not None:
             update_data["assigned_to"] = str(updates.assigned_to)
-            
+
         # Add type-specific updates
         if hasattr(updates, 'acceptance_criteria') and updates.acceptance_criteria is not None:
             update_data["acceptance_criteria"] = updates.acceptance_criteria
@@ -284,18 +274,18 @@ class WorkItemService:
             update_data["mime_type"] = updates.mime_type
         if hasattr(updates, 'checksum') and updates.checksum is not None:
             update_data["checksum"] = updates.checksum
-            
+
         # Recalculate RPN for risk items if severity, occurrence, or detection changed
-        if (current_workitem.get("type") == "risk" and 
+        if (current_workitem.get("type") == "risk" and
             any(field in update_data for field in ['severity', 'occurrence', 'detection'])):
-            
+
             severity = update_data.get('severity', current_workitem.get('severity'))
             occurrence = update_data.get('occurrence', current_workitem.get('occurrence'))
             detection = update_data.get('detection', current_workitem.get('detection'))
-            
+
             if severity and occurrence and detection:
                 update_data["rpn"] = severity * occurrence * detection
-        
+
         # Use VersionService to create new version if available
         if self.version_service:
             try:
@@ -309,7 +299,7 @@ class WorkItemService:
             except Exception as e:
                 # Fall back to manual version creation if VersionService fails
                 print(f"VersionService failed, falling back to manual versioning: {e}")
-        
+
         # Fallback: Manual version creation (legacy behavior)
         # Calculate new version number
         current_version = current_workitem.get("version", "1.0")
@@ -318,16 +308,16 @@ class WorkItemService:
             new_version = f"{major}.{minor + 1}"
         except (ValueError, AttributeError):
             new_version = "1.1"
-            
+
         # Create new version with updates
         merged_data = {**current_workitem, **update_data}
         merged_data.update({
             "version": new_version,
             "updated_by": str(current_user.id),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "change_description": change_description
         })
-        
+
         # Create new version node in graph
         await self.graph_service.create_workitem_version(
             workitem_id=str(workitem_id),
@@ -336,7 +326,7 @@ class WorkItemService:
             user_id=str(current_user.id),
             change_description=change_description
         )
-        
+
         # Create version relationship
         await self.graph_service.create_relationship(
             from_id=str(workitem_id),
@@ -345,12 +335,12 @@ class WorkItemService:
             properties={
                 'from_version': current_version,
                 'to_version': new_version,
-                'created_at': datetime.now(timezone.utc).isoformat()
+                'created_at': datetime.now(UTC).isoformat()
             }
         )
-        
+
         return self._graph_data_to_response(merged_data)
-        
+
     async def delete_workitem(
         self,
         workitem_id: UUID,
@@ -372,24 +362,24 @@ class WorkItemService:
         workitem_data = await self.graph_service.get_workitem(str(workitem_id))
         if not workitem_data:
             return False
-            
+
         # Check if WorkItem is signed (would need signature service integration)
         is_signed = workitem_data.get("is_signed", False)
-        
+
         if is_signed and not force:
             raise ValueError("Cannot delete signed WorkItem. Use force=True to override.")
-            
+
         # Delete the WorkItem node and all its relationships
         await self.graph_service.delete_node(str(workitem_id))
-        
+
         return True
-        
+
     async def compare_workitem_versions(
         self,
         workitem_id: UUID,
         version1: str,
         version2: str
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Compare two versions of a WorkItem using VersionService
         
@@ -407,21 +397,21 @@ class WorkItemService:
             except Exception as e:
                 print(f"VersionService comparison failed: {e}")
                 return None
-        
+
         # No fallback implementation for comparison - requires VersionService
         return None
-        
+
     async def search_workitems(
         self,
-        search_text: Optional[str] = None,
-        workitem_type: Optional[str] = None,
-        status: Optional[str] = None,
-        assigned_to: Optional[UUID] = None,
-        created_by: Optional[UUID] = None,
-        priority: Optional[int] = None,
+        search_text: str | None = None,
+        workitem_type: str | None = None,
+        status: str | None = None,
+        assigned_to: UUID | None = None,
+        created_by: UUID | None = None,
+        priority: int | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[WorkItemResponse]:
+    ) -> list[WorkItemResponse]:
         """
         Search WorkItems with filters
         
@@ -446,7 +436,7 @@ class WorkItemService:
             assigned_to=str(assigned_to) if assigned_to else None,
             limit=limit
         )
-        
+
         # Convert results to WorkItemResponse objects
         workitems = []
         for result in results:
@@ -457,16 +447,16 @@ class WorkItemService:
                     continue
                 if priority and workitem.priority != priority:
                     continue
-                    
+
                 workitems.append(workitem)
-                
+
         # Apply offset and limit
         return workitems[offset:offset + limit]
-        
+
     async def get_workitem_history(
         self,
         workitem_id: UUID
-    ) -> List[WorkItemResponse]:
+    ) -> list[WorkItemResponse]:
         """
         Get complete version history for a WorkItem using VersionService
         
@@ -480,23 +470,23 @@ class WorkItemService:
             try:
                 # Use VersionService to get complete history
                 version_history = await self.version_service.get_version_history(workitem_id)
-                
+
                 # Convert to WorkItemResponse objects
                 workitem_responses = []
                 for version_data in version_history:
                     response = self._graph_data_to_response(version_data)
                     if response:
                         workitem_responses.append(response)
-                
+
                 return workitem_responses
             except Exception as e:
                 print(f"VersionService failed, falling back to current version only: {e}")
-        
+
         # Fallback: Return current version only
         current = await self.get_workitem(workitem_id)
         return [current] if current else []
-        
-    def _graph_data_to_response(self, graph_data: Dict[str, Any]) -> Optional[WorkItemResponse]:
+
+    def _graph_data_to_response(self, graph_data: dict[str, Any]) -> WorkItemResponse | None:
         """
         Convert graph database data to WorkItemResponse
         
@@ -509,17 +499,17 @@ class WorkItemService:
         try:
             # Parse datetime strings
             created_at = datetime.fromisoformat(
-                graph_data.get("created_at", datetime.now(timezone.utc).isoformat())
+                graph_data.get("created_at", datetime.now(UTC).isoformat())
             )
             updated_at = datetime.fromisoformat(
-                graph_data.get("updated_at", datetime.now(timezone.utc).isoformat())
+                graph_data.get("updated_at", datetime.now(UTC).isoformat())
             )
-            
+
             # Parse UUIDs
             workitem_id = UUID(graph_data["id"])
             created_by = UUID(graph_data["created_by"])
             assigned_to = UUID(graph_data["assigned_to"]) if graph_data.get("assigned_to") else None
-            
+
             return WorkItemResponse(
                 id=workitem_id,
                 type=graph_data["type"],
@@ -543,12 +533,12 @@ class WorkItemService:
 async def get_workitem_service() -> WorkItemService:
     """Dependency for getting WorkItem service with VersionService integration"""
     graph_service = await get_graph_service()
-    
+
     # Try to get VersionService, but don't fail if it's not available
     try:
         version_service = await get_version_service(graph_service=graph_service)
     except Exception as e:
         print(f"Warning: Could not initialize VersionService: {e}")
         version_service = None
-    
+
     return WorkItemService(graph_service, version_service)

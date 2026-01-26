@@ -1,7 +1,7 @@
 """Database connection and session management"""
 
-from app.db.session import Base, AsyncSessionLocal, engine, get_db, init_db
-from app.db.graph import GraphService, graph_service, get_graph_service
+from app.db.graph import GraphService, get_graph_service, graph_service
+from app.db.session import AsyncSessionLocal, Base, engine, get_db, init_db
 
 __all__ = [
     "Base",

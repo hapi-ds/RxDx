@@ -3,11 +3,10 @@
 import hashlib
 import json
 from datetime import UTC, datetime
-from typing import List, Optional
 from uuid import UUID
 
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import padding
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -76,10 +75,10 @@ class SignatureService:
         """
         # Generate content hash (SHA-256)
         content_hash = self._generate_content_hash(workitem_content)
-        
+
         # Create cryptographic signature
         signature_hash = self._create_signature(content_hash, private_key_pem)
-        
+
         # Create signature record
         signature_data = DigitalSignatureCreate(
             workitem_id=workitem_id,
@@ -88,7 +87,7 @@ class SignatureService:
             signature_hash=signature_hash,
             content_hash=content_hash,
         )
-        
+
         signature = DigitalSignature(
             workitem_id=signature_data.workitem_id,
             workitem_version=signature_data.workitem_version,
@@ -98,11 +97,11 @@ class SignatureService:
             signed_at=datetime.now(UTC),
             is_valid=True,
         )
-        
+
         self.db.add(signature)
         await self.db.commit()
         await self.db.refresh(signature)
-        
+
         return DigitalSignatureResponse.model_validate(signature)
 
     async def verify_signature(
@@ -133,7 +132,7 @@ class SignatureService:
             select(DigitalSignature).where(DigitalSignature.id == signature_id)
         )
         signature = result.scalar_one_or_none()
-        
+
         if not signature:
             return SignatureVerificationResponse(
                 signature_id=signature_id,
@@ -143,7 +142,7 @@ class SignatureService:
                 signature_intact=False,
                 error_message="Signature not found",
             )
-        
+
         # Check if signature is marked as valid
         if not signature.is_valid:
             return SignatureVerificationResponse(
@@ -154,18 +153,18 @@ class SignatureService:
                 signature_intact=False,
                 error_message=f"Signature invalidated: {signature.invalidation_reason}",
             )
-        
+
         # Generate current content hash
         current_content_hash = self._generate_content_hash(current_workitem_content)
         content_matches = current_content_hash == signature.content_hash
-        
+
         # Verify cryptographic signature
         signature_intact = self._verify_signature_hash(
             signature.content_hash, signature.signature_hash, public_key_pem
         )
-        
+
         is_valid = content_matches and signature_intact and signature.is_valid
-        
+
         return SignatureVerificationResponse(
             signature_id=signature_id,
             is_valid=is_valid,
@@ -177,7 +176,7 @@ class SignatureService:
 
     async def invalidate_signatures(
         self, workitem_id: UUID, reason: str
-    ) -> List[DigitalSignatureResponse]:
+    ) -> list[DigitalSignatureResponse]:
         """
         Invalidate all signatures for a WorkItem when it is modified.
         
@@ -200,25 +199,25 @@ class SignatureService:
             )
         )
         signatures = result.scalars().all()
-        
+
         invalidated_signatures = []
-        
+
         for signature in signatures:
             signature.is_valid = False
             signature.invalidated_at = datetime.now(UTC)
             signature.invalidation_reason = reason
-            
+
             invalidated_signatures.append(
                 DigitalSignatureResponse.model_validate(signature)
             )
-        
+
         await self.db.commit()
-        
+
         return invalidated_signatures
 
     async def get_workitem_signatures(
         self, workitem_id: UUID, include_invalid: bool = False
-    ) -> List[DigitalSignatureResponse]:
+    ) -> list[DigitalSignatureResponse]:
         """
         Get all signatures for a WorkItem.
         
@@ -232,15 +231,15 @@ class SignatureService:
         query = select(DigitalSignature).where(
             DigitalSignature.workitem_id == workitem_id
         )
-        
+
         if not include_invalid:
             query = query.where(DigitalSignature.is_valid == True)
-        
+
         query = query.order_by(DigitalSignature.signed_at.desc())
-        
+
         result = await self.db.execute(query)
         signatures = result.scalars().all()
-        
+
         return [
             DigitalSignatureResponse.model_validate(signature)
             for signature in signatures
@@ -262,7 +261,7 @@ class SignatureService:
                 DigitalSignature.is_valid == True,
             )
         )
-        
+
         return result.scalar_one_or_none() is not None
 
     def _generate_content_hash(self, content: dict) -> str:
@@ -280,7 +279,7 @@ class SignatureService:
         """
         # Serialize content to JSON with sorted keys for consistency
         content_json = json.dumps(content, sort_keys=True, ensure_ascii=False)
-        
+
         # Generate SHA-256 hash
         return hashlib.sha256(content_json.encode("utf-8")).hexdigest()
 
@@ -306,7 +305,7 @@ class SignatureService:
             private_key = serialization.load_pem_private_key(
                 private_key_pem, password=None
             )
-            
+
             # Create signature using RSA-PSS with SHA-256
             signature_bytes = private_key.sign(
                 content_hash.encode("utf-8"),
@@ -316,9 +315,9 @@ class SignatureService:
                 ),
                 hashes.SHA256(),
             )
-            
+
             return signature_bytes.hex()
-            
+
         except Exception as e:
             raise ValueError(f"Failed to create signature: {str(e)}") from e
 
@@ -339,10 +338,10 @@ class SignatureService:
         try:
             # Load public key
             public_key = serialization.load_pem_public_key(public_key_pem)
-            
+
             # Convert signature from hex to bytes
             signature_bytes = bytes.fromhex(signature_hash)
-            
+
             # Verify signature using RSA-PSS with SHA-256
             public_key.verify(
                 signature_bytes,
@@ -353,9 +352,9 @@ class SignatureService:
                 ),
                 hashes.SHA256(),
             )
-            
+
             return True
-            
+
         except Exception:
             # Any exception during verification means the signature is invalid
             return False

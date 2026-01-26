@@ -1,7 +1,7 @@
 """FastAPI application entry point for RxDx"""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Startup
     print(f"Starting RxDx Backend v{settings.VERSION}")
     print(f"Environment: {settings.ENVIRONMENT}")
-    
+
     # Initialize graph database connection
     try:
         await graph_service.connect()
@@ -25,9 +25,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         print(f"⚠ Warning: Could not connect to graph database: {e}")
         print("  The application will start but graph features will be unavailable")
-    
+
     yield
-    
+
     # Shutdown
     print("Shutting down RxDx Backend")
     await graph_service.close()

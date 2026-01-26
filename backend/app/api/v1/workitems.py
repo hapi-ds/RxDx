@@ -1,6 +1,5 @@
 """WorkItem API endpoints"""
 
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -11,38 +10,23 @@ from app.core.security import Permission, has_permission
 from app.models.user import User
 from app.schemas.workitem import (
     WorkItemCreate,
-    WorkItemUpdate,
     WorkItemResponse,
-    RequirementCreate,
-    RequirementUpdate,
-    RequirementResponse,
-    TaskCreate,
-    TaskUpdate,
-    TaskResponse,
-    TestSpecCreate,
-    TestSpecUpdate,
-    TestSpecResponse,
-    RiskCreate,
-    RiskUpdate,
-    RiskResponse,
-    DocumentCreate,
-    DocumentUpdate,
-    DocumentResponse,
+    WorkItemUpdate,
 )
-from app.services.workitem_service import WorkItemService, get_workitem_service
 from app.services.audit_service import AuditService, get_audit_service
+from app.services.workitem_service import WorkItemService, get_workitem_service
 
 router = APIRouter()
 
 
-@router.get("/workitems", response_model=List[WorkItemResponse])
+@router.get("/workitems", response_model=list[WorkItemResponse])
 async def get_workitems(
-    search: Optional[str] = Query(None, description="Search text for title and description"),
-    type: Optional[str] = Query(None, description="Filter by WorkItem type"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    assigned_to: Optional[UUID] = Query(None, description="Filter by assigned user"),
-    created_by: Optional[UUID] = Query(None, description="Filter by creator"),
-    priority: Optional[int] = Query(None, ge=1, le=5, description="Filter by priority level"),
+    search: str | None = Query(None, description="Search text for title and description"),
+    type: str | None = Query(None, description="Filter by WorkItem type"),
+    status: str | None = Query(None, description="Filter by status"),
+    assigned_to: UUID | None = Query(None, description="Filter by assigned user"),
+    created_by: UUID | None = Query(None, description="Filter by creator"),
+    priority: int | None = Query(None, ge=1, le=5, description="Filter by priority level"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     current_user: User = Depends(get_current_user),
@@ -68,7 +52,7 @@ async def get_workitems(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
-    
+
     try:
         # Search WorkItems with filters
         workitems = await workitem_service.search_workitems(
@@ -81,7 +65,7 @@ async def get_workitems(
             limit=limit,
             offset=offset
         )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -100,9 +84,9 @@ async def get_workitems(
                 "result_count": len(workitems)
             }
         )
-        
+
         return workitems
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -129,14 +113,14 @@ async def create_workitem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to create WorkItems"
         )
-    
+
     try:
         # Create the WorkItem
         workitem = await workitem_service.create_workitem(
             workitem_data=workitem_data,
             current_user=current_user
         )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -149,9 +133,9 @@ async def create_workitem(
                 "version": workitem.version
             }
         )
-        
+
         return workitem
-        
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -165,7 +149,7 @@ async def create_workitem(
 
 
 @router.get(
-    "/workitems/{workitem_id}", 
+    "/workitems/{workitem_id}",
     response_model=WorkItemResponse,
     responses={
         404: {"description": "WorkItem not found"},
@@ -189,17 +173,17 @@ async def get_workitem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
-    
+
     try:
         # Get the WorkItem
         workitem = await workitem_service.get_workitem(workitem_id)
-        
+
         if not workitem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -211,9 +195,9 @@ async def get_workitem(
                 "version": workitem.version
             }
         )
-        
+
         return workitem
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -244,7 +228,7 @@ async def update_workitem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to update WorkItems"
         )
-    
+
     try:
         # Update the WorkItem
         workitem = await workitem_service.update_workitem(
@@ -253,13 +237,13 @@ async def update_workitem(
             current_user=current_user,
             change_description=change_description
         )
-        
+
         if not workitem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -276,9 +260,9 @@ async def update_workitem(
                 ]
             }
         )
-        
+
         return workitem
-        
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -313,14 +297,14 @@ async def delete_workitem(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to delete WorkItems"
         )
-    
+
     # Force deletion requires admin role
     if force and current_user.role.value != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Force deletion requires admin permissions"
         )
-    
+
     try:
         # Get WorkItem for audit logging before deletion
         workitem = await workitem_service.get_workitem(workitem_id)
@@ -329,20 +313,20 @@ async def delete_workitem(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
-        
+
         # Delete the WorkItem
         success = await workitem_service.delete_workitem(
             workitem_id=workitem_id,
             current_user=current_user,
             force=force
         )
-        
+
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="WorkItem could not be deleted"
             )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -356,12 +340,12 @@ async def delete_workitem(
                 "force_delete": force
             }
         )
-        
+
         return JSONResponse(
             status_code=status.HTTP_204_NO_CONTENT,
             content=None
         )
-        
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -376,7 +360,7 @@ async def delete_workitem(
         )
 
 
-@router.get("/workitems/{workitem_id}/history", response_model=List[WorkItemResponse])
+@router.get("/workitems/{workitem_id}/history", response_model=list[WorkItemResponse])
 async def get_workitem_history(
     workitem_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -394,17 +378,17 @@ async def get_workitem_history(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
-    
+
     try:
         # Get version history
         history = await workitem_service.get_workitem_history(workitem_id)
-        
+
         if not history:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -416,9 +400,9 @@ async def get_workitem_history(
                 "version_count": len(history)
             }
         )
-        
+
         return history
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -448,17 +432,17 @@ async def get_workitem_version(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
-    
+
     try:
         # Get the specific version
         workitem = await workitem_service.get_workitem_version(workitem_id, version)
-        
+
         if not workitem:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"WorkItem version {version} not found"
             )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -471,9 +455,9 @@ async def get_workitem_version(
                 "workitem_type": workitem.type
             }
         )
-        
+
         return workitem
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -512,19 +496,19 @@ async def compare_workitem_versions(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
-    
+
     try:
         # Compare the versions
         comparison = await workitem_service.compare_workitem_versions(
             workitem_id, version1, version2
         )
-        
+
         if comparison is None:
             raise HTTPException(
                 status_code=status.HTTP_501_NOT_IMPLEMENTED,
                 detail="Version comparison not available (VersionService required)"
             )
-        
+
         # Log audit event
         await audit_service.log(
             user_id=current_user.id,
@@ -540,9 +524,9 @@ async def compare_workitem_versions(
                 "removed_fields_count": len(comparison.get("removed_fields", {}))
             }
         )
-        
+
         return comparison
-        
+
     except HTTPException:
         raise
     except Exception as e:

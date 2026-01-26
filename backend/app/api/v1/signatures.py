@@ -1,6 +1,5 @@
 """Digital signature API endpoints"""
 
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,8 +10,8 @@ from app.db.session import get_db
 from app.models.user import User
 from app.schemas.signature import (
     DigitalSignatureResponse,
-    SignWorkItemRequest,
     SignatureVerificationResponse,
+    SignWorkItemRequest,
     VerifySignatureRequest,
 )
 from app.services.audit_service import AuditService, get_audit_service
@@ -53,7 +52,7 @@ async def create_signature(
         # Convert base64 private key to bytes
         import base64
         private_key_bytes = base64.b64decode(request.private_key_pem.encode())
-        
+
         # Create signature
         signature = await signature_service.sign_workitem(
             workitem_id=request.workitem_id,
@@ -62,7 +61,7 @@ async def create_signature(
             user=current_user,
             private_key_pem=private_key_bytes,
         )
-        
+
         # Log signature creation event
         await audit_service.log_signature_event(
             event_type="SIGN",
@@ -70,9 +69,9 @@ async def create_signature(
             user_id=current_user.id,
             signature_id=signature.id,
         )
-        
+
         return signature
-        
+
     except ValueError as e:
         # Log failed signature attempt
         await audit_service.log_signature_event(
@@ -80,7 +79,7 @@ async def create_signature(
             workitem_id=request.workitem_id,
             user_id=current_user.id,
         )
-        
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create signature: {str(e)}",
@@ -92,7 +91,7 @@ async def create_signature(
             workitem_id=request.workitem_id,
             user_id=current_user.id,
         )
-        
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}",
@@ -126,20 +125,21 @@ async def get_signature(
         HTTPException 401: User not authenticated
     """
     from sqlalchemy import select
+
     from app.models.signature import DigitalSignature
-    
+
     # Get signature from database
     result = await db.execute(
         select(DigitalSignature).where(DigitalSignature.id == signature_id)
     )
     signature = result.scalar_one_or_none()
-    
+
     if not signature:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Signature not found",
         )
-    
+
     # Log signature access
     await audit_service.log_crud_operation(
         operation="READ",
@@ -147,18 +147,18 @@ async def get_signature(
         entity_id=signature_id,
         user_id=current_user.id,
     )
-    
+
     return DigitalSignatureResponse.model_validate(signature)
 
 
-@router.get("/workitems/{workitem_id}/signatures", response_model=List[DigitalSignatureResponse])
+@router.get("/workitems/{workitem_id}/signatures", response_model=list[DigitalSignatureResponse])
 async def get_workitem_signatures(
     workitem_id: UUID,
     include_invalid: bool = False,
     current_user: User = Depends(get_current_user),
     signature_service: SignatureService = Depends(get_signature_service),
     audit_service: AuditService = Depends(get_audit_service),
-) -> List[DigitalSignatureResponse]:
+) -> list[DigitalSignatureResponse]:
     """
     Get all signatures for a WorkItem.
     
@@ -182,7 +182,7 @@ async def get_workitem_signatures(
         workitem_id=workitem_id,
         include_invalid=include_invalid,
     )
-    
+
     # Log workitem signature access
     await audit_service.log_crud_operation(
         operation="READ",
@@ -191,7 +191,7 @@ async def get_workitem_signatures(
         user_id=current_user.id,
         changes={"include_invalid": include_invalid, "signature_count": len(signatures)},
     )
-    
+
     return signatures
 
 
@@ -227,14 +227,14 @@ async def verify_signature(
         # Convert base64 public key to bytes
         import base64
         public_key_bytes = base64.b64decode(request.public_key_pem.encode())
-        
+
         # Verify signature
         verification_result = await signature_service.verify_signature(
             signature_id=signature_id,
             current_workitem_content=request.current_workitem_content,
             public_key_pem=public_key_bytes,
         )
-        
+
         # Log signature verification event
         await audit_service.log_signature_event(
             event_type="VERIFY",
@@ -243,9 +243,9 @@ async def verify_signature(
             signature_id=signature_id,
             verification_result=verification_result.is_valid,
         )
-        
+
         return verification_result
-        
+
     except ValueError as e:
         # Log failed verification attempt
         await audit_service.log_signature_event(
@@ -254,7 +254,7 @@ async def verify_signature(
             user_id=current_user.id,
             signature_id=signature_id,
         )
-        
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to verify signature: {str(e)}",
@@ -267,7 +267,7 @@ async def verify_signature(
             user_id=current_user.id,
             signature_id=signature_id,
         )
-        
+
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}",

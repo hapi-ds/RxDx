@@ -1,9 +1,9 @@
 """Unit tests for AuditLog model and schemas"""
 
-import pytest
-from datetime import datetime, UTC
+from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from pydantic import ValidationError
 
 from app.models.audit import AuditLog
@@ -22,7 +22,7 @@ class TestAuditLogModel:
         """Test creating an AuditLog instance"""
         user_id = uuid4()
         entity_id = uuid4()
-        
+
         audit_log = AuditLog(
             user_id=user_id,
             action="CREATE",
@@ -31,7 +31,7 @@ class TestAuditLogModel:
             ip_address="192.168.1.1",
             details={"field": "value"},
         )
-        
+
         assert audit_log.user_id == user_id
         assert audit_log.action == "CREATE"
         assert audit_log.entity_type == "WorkItem"
@@ -49,7 +49,7 @@ class TestAuditLogModel:
             ip_address=None,
             details=None,
         )
-        
+
         assert audit_log.user_id is None
         assert audit_log.entity_id is None
         assert audit_log.ip_address is None
@@ -61,7 +61,7 @@ class TestAuditLogModel:
             action="READ",
             entity_type="Requirement",
         )
-        
+
         # Timestamp is set by SQLAlchemy default, but only when inserted to DB
         # For now, we just verify the column has a default configured
         assert hasattr(audit_log, 'timestamp')
@@ -76,7 +76,7 @@ class TestAuditLogModel:
             entity_type="User",
             timestamp=datetime.now(UTC),
         )
-        
+
         repr_str = repr(audit_log)
         assert "AuditLog" in repr_str
         assert str(audit_id) in repr_str
@@ -90,7 +90,7 @@ class TestAuditLogModel:
             entity_type="WorkItem",
             ip_address="2001:0db8:85a3:0000:0000:8a2e:0370:7334",
         )
-        
+
         assert audit_log.ip_address == "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
 
     def test_audit_log_with_complex_details(self):
@@ -101,13 +101,13 @@ class TestAuditLogModel:
             "new_values": {"status": "active", "priority": 3},
             "reason": "User requested change",
         }
-        
+
         audit_log = AuditLog(
             action="UPDATE",
             entity_type="Requirement",
             details=details,
         )
-        
+
         assert audit_log.details == details
         assert audit_log.details["changed_fields"] == ["status", "priority"]
 
@@ -124,9 +124,9 @@ class TestAuditLogBaseSchema:
             "ip_address": "192.168.1.1",
             "details": {"key": "value"},
         }
-        
+
         audit_log = AuditLogBase(**audit_data)
-        
+
         assert audit_log.action == "CREATE"
         assert audit_log.entity_type == "WorkItem"
         assert audit_log.ip_address == "192.168.1.1"
@@ -138,9 +138,9 @@ class TestAuditLogBaseSchema:
             "action": "READ",
             "entity_type": "User",
         }
-        
+
         audit_log = AuditLogBase(**audit_data)
-        
+
         assert audit_log.action == "READ"
         assert audit_log.entity_type == "User"
         assert audit_log.entity_id is None
@@ -153,10 +153,10 @@ class TestAuditLogBaseSchema:
             "action": "",
             "entity_type": "WorkItem",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             AuditLogBase(**audit_data)
-        
+
         assert "action" in str(exc_info.value).lower()
 
     def test_audit_log_base_empty_entity_type(self):
@@ -165,10 +165,10 @@ class TestAuditLogBaseSchema:
             "action": "CREATE",
             "entity_type": "",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             AuditLogBase(**audit_data)
-        
+
         assert "entity_type" in str(exc_info.value).lower()
 
     def test_audit_log_base_action_too_long(self):
@@ -177,10 +177,10 @@ class TestAuditLogBaseSchema:
             "action": "A" * 51,  # Max is 50
             "entity_type": "WorkItem",
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             AuditLogBase(**audit_data)
-        
+
         assert "action" in str(exc_info.value).lower()
 
     def test_audit_log_base_ip_too_long(self):
@@ -190,10 +190,10 @@ class TestAuditLogBaseSchema:
             "entity_type": "WorkItem",
             "ip_address": "1" * 46,  # Max is 45
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             AuditLogBase(**audit_data)
-        
+
         assert "ip_address" in str(exc_info.value).lower()
 
 
@@ -204,7 +204,7 @@ class TestAuditLogCreateSchema:
         """Test creating a valid AuditLogCreate schema"""
         user_id = uuid4()
         entity_id = uuid4()
-        
+
         audit_data = {
             "user_id": user_id,
             "action": "SIGN",
@@ -213,9 +213,9 @@ class TestAuditLogCreateSchema:
             "ip_address": "10.0.0.1",
             "details": {"signature_hash": "abc123"},
         }
-        
+
         audit_log = AuditLogCreate(**audit_data)
-        
+
         assert audit_log.user_id == user_id
         assert audit_log.action == "SIGN"
         assert audit_log.entity_type == "Requirement"
@@ -228,9 +228,9 @@ class TestAuditLogCreateSchema:
             "entity_type": "System",
             "details": {"backup_size": "1GB"},
         }
-        
+
         audit_log = AuditLogCreate(**audit_data)
-        
+
         assert audit_log.user_id is None
         assert audit_log.action == "BACKUP"
 
@@ -244,7 +244,7 @@ class TestAuditLogResponseSchema:
         user_id = uuid4()
         entity_id = uuid4()
         timestamp = datetime.now(UTC)
-        
+
         audit_log = AuditLog(
             id=audit_id,
             user_id=user_id,
@@ -255,9 +255,9 @@ class TestAuditLogResponseSchema:
             ip_address="192.168.1.100",
             details={"field": "updated"},
         )
-        
+
         audit_response = AuditLogResponse.model_validate(audit_log)
-        
+
         assert audit_response.id == audit_id
         assert audit_response.user_id == user_id
         assert audit_response.action == "UPDATE"
@@ -271,7 +271,7 @@ class TestAuditLogResponseSchema:
         """Test AuditLogResponse serialization"""
         audit_id = uuid4()
         timestamp = datetime.now(UTC)
-        
+
         audit_data = {
             "id": audit_id,
             "user_id": None,
@@ -282,10 +282,10 @@ class TestAuditLogResponseSchema:
             "ip_address": "127.0.0.1",
             "details": {"success": False},
         }
-        
+
         audit_response = AuditLogResponse(**audit_data)
         response_dict = audit_response.model_dump()
-        
+
         assert response_dict["id"] == audit_id
         assert response_dict["action"] == "AUTH"
         assert response_dict["timestamp"] == timestamp
@@ -300,7 +300,7 @@ class TestAuditLogFilterSchema:
         entity_id = uuid4()
         start_date = datetime(2024, 1, 1, tzinfo=UTC)
         end_date = datetime(2024, 12, 31, tzinfo=UTC)
-        
+
         filter_data = {
             "user_id": user_id,
             "action": "CREATE",
@@ -311,9 +311,9 @@ class TestAuditLogFilterSchema:
             "limit": 50,
             "offset": 10,
         }
-        
+
         audit_filter = AuditLogFilter(**filter_data)
-        
+
         assert audit_filter.user_id == user_id
         assert audit_filter.action == "CREATE"
         assert audit_filter.entity_type == "WorkItem"
@@ -326,7 +326,7 @@ class TestAuditLogFilterSchema:
     def test_audit_log_filter_defaults(self):
         """Test AuditLogFilter default values"""
         audit_filter = AuditLogFilter()
-        
+
         assert audit_filter.user_id is None
         assert audit_filter.action is None
         assert audit_filter.entity_type is None
@@ -342,7 +342,7 @@ class TestAuditLogFilterSchema:
         with pytest.raises(ValidationError) as exc_info:
             AuditLogFilter(limit=0)
         assert "limit" in str(exc_info.value).lower()
-        
+
         # Test limit too large
         with pytest.raises(ValidationError) as exc_info:
             AuditLogFilter(limit=1001)
@@ -361,9 +361,9 @@ class TestAuditLogFilterSchema:
             "action": "UPDATE",
             "limit": 25,
         }
-        
+
         audit_filter = AuditLogFilter(**filter_data)
-        
+
         assert audit_filter.action == "UPDATE"
         assert audit_filter.limit == 25
         assert audit_filter.user_id is None

@@ -1,7 +1,5 @@
 """FastAPI dependency injection utilities"""
 
-from typing import AsyncGenerator
-from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -68,7 +66,7 @@ async def get_current_user(
         HTTPException: 401 if token is invalid or user not found
     """
     token = credentials.credentials
-    
+
     # Extract user ID from token
     user_id = extract_user_id_from_token(token)
     if user_id is None:
@@ -77,7 +75,7 @@ async def get_current_user(
             detail="Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Get user from database
     user = await auth_service.get_user_by_id(user_id)
     if user is None:
@@ -86,14 +84,14 @@ async def get_current_user(
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Check if user is active
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account",
         )
-    
+
     return user
 
 

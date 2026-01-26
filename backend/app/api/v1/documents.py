@@ -6,37 +6,32 @@ including design reviews, traceability matrices, FMEA reports, and invoices
 as per Requirement 8 (Document Generation).
 """
 
-from typing import Optional
+import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-import io
 
 from app.api.deps import get_current_user, get_db
+from app.core.security import Permission, require_permission
+from app.db.graph import get_graph_service
 from app.models.user import User
 from app.schemas.document import (
-    DocumentType,
-    DocumentFormat,
-    DocumentStatus,
     DesignReviewRequest,
     DesignReviewResponse,
-    TraceabilityMatrixRequest,
-    TraceabilityMatrixResponse,
+    DocumentFormat,
+    DocumentType,
     FMEARequest,
     FMEAResponse,
     InvoiceRequest,
     InvoiceResponse,
-    DocumentRecord,
-    DocumentFilter,
+    TraceabilityMatrixRequest,
+    TraceabilityMatrixResponse,
 )
-from app.services.document_service import DocumentService
-from app.db.graph import get_graph_service
 from app.services.audit_service import get_audit_service
+from app.services.document_service import DocumentService
 from app.services.signature_service import get_signature_service
-from app.core.security import require_permission, Permission
-
 
 router = APIRouter()
 
@@ -48,7 +43,7 @@ async def get_document_service(
     graph_service = await get_graph_service()
     audit_service = await get_audit_service(db)
     signature_service = await get_signature_service(db)
-    
+
     return DocumentService(
         graph_service=graph_service,
         audit_service=audit_service,
@@ -283,13 +278,13 @@ async def get_document(
     **Required Permission:** READ_WORKITEM
     """
     document = await document_service.get_document(document_id, current_user)
-    
+
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document {document_id} not found",
         )
-    
+
     return document
 
 
@@ -312,30 +307,30 @@ async def download_document(
     **Required Permission:** READ_WORKITEM
     """
     document = await document_service.get_document(document_id, current_user)
-    
+
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document {document_id} not found",
         )
-    
+
     content = await document_service.get_document_content(document_id, current_user)
-    
+
     if not content:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document content not found for {document_id}",
         )
-    
+
     # Determine content type based on format
     content_types = {
         DocumentFormat.PDF: "application/pdf",
         DocumentFormat.EXCEL: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         DocumentFormat.WORD: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     }
-    
+
     content_type = content_types.get(document.format, "application/octet-stream")
-    
+
     return StreamingResponse(
         io.BytesIO(content),
         media_type=content_type,
@@ -357,8 +352,8 @@ async def download_document(
 )
 @require_permission(Permission.READ_WORKITEM)
 async def list_documents(
-    project_id: Optional[UUID] = Query(None, description="Filter by project ID"),
-    document_type: Optional[DocumentType] = Query(None, description="Filter by document type"),
+    project_id: UUID | None = Query(None, description="Filter by project ID"),
+    document_type: DocumentType | None = Query(None, description="Filter by document type"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
     document_service: DocumentService = Depends(get_document_service),
@@ -380,7 +375,7 @@ async def list_documents(
         limit=limit,
         offset=offset,
     )
-    
+
     return {
         "documents": documents,
         "total": len(documents),

@@ -1,10 +1,9 @@
 """Property-based tests for authentication using Hypothesis"""
 
-import pytest
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from app.core.security import get_password_hash, verify_password
-
 
 # Strategy for generating valid passwords
 # Argon2id has no hard length limit like bcrypt, but we keep reasonable bounds
@@ -69,10 +68,10 @@ class TestPasswordHashingProperties:
         """
         hash1 = get_password_hash(password)
         hash2 = get_password_hash(password)
-        
+
         # Hashes should be different due to salt
         assert hash1 != hash2
-        
+
         # But both should verify the original password
         assert verify_password(password, hash1)
         assert verify_password(password, hash2)
@@ -92,7 +91,7 @@ class TestPasswordHashingProperties:
         # Skip if passwords happen to be the same
         if password == wrong_password:
             return
-        
+
         hashed = get_password_hash(password)
         assert not verify_password(wrong_password, hashed)
 
@@ -105,7 +104,7 @@ class TestPasswordHashingProperties:
         Argon2id hashes have a specific format starting with $argon2id$.
         """
         hashed = get_password_hash(password)
-        
+
         # Argon2id hashes start with $argon2id$ or $argon2i$
         assert hashed.startswith("$argon2")
 
@@ -126,10 +125,10 @@ class TestPasswordHashingProperties:
         # Skip if passwords are the same
         if password1 == password2:
             return
-        
+
         hash1 = get_password_hash(password1)
         hash2 = get_password_hash(password2)
-        
+
         # Different passwords should produce different hashes
         assert hash1 != hash2
 
@@ -144,12 +143,12 @@ class TestPasswordHashingProperties:
         # Skip if password is all same case or has no letters
         if password.lower() == password or password.upper() == password:
             return
-        
+
         hashed = get_password_hash(password)
-        
+
         # Original password should verify
         assert verify_password(password, hashed)
-        
+
         # Different case should not verify
         if password != password.lower():
             assert not verify_password(password.lower(), hashed)

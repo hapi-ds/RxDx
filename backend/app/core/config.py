@@ -8,23 +8,23 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
-    
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",
     )
-    
+
     # Application
     PROJECT_NAME: str = "RxDx"
     VERSION: str = "0.1.0"
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = True
-    
+
     # API
     API_V1_PREFIX: str = "/api/v1"
-    
+
     # Security
     SECRET_KEY: str = Field(
         default="CHANGE_ME_IN_PRODUCTION_USE_STRONG_SECRET_KEY",
@@ -33,13 +33,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    
+
     # CORS
     CORS_ORIGINS: list[str] = Field(
         default=["http://localhost:3000", "http://localhost:5173"],
         description="Allowed CORS origins"
     )
-    
+
     # Database
     POSTGRES_SERVER: str = Field(default="localhost", description="PostgreSQL server host")
     POSTGRES_PORT: int = Field(default=5432, description="PostgreSQL server port")
@@ -47,14 +47,14 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = Field(default="rxdx_password", description="PostgreSQL password")
     POSTGRES_DB: str = Field(default="rxdx", description="PostgreSQL database name")
     DATABASE_URL: str | None = None
-    
+
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def assemble_db_connection(cls, v: str | None, info) -> str:
         """Construct database URL from components if not provided"""
         if v is not None:
             return v
-        
+
         values = info.data
         return str(
             PostgresDsn.build(
@@ -66,10 +66,10 @@ class Settings(BaseSettings):
                 path=f"{values.get('POSTGRES_DB') or ''}",
             )
         )
-    
+
     # Graph Database (Apache AGE)
     AGE_GRAPH_NAME: str = Field(default="rxdx_graph", description="Apache AGE graph name")
-    
+
     # Email - SMTP (Outgoing)
     SMTP_HOST: str = Field(default="localhost", description="SMTP server host")
     SMTP_PORT: int = Field(default=587, description="SMTP server port")
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
     SMTP_TLS: bool = Field(default=True, description="Use TLS for SMTP")
     EMAIL_FROM: str = Field(default="noreply@rxdx.local", description="From email address")
     EMAIL_REPLY_TO: str = Field(default="support@rxdx.local", description="Reply-to email address")
-    
+
     # Email - IMAP (Incoming)
     IMAP_HOST: str = Field(default="localhost", description="IMAP server host")
     IMAP_PORT: int = Field(default=993, description="IMAP server port")
@@ -87,10 +87,10 @@ class Settings(BaseSettings):
     IMAP_TLS: bool = Field(default=True, description="Use TLS for IMAP")
     IMAP_MAILBOX: str = Field(default="INBOX", description="IMAP mailbox to monitor")
     EMAIL_POLL_INTERVAL_SECONDS: int = Field(
-        default=60, 
+        default=60,
         description="Interval in seconds between email polling"
     )
-    
+
     # Local LLM
     LLM_ENABLED: bool = Field(default=False, description="Enable local LLM integration")
     LLM_STUDIO_URL: str = Field(
@@ -101,17 +101,17 @@ class Settings(BaseSettings):
         default="local-model",
         description="LLM model name"
     )
-    
+
     # File Storage
     UPLOAD_DIR: str = Field(default="./uploads", description="Directory for file uploads")
     MAX_UPLOAD_SIZE: int = Field(default=10 * 1024 * 1024, description="Max upload size in bytes (10MB)")
-    
+
     # Audit
     AUDIT_LOG_RETENTION_DAYS: int = Field(
         default=3650,
         description="Audit log retention period in days (10 years)"
     )
-    
+
     # Account Security
     MAX_LOGIN_ATTEMPTS: int = Field(default=3, description="Max failed login attempts before lock")
     ACCOUNT_LOCK_DURATION_HOURS: int = Field(default=1, description="Account lock duration in hours")

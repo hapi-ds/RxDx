@@ -397,7 +397,7 @@ export const XRHands: React.FC<XRHandsProps> = ({
    * Note: This function is prepared for full hand tracking implementation
    * when proper reference space management is available
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const _processHandInput = useCallback((
     inputSource: XRInputSource,
     frame: XRFrame,

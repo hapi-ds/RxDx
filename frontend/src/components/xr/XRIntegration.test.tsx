@@ -47,7 +47,7 @@ const createMockXRSession = (_mode: string = 'immersive-vr'): Partial<XRSession>
 };
 
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const createMockXRInputSource = (
   handedness: 'left' | 'right' | 'none' = 'right',
   targetRayMode: 'tracked-pointer' | 'gaze' | 'screen' = 'tracked-pointer'
@@ -77,7 +77,7 @@ const createMockXRInputSource = (
   };
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const createMockXRHand = (): Partial<XRHand> => {
   const joints = new Map<XRHandJoint, XRJointSpace>();
   const jointNames: XRHandJoint[] = [

@@ -40,6 +40,11 @@ const disabledStyles = `
   cursor: not-allowed;
 `;
 
+let inputCounter = 0;
+let selectCounter = 0;
+let textareaCounter = 0;
+let checkboxCounter = 0;
+
 // Input Component
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
@@ -51,7 +56,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, leftAddon, rightAddon, id, className = '', ...props }, ref) => {
-    const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
+    const inputId = id || `input-${inputCounter++}`;
     const hasError = !!error;
 
     return (
@@ -190,7 +195,7 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ label, error, hint, options, placeholder, id, className = '', ...props }, ref) => {
-    const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
+    const selectId = id || `select-${selectCounter++}`;
     const hasError = !!error;
 
     return (
@@ -290,7 +295,7 @@ export interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElemen
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, hint, resize = 'vertical', id, className = '', ...props }, ref) => {
-    const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
+    const textareaId = id || `textarea-${textareaCounter++}`;
     const hasError = !!error;
 
     return (
@@ -356,7 +361,7 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
 
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
   ({ label, error, id, className = '', ...props }, ref) => {
-    const checkboxId = id || `checkbox-${Math.random().toString(36).substr(2, 9)}`;
+    const checkboxId = id || `checkbox-${checkboxCounter++}`;
 
     return (
       <div className={`checkbox-field ${className}`}>

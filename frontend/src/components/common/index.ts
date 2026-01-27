@@ -22,8 +22,9 @@ export type { ErrorMessageProps, ErrorVariant, ErrorBoundaryFallbackProps, Empty
 
 export { ProtectedRoute, RoleGate, withProtectedRoute } from './ProtectedRoute';
 
-export { NavigationHeader, navItems } from './NavigationHeader';
-export type { NavigationHeaderProps, NavItem } from './NavigationHeader';
+export { NavigationHeader } from './NavigationHeader';
+export { navItems } from './NavigationHeader.types';
+export type { NavigationHeaderProps, NavItem } from './NavigationHeader.types';
 
 export { PlaceholderPage } from './PlaceholderPage';
 export type { PlaceholderPageProps } from './PlaceholderPage';

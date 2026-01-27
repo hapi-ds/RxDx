@@ -20,7 +20,8 @@ export type { SpinnerProps, SpinnerSize, LoadingOverlayProps, SkeletonProps, Ske
 export { ErrorMessage, ErrorBoundaryFallback, EmptyState } from './Error';
 export type { ErrorMessageProps, ErrorVariant, ErrorBoundaryFallbackProps, EmptyStateProps } from './Error';
 
-export { ProtectedRoute, RoleGate, withProtectedRoute } from './ProtectedRoute';
+export { ProtectedRoute, RoleGate } from './ProtectedRoute';
+export { withProtectedRoute } from './withProtectedRoute';
 
 export { NavigationHeader } from './NavigationHeader';
 export { navItems } from './NavigationHeader.types';

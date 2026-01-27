@@ -5,7 +5,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { ProtectedRoute, RoleGate, withProtectedRoute } from './ProtectedRoute';
+import { ProtectedRoute, RoleGate } from './ProtectedRoute';
+import { withProtectedRoute } from './withProtectedRoute';
 import { useAuthStore } from '../../stores/authStore';
 
 // Wrapper component for router context

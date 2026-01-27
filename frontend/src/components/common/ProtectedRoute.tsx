@@ -1,8 +1,3 @@
-/**
- * ProtectedRoute component
- * Wraps routes that require authentication
- */
-
 import React from 'react';
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -105,25 +100,8 @@ export function ProtectedRoute({
   return <>{children}</>;
 }
 
-/**
- * Higher-order component version of ProtectedRoute
- */
-export function withProtectedRoute<P extends object>(
-  Component: React.ComponentType<P>,
-  options?: Omit<ProtectedRouteProps, 'children'>
-): React.FC<P> {
-  return function ProtectedComponent(props: P): React.ReactElement {
-    return (
-      <ProtectedRoute {...options}>
-        <Component {...props} />
-      </ProtectedRoute>
-    );
-  };
-}
+export default ProtectedRoute;
 
-/**
- * Component that only renders for specific roles
- */
 interface RoleGateProps {
   children: ReactNode;
   allowedRoles: User['role'][];
@@ -143,5 +121,3 @@ export function RoleGate({
 
   return <>{children}</>;
 }
-
-export default ProtectedRoute;

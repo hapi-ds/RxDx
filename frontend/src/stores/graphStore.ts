@@ -334,7 +334,8 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
       // Initialize position mappings for all nodes
       const nodePositions = new Map<string, NodePositionMap>();
       nodes.forEach((node) => {
-        nodePositions.set(node.id, createPositionMapping(node.id, node.position));
+        const position = node.position || { x: 0, y: 0 };
+        nodePositions.set(node.id, createPositionMapping(node.id, position));
       });
 
       // Preserve selected node if it still exists in the new data

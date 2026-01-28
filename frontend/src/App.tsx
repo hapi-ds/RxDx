@@ -15,10 +15,15 @@ import { DocumentsPage } from './pages/DocumentsPage';
 import { ProtectedRoute, NavigationHeader, LoadingPage } from './components/common';
 import { useAuthStore } from './stores/authStore';
 
-// Lazy load GraphExplorer to prevent module-level errors from blocking the app
-const GraphExplorer = React.lazy(() => 
-  import('./pages/GraphExplorer').then(module => ({ default: module.GraphExplorer }))
-);
+// Lazy load GraphExplorer with error handling
+const GraphExplorer = React.lazy(() => {
+  try {
+    return import('./pages/GraphExplorer');
+  } catch (error) {
+    console.error('Error loading GraphExplorer:', error);
+    throw error;
+  }
+});
 
 interface ErrorBoundaryState {
   hasError: boolean;

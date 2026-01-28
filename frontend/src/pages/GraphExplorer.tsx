@@ -69,13 +69,19 @@ export function GraphExplorer(): React.ReactElement {
   // Sync local search input with store query when cleared externally
   useEffect(() => {
     if (searchQuery === '' && searchInput !== '') {
-      setSearchInput('');
+      const timer = setTimeout(() => {
+        setSearchInput('');
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [searchQuery, searchInput]);
 
   // Show search results dropdown when there are results
   useEffect(() => {
-    setShowSearchResults(searchResults.length > 0 || isSearching);
+    const timer = setTimeout(() => {
+      setShowSearchResults(searchResults.length > 0 || isSearching);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [searchResults, isSearching]);
 
   // Close search results when clicking outside

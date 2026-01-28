@@ -201,11 +201,11 @@ class GraphService {
 
       const response = await apiClient.get<BackendGraphResponse>(url);
       
-      // Transform backend response to frontend format
-      const nodes = response.data.nodes.map(transformBackendNode);
-      const edges = response.data.edges.map(transformBackendEdge);
+       // Transform backend response to frontend format
+       const nodes = (response.data.nodes || []).map(transformBackendNode);
+       const edges = (response.data.edges || []).map(transformBackendEdge);
 
-      return { nodes, edges };
+       return { nodes, edges };
     } catch (error) {
       throw new Error(getErrorMessage(error));
     }

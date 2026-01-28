@@ -347,15 +347,15 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   } = useGraphStore();
 
   // Get filtered nodes and edges for rendering
-  const storeNodes = getFilteredNodes();
-  const storeEdges = getFilteredEdges();
+  const storeNodes = getFilteredNodes() || [];
+  const storeEdges = getFilteredEdges() || [];
 
   // Get react-flow instance for viewport synchronization
   const reactFlowInstance = useReactFlow();
 
   // Local state for react-flow (allows smooth dragging)
-  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node<GraphNodeData>>(storeNodes);
-  const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<Edge>(storeEdges);
+  const [flowNodes, , onNodesChange] = useNodesState<Node<GraphNodeData>>(storeNodes);
+  const [flowEdges, , onEdgesChange] = useEdgesState<Edge>(storeEdges);
 
   // State for relationship type dialog
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
@@ -366,14 +366,8 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     loadGraph();
   }, [loadGraph]);
 
-  // Sync store nodes/edges to local state when they change
-  useEffect(() => {
-    setFlowNodes(storeNodes);
-  }, [storeNodes, setFlowNodes]);
-
-  useEffect(() => {
-    setFlowEdges(storeEdges);
-  }, [storeEdges, setFlowEdges]);
+  // Note: React Flow's useNodesState and useEdgesState automatically sync with storeNodes/storeEdges
+  // No manual synchronization needed to avoid infinite loops
 
   // Sync viewport from store when switching from 3D to 2D view
   useEffect(() => {

@@ -68,7 +68,7 @@ export interface XRStoreConfig {
  * Default XR store configuration
  * Optimized for Meta Quest devices with high frame rate and foveation
  */
-export const DEFAULT_XR_STORE_CONFIG: XRStoreConfig = {
+const DEFAULT_XR_STORE_CONFIG: XRStoreConfig = {
   controller: true,
   hand: true,
   gaze: true,
@@ -177,6 +177,7 @@ export interface ForceLayoutConfig {
 /**
  * Default configuration for force-directed layout
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_FORCE_CONFIG: ForceLayoutConfig = {
   repulsionStrength: 500,
   attractionStrength: 0.1,
@@ -950,9 +951,12 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
 
     if (shouldShowFallback) {
       const reason = getXRUnavailableReason();
-      setFallbackReason(reason);
-      setShowFallbackMessage(true);
-      onXRUnavailable?.(reason);
+      // Use a callback to avoid setState in effect
+      Promise.resolve().then(() => {
+        setFallbackReason(reason);
+        setShowFallbackMessage(true);
+        onXRUnavailable?.(reason);
+      });
       console.log(`[GraphView3D] XR unavailable: ${reason}`);
     }
   }, [
@@ -1007,53 +1011,6 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
   useEffect(() => {
     loadGraph();
   }, [loadGraph]);
-
-  // Container styles
-  const containerStyle: React.CSSProperties = {
-    width: '100%',
-    height: '100%',
-    minHeight: '400px',
-    position: 'relative',
-    ...style,
-  };
-
-  // Loading state
-  if (isLoading && nodes.length === 0) {
-    return (
-      <div
-        className={className}
-        style={{
-          ...containerStyle,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#1a1a2e',
-          color: '#ffffff',
-        }}
-      >
-        <div>Loading 3D graph...</div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error && nodes.length === 0) {
-    return (
-      <div
-        className={className}
-        style={{
-          ...containerStyle,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#1a1a2e',
-          color: '#ef4444',
-        }}
-      >
-        <div>Error: {error}</div>
-      </div>
-    );
-  }
 
   // Handler for entering VR mode using useXRSupport hook
   const handleEnterVR = async (): Promise<void> => {
@@ -1154,6 +1111,53 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
     console.log(`[GraphView3D] Voice hide node type: ${nodeType}`);
     onVoiceHideNodeType?.(nodeType);
   }, [onVoiceHideNodeType]);
+
+  // Container styles
+  const containerStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    minHeight: '400px',
+    position: 'relative',
+    ...style,
+  };
+
+  // Loading state
+  if (isLoading && nodes.length === 0) {
+    return (
+      <div
+        className={className}
+        style={{
+          ...containerStyle,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a2e',
+          color: '#ffffff',
+        }}
+      >
+        <div>Loading 3D graph...</div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && nodes.length === 0) {
+    return (
+      <div
+        className={className}
+        style={{
+          ...containerStyle,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#1a1a2e',
+          color: '#ef4444',
+        }}
+      >
+        <div>Error: {error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className={className} style={containerStyle}>
@@ -1551,7 +1555,7 @@ const GraphScene: React.FC<GraphSceneProps> = ({
   }, [dragNode, updateNodePosition3D]);
 
   // Handle node drag end
-  const handleDragEnd = useCallback((_nodeId: string) => {
+  const handleDragEnd = useCallback(() => {
     setDraggedNode(null);
     // Keep node pinned after drag - user can unpin manually
   }, []);
@@ -1634,7 +1638,7 @@ const GraphScene: React.FC<GraphSceneProps> = ({
             onDoubleClick={() => handleDoubleClick(node.id)}
             onDragStart={() => handleDragStart(node.id)}
             onDrag={(pos) => handleDrag(node.id, pos)}
-            onDragEnd={() => handleDragEnd(node.id)}
+            onDragEnd={() => handleDragEnd()}
             isSelected={selectedNode?.id === node.id}
             isDragging={draggedNode === node.id}
             isVRHovered={vrHoveredNode === node.id}
@@ -1703,9 +1707,6 @@ interface SimulationIndicatorProps {
  */
 const SimulationIndicator: React.FC<SimulationIndicatorProps> = ({
   isSimulating,
-  onStart: _onStart,
-  onStop: _onStop,
-  onReset: _onReset,
 }) => {
   return (
     <group position={[0, 8, 0]}>

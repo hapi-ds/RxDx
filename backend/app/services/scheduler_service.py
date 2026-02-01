@@ -351,12 +351,14 @@ class SchedulerService:
             start_date = self._hours_to_datetime(start_hours, project_start, constraints)
             end_date = self._hours_to_datetime(end_hours, project_start, constraints)
 
+            # Use the task's estimated_hours as the duration
+            # (not end_hours - start_hours, which is the same but more explicit)
             schedule.append(ScheduledTask(
                 task_id=task.id,
                 task_title=task.title,
                 start_date=start_date,
                 end_date=end_date,
-                duration_hours=end_hours - start_hours,
+                duration_hours=task.estimated_hours,
                 assigned_resources=task.required_resources
             ))
 
@@ -516,35 +518,49 @@ class SchedulerService:
         start: datetime,
         constraints: ScheduleConstraints
     ) -> datetime:
-        """Convert hours from project start to a datetime"""
+        """
+        Convert working hours from project start to a calendar datetime.
+        
+        Args:
+            hours: Number of working hours from project start
+            start: Project start datetime
+            constraints: Schedule constraints including working hours per day
+            
+        Returns:
+            Calendar datetime accounting for weekends and working hours
+        """
         if start.tzinfo is None:
             start = start.replace(tzinfo=UTC)
 
         if constraints.respect_weekends:
-            # Calculate working days needed
-            working_days = hours // constraints.working_hours_per_day
-            remaining_hours = hours % constraints.working_hours_per_day
-
-            # Start from the beginning of the project start day
-            result = start.replace(hour=0, minute=0, second=0, microsecond=0)
-
-            # Add working days, accounting for weekends
-            days_added = 0
-            while days_added < working_days:
-                result += timedelta(days=1)
-                # Only count weekdays
-                if result.weekday() < 5:  # Monday = 0, Friday = 4
-                    days_added += 1
-
-            # Skip to next weekday if we landed on a weekend
+            # Start from the beginning of the first working day
+            result = start.replace(hour=9, minute=0, second=0, microsecond=0)
+            
+            # Skip to next weekday if starting on a weekend
             while result.weekday() >= 5:
                 result += timedelta(days=1)
 
-            # Add the remaining hours to the start of the working day
-            # Assuming work starts at 9 AM
-            work_start_hour = 9
-            result = result.replace(hour=work_start_hour)
-            result = result + timedelta(hours=remaining_hours)
+            # Track remaining hours to allocate
+            remaining_hours = hours
+            
+            # Allocate hours day by day
+            while remaining_hours > 0:
+                # Skip weekends
+                while result.weekday() >= 5:
+                    result += timedelta(days=1)
+                
+                # How many hours can we fit in this day?
+                hours_this_day = min(remaining_hours, constraints.working_hours_per_day)
+                
+                # Add these hours to the current day
+                result = result + timedelta(hours=hours_this_day)
+                remaining_hours -= hours_this_day
+                
+                # If we have more hours to allocate, move to next day
+                if remaining_hours > 0:
+                    # Move to start of next day
+                    result = result.replace(hour=9, minute=0, second=0, microsecond=0)
+                    result += timedelta(days=1)
 
             return result
 

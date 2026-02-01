@@ -428,10 +428,17 @@ class TimeService:
         aggregations = []
         for row in rows:
             row_dict = dict(row._mapping)
+            project_id_val = row_dict.get("project_id")
+            task_id_val = row_dict.get("task_id")
+
+            # Skip rows without project_id as it's required by the schema
+            if not project_id_val:
+                continue
+
             aggregations.append(TimeAggregation(
-                project_id=row_dict.get("project_id"),
+                project_id=UUID(project_id_val),
                 user_id=row_dict.get("user_id", current_user.id),
-                task_id=row_dict.get("task_id"),
+                task_id=UUID(task_id_val) if task_id_val else None,
                 category=row_dict.get("category"),
                 total_hours=Decimal(str(row_dict.get("total_hours", 0))),
                 entry_count=row_dict.get("entry_count", 0),

@@ -78,10 +78,8 @@ export function GraphExplorer(): React.ReactElement {
 
   // Show search results dropdown when there are results
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSearchResults(searchResults.length > 0 || isSearching);
-    }, 0);
-    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowSearchResults(searchResults.length > 0 || isSearching);
   }, [searchResults, isSearching]);
 
   // Close search results when clicking outside

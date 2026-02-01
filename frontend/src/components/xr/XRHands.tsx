@@ -15,7 +15,7 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/XRHand
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useXR } from '@react-three/xr';
 import * as THREE from 'three';
@@ -54,6 +54,7 @@ export type HandJointName =
 /**
  * Hand joint indices for quick access
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const HAND_JOINT_INDICES: Record<HandJointName, number> = {
   'wrist': 0,
   'thumb-metacarpal': 1,
@@ -158,6 +159,7 @@ export interface GestureConfig {
 /**
  * Default gesture configuration
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const DEFAULT_GESTURE_CONFIG: GestureConfig = {
   pinchThreshold: 0.03, // 3cm
   grabThreshold: 0.7,
@@ -261,10 +263,10 @@ export const XRHands: React.FC<XRHandsProps> = ({
   rightJointColor = '#10b981',
 }) => {
   // Merge gesture config with defaults
-  const config: GestureConfig = {
+  const config: GestureConfig = useMemo(() => ({
     ...DEFAULT_GESTURE_CONFIG,
     ...gestureConfig,
-  };
+  }), [gestureConfig]);
 
   // Get XR session state
   const session = useXR((state) => state.session);
@@ -629,28 +631,42 @@ export const XRHands: React.FC<XRHandsProps> = ({
  * Hook to get current hand tracking state
  * Returns the latest hand states for both hands
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function useHandState(): {
   left: HandTrackingState;
   right: HandTrackingState;
 } {
-  const leftRef = useRef<HandTrackingState>(createDefaultHandState('left'));
-  const rightRef = useRef<HandTrackingState>(createDefaultHandState('right'));
+  const [leftState, setLeftState] = useState<HandTrackingState>(createDefaultHandState('left'));
+  const [rightState, setRightState] = useState<HandTrackingState>(createDefaultHandState('right'));
   const session = useXR((state) => state.session);
 
   useFrame(() => {
     if (!session) return;
 
+    let leftUpdated = false;
+    let rightUpdated = false;
+
     for (const inputSource of session.inputSources) {
       if (!inputSource.hand) continue;
       
-      const state = inputSource.handedness === 'left' ? leftRef.current : rightRef.current;
-      state.tracked = true;
+      if (inputSource.handedness === 'left') {
+        leftUpdated = true;
+      } else if (inputSource.handedness === 'right') {
+        rightUpdated = true;
+      }
+    }
+
+    if (leftUpdated) {
+      setLeftState(prev => ({ ...prev, tracked: true }));
+    }
+    if (rightUpdated) {
+      setRightState(prev => ({ ...prev, tracked: true }));
     }
   });
 
   return {
-    left: leftRef.current,
-    right: rightRef.current,
+    left: leftState,
+    right: rightState,
   };
 }
 

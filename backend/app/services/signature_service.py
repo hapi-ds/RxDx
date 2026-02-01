@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -302,9 +302,15 @@ class SignatureService:
         """
         try:
             # Load private key
-            private_key = serialization.load_pem_private_key(
+            private_key_raw = serialization.load_pem_private_key(
                 private_key_pem, password=None
             )
+
+            # Ensure it's an RSA private key
+            if not isinstance(private_key_raw, rsa.RSAPrivateKey):
+                raise ValueError("Private key must be an RSA key")
+
+            private_key = private_key_raw
 
             # Create signature using RSA-PSS with SHA-256
             signature_bytes = private_key.sign(
@@ -337,7 +343,13 @@ class SignatureService:
         """
         try:
             # Load public key
-            public_key = serialization.load_pem_public_key(public_key_pem)
+            public_key_raw = serialization.load_pem_public_key(public_key_pem)
+
+            # Ensure it's an RSA public key
+            if not isinstance(public_key_raw, rsa.RSAPublicKey):
+                raise ValueError("Public key must be an RSA key")
+
+            public_key = public_key_raw
 
             # Convert signature from hex to bytes
             signature_bytes = bytes.fromhex(signature_hash)

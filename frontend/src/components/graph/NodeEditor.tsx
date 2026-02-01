@@ -223,6 +223,7 @@ export const NodeEditor: React.FC<NodeEditorProps> = ({
   useEffect(() => {
     if (selectedNode) {
       const properties = selectedNode.data.properties || {};
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         title: selectedNode.data.label || '',
         description: (properties.description as string) || '',

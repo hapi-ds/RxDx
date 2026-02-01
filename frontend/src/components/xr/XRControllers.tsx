@@ -451,16 +451,20 @@ export const XRControllers: React.FC<XRControllersProps> = ({
  * Hook to get current controller input state
  * Returns the latest controller states for both hands
  */
-export function useControllerState(): {
+function useControllerState(): {
   left: ControllerInputState;
   right: ControllerInputState;
 } {
-  const leftRef = useRef<ControllerInputState>(createDefaultInputState('left'));
-  const rightRef = useRef<ControllerInputState>(createDefaultInputState('right'));
+  const [leftState, setLeftState] = useState<ControllerInputState>(createDefaultInputState('left'));
+  const [rightState, setRightState] = useState<ControllerInputState>(createDefaultInputState('right'));
   const session = useXR((state) => state.session);
 
   useFrame(() => {
     if (!session) return;
+
+    const newLeftState = { ...leftState };
+    const newRightState = { ...rightState };
+    let hasChanges = false;
 
     for (const inputSource of session.inputSources) {
       if (inputSource.targetRayMode !== 'tracked-pointer') continue;
@@ -468,8 +472,9 @@ export function useControllerState(): {
       const gamepad = inputSource.gamepad;
       if (!gamepad) continue;
 
-      const state = inputSource.handedness === 'left' ? leftRef.current : rightRef.current;
+      const state = inputSource.handedness === 'left' ? newLeftState : newRightState;
       state.connected = true;
+      hasChanges = true;
       
       // Update basic button states
       if (gamepad.buttons[0]) {
@@ -488,12 +493,19 @@ export function useControllerState(): {
       state.thumbstick.x = axes[thumbstickXIndex] ?? 0;
       state.thumbstick.y = axes[thumbstickYIndex] ?? 0;
     }
+
+    if (hasChanges) {
+      setLeftState(newLeftState);
+      setRightState(newRightState);
+    }
   });
 
   return {
-    left: leftRef.current,
-    right: rightRef.current,
+    left: leftState,
+    right: rightState,
   };
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+export { useControllerState };
 export default XRControllers;

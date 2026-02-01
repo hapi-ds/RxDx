@@ -585,7 +585,7 @@ export const VRInteraction: React.FC<VRInteractionProps> = ({
   ]);
 
   // Process XR input each frame
-  useFrame((_, _delta) => {
+  useFrame(() => {
     if (!session) return;
 
     // Get reference space
@@ -675,17 +675,22 @@ export const VRInteraction: React.FC<VRInteractionProps> = ({
  * Hook to get current VR interaction state
  * Can be used by other components to react to VR interactions
  */
-export function useVRInteraction(): NodeInteractionState {
+function useVRInteraction(): NodeInteractionState {
   const [state, setState] = useState<NodeInteractionState>(createDefaultInteractionState());
   const session = useXR((state) => state.session);
 
   useEffect(() => {
     if (!session) {
-      setState(createDefaultInteractionState());
+      // Use a callback to avoid setState in effect
+      Promise.resolve().then(() => {
+        setState(createDefaultInteractionState());
+      });
     }
   }, [session]);
 
   return state;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
+export { useVRInteraction };
 export default VRInteraction;

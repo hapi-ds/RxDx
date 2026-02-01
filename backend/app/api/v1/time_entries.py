@@ -1,9 +1,11 @@
 """Time Entry API endpoints"""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import get_current_user
@@ -24,7 +26,7 @@ from app.services.time_service import TimeService, get_time_service
 router = APIRouter()
 
 
-@router.post("/time-entries", response_model=TimeEntryResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/time-entries", response_model=TimeEntryResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_time_entry(
     entry_data: TimeEntryCreate,
     current_user: User = Depends(get_current_user),
@@ -44,7 +46,7 @@ async def create_time_entry(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to create time entries"
         )
 
@@ -73,12 +75,12 @@ async def create_time_entry(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating time entry: {str(e)}"
         )
 
@@ -113,7 +115,7 @@ async def get_time_entries(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read time entries"
         )
 
@@ -153,7 +155,7 @@ async def get_time_entries(
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving time entries: {str(e)}"
         )
 
@@ -173,7 +175,7 @@ async def get_time_entry(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read time entries"
         )
 
@@ -182,7 +184,7 @@ async def get_time_entry(
 
         if not entry:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Time entry not found"
             )
 
@@ -204,7 +206,7 @@ async def get_time_entry(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving time entry: {str(e)}"
         )
 
@@ -226,7 +228,7 @@ async def update_time_entry(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to update time entries"
         )
 
@@ -239,7 +241,7 @@ async def update_time_entry(
 
         if not entry:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Time entry not found"
             )
 
@@ -261,19 +263,19 @@ async def update_time_entry(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating time entry: {str(e)}"
         )
 
 
-@router.delete("/time-entries/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/time-entries/{entry_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_time_entry(
     entry_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -288,7 +290,7 @@ async def delete_time_entry(
     # Check delete permission
     if not has_permission(current_user.role, Permission.DELETE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to delete time entries"
         )
 
@@ -297,7 +299,7 @@ async def delete_time_entry(
         entry = await time_service.get_time_entry(entry_id, current_user)
         if not entry:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Time entry not found"
             )
 
@@ -305,7 +307,7 @@ async def delete_time_entry(
 
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="Time entry could not be deleted"
             )
 
@@ -322,7 +324,7 @@ async def delete_time_entry(
         )
 
         return JSONResponse(
-            status_code=status.HTTP_204_NO_CONTENT,
+            status_code=http_status.HTTP_204_NO_CONTENT,
             content=None
         )
 
@@ -330,7 +332,7 @@ async def delete_time_entry(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting time entry: {str(e)}"
         )
 
@@ -359,7 +361,7 @@ async def sync_time_entries(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to sync time entries"
         )
 
@@ -397,12 +399,12 @@ async def sync_time_entries(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error syncing time entries: {str(e)}"
         )
 
@@ -425,7 +427,7 @@ async def aggregate_time_entries(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to aggregate time entries"
         )
 
@@ -436,6 +438,9 @@ async def aggregate_time_entries(
         )
 
         total_hours = sum(a.total_hours for a in aggregations)
+        # Ensure total_hours is a Decimal
+        if not isinstance(total_hours, Decimal):
+            total_hours = Decimal(str(total_hours))
 
         # Log audit event
         await audit_service.log(
@@ -461,11 +466,11 @@ async def aggregate_time_entries(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error aggregating time entries: {str(e)}"
         )

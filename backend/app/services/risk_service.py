@@ -337,7 +337,10 @@ class RiskService:
             }
         )
 
-        return await self.get_risk(risk_id)
+        result = await self.get_risk(risk_id)
+        if result is None:
+            raise ValueError(f"Failed to retrieve updated risk {risk_id}")
+        return result
 
     async def delete_risk(self, risk_id: UUID, user: User) -> bool:
         """
@@ -519,7 +522,10 @@ class RiskService:
             details={'updated_fields': list(update_dict.keys())}
         )
 
-        return await self.get_failure(failure_id)
+        result = await self.get_failure(failure_id)
+        if result is None:
+            raise ValueError(f"Failed to retrieve updated failure {failure_id}")
+        return result
 
     # ========================================================================
     # Failure Chain Operations (LEADS_TO relationships)
@@ -823,7 +829,10 @@ class RiskService:
             }
         )
 
-        return await self.get_mitigation(mitigation_id)
+        result = await self.get_mitigation(mitigation_id)
+        if result is None:
+            raise ValueError(f"Failed to retrieve updated mitigation {mitigation_id}")
+        return result
 
     async def get_mitigation(self, mitigation_id: UUID) -> MitigationActionResponse | None:
         """

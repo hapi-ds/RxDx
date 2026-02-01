@@ -1,5 +1,7 @@
 """Authentication API endpoints"""
 
+from typing import cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_auth_service, get_current_user
@@ -128,8 +130,8 @@ async def get_current_user_info(
     """
     return UserResponse(
         id=str(current_user.id),
-        email=current_user.email,
-        full_name=current_user.full_name,
+        email=cast(str, current_user.email),
+        full_name=cast(str, current_user.full_name),
         role=current_user.role.value,
-        is_active=current_user.is_active,
+        is_active=cast(bool, current_user.is_active),
     )

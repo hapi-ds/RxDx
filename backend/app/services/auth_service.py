@@ -1,6 +1,7 @@
 """Authentication service for user authentication and session management"""
 
 from datetime import UTC, datetime, timedelta
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import select
@@ -134,8 +135,9 @@ class AuthService:
 
         # Check if account is locked
         if user.locked_until:
-            if user.locked_until > datetime.now(UTC):
-                raise AccountLockedException(user.locked_until)
+            locked_until = cast(datetime, user.locked_until)
+            if locked_until > datetime.now(UTC):
+                raise AccountLockedException(locked_until)
             else:
                 # Lock period expired, reset failed attempts
                 user.locked_until = None
@@ -143,7 +145,8 @@ class AuthService:
                 await self.db.commit()
 
         # Verify password
-        if not verify_password(password, user.hashed_password):
+        hashed_password = cast(str, user.hashed_password)
+        if not verify_password(password, hashed_password):
             await self.increment_failed_attempts(user)
             return None
 
@@ -218,7 +221,8 @@ class AuthService:
         Returns:
             True if password changed successfully, False if old password incorrect
         """
-        if not verify_password(old_password, user.hashed_password):
+        hashed_password = cast(str, user.hashed_password)
+        if not verify_password(old_password, hashed_password):
             return False
 
         user.hashed_password = get_password_hash(new_password)

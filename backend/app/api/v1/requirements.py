@@ -2,7 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
 
 from app.api.deps import get_current_user
 from app.core.security import Permission, has_permission
@@ -24,7 +25,7 @@ router = APIRouter()
 @router.get("/requirements", response_model=list[RequirementResponse])
 async def get_requirements(
     search: str | None = Query(None, description="Search text for title, description, and acceptance criteria"),
-    status: str | None = Query(None, description="Filter by status (draft, active, completed, archived, rejected)"),
+    status_filter: str | None = Query(None, alias="status", description="Filter by status (draft, active, completed, archived, rejected)"),
     assigned_to: UUID | None = Query(None, description="Filter by assigned user UUID"),
     created_by: UUID | None = Query(None, description="Filter by creator UUID"),
     priority: int | None = Query(None, ge=1, le=5, description="Filter by priority level (1-5)"),
@@ -70,7 +71,7 @@ async def get_requirements(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read requirements"
         )
 
@@ -78,7 +79,7 @@ async def get_requirements(
         # Search requirements with comprehensive filters
         requirements = await requirement_service.search_requirements(
             search_text=search,
-            status=status,
+            status=status_filter,
             assigned_to=assigned_to,
             created_by=created_by,
             priority=priority,
@@ -97,7 +98,7 @@ async def get_requirements(
             details={
                 "search_filters": {
                     "search": search,
-                    "status": status,
+                    "status": status_filter,
                     "assigned_to": str(assigned_to) if assigned_to else None,
                     "created_by": str(created_by) if created_by else None,
                     "priority": priority,
@@ -117,7 +118,7 @@ async def get_requirements(
     except ValueError as e:
         # Handle validation errors (e.g., invalid filter values)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid filter parameters: {str(e)}"
         )
     except Exception:
@@ -140,7 +141,7 @@ async def get_requirements(
         )
 
 
-@router.post("/requirements", response_model=RequirementResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/requirements", response_model=RequirementResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_requirement(
     requirement_data: RequirementCreate,
     current_user: User = Depends(get_current_user),
@@ -187,7 +188,7 @@ async def create_requirement(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to create requirements"
         )
 
@@ -222,7 +223,7 @@ async def create_requirement(
     except ValueError as e:
         # Handle validation errors with detailed feedback
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=f"Requirement validation failed: {str(e)}"
         )
     except Exception:
@@ -291,7 +292,7 @@ async def get_requirement(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read requirements"
         )
 
@@ -301,7 +302,7 @@ async def get_requirement(
 
         if not requirement:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found"
             )
 
@@ -403,14 +404,14 @@ async def update_requirement(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to update requirements"
         )
 
     # Validate change description
     if not change_description or not change_description.strip():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Change description is required for audit compliance"
         )
 
@@ -425,7 +426,7 @@ async def update_requirement(
 
         if not requirement:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="Requirement not found"
             )
 
@@ -456,7 +457,7 @@ async def update_requirement(
     except ValueError as e:
         # Handle validation errors
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=f"Requirement validation failed: {str(e)}"
         )
     except HTTPException:
@@ -483,7 +484,7 @@ async def update_requirement(
         )
 
 
-@router.post("/requirements/{requirement_id}/comments", response_model=CommentResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/requirements/{requirement_id}/comments", response_model=CommentResponse, status_code=http_status.HTTP_201_CREATED)
 async def add_requirement_comment(
     requirement_id: UUID,
     comment_data: CommentCreate,
@@ -535,7 +536,7 @@ async def add_requirement_comment(
     # Check read permission (commenting requires read access)
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to comment on requirements"
         )
 
@@ -568,18 +569,18 @@ async def add_requirement_comment(
         # Handle validation errors (requirement not found, validation failures)
         if "not found" in str(e).lower():
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=str(e)
             )
         else:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail=f"Comment validation failed: {str(e)}"
             )
     except PermissionError as e:
         # Handle permission errors (e.g., commenting on archived requirements)
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail=str(e)
         )
     except Exception:
@@ -654,7 +655,7 @@ async def get_requirement_comments(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read requirement comments"
         )
 
@@ -689,7 +690,7 @@ async def get_requirement_comments(
     except ValueError as e:
         # Handle validation errors (invalid pagination parameters)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid parameters: {str(e)}"
         )
     except Exception:

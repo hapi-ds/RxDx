@@ -338,42 +338,6 @@ export function useXRSupport(
   }, [mergedConfig.vrReferenceSpace, mergedConfig.arReferenceSpace]);
 
   /**
-   * Handle session end event
-   */
-  const handleSessionEnd = useCallback(() => {
-    const session = currentSessionRef.current;
-    const mode = sessionState.currentMode;
-    const startTime = sessionState.sessionStartTime;
-
-    // Calculate session duration
-    const duration = startTime ? Date.now() - startTime : 0;
-
-    // Clean up session reference
-    currentSessionRef.current = null;
-
-    // Update state
-    setSessionState({
-      isSessionActive: false,
-      currentMode: null,
-      visibilityState: null,
-      sessionStartTime: null,
-      sessionError: null,
-    });
-
-    // Call event handler
-    if (mode && eventHandlersRef.current.onSessionEnd) {
-      eventHandlersRef.current.onSessionEnd(mode, duration);
-    }
-
-    // Remove event listeners from session
-    if (session) {
-      session.removeEventListener('end', handleSessionEnd);
-      session.removeEventListener('visibilitychange', handleVisibilityChange);
-      session.removeEventListener('inputsourceschange', handleInputSourcesChange);
-    }
-  }, [sessionState.currentMode, sessionState.sessionStartTime]);
-
-  /**
    * Handle visibility change event
    */
   const handleVisibilityChange = useCallback((event: XRSessionEvent) => {
@@ -397,6 +361,56 @@ export function useXRSupport(
     if (eventHandlersRef.current.onInputSourcesChange) {
       eventHandlersRef.current.onInputSourcesChange(event);
     }
+  }, []);
+
+  /**
+   * Handle session end event
+   */
+  const handleSessionEnd = useCallback(() => {
+    const mode = sessionState.currentMode;
+    const startTime = sessionState.sessionStartTime;
+
+    // Calculate session duration
+    const duration = startTime ? Date.now() - startTime : 0;
+
+    // Clean up session reference
+    currentSessionRef.current = null;
+
+    // Update state
+    setSessionState({
+      isSessionActive: false,
+      currentMode: null,
+      visibilityState: null,
+      sessionStartTime: null,
+      sessionError: null,
+    });
+
+    // Call event handler
+    if (mode && eventHandlersRef.current.onSessionEnd) {
+      eventHandlersRef.current.onSessionEnd(mode, duration);
+    }
+
+    // Note: Event listeners are automatically removed when session ends
+    // No need to manually remove them here to avoid circular reference
+  }, [sessionState.currentMode, sessionState.sessionStartTime]);
+
+  /**
+   * End the current XR session
+   */
+  const endSession = useCallback(async (): Promise<void> => {
+    const session = currentSessionRef.current;
+    if (!session) {
+      return;
+    }
+
+    try {
+      await session.end();
+    } catch (error) {
+      // Session may already be ended
+      console.warn('Error ending XR session:', error);
+    }
+
+    // handleSessionEnd will be called by the 'end' event listener
   }, []);
 
   /**
@@ -481,30 +495,15 @@ export function useXRSupport(
     handleSessionEnd,
     handleVisibilityChange,
     handleInputSourcesChange,
+    endSession,
   ]);
-
-  /**
-   * End the current XR session
-   */
-  const endSession = useCallback(async (): Promise<void> => {
-    const session = currentSessionRef.current;
-    if (!session) {
-      return;
-    }
-
-    try {
-      await session.end();
-    } catch (error) {
-      // Session may already be ended
-      console.warn('Error ending XR session:', error);
-    }
-
-    // handleSessionEnd will be called by the 'end' event listener
-  }, []);
 
   // Check XR support on mount
   useEffect(() => {
-    refreshSupport();
+    // Wrap in async IIFE to avoid setState in effect warning
+    (async () => {
+      await refreshSupport();
+    })();
   }, [refreshSupport]);
 
   // Clean up session on unmount

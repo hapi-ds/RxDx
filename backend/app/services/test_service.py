@@ -59,7 +59,7 @@ class TestService:
         """
         # Validate linked requirements exist
         for req_id in test_spec_data.linked_requirements:
-            requirement = await self.graph_service.get_workitem(req_id)
+            requirement = await self.graph_service.get_workitem(str(req_id))
             if not requirement:
                 raise ValueError(f"Linked requirement {req_id} does not exist")
             if requirement.get('type') != 'requirement':
@@ -129,7 +129,7 @@ class TestService:
         Returns:
             Test specification if found, None otherwise
         """
-        test_spec = await self.graph_service.get_workitem(test_spec_id)
+        test_spec = await self.graph_service.get_workitem(str(test_spec_id))
         if not test_spec or test_spec.get('type') != 'test_spec':
             return None
 
@@ -162,14 +162,14 @@ class TestService:
             ValueError: If test spec doesn't exist or linked requirements are invalid
         """
         # Get current test spec
-        current_test_spec = await self.graph_service.get_workitem(test_spec_id)
+        current_test_spec = await self.graph_service.get_workitem(str(test_spec_id))
         if not current_test_spec or current_test_spec.get('type') != 'test_spec':
             raise ValueError(f"Test specification {test_spec_id} not found")
 
         # Validate linked requirements if provided
         if updates.linked_requirements is not None:
             for req_id in updates.linked_requirements:
-                requirement = await self.graph_service.get_workitem(req_id)
+                requirement = await self.graph_service.get_workitem(str(req_id))
                 if not requirement:
                     raise ValueError(f"Linked requirement {req_id} does not exist")
                 if requirement.get('type') != 'requirement':
@@ -237,7 +237,7 @@ class TestService:
         """
         # Validate test spec exists and version is valid
         test_spec = await self.graph_service.get_workitem_version(
-            test_run_data.test_spec_id,
+            str(test_run_data.test_spec_id),
             test_run_data.test_spec_version
         )
         if not test_spec or test_spec.get('type') != 'test_spec':
@@ -334,7 +334,7 @@ class TestService:
             ValueError: If test run doesn't exist
         """
         # Get current test run
-        current_test_run = await self.graph_service.get_workitem(test_run_id)
+        current_test_run = await self.graph_service.get_workitem(str(test_run_id))
         if not current_test_run or current_test_run.get('type') != 'test_run':
             raise ValueError(f"Test run {test_run_id} not found")
 
@@ -590,7 +590,7 @@ class TestService:
             ValueError: If test spec doesn't exist or has valid signatures
         """
         # Check if test spec exists
-        test_spec = await self.graph_service.get_workitem(test_spec_id)
+        test_spec = await self.graph_service.get_workitem(str(test_spec_id))
         if not test_spec or test_spec.get('type') != 'test_spec':
             raise ValueError(f"Test specification {test_spec_id} not found")
 

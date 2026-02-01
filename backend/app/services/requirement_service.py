@@ -48,8 +48,8 @@ class RequirementService(WorkItemService):
     def __init__(
         self,
         graph_service: GraphService,
-        version_service: VersionService = None,
-        audit_service: AuditService = None
+        version_service: VersionService | None = None,
+        audit_service: AuditService | None = None
     ):
         super().__init__(graph_service, version_service)
         self.audit_service = audit_service
@@ -76,7 +76,8 @@ class RequirementService(WorkItemService):
         await self._validate_requirement_data(requirement_data)
 
         # Create the WorkItem using parent class
-        workitem = await self.create_workitem(requirement_data, current_user)
+        # Note: RequirementCreate is compatible with WorkItemCreate (both inherit from WorkItemBase)
+        workitem = await self.create_workitem(requirement_data, current_user)  # type: ignore[arg-type]
 
         # Log requirement creation
         if self.audit_service:
@@ -143,7 +144,7 @@ class RequirementService(WorkItemService):
         # Update using parent class
         updated_workitem = await self.update_workitem(
             requirement_id,
-            updates,
+            updates,  # type: ignore[arg-type]
             current_user,
             change_description
         )
@@ -466,6 +467,8 @@ class RequirementService(WorkItemService):
 
         # Return updated comment
         updated_comment = await self._get_comment_by_id(comment_id)
+        if updated_comment is None:
+            raise ValueError(f"Failed to retrieve updated comment {comment_id}")
         return self._comment_data_to_response(updated_comment)
 
     async def delete_comment(
@@ -1065,7 +1068,7 @@ class RequirementService(WorkItemService):
         if not current_req:
             raise ValueError(f"Requirement {requirement_id} not found")
 
-        impact_analysis = {
+        impact_analysis: dict[str, Any] = {
             "requirement_id": str(requirement_id),
             "requirement_title": current_req.title,
             "proposed_changes": proposed_changes,
@@ -1176,7 +1179,7 @@ class RequirementService(WorkItemService):
             raise ValueError(f"Requirement {requirement_id} not found")
 
         # Initialize visualization data
-        viz_data = {
+        viz_data: dict[str, Any] = {
             "nodes": [],
             "edges": [],
             "metadata": {
@@ -1844,7 +1847,7 @@ class RequirementService(WorkItemService):
         Raises:
             ValueError: If dependency validation fails
         """
-        validation_result = {
+        validation_result: dict[str, Any] = {
             "is_valid": True,
             "errors": [],
             "warnings": [],
@@ -2009,7 +2012,7 @@ class RequirementService(WorkItemService):
 
         # Check each new dependency
         for dep_id in new_dependency_ids:
-            dep_id_str = str(dep_id)
+            #dep_id_str = str(dep_id)
 
             # Get existing dependencies of this dependency
             try:

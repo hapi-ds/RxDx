@@ -7,6 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import * as THREE from 'three';
 import {
   XRControllers,
   useControllerState,
@@ -93,9 +94,9 @@ describe('XRControllers', () => {
         secondaryButton: defaultButtonState,
         thumbstickButton: defaultButtonState,
         thumbstick: defaultAxesState,
-        position: { x: 0, y: 0, z: 0 } as any,
-        rotation: { x: 0, y: 0, z: 0, w: 1 } as any,
-        rayDirection: { x: 0, y: 0, z: -1 } as any,
+        position: new THREE.Vector3(0, 0, 0),
+        rotation: new THREE.Quaternion(0, 0, 0, 1),
+        rayDirection: new THREE.Vector3(0, 0, -1),
       };
 
       expect(inputState.handedness).toBe('left');

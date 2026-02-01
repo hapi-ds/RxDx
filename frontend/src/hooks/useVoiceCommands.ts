@@ -416,11 +416,17 @@ export function useVoiceCommands(
   };
 
   // State
-  const [state, setState] = useState<VoiceRecognitionState>('idle');
-  const [isSupported, setIsSupported] = useState<boolean>(false);
+  const [state, setState] = useState<VoiceRecognitionState>(() => {
+    const supported = isSpeechRecognitionSupported();
+    return supported ? 'idle' : 'not_supported';
+  });
+  const isSupported = isSpeechRecognitionSupported();
   const [lastCommand, setLastCommand] = useState<ParsedVoiceCommand | null>(null);
   const [commandHistory, setCommandHistory] = useState<ParsedVoiceCommand[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const supported = isSpeechRecognitionSupported();
+    return supported ? null : 'Speech recognition is not supported in this browser';
+  });
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
   // Refs
@@ -433,17 +439,6 @@ export function useVoiceCommands(
   useEffect(() => {
     callbacksRef.current = callbacks;
   }, [callbacks]);
-
-  // Check for speech recognition support on mount
-  useEffect(() => {
-    const supported = isSpeechRecognitionSupported();
-    setIsSupported(supported);
-    
-    if (!supported) {
-      setState('not_supported');
-      setError('Speech recognition is not supported in this browser');
-    }
-  }, []);
 
   /**
    * Handle recognized speech result
@@ -733,7 +728,7 @@ export function useVoiceCommands(
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
-        } catch (e) {
+        } catch {
           // Ignore cleanup errors
         }
       }
@@ -743,7 +738,7 @@ export function useVoiceCommands(
   return {
     state,
     isSupported,
-    isListening: isListeningRef.current || state === 'listening' || state === 'processing',
+    isListening: state === 'listening' || state === 'processing',
     lastCommand,
     commandHistory,
     error,

@@ -2,7 +2,8 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import status as http_status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import get_current_user
@@ -23,7 +24,7 @@ router = APIRouter()
 async def get_workitems(
     search: str | None = Query(None, description="Search text for title and description"),
     type: str | None = Query(None, description="Filter by WorkItem type"),
-    status: str | None = Query(None, description="Filter by status"),
+    status_filter: str | None = Query(None, alias="status", description="Filter by status"),
     assigned_to: UUID | None = Query(None, description="Filter by assigned user"),
     created_by: UUID | None = Query(None, description="Filter by creator"),
     priority: int | None = Query(None, ge=1, le=5, description="Filter by priority level"),
@@ -49,7 +50,7 @@ async def get_workitems(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
 
@@ -58,7 +59,7 @@ async def get_workitems(
         workitems = await workitem_service.search_workitems(
             search_text=search,
             workitem_type=type,
-            status=status,
+            status=status_filter,
             assigned_to=assigned_to,
             created_by=created_by,
             priority=priority,
@@ -76,7 +77,7 @@ async def get_workitems(
                 "search_filters": {
                     "search": search,
                     "type": type,
-                    "status": status,
+                    "status": status_filter,
                     "assigned_to": str(assigned_to) if assigned_to else None,
                     "created_by": str(created_by) if created_by else None,
                     "priority": priority,
@@ -89,12 +90,12 @@ async def get_workitems(
 
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving WorkItems: {str(e)}"
         )
 
 
-@router.post("/workitems", response_model=WorkItemResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/workitems", response_model=WorkItemResponse, status_code=http_status.HTTP_201_CREATED)
 async def create_workitem(
     workitem_data: WorkItemCreate,
     current_user: User = Depends(get_current_user),
@@ -110,7 +111,7 @@ async def create_workitem(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to create WorkItems"
         )
 
@@ -138,12 +139,12 @@ async def create_workitem(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating WorkItem: {str(e)}"
         )
 
@@ -170,7 +171,7 @@ async def get_workitem(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
 
@@ -180,7 +181,7 @@ async def get_workitem(
 
         if not workitem:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
 
@@ -202,7 +203,7 @@ async def get_workitem(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving WorkItem: {str(e)}"
         )
 
@@ -225,7 +226,7 @@ async def update_workitem(
     # Check write permission
     if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to update WorkItems"
         )
 
@@ -240,7 +241,7 @@ async def update_workitem(
 
         if not workitem:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
 
@@ -265,19 +266,19 @@ async def update_workitem(
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating WorkItem: {str(e)}"
         )
 
 
-@router.delete("/workitems/{workitem_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/workitems/{workitem_id}", status_code=http_status.HTTP_204_NO_CONTENT)
 async def delete_workitem(
     workitem_id: UUID,
     force: bool = Query(False, description="Force deletion even if signed (admin only)"),
@@ -294,14 +295,14 @@ async def delete_workitem(
     # Check delete permission
     if not has_permission(current_user.role, Permission.DELETE_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to delete WorkItems"
         )
 
     # Force deletion requires admin role
     if force and current_user.role.value != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Force deletion requires admin permissions"
         )
 
@@ -310,7 +311,7 @@ async def delete_workitem(
         workitem = await workitem_service.get_workitem(workitem_id)
         if not workitem:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
 
@@ -323,7 +324,7 @@ async def delete_workitem(
 
         if not success:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+                status_code=http_status.HTTP_400_BAD_REQUEST,
                 detail="WorkItem could not be deleted"
             )
 
@@ -342,20 +343,20 @@ async def delete_workitem(
         )
 
         return JSONResponse(
-            status_code=status.HTTP_204_NO_CONTENT,
+            status_code=http_status.HTTP_204_NO_CONTENT,
             content=None
         )
 
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting WorkItem: {str(e)}"
         )
 
@@ -375,7 +376,7 @@ async def get_workitem_history(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
 
@@ -385,7 +386,7 @@ async def get_workitem_history(
 
         if not history:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail="WorkItem not found"
             )
 
@@ -407,7 +408,7 @@ async def get_workitem_history(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving WorkItem history: {str(e)}"
         )
 
@@ -429,7 +430,7 @@ async def get_workitem_version(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
 
@@ -439,7 +440,7 @@ async def get_workitem_version(
 
         if not workitem:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
+                status_code=http_status.HTTP_404_NOT_FOUND,
                 detail=f"WorkItem version {version} not found"
             )
 
@@ -462,7 +463,7 @@ async def get_workitem_version(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving WorkItem version: {str(e)}"
         )
 
@@ -493,7 +494,7 @@ async def compare_workitem_versions(
     # Check read permission
     if not has_permission(current_user.role, Permission.READ_WORKITEM):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Insufficient permissions to read WorkItems"
         )
 
@@ -505,7 +506,7 @@ async def compare_workitem_versions(
 
         if comparison is None:
             raise HTTPException(
-                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                status_code=http_status.HTTP_501_NOT_IMPLEMENTED,
                 detail="Version comparison not available (VersionService required)"
             )
 
@@ -531,6 +532,6 @@ async def compare_workitem_versions(
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error comparing WorkItem versions: {str(e)}"
         )

@@ -18,7 +18,8 @@ import {
 declare const global: typeof globalThis;
 
 // Mock XRSession
-const createMockXRSession = (_mode: XRSessionMode = 'immersive-vr'): Partial<XRSession> => ({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const createMockXRSession = (_mode?: XRSessionMode): Partial<XRSession> => ({
   visibilityState: 'visible',
   end: vi.fn().mockResolvedValue(undefined),
   addEventListener: vi.fn(),

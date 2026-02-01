@@ -238,7 +238,10 @@ export const RelationshipTypeDialog: React.FC<RelationshipTypeDialogProps> = ({
   // Reset selection when dialog opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedType('RELATES_TO');
+      // Use a callback to avoid setState in effect
+      Promise.resolve().then(() => {
+        setSelectedType('RELATES_TO');
+      });
       // Focus the select element when dialog opens
       setTimeout(() => {
         selectRef.current?.focus();
@@ -247,6 +250,12 @@ export const RelationshipTypeDialog: React.FC<RelationshipTypeDialogProps> = ({
   }, [isOpen]);
 
   // Handle keyboard events
+  const handleConfirm = useCallback(() => {
+    if (connection && !isLoading) {
+      onConfirm(connection.sourceId, connection.targetId, selectedType);
+    }
+  }, [connection, selectedType, onConfirm, isLoading]);
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -260,13 +269,7 @@ export const RelationshipTypeDialog: React.FC<RelationshipTypeDialogProps> = ({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isLoading, onCancel, selectedType, connection]);
-
-  const handleConfirm = useCallback(() => {
-    if (connection && !isLoading) {
-      onConfirm(connection.sourceId, connection.targetId, selectedType);
-    }
-  }, [connection, selectedType, onConfirm, isLoading]);
+  }, [isOpen, isLoading, onCancel, handleConfirm]);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {

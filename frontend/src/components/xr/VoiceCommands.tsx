@@ -576,8 +576,6 @@ export const VoiceCommands: React.FC<VoiceCommandsProps> = ({
     error,
     hasPermission,
     startListening,
-    // stopListening is available but we use toggleListening for the UI
-    stopListening: _stopListening,
     toggleListening,
     requestPermission,
   } = useVoiceCommands(callbacks, config);

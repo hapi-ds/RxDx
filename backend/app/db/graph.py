@@ -46,6 +46,9 @@ class GraphService:
 
     async def _ensure_graph_exists(self):
         """Ensure the graph database exists"""
+        if self.pool is None:
+            raise RuntimeError("Database pool not initialized. Call connect() first.")
+
         async with self.pool.acquire() as conn:
             try:
                 # Ensure AGE is loaded and search path is set
@@ -89,6 +92,9 @@ class GraphService:
             {query}
         $$) as (result ag_catalog.agtype);
         """
+
+        if self.pool is None:
+            raise RuntimeError("Database pool not initialized after connect() call.")
 
         async with self.pool.acquire() as conn:
             try:
@@ -270,7 +276,7 @@ class GraphService:
         status: str = "draft",
         priority: int | None = None,
         version: str = "1.0",
-        created_by: str = None,
+        created_by: str | None = None,
         assigned_to: str | None = None,
         **additional_props
     ) -> dict[str, Any]:
@@ -1072,7 +1078,7 @@ class GraphService:
             'label': style['label'],
             'color': style['color'],
             'style': style['style'],
-            'width': style['width'] / 2.0,  # Normalize for 3D space
+            'width': float(style['width']) / 2.0,  # Normalize for 3D space
             'animated': style['animated'],
             'importance': style['importance'],
             'geometry': {

@@ -18,7 +18,7 @@ from app.services.version_service import VersionService, get_version_service
 class WorkItemService:
     """Service for managing WorkItems with graph database storage"""
 
-    def __init__(self, graph_service: GraphService, version_service: VersionService = None):
+    def __init__(self, graph_service: GraphService, version_service: VersionService | None = None):
         self.graph_service = graph_service
         self.version_service = version_service
 
@@ -68,7 +68,11 @@ class WorkItemService:
         if hasattr(workitem_data, 'actual_hours'):
             properties["actual_hours"] = workitem_data.actual_hours
         if hasattr(workitem_data, 'due_date'):
-            properties["due_date"] = workitem_data.due_date.isoformat() if workitem_data.due_date else None
+            due_date_attr = getattr(workitem_data, 'due_date', None)
+            if due_date_attr is not None:
+                properties["due_date"] = due_date_attr.isoformat()
+            else:
+                properties["due_date"] = None
         if hasattr(workitem_data, 'test_type'):
             properties["test_type"] = workitem_data.test_type
         if hasattr(workitem_data, 'test_steps'):
@@ -104,8 +108,11 @@ class WorkItemService:
 
         # Calculate RPN for risk items
         if workitem_data.type == "risk" and hasattr(workitem_data, 'severity') and hasattr(workitem_data, 'occurrence') and hasattr(workitem_data, 'detection'):
-            if workitem_data.severity and workitem_data.occurrence and workitem_data.detection:
-                properties["rpn"] = workitem_data.severity * workitem_data.occurrence * workitem_data.detection
+            severity = getattr(workitem_data, 'severity', None)
+            occurrence = getattr(workitem_data, 'occurrence', None)
+            detection = getattr(workitem_data, 'detection', None)
+            if severity and occurrence and detection:
+                properties["rpn"] = severity * occurrence * detection
 
         # Create the WorkItem node in graph database
         await self.graph_service.create_workitem_node(
@@ -243,7 +250,9 @@ class WorkItemService:
         if hasattr(updates, 'actual_hours') and updates.actual_hours is not None:
             update_data["actual_hours"] = updates.actual_hours
         if hasattr(updates, 'due_date') and updates.due_date is not None:
-            update_data["due_date"] = updates.due_date.isoformat()
+            due_date_value = getattr(updates, 'due_date')
+            if due_date_value is not None:
+                update_data["due_date"] = due_date_value.isoformat()
         if hasattr(updates, 'test_type') and updates.test_type is not None:
             update_data["test_type"] = updates.test_type
         if hasattr(updates, 'test_steps') and updates.test_steps is not None:

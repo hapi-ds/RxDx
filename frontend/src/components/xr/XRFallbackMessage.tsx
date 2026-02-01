@@ -262,6 +262,11 @@ export const XRFallbackMessage: React.FC<XRFallbackMessageProps> = ({
     setIsVisible(show);
   }, [show]);
 
+  const handleDismiss = useCallback(() => {
+    setIsVisible(false);
+    onDismiss?.();
+  }, [onDismiss]);
+
   // Auto-dismiss timer
   useEffect(() => {
     if (autoDismissMs > 0 && isVisible) {
@@ -270,12 +275,7 @@ export const XRFallbackMessage: React.FC<XRFallbackMessageProps> = ({
       }, autoDismissMs);
       return () => clearTimeout(timer);
     }
-  }, [autoDismissMs, isVisible]);
-
-  const handleDismiss = useCallback(() => {
-    setIsVisible(false);
-    onDismiss?.();
-  }, [onDismiss]);
+  }, [autoDismissMs, isVisible, handleDismiss]);
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded(prev => !prev);

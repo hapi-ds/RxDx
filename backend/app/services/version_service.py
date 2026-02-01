@@ -283,7 +283,7 @@ class VersionService:
             raise ValueError("One or both versions not found")
 
         # Compare the versions
-        differences = {
+        differences: dict[str, Any] = {
             'version1': version1,
             'version2': version2,
             'added_fields': {},
@@ -359,8 +359,8 @@ class VersionService:
 
 
 async def get_version_service(
-    graph_service: GraphService = None,
-    audit_service: AuditService = None
+    graph_service: GraphService | None = None,
+    audit_service: AuditService | None = None
 ) -> VersionService:
     """
     Dependency for getting VersionService instance.

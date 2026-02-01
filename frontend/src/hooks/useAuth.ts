@@ -3,7 +3,7 @@
  * Provides convenient access to auth state and actions
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuthStore, type User } from '../stores/authStore';
 
 export interface UseAuthReturn {
@@ -144,12 +144,20 @@ export function useTokenExpiry(): {
   timeUntilExpiry: number | null;
 } {
   const tokens = useAuthStore((state) => state.tokens);
+  const [now, setNow] = useState(() => Date.now());
+  
+  // Update current time periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
   
   if (!tokens) {
     return { isExpired: true, expiresAt: null, timeUntilExpiry: null };
   }
 
-  const now = Date.now();
   const isExpired = now >= tokens.expiresAt;
   const timeUntilExpiry = isExpired ? 0 : tokens.expiresAt - now;
 

@@ -314,10 +314,10 @@ async def seed_users_to_db():
     try:
         from sqlalchemy import select
 
-        from app.db.session import async_session_maker
+        from app.db.session import AsyncSessionLocal
         from app.models.user import User
 
-        async with async_session_maker() as session:
+        async with AsyncSessionLocal() as session:
             for user_data in SEED_USERS:
                 # Check if user already exists
                 result = await session.execute(
@@ -353,6 +353,159 @@ async def seed_users_to_db():
         sys.exit(1)
 
 
+async def seed_graph_data():
+    """Seed graph database with workitem nodes and relationships"""
+    try:
+        from app.db.graph import get_graph_service
+
+        print("\nSeeding graph database...")
+        graph_service = await get_graph_service()
+
+        # Track created nodes and relationships
+        created_nodes = 0
+        created_relationships = 0
+        errors = []
+
+        # Create requirement nodes
+        print("\nCreating requirement nodes...")
+        for req in SEED_REQUIREMENTS:
+            try:
+                await graph_service.create_workitem_node(
+                    workitem_id=req["id"],
+                    workitem_type=req["type"],
+                    title=req["title"],
+                    description=req.get("description"),
+                    status=req["status"],
+                    priority=req["priority"],
+                    created_by=req["created_by"],
+                    acceptance_criteria=req.get("acceptance_criteria"),
+                    business_value=req.get("business_value"),
+                    source=req.get("source")
+                )
+                created_nodes += 1
+                print(f"  ✓ Created requirement: {req['title'][:50]}...")
+            except Exception as e:
+                error_msg = f"Failed to create requirement {req['id']}: {e}"
+                errors.append(error_msg)
+                print(f"  ✗ {error_msg}")
+
+        # Create task nodes
+        print("\nCreating task nodes...")
+        for task in SEED_TASKS:
+            try:
+                await graph_service.create_workitem_node(
+                    workitem_id=task["id"],
+                    workitem_type=task["type"],
+                    title=task["title"],
+                    description=task.get("description"),
+                    status=task["status"],
+                    priority=task["priority"],
+                    created_by=task["created_by"],
+                    assigned_to=task.get("assigned_to"),
+                    estimated_hours=task.get("estimated_hours"),
+                    actual_hours=task.get("actual_hours")
+                )
+                created_nodes += 1
+                print(f"  ✓ Created task: {task['title'][:50]}...")
+            except Exception as e:
+                error_msg = f"Failed to create task {task['id']}: {e}"
+                errors.append(error_msg)
+                print(f"  ✗ {error_msg}")
+
+        # Create test nodes
+        print("\nCreating test nodes...")
+        for test in SEED_TESTS:
+            try:
+                await graph_service.create_workitem_node(
+                    workitem_id=test["id"],
+                    workitem_type=test["type"],
+                    title=test["title"],
+                    description=test.get("description"),
+                    status=test["status"],
+                    priority=test["priority"],
+                    created_by=test["created_by"],
+                    assigned_to=test.get("assigned_to"),
+                    test_type=test.get("test_type"),
+                    test_steps=test.get("test_steps"),
+                    expected_result=test.get("expected_result"),
+                    test_status=test.get("test_status")
+                )
+                created_nodes += 1
+                print(f"  ✓ Created test: {test['title'][:50]}...")
+            except Exception as e:
+                error_msg = f"Failed to create test {test['id']}: {e}"
+                errors.append(error_msg)
+                print(f"  ✗ {error_msg}")
+
+        # Create risk nodes
+        print("\nCreating risk nodes...")
+        for risk in SEED_RISKS:
+            try:
+                await graph_service.create_workitem_node(
+                    workitem_id=risk["id"],
+                    workitem_type=risk["type"],
+                    title=risk["title"],
+                    description=risk.get("description"),
+                    status=risk["status"],
+                    priority=risk["priority"],
+                    created_by=risk["created_by"],
+                    severity=risk.get("severity"),
+                    occurrence=risk.get("occurrence"),
+                    detection=risk.get("detection"),
+                    rpn=risk.get("rpn"),
+                    mitigation_actions=risk.get("mitigation_actions"),
+                    risk_owner=risk.get("risk_owner")
+                )
+                created_nodes += 1
+                print(f"  ✓ Created risk: {risk['title'][:50]}...")
+            except Exception as e:
+                error_msg = f"Failed to create risk {risk['id']}: {e}"
+                errors.append(error_msg)
+                print(f"  ✗ {error_msg}")
+
+        # Create relationships
+        print("\nCreating relationships...")
+        for rel in SEED_RELATIONSHIPS:
+            try:
+                await graph_service.create_relationship(
+                    from_id=rel["from_id"],
+                    to_id=rel["to_id"],
+                    rel_type=rel["type"]
+                )
+                created_relationships += 1
+                print(f"  ✓ Created {rel['type']} relationship")
+            except Exception as e:
+                error_msg = f"Failed to create relationship {rel['from_id']} -> {rel['to_id']}: {e}"
+                errors.append(error_msg)
+                print(f"  ✗ {error_msg}")
+
+        # Print summary
+        print("\n" + "=" * 80)
+        print("GRAPH SEEDING SUMMARY")
+        print("=" * 80)
+        print(f"Nodes created: {created_nodes}")
+        print(f"  - Requirements: {len([r for r in SEED_REQUIREMENTS])}")
+        print(f"  - Tasks: {len([t for t in SEED_TASKS])}")
+        print(f"  - Tests: {len([t for t in SEED_TESTS])}")
+        print(f"  - Risks: {len([r for r in SEED_RISKS])}")
+        print(f"Relationships created: {created_relationships}")
+        if errors:
+            print(f"\nErrors encountered: {len(errors)}")
+            for error in errors:
+                print(f"  - {error}")
+        print("=" * 80 + "\n")
+
+        print("Graph database seeded successfully!")
+
+    except ImportError as e:
+        print(f"Error importing graph modules: {e}")
+        print("Make sure the graph service is properly configured.")
+    except Exception as e:
+        print(f"Error seeding graph data: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 async def main():
     """Main entry point for the seed script."""
     import argparse
@@ -370,7 +523,17 @@ async def main():
         return
 
     print("Seeding database...")
+
+    # Seed users first
     await seed_users_to_db()
+
+    # Seed graph data
+    try:
+        await seed_graph_data()
+    except Exception as e:
+        print(f"\nWarning: Graph seeding encountered an error: {e}")
+        print("User seeding completed successfully, but graph data may be incomplete.")
+
     print("\nSeed complete!")
 
 

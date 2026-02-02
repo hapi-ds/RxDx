@@ -139,18 +139,60 @@ interface BackendGraphResponse {
 
 /**
  * Transform backend node to frontend GraphNode format
+ * Returns null if the node is invalid (missing required properties)
  */
-function transformBackendNode(backendNode: BackendNode): GraphNode {
-  // Extract position from reactFlow data if available, otherwise use random position
-  const position = backendNode.reactFlow?.position ?? {
-    x: Math.random() * 500,
-    y: Math.random() * 500,
-  };
+function transformBackendNode(backendNode: BackendNode): GraphNode | null {
+  // Defensive: Validate node has required id property
+  if (!backendNode || !backendNode.id) {
+    console.warn('Invalid node: missing id', backendNode);
+    return null;
+  }
+
+  // Defensive: Extract position with multiple fallbacks
+  let position: { x: number; y: number };
+  
+  if (backendNode.reactFlow?.position) {
+    const pos = backendNode.reactFlow.position;
+    // Validate position values are finite numbers
+    if (Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+      position = pos;
+    } else {
+      // Generate random position if values are not finite
+      position = {
+        x: Math.random() * 500,
+        y: Math.random() * 500,
+      };
+    }
+  } else if (backendNode.properties?.position && 
+             typeof backendNode.properties.position === 'object' &&
+             'x' in backendNode.properties.position && 
+             'y' in backendNode.properties.position) {
+    const pos = backendNode.properties.position as { x: number; y: number };
+    // Validate position values are finite numbers
+    if (Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+      position = { x: pos.x, y: pos.y };
+    } else {
+      // Generate random position if values are not finite
+      position = {
+        x: Math.random() * 500,
+        y: Math.random() * 500,
+      };
+    }
+  } else {
+    // Generate random position as last resort
+    position = {
+      x: Math.random() * 500,
+      y: Math.random() * 500,
+    };
+  }
+
+  // Provide default label if missing
+  const label = backendNode.label || `Node ${backendNode.id.substring(0, 8)}`;
 
   return {
     id: backendNode.id,
     type: backendNode.type?.toLowerCase() ?? 'default',
-    label: backendNode.label,
+    label,
     properties: {
       ...backendNode.properties,
       status: backendNode.status,
@@ -165,13 +207,23 @@ function transformBackendNode(backendNode: BackendNode): GraphNode {
 
 /**
  * Transform backend edge to frontend GraphEdge format
+ * Returns null if the edge is invalid (missing required properties)
  */
-function transformBackendEdge(backendEdge: BackendEdge): GraphEdge {
+function transformBackendEdge(backendEdge: BackendEdge): GraphEdge | null {
+  // Defensive: Validate edge has required source and target properties
+  if (!backendEdge || !backendEdge.source || !backendEdge.target) {
+    console.warn('Invalid edge: missing source or target', backendEdge);
+    return null;
+  }
+
+  // Provide default edge type if missing
+  const type = backendEdge.type || 'default';
+
   return {
     id: backendEdge.id,
     source: backendEdge.source,
     target: backendEdge.target,
-    type: backendEdge.type,
+    type,
     label: backendEdge.label,
     properties: backendEdge.properties,
   };
@@ -201,12 +253,28 @@ class GraphService {
 
       const response = await apiClient.get<BackendGraphResponse>(url);
       
-       // Transform backend response to frontend format
-       const nodes = (response.data.nodes || []).map(transformBackendNode);
-       const edges = (response.data.edges || []).map(transformBackendEdge);
+      // Defensive: Validate response exists and has data
+      if (!response || !response.data) {
+        console.error('API returned no data');
+        return { nodes: [], edges: [] };
+      }
+      
+      // Defensive: Ensure arrays exist
+      const backendNodes = Array.isArray(response.data.nodes) ? response.data.nodes : [];
+      const backendEdges = Array.isArray(response.data.edges) ? response.data.edges : [];
+      
+      // Transform with validation - filter out null results
+      const nodes = backendNodes
+        .map(transformBackendNode)
+        .filter((node): node is GraphNode => node !== null);
+      
+      const edges = backendEdges
+        .map(transformBackendEdge)
+        .filter((edge): edge is GraphEdge => edge !== null);
 
-       return { nodes, edges };
+      return { nodes, edges };
     } catch (error) {
+      console.error('Graph visualization error:', error);
       throw new Error(getErrorMessage(error));
     }
   }

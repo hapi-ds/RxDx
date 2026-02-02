@@ -1065,7 +1065,7 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
     // Find node by name (case-insensitive partial match)
     const normalizedName = nodeName.toLowerCase();
     const matchingNode = nodes.find(node => {
-      const nodeLabel = (node.data?.label || node.data?.properties?.title || node.id) as string;
+      const nodeLabel = (node?.data?.label || node?.data?.properties?.title || node?.id || '') as string;
       return nodeLabel.toLowerCase().includes(normalizedName);
     });
 
@@ -1800,8 +1800,8 @@ const Node3D: React.FC<Node3DProps> = ({
   const isHovered = hovered || isVRHovered;
 
   // Get node type from data or node type field
-  const nodeType = (node.data?.type || node.type || 'default') as NodeType | 'default';
-  
+  const nodeType = (node?.data?.type || node?.type || 'default') as NodeType | 'default';
+
   // Get color based on node type
   const color = useMemo(() => {
     return NODE_COLORS[nodeType] || NODE_COLORS.default;
@@ -2193,9 +2193,9 @@ const Edge3D: React.FC<Edge3DProps> = ({
 
   // Get edge type from edge data or type field
   const edgeType = useMemo(() => {
-    const type = (edge.type || edge.label || edge.data?.type || 'default') as string;
+    const type = (edge?.type || edge?.label || edge?.data?.type || 'default') as string;
     return type.toUpperCase() as EdgeType | 'default';
-  }, [edge.type, edge.label, edge.data]);
+  }, [edge?.type, edge?.label, edge?.data]);
 
   // Get style configuration for this edge type
   const style = useMemo(() => {
@@ -2258,12 +2258,12 @@ const Edge3D: React.FC<Edge3DProps> = ({
 
   // Get display label for the edge
   const displayLabel = useMemo(() => {
-    const label = edge.label || edge.type || '';
+    const label = edge?.label || edge?.type || '';
     return String(label)
       .replace(/_/g, ' ')
       .toLowerCase()
       .replace(/\b\w/g, (c) => c.toUpperCase());
-  }, [edge.label, edge.type]);
+  }, [edge?.label, edge?.type]);
 
   const effectiveHovered = isHovered || localHovered;
   const effectiveLineWidth = effectiveHovered ? style.lineWidth * 1.5 : style.lineWidth;
@@ -2273,9 +2273,9 @@ const Edge3D: React.FC<Edge3DProps> = ({
   const handlePointerOver = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setLocalHovered(true);
-    onHover(edge.id);
+    onHover(edge?.id || '');
     document.body.style.cursor = 'pointer';
-  }, [edge.id, onHover]);
+  }, [edge?.id, onHover]);
 
   const handlePointerOut = useCallback(() => {
     setLocalHovered(false);

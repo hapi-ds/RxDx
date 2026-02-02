@@ -41,8 +41,8 @@ export function Login(): React.ReactElement {
       setValidationError('Password is required');
       return false;
     }
-    if (formData.password.length < 6) {
-      setValidationError('Password must be at least 6 characters');
+    if (formData.password.length < 8) {
+      setValidationError('Password must be at least 8 characters');
       return false;
     }
     setValidationError(null);

@@ -72,6 +72,19 @@ vi.mock('../components/graph/ViewModeToggle', () => ({
   )),
 }));
 
+// Mock the GraphEmptyState component
+vi.mock('../components/graph/GraphEmptyState', () => ({
+  GraphEmptyState: vi.fn(({ onRefresh }) => (
+    <div data-testid="graph-empty-state">
+      <h3>No Graph Data Available</h3>
+      <p>The knowledge graph is empty. Create some requirements, tasks, or tests to see them visualized here.</p>
+      <button onClick={onRefresh} data-testid="empty-state-refresh">
+        Refresh Graph
+      </button>
+    </div>
+  )),
+}));
+
 // Mock the GraphView3D component
 vi.mock('../components/graph/GraphView3D', () => ({
   GraphView3D: vi.fn(({ className }) => (
@@ -101,6 +114,7 @@ describe('GraphExplorer', () => {
   const mockSelectSearchResult = vi.fn();
 
   const defaultStoreState = {
+    nodes: [],
     isLoading: false,
     error: null,
     loadGraph: mockLoadGraph,
@@ -147,12 +161,39 @@ describe('GraphExplorer', () => {
   });
 
   it('renders refresh button', () => {
+    // Add nodes so we're testing the toolbar refresh button specifically
+    mockUseGraphStore.mockReturnValue({
+      ...defaultStoreState,
+      nodes: [
+        {
+          id: 'node-1',
+          type: 'requirement',
+          data: { label: 'Test Node', type: 'requirement', properties: {} },
+          position: { x: 0, y: 0 },
+        },
+      ],
+    });
+
     render(<GraphExplorer />);
 
-    expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument();
+    // Look for the toolbar refresh button specifically
+    expect(screen.getByText('↻ Refresh')).toBeInTheDocument();
   });
 
   it('renders export button via GraphView2D render prop', () => {
+    // Add nodes so the graph view is rendered
+    mockUseGraphStore.mockReturnValue({
+      ...defaultStoreState,
+      nodes: [
+        {
+          id: 'node-1',
+          type: 'requirement',
+          data: { label: 'Test Node', type: 'requirement', properties: {} },
+          position: { x: 0, y: 0 },
+        },
+      ],
+    });
+
     render(<GraphExplorer />);
 
     // The export button is rendered inside GraphView2D via renderToolbarContent prop
@@ -162,6 +203,19 @@ describe('GraphExplorer', () => {
   });
 
   it('renders GraphView2D component', () => {
+    // Add nodes so the graph view is rendered
+    mockUseGraphStore.mockReturnValue({
+      ...defaultStoreState,
+      nodes: [
+        {
+          id: 'node-1',
+          type: 'requirement',
+          data: { label: 'Test Node', type: 'requirement', properties: {} },
+          position: { x: 0, y: 0 },
+        },
+      ],
+    });
+
     render(<GraphExplorer />);
 
     expect(screen.getByTestId('graph-view-2d')).toBeInTheDocument();
@@ -191,9 +245,23 @@ describe('GraphExplorer', () => {
 
   it('calls loadGraph when refresh button is clicked', async () => {
     const user = userEvent.setup();
+    // Add nodes so we're testing the toolbar refresh button specifically
+    mockUseGraphStore.mockReturnValue({
+      ...defaultStoreState,
+      nodes: [
+        {
+          id: 'node-1',
+          type: 'requirement',
+          data: { label: 'Test Node', type: 'requirement', properties: {} },
+          position: { x: 0, y: 0 },
+        },
+      ],
+    });
+
     render(<GraphExplorer />);
 
-    await user.click(screen.getByRole('button', { name: /refresh/i }));
+    // Click the toolbar refresh button specifically
+    await user.click(screen.getByText('↻ Refresh'));
 
     expect(mockClearError).toHaveBeenCalled();
     expect(mockLoadGraph).toHaveBeenCalled();
@@ -399,6 +467,14 @@ describe('GraphExplorer', () => {
     it('renders GraphView2D when viewMode is 2d', () => {
       mockUseGraphStore.mockReturnValue({
         ...defaultStoreState,
+        nodes: [
+          {
+            id: 'node-1',
+            type: 'requirement',
+            data: { label: 'Test Node', type: 'requirement', properties: {} },
+            position: { x: 0, y: 0 },
+          },
+        ],
         viewMode: '2d',
       });
 
@@ -411,6 +487,14 @@ describe('GraphExplorer', () => {
     it('renders GraphView3D when viewMode is 3d', async () => {
       mockUseGraphStore.mockReturnValue({
         ...defaultStoreState,
+        nodes: [
+          {
+            id: 'node-1',
+            type: 'requirement',
+            data: { label: 'Test Node', type: 'requirement', properties: {} },
+            position: { x: 0, y: 0 },
+          },
+        ],
         viewMode: '3d',
       });
 
@@ -421,6 +505,151 @@ describe('GraphExplorer', () => {
         expect(screen.getByTestId('graph-view-3d')).toBeInTheDocument();
       });
       expect(screen.queryByTestId('graph-view-2d')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Empty State Integration', () => {
+    it('shows empty state when nodes.length === 0 and not loading and no error', () => {
+      // Requirement 4.1: Display empty state message when graph has zero nodes
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: false,
+        error: null,
+      });
+
+      render(<GraphExplorer />);
+
+      expect(screen.getByTestId('graph-empty-state')).toBeInTheDocument();
+      expect(screen.getByText('No Graph Data Available')).toBeInTheDocument();
+    });
+
+    it('hides graph canvas when empty (no nodes)', () => {
+      // Requirement 4.3: Hide graph canvas and controls when empty
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: false,
+        error: null,
+      });
+
+      render(<GraphExplorer />);
+
+      // Graph views should not be rendered when empty
+      expect(screen.queryByTestId('graph-view-2d')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('graph-view-3d')).not.toBeInTheDocument();
+      
+      // Empty state should be visible
+      expect(screen.getByTestId('graph-empty-state')).toBeInTheDocument();
+    });
+
+    it('shows graph when data is loaded (nodes.length > 0)', () => {
+      // Requirement 4.4: Automatically hide empty state and show graph when data loads
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [
+          {
+            id: 'node-1',
+            type: 'requirement',
+            data: { label: 'Test Node', type: 'requirement', properties: {} },
+            position: { x: 0, y: 0 },
+          },
+        ],
+        isLoading: false,
+        error: null,
+      });
+
+      render(<GraphExplorer />);
+
+      // Graph view should be visible
+      expect(screen.getByTestId('graph-view-2d')).toBeInTheDocument();
+      
+      // Empty state should not be visible
+      expect(screen.queryByTestId('graph-empty-state')).not.toBeInTheDocument();
+    });
+
+    it('displays error separately from empty state', () => {
+      // Requirement 4.5: Display error message separately from empty state
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: false,
+        error: 'Failed to load graph',
+      });
+
+      render(<GraphExplorer />);
+
+      // Error banner should be visible
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+      expect(screen.getByText('Failed to load graph')).toBeInTheDocument();
+      
+      // Empty state should not be shown when there's an error
+      expect(screen.queryByTestId('graph-empty-state')).not.toBeInTheDocument();
+    });
+
+    it('does not show empty state when loading', () => {
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: true,
+        error: null,
+      });
+
+      render(<GraphExplorer />);
+
+      // Loading overlay should be visible
+      expect(screen.getByText('Loading graph...')).toBeInTheDocument();
+      
+      // Empty state should not be shown while loading
+      expect(screen.queryByTestId('graph-empty-state')).not.toBeInTheDocument();
+    });
+
+    it('calls loadGraph when refresh button in empty state is clicked', async () => {
+      const user = userEvent.setup();
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: false,
+        error: null,
+      });
+
+      render(<GraphExplorer />);
+
+      const refreshButton = screen.getByTestId('empty-state-refresh');
+      await user.click(refreshButton);
+
+      expect(mockClearError).toHaveBeenCalled();
+      expect(mockLoadGraph).toHaveBeenCalled();
+    });
+
+    it('shows empty state in 2D view mode', () => {
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: false,
+        error: null,
+        viewMode: '2d',
+      });
+
+      render(<GraphExplorer />);
+
+      expect(screen.getByTestId('graph-empty-state')).toBeInTheDocument();
+      expect(screen.queryByTestId('graph-view-2d')).not.toBeInTheDocument();
+    });
+
+    it('shows empty state in 3D view mode', () => {
+      mockUseGraphStore.mockReturnValue({
+        ...defaultStoreState,
+        nodes: [],
+        isLoading: false,
+        error: null,
+        viewMode: '3d',
+      });
+
+      render(<GraphExplorer />);
+
+      expect(screen.getByTestId('graph-empty-state')).toBeInTheDocument();
+      expect(screen.queryByTestId('graph-view-3d')).not.toBeInTheDocument();
     });
   });
 });

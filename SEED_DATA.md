@@ -13,8 +13,8 @@ All seed users have the same default password: `password123`
 | Email | Name | Role | Active | Description |
 |-------|------|------|--------|-------------|
 | admin@rxdx.example.com | System Administrator | admin | Yes | Full system access, can manage users and settings |
-| pm@rxdx.example.com | Projvalidator@rxdx.example.comect Manager | project_manager | Yes | Can manage projects, requirements, and assign tasks |
-|  | Quality Validator | validator | Yes | Can validate and approve workitems |
+| pm@rxdx.example.com | Project Manager | project_manager | Yes | Can manage projects, requirements, and assign tasks |
+| validator@rxdx.example.com | Quality Validator | validator | Yes | Can validate and approve workitems |
 | auditor@rxdx.example.com | Compliance Auditor | auditor | Yes | Read-only access to audit logs and compliance data |
 | developer@rxdx.example.com | Software Developer | user | Yes | Standard user, can create and update workitems |
 | tester@rxdx.example.com | QA Tester | user | Yes | Standard user, focused on test execution |
@@ -43,17 +43,17 @@ All seed users have the same default password: `password123`
 
 | ID | Title | Status | Assigned To |
 |----|-------|--------|-------------|
-| TASK-001 | Implement JWT Authentication | Completed | developer@rxdx.local |
-| TASK-002 | Create User Management API | Active | developer@rxdx.local |
-| TASK-003 | Implement Audit Logging Service | Draft | developer@rxdx.local |
+| TASK-001 | Implement JWT Authentication | Completed | developer@rxdx.example.com |
+| TASK-002 | Create User Management API | Active | developer@rxdx.example.com |
+| TASK-003 | Implement Audit Logging Service | Draft | developer@rxdx.example.com |
 
 ### Tests (3 items)
 
 | ID | Title | Test Status | Assigned To |
 |----|-------|-------------|-------------|
-| TEST-001 | Test User Login Success | Passed | tester@rxdx.local |
-| TEST-002 | Test Invalid Login Attempt | Passed | tester@rxdx.local |
-| TEST-003 | Test Account Lockout | Not Run | tester@rxdx.local |
+| TEST-001 | Test User Login Success | Passed | tester@rxdx.example.com |
+| TEST-002 | Test Invalid Login Attempt | Passed | tester@rxdx.example.com |
+| TEST-003 | Test Account Lockout | Not Run | tester@rxdx.example.com |
 
 ### Risks (2 items)
 
@@ -139,13 +139,13 @@ If the application is running, you can use the API to create users:
 # Login as admin first
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "admin@rxdx.local", "password": "password123"}'
+  -d '{"email": "admin@rxdx.example.com", "password": "password123"}'
 
 # Use the returned token to create additional users
 curl -X POST http://localhost:8000/api/v1/users \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '{"email": "newuser@rxdx.local", "password": "password123", "full_name": "New User", "role": "user"}'
+  -d '{"email": "newuser@rxdx.example.com", "password": "password123", "full_name": "New User", "role": "user"}'
 ```
 
 ## Verifying Seed Data
@@ -187,7 +187,7 @@ Edit `backend/db/init/05-seed-data.sql` or `backend/scripts/seed_data.py`:
 INSERT INTO users (id, email, hashed_password, full_name, role, is_active)
 VALUES (
     'your-uuid-here',
-    'newuser@rxdx.local',
+    'newuser@rxdx.example.com',
     '$argon2id$v=19$m=65536,t=3,p=4$c2FsdHNhbHRzYWx0$K8Ij5PqKAqkLxvOlm5nYdHWaIxRNIHbunPE8JWA3yCk',
     'New User Name',
     'user',

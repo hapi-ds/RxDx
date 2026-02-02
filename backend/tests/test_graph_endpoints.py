@@ -99,8 +99,13 @@ class TestGraphVisualizationEndpoint:
     def test_get_graph_visualization_invalid_node_types(self, client, mock_user):
         """Test graph visualization with invalid node types"""
         from app.api import deps
+        from app.db import graph
+
+        # Mock the graph service (even though we won't reach it)
+        mock_service = AsyncMock()
 
         app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
 
         try:
             response = client.get(
@@ -217,8 +222,13 @@ class TestGraphVisualizationEndpoint:
     def test_get_graph_visualization_invalid_relationship_types(self, client, mock_user):
         """Test graph visualization with invalid relationship types"""
         from app.api import deps
+        from app.db import graph
+
+        # Mock the graph service (even though we won't reach it)
+        mock_service = AsyncMock()
 
         app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
 
         try:
             response = client.get(
@@ -235,8 +245,13 @@ class TestGraphVisualizationEndpoint:
     def test_get_graph_visualization_parameter_validation(self, client, mock_user):
         """Test parameter validation"""
         from app.api import deps
+        from app.db import graph
+
+        # Mock the graph service (even though we won't reach it)
+        mock_service = AsyncMock()
 
         app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
 
         try:
             # Test depth out of range
@@ -512,6 +527,232 @@ class TestGraphVisualizationPerformance:
             assert len(data["nodes"]) == 1000
             assert data["metadata"]["truncated"] is True
             assert "performance_stats" in data["metadata"]
+
+        finally:
+            app.dependency_overrides.clear()
+
+
+
+class TestGraphVisualizationResponseValidation:
+    """Test API response validation for graph visualization endpoint
+
+    Feature: fix-graph-visualization
+    Tests the validation logic added in task 2.1
+    """
+
+    def test_response_validation_ensures_nodes_array(self, client, mock_user):
+        """Test that response validation ensures nodes array exists"""
+        # Mock service that returns response without nodes key
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = {
+            "edges": [],
+            "metadata": {"total_nodes": 0, "total_edges": 0}
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Validation should add nodes array
+            assert "nodes" in data
+            assert data["nodes"] == []
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_response_validation_ensures_edges_array(self, client, mock_user):
+        """Test that response validation ensures edges array exists"""
+        # Mock service that returns response without edges key
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = {
+            "nodes": [],
+            "metadata": {"total_nodes": 0, "total_edges": 0}
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Validation should add edges array
+            assert "edges" in data
+            assert data["edges"] == []
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_response_validation_ensures_metadata(self, client, mock_user):
+        """Test that response validation ensures metadata exists"""
+        # Mock service that returns response without metadata
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = {
+            "nodes": [],
+            "edges": []
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Validation should add metadata
+            assert "metadata" in data
+            assert "total_nodes" in data["metadata"]
+            assert "total_edges" in data["metadata"]
+            assert data["metadata"]["total_nodes"] == 0
+            assert data["metadata"]["total_edges"] == 0
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_response_validation_adds_missing_metadata_fields(self, client, mock_user):
+        """Test that validation adds missing metadata fields"""
+        # Mock service that returns incomplete metadata
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = {
+            "nodes": [{"id": "node-1"}],
+            "edges": [{"id": "edge-1"}],
+            "metadata": {
+                "depth": 2,
+                "center_node": None
+                # Missing total_nodes and total_edges
+            }
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # Validation should add missing fields
+            assert "total_nodes" in data["metadata"]
+            assert "total_edges" in data["metadata"]
+            assert data["metadata"]["total_nodes"] == 1
+            assert data["metadata"]["total_edges"] == 1
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_response_validation_rejects_invalid_format(self, client, mock_user):
+        """Test that validation rejects non-dict responses"""
+        # Mock service that returns invalid format
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = "invalid response"
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            # Should return 500 error for invalid format
+            assert response.status_code == 500
+            assert "Invalid graph data format" in response.json()["detail"]
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_response_validation_with_empty_graph(self, client, mock_user):
+        """Test validation with completely empty graph"""
+        # Mock service that returns minimal valid response
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = {}
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # All required fields should be present
+            assert "nodes" in data
+            assert "edges" in data
+            assert "metadata" in data
+            assert data["nodes"] == []
+            assert data["edges"] == []
+            assert data["metadata"]["total_nodes"] == 0
+            assert data["metadata"]["total_edges"] == 0
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_response_validation_preserves_existing_data(self, client, mock_user):
+        """Test that validation preserves existing valid data"""
+        # Mock service that returns complete valid response
+        mock_service = AsyncMock()
+        mock_service.get_graph_for_visualization.return_value = {
+            "nodes": [
+                {"id": "node-1", "type": "requirement", "label": "Node 1"}
+            ],
+            "edges": [
+                {"id": "edge-1", "source": "node-1", "target": "node-2"}
+            ],
+            "metadata": {
+                "total_nodes": 1,
+                "total_edges": 1,
+                "depth": 2,
+                "center_node": None,
+                "truncated": False
+            }
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/visualization")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            # All data should be preserved
+            assert len(data["nodes"]) == 1
+            assert len(data["edges"]) == 1
+            assert data["metadata"]["total_nodes"] == 1
+            assert data["metadata"]["total_edges"] == 1
+            assert data["metadata"]["depth"] == 2
+            assert data["metadata"]["truncated"] is False
 
         finally:
             app.dependency_overrides.clear()

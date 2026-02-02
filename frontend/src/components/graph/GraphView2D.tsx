@@ -79,7 +79,7 @@ const baseNodeStyle: React.CSSProperties = {
  */
 const RequirementNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
   const colors = NODE_COLORS.requirement;
-  const isSigned = data.properties?.is_signed === true;
+  const isSigned = data?.properties?.is_signed === true;
 
   return (
     <div
@@ -101,7 +101,7 @@ const RequirementNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selec
           </span>
         )}
       </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data.label}</div>
+      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -112,7 +112,7 @@ const RequirementNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selec
  */
 const TaskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
   const colors = NODE_COLORS.task;
-  const status = data.properties?.status as string | undefined;
+  const status = data?.properties?.status as string | undefined;
 
   return (
     <div
@@ -132,7 +132,7 @@ const TaskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) 
           <span style={{ fontSize: '10px', opacity: 0.8 }}>{status}</span>
         )}
       </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data.label}</div>
+      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -143,7 +143,7 @@ const TaskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) 
  */
 const TestNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
   const colors = NODE_COLORS.test;
-  const status = data.properties?.status as string | undefined;
+  const status = data?.properties?.status as string | undefined;
 
   const statusIcon = useMemo(() => {
     if (status === 'passed') return '✓';
@@ -177,7 +177,7 @@ const TestNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) 
           </span>
         )}
       </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data.label}</div>
+      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -188,7 +188,7 @@ const TestNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) 
  */
 const RiskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
   const colors = NODE_COLORS.risk;
-  const rpn = data.properties?.rpn as number | undefined;
+  const rpn = data?.properties?.rpn as number | undefined;
 
   return (
     <div
@@ -217,7 +217,7 @@ const RiskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) 
           </span>
         )}
       </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data.label}</div>
+      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
@@ -227,7 +227,7 @@ const RiskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) 
  * Default node component for other types (document, etc.)
  */
 const DefaultNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
-  const nodeType = data.type || 'default';
+  const nodeType = data?.type || 'default';
   const colors = NODE_COLORS[nodeType] || NODE_COLORS.default;
   const typeLabel = NODE_TYPE_LABELS[nodeType] || nodeType.toUpperCase();
 
@@ -244,7 +244,7 @@ const DefaultNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
         <span style={{ fontWeight: 'bold', fontSize: '10px', opacity: 0.7 }}>{typeLabel}</span>
       </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data.label}</div>
+      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

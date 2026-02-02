@@ -80,6 +80,38 @@ async def get_graph_visualization(
             limit=limit
         )
 
+        # Validate graph_data is a dict
+        if not isinstance(graph_data, dict):
+            raise HTTPException(
+                status_code=500,
+                detail="Invalid graph data format: expected dictionary"
+            )
+
+        # Ensure 'nodes' key exists (default to empty array)
+        if 'nodes' not in graph_data:
+            graph_data['nodes'] = []
+
+        # Ensure 'edges' key exists (default to empty array)
+        if 'edges' not in graph_data:
+            graph_data['edges'] = []
+
+        # Ensure 'metadata' key exists with required fields
+        if 'metadata' not in graph_data:
+            graph_data['metadata'] = {
+                'total_nodes': len(graph_data.get('nodes', [])),
+                'total_edges': len(graph_data.get('edges', [])),
+                'depth': depth,
+                'center_node': center_node_id,
+                'truncated': False
+            }
+        else:
+            # Ensure metadata has required fields
+            metadata = graph_data['metadata']
+            if 'total_nodes' not in metadata:
+                metadata['total_nodes'] = len(graph_data.get('nodes', []))
+            if 'total_edges' not in metadata:
+                metadata['total_edges'] = len(graph_data.get('edges', []))
+
         return graph_data
 
     except HTTPException:

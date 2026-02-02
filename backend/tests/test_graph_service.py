@@ -763,16 +763,17 @@ class TestGraphVisualizationMethods:
 
     def test_format_node_colors_by_type(self, graph_service):
         """Test that different node types get different colors"""
+        # Test with default status (draft) - nodes without status get draft colors
         test_cases = [
-            ("requirement", "#3B82F6"),  # Blue
-            ("task", "#10B981"),         # Green
-            ("test", "#F59E0B"),         # Amber
-            ("risk", "#EF4444"),         # Red
-            ("document", "#8B5CF6"),     # Purple
-            ("failure", "#DC2626"),      # Dark red
-            ("entity", "#6B7280"),       # Gray
-            ("user", "#06B6D4"),         # Cyan
-            ("unknown", "#6B7280")       # Default gray
+            ("requirement", "#93C5FD"),  # Blue (draft)
+            ("task", "#6EE7B7"),         # Green (draft)
+            ("test", "#FCD34D"),         # Amber (draft)
+            ("risk", "#FCA5A5"),         # Red (draft)
+            ("document", "#C4B5FD"),     # Purple (draft)
+            ("failure", "#FCA5A5"),      # Dark red (draft)
+            ("entity", "#9CA3AF"),       # Gray (draft)
+            ("user", "#67E8F9"),         # Cyan (draft)
+            ("unknown", "#9CA3AF")       # Default gray (draft)
         ]
 
         for node_type, expected_color in test_cases:
@@ -898,3 +899,1015 @@ class TestGraphServiceIntegration:
 
         finally:
             await service.close()
+
+
+class TestBackendNodeFormattingResilience:
+    """Property-based tests for backend node formatting resilience
+
+    Feature: fix-graph-visualization, Property 4: Backend Node Formatting Resilience
+    **Validates: Requirements 2.2, 2.4**
+    """
+
+    def test_format_node_with_none_input(self, graph_service):
+        """Property: Formatting None node should return None without exception"""
+        result = graph_service._format_node_for_visualization(None)
+        assert result is None
+
+    def test_format_node_with_empty_dict(self, graph_service):
+        """Property: Formatting empty dict should provide default values"""
+        result = graph_service._format_node_for_visualization({})
+
+        # Should not be None - should have defaults
+        assert result is not None
+        assert "id" in result
+        assert "type" in result
+        assert result["type"] == "default"
+        assert "label" in result
+        assert "status" in result
+        assert result["status"] == "draft"
+        assert "priority" in result
+        assert result["priority"] == 3
+
+    def test_format_node_with_missing_id(self, graph_service):
+        """Property: Node without id should get generated UUID"""
+        node = {"type": "requirement", "title": "Test"}
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert "id" in result
+        assert len(result["id"]) > 0  # Should have generated ID
+
+    def test_format_node_with_missing_type(self, graph_service):
+        """Property: Node without type should get default type"""
+        node = {"id": "test-1", "title": "Test"}
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert result["type"] == "default"
+
+    def test_format_node_with_missing_title(self, graph_service):
+        """Property: Node without title should get generated label"""
+        node = {"id": "test-1", "type": "requirement"}
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert "label" in result
+        assert len(result["label"]) > 0
+        assert "requirement" in result["label"].lower()
+
+    def test_format_node_with_missing_status(self, graph_service):
+        """Property: Node without status should get default status"""
+        node = {"id": "test-1", "type": "requirement", "title": "Test"}
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert result["status"] == "draft"
+
+    def test_format_node_with_missing_priority(self, graph_service):
+        """Property: Node without priority should get default priority"""
+        node = {"id": "test-1", "type": "requirement", "title": "Test"}
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert result["priority"] == 3
+
+    def test_format_node_with_missing_description(self, graph_service):
+        """Property: Node without description should get empty string"""
+        node = {"id": "test-1", "type": "requirement", "title": "Test"}
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert result["description"] == ""
+
+    def test_format_node_with_null_properties(self, graph_service):
+        """Property: Node with null property values should handle gracefully"""
+        node = {
+            "id": "test-1",
+            "type": None,
+            "title": None,
+            "status": None,
+            "priority": None,
+            "description": None
+        }
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert result["id"] == "test-1"
+        assert result["type"] == "default"  # Fallback
+        assert len(result["label"]) > 0  # Generated label
+        assert result["status"] == "draft"  # Default
+        assert result["priority"] == 3  # Default
+        assert result["description"] == ""  # Default
+
+    def test_format_node_with_properties_nested(self, graph_service):
+        """Property: Node with nested properties dict should extract correctly"""
+        node = {
+            "properties": {
+                "id": "test-1",
+                "type": "requirement",
+                "title": "Test Requirement",
+                "status": "active",
+                "priority": 2
+            }
+        }
+        result = graph_service._format_node_for_visualization(node)
+
+        assert result is not None
+        assert result["id"] == "test-1"
+        assert result["type"] == "requirement"
+        assert result["label"] == "Test Requirement"
+        assert result["status"] == "active"
+        assert result["priority"] == 2
+
+    def test_format_node_always_has_reactflow_data(self, graph_service):
+        """Property: All formatted nodes must have reactFlow data"""
+        test_nodes = [
+            {},
+            {"id": "test-1"},
+            {"id": "test-1", "type": "requirement"},
+            {"id": "test-1", "type": "requirement", "title": "Test"},
+            {"properties": {"id": "test-2", "type": "task"}},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            if result is not None:  # Skip None results
+                assert "reactFlow" in result
+                assert "id" in result["reactFlow"]
+                assert "type" in result["reactFlow"]
+                assert "position" in result["reactFlow"]
+                assert "data" in result["reactFlow"]
+
+    def test_format_node_always_has_r3f_data(self, graph_service):
+        """Property: All formatted nodes must have r3f data"""
+        test_nodes = [
+            {},
+            {"id": "test-1"},
+            {"id": "test-1", "type": "requirement"},
+            {"id": "test-1", "type": "requirement", "title": "Test"},
+            {"properties": {"id": "test-2", "type": "task"}},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            if result is not None:  # Skip None results
+                assert "r3f" in result
+                assert "id" in result["r3f"]
+                assert "position" in result["r3f"]
+                assert "type" in result["r3f"]
+                assert "label" in result["r3f"]
+                assert isinstance(result["r3f"]["position"], list)
+                assert len(result["r3f"]["position"]) == 3
+
+
+class TestBackendEdgeFormattingResilience:
+    """Property-based tests for backend edge formatting resilience
+
+    Feature: fix-graph-visualization, Property 4: Backend Node Formatting Resilience (edges)
+    **Validates: Requirements 2.2, 2.4**
+    """
+
+    def test_format_edge_with_none_input(self, graph_service):
+        """Property: Formatting None edge should return None without exception"""
+        result = graph_service._format_edge_for_visualization(None)
+        assert result is None
+
+    def test_format_edge_with_empty_dict(self, graph_service):
+        """Property: Formatting empty dict should return None (missing required fields)"""
+        result = graph_service._format_edge_for_visualization({})
+        assert result is None  # Cannot create edge without source/target
+
+    def test_format_edge_with_missing_source(self, graph_service):
+        """Property: Edge without source should return None"""
+        edge = {"end_id": "target-1", "type": "TESTED_BY"}
+        result = graph_service._format_edge_for_visualization(edge)
+        assert result is None
+
+    def test_format_edge_with_missing_target(self, graph_service):
+        """Property: Edge without target should return None"""
+        edge = {"start_id": "source-1", "type": "TESTED_BY"}
+        result = graph_service._format_edge_for_visualization(edge)
+        assert result is None
+
+    def test_format_edge_with_missing_type(self, graph_service):
+        """Property: Edge without type should get default type"""
+        edge = {"start_id": "source-1", "end_id": "target-1"}
+        result = graph_service._format_edge_for_visualization(edge)
+
+        assert result is not None
+        assert result["type"] == "RELATED"  # Default type
+
+    def test_format_edge_with_null_properties(self, graph_service):
+        """Property: Edge with null property values should handle gracefully"""
+        edge = {
+            "start_id": "source-1",
+            "end_id": "target-1",
+            "type": None
+        }
+        result = graph_service._format_edge_for_visualization(edge)
+
+        assert result is not None
+        assert result["source"] == "source-1"
+        assert result["target"] == "target-1"
+        assert result["type"] == "RELATED"  # Default
+
+    def test_format_edge_with_properties_nested(self, graph_service):
+        """Property: Edge with nested properties dict should extract correctly"""
+        edge = {
+            "start_id": "source-1",
+            "end_id": "target-1",
+            "properties": {
+                "type": "TESTED_BY",
+                "created_at": "2024-01-01"
+            }
+        }
+        result = graph_service._format_edge_for_visualization(edge)
+
+        # Should work because start_id/end_id are at top level
+        assert result is not None
+        assert result["source"] == "source-1"
+        assert result["target"] == "target-1"
+        # Type comes from top level or properties
+        assert result["type"] in ["TESTED_BY", "RELATED"]
+
+    def test_format_edge_always_has_reactflow_data(self, graph_service):
+        """Property: All formatted edges must have reactFlow data"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b"},
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "a", "end_id": "b", "type": "MITIGATES"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            if result is not None:
+                assert "reactFlow" in result
+                assert "id" in result["reactFlow"]
+                assert "source" in result["reactFlow"]
+                assert "target" in result["reactFlow"]
+                assert "type" in result["reactFlow"]
+
+    def test_format_edge_always_has_r3f_data(self, graph_service):
+        """Property: All formatted edges must have r3f data"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b"},
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "a", "end_id": "b", "type": "DEPENDS_ON"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            if result is not None:
+                assert "r3f" in result
+                assert "id" in result["r3f"]
+                assert "source" in result["r3f"]
+                assert "target" in result["r3f"]
+                assert "type" in result["r3f"]
+
+
+
+class TestBackendVisualizationFormat:
+    """Property-based tests for backend visualization format
+
+    Feature: fix-graph-visualization, Property 5: Backend Node Visualization Format
+    **Validates: Requirements 1.6**
+    """
+
+    def test_all_nodes_have_reactflow_properties(self, graph_service):
+        """Property: All nodes must have properly formatted reactFlow properties"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1", "status": "active"},
+            {"id": "test-1", "type": "test", "title": "Test 1", "priority": 1},
+            {"id": "risk-1", "type": "risk", "title": "Risk 1", "status": "draft"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            # Must have reactFlow property
+            assert "reactFlow" in result
+            react_flow = result["reactFlow"]
+
+            # Must have required reactFlow fields
+            assert "id" in react_flow
+            assert "type" in react_flow
+            assert "position" in react_flow
+            assert "data" in react_flow
+
+            # Position must be a dict with x and y
+            assert isinstance(react_flow["position"], dict)
+            assert "x" in react_flow["position"]
+            assert "y" in react_flow["position"]
+            assert isinstance(react_flow["position"]["x"], (int, float))
+            assert isinstance(react_flow["position"]["y"], (int, float))
+
+            # Data must contain visualization metadata
+            assert "label" in react_flow["data"]
+            assert "type" in react_flow["data"]
+            assert "status" in react_flow["data"]
+            assert "priority" in react_flow["data"]
+            assert "color" in react_flow["data"]
+            assert "size" in react_flow["data"]
+
+    def test_all_nodes_have_r3f_properties(self, graph_service):
+        """Property: All nodes must have properly formatted r3f properties"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1", "status": "active"},
+            {"id": "test-1", "type": "test", "title": "Test 1", "priority": 1},
+            {"id": "risk-1", "type": "risk", "title": "Risk 1", "status": "draft"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            # Must have r3f property
+            assert "r3f" in result
+            r3f = result["r3f"]
+
+            # Must have required r3f fields
+            assert "id" in r3f
+            assert "position" in r3f
+            assert "type" in r3f
+            assert "label" in r3f
+
+            # Position must be a list with 3 coordinates [x, y, z]
+            assert isinstance(r3f["position"], list)
+            assert len(r3f["position"]) == 3
+            for coord in r3f["position"]:
+                assert isinstance(coord, (int, float))
+
+            # Must have visualization metadata
+            assert "status" in r3f
+            assert "priority" in r3f
+            assert "color" in r3f
+            assert "size" in r3f
+            assert "geometry" in r3f
+            assert "material" in r3f
+
+    def test_reactflow_position_is_valid(self, graph_service):
+        """Property: ReactFlow position must be valid coordinates"""
+        test_nodes = [
+            {"id": f"node-{i}", "type": "requirement", "title": f"Node {i}"}
+            for i in range(10)
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            position = result["reactFlow"]["position"]
+            # Position should be numeric (even if 0,0 default)
+            assert isinstance(position["x"], (int, float))
+            assert isinstance(position["y"], (int, float))
+            # Should be finite numbers
+            assert not (position["x"] == float('inf') or position["x"] == float('-inf'))
+            assert not (position["y"] == float('inf') or position["y"] == float('-inf'))
+
+    def test_r3f_position_is_valid_3d(self, graph_service):
+        """Property: R3F position must be valid 3D coordinates"""
+        test_nodes = [
+            {"id": f"node-{i}", "type": "task", "title": f"Node {i}"}
+            for i in range(10)
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            position = result["r3f"]["position"]
+            # Must be exactly 3 coordinates
+            assert len(position) == 3
+            # All must be numeric
+            for coord in position:
+                assert isinstance(coord, (int, float))
+                # Should be finite numbers
+                assert not (coord == float('inf') or coord == float('-inf'))
+
+    def test_node_colors_are_valid_hex(self, graph_service):
+        """Property: Node colors must be valid hex color codes"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Req", "status": "active"},
+            {"id": "task-1", "type": "task", "title": "Task", "status": "draft"},
+            {"id": "test-1", "type": "test", "title": "Test", "status": "completed"},
+            {"id": "risk-1", "type": "risk", "title": "Risk", "status": "archived"},
+        ]
+
+        import re
+        hex_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            # Check main color
+            assert hex_pattern.match(result["color"])
+
+            # Check reactFlow color
+            assert hex_pattern.match(result["reactFlow"]["data"]["color"])
+
+            # Check r3f color
+            assert hex_pattern.match(result["r3f"]["color"])
+
+    def test_node_sizes_are_positive(self, graph_service):
+        """Property: Node sizes must be positive numbers"""
+        test_nodes = [
+            {"id": f"node-{i}", "type": "requirement", "title": f"Node {i}", "priority": i % 5 + 1}
+            for i in range(10)
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            # Main size must be positive
+            assert result["size"] > 0
+            assert isinstance(result["size"], (int, float))
+
+            # R3F size must be positive
+            assert result["r3f"]["size"] > 0
+            assert isinstance(result["r3f"]["size"], (int, float))
+
+    def test_all_edges_have_reactflow_properties(self, graph_service):
+        """Property: All edges must have properly formatted reactFlow properties"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+            {"start_id": "e", "end_id": "f", "type": "DEPENDS_ON"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+
+            # Must have reactFlow property
+            assert "reactFlow" in result
+            react_flow = result["reactFlow"]
+
+            # Must have required reactFlow fields
+            assert "id" in react_flow
+            assert "source" in react_flow
+            assert "target" in react_flow
+            assert "type" in react_flow
+            assert "label" in react_flow
+            assert "style" in react_flow
+
+            # Source and target must match original
+            assert react_flow["source"] == edge["start_id"]
+            assert react_flow["target"] == edge["end_id"]
+
+    def test_all_edges_have_r3f_properties(self, graph_service):
+        """Property: All edges must have properly formatted r3f properties"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "IMPLEMENTS"},
+            {"start_id": "e", "end_id": "f", "type": "RELATES_TO"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+
+            # Must have r3f property
+            assert "r3f" in result
+            r3f = result["r3f"]
+
+            # Must have required r3f fields
+            assert "id" in r3f
+            assert "source" in r3f
+            assert "target" in r3f
+            assert "type" in r3f
+            assert "label" in r3f
+            assert "color" in r3f
+            assert "geometry" in r3f
+            assert "material" in r3f
+
+            # Source and target must match original
+            assert r3f["source"] == edge["start_id"]
+            assert r3f["target"] == edge["end_id"]
+
+    def test_edge_colors_are_valid_hex(self, graph_service):
+        """Property: Edge colors must be valid hex color codes"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+            {"start_id": "e", "end_id": "f", "type": "LEADS_TO"},
+        ]
+
+        import re
+        hex_pattern = re.compile(r'^#[0-9A-Fa-f]{6}$')
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+
+            # Check main color
+            assert hex_pattern.match(result["color"])
+
+            # Check r3f color
+            assert hex_pattern.match(result["r3f"]["color"])
+
+    def test_visualization_format_consistency(self, graph_service):
+        """Property: Same node formatted multiple times should produce consistent results"""
+        node = {"id": "test-1", "type": "requirement", "title": "Test", "status": "active", "priority": 2}
+
+        # Format the same node multiple times
+        results = [graph_service._format_node_for_visualization(node) for _ in range(5)]
+
+        # All results should be identical
+        first = results[0]
+        for result in results[1:]:
+            assert result["id"] == first["id"]
+            assert result["type"] == first["type"]
+            assert result["label"] == first["label"]
+            assert result["color"] == first["color"]
+            assert result["size"] == first["size"]
+            assert result["status"] == first["status"]
+            assert result["priority"] == first["priority"]
+
+
+
+class TestAPIResponseStructure:
+    """Property-based tests for API response structure completeness
+
+    Feature: fix-graph-visualization, Property 1: API Response Structure Completeness
+    **Validates: Requirements 7.1, 7.2, 7.3**
+    """
+
+    @pytest.mark.asyncio
+    async def test_api_response_has_nodes_array(self, graph_service):
+        """Property: API response must always include a nodes array"""
+        # Mock empty graph
+        graph_service._get_full_graph = AsyncMock(return_value=([], []))
+        graph_service._format_node_for_visualization = MagicMock()
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        result = await graph_service.get_graph_for_visualization()
+
+        assert "nodes" in result
+        assert isinstance(result["nodes"], list)
+
+    @pytest.mark.asyncio
+    async def test_api_response_has_edges_array(self, graph_service):
+        """Property: API response must always include an edges array"""
+        # Mock empty graph
+        graph_service._get_full_graph = AsyncMock(return_value=([], []))
+        graph_service._format_node_for_visualization = MagicMock()
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        result = await graph_service.get_graph_for_visualization()
+
+        assert "edges" in result
+        assert isinstance(result["edges"], list)
+
+    @pytest.mark.asyncio
+    async def test_api_response_has_metadata(self, graph_service):
+        """Property: API response must always include metadata"""
+        # Mock empty graph
+        graph_service._get_full_graph = AsyncMock(return_value=([], []))
+        graph_service._format_node_for_visualization = MagicMock()
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        result = await graph_service.get_graph_for_visualization()
+
+        assert "metadata" in result
+        assert isinstance(result["metadata"], dict)
+
+    @pytest.mark.asyncio
+    async def test_metadata_has_total_nodes(self, graph_service):
+        """Property: Metadata must include total_nodes count"""
+        # Mock graph with some nodes
+        mock_nodes = [
+            {"id": "node-1", "type": "requirement", "title": "Node 1"},
+            {"id": "node-2", "type": "task", "title": "Node 2"}
+        ]
+        graph_service._get_full_graph = AsyncMock(return_value=(mock_nodes, []))
+        graph_service._format_node_for_visualization = MagicMock(side_effect=lambda n: {
+            "id": n["id"], "type": n["type"], "label": n["title"]
+        })
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        result = await graph_service.get_graph_for_visualization()
+
+        assert "total_nodes" in result["metadata"]
+        assert isinstance(result["metadata"]["total_nodes"], int)
+        assert result["metadata"]["total_nodes"] == 2
+
+    @pytest.mark.asyncio
+    async def test_metadata_has_total_edges(self, graph_service):
+        """Property: Metadata must include total_edges count"""
+        # Mock graph with edges
+        mock_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"}
+        ]
+        graph_service._get_full_graph = AsyncMock(return_value=([], mock_edges))
+        graph_service._format_node_for_visualization = MagicMock()
+        graph_service._format_edge_for_visualization = MagicMock(side_effect=lambda e: {
+            "id": f"{e['start_id']}-{e['end_id']}", "source": e["start_id"], "target": e["end_id"]
+        })
+
+        result = await graph_service.get_graph_for_visualization()
+
+        assert "total_edges" in result["metadata"]
+        assert isinstance(result["metadata"]["total_edges"], int)
+        assert result["metadata"]["total_edges"] == 1
+
+    @pytest.mark.asyncio
+    async def test_empty_graph_returns_valid_structure(self, graph_service):
+        """Property: Empty graph must return valid response structure"""
+        # Mock empty graph
+        graph_service._get_full_graph = AsyncMock(return_value=([], []))
+        graph_service._format_node_for_visualization = MagicMock()
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        result = await graph_service.get_graph_for_visualization()
+
+        # Must have all required keys
+        assert "nodes" in result
+        assert "edges" in result
+        assert "metadata" in result
+
+        # Arrays must be empty
+        assert result["nodes"] == []
+        assert result["edges"] == []
+
+        # Metadata must have counts
+        assert result["metadata"]["total_nodes"] == 0
+        assert result["metadata"]["total_edges"] == 0
+
+    @pytest.mark.asyncio
+    async def test_populated_graph_returns_valid_structure(self, graph_service):
+        """Property: Populated graph must return valid response structure"""
+        # Mock populated graph
+        mock_nodes = [
+            {"id": f"node-{i}", "type": "requirement", "title": f"Node {i}"}
+            for i in range(5)
+        ]
+        mock_edges = [
+            {"start_id": f"node-{i}", "end_id": f"node-{i+1}", "type": "DEPENDS_ON"}
+            for i in range(4)
+        ]
+
+        graph_service._get_full_graph = AsyncMock(return_value=(mock_nodes, mock_edges))
+        graph_service._format_node_for_visualization = MagicMock(side_effect=lambda n: {
+            "id": n["id"], "type": n["type"], "label": n["title"]
+        })
+        graph_service._format_edge_for_visualization = MagicMock(side_effect=lambda e: {
+            "id": f"{e['start_id']}-{e['end_id']}", "source": e["start_id"], "target": e["end_id"]
+        })
+
+        result = await graph_service.get_graph_for_visualization()
+
+        # Must have all required keys
+        assert "nodes" in result
+        assert "edges" in result
+        assert "metadata" in result
+
+        # Arrays must have correct counts
+        assert len(result["nodes"]) == 5
+        assert len(result["edges"]) == 4
+
+        # Metadata must match actual counts
+        assert result["metadata"]["total_nodes"] == 5
+        assert result["metadata"]["total_edges"] == 4
+
+    @pytest.mark.asyncio
+    async def test_response_structure_with_various_depths(self, graph_service):
+        """Property: Response structure must be valid for any depth parameter"""
+        mock_nodes = [{"id": "node-1", "type": "requirement", "title": "Node 1"}]
+        graph_service._get_full_graph = AsyncMock(return_value=(mock_nodes, []))
+        graph_service._get_subgraph_around_node = AsyncMock(return_value=(mock_nodes, []))
+        graph_service._format_node_for_visualization = MagicMock(side_effect=lambda n: {
+            "id": n["id"], "type": n["type"], "label": n["title"]
+        })
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        # Test various depth values
+        for depth in [1, 2, 3, 5]:
+            result = await graph_service.get_graph_for_visualization(depth=depth)
+
+            assert "nodes" in result
+            assert "edges" in result
+            assert "metadata" in result
+            assert "total_nodes" in result["metadata"]
+            assert "total_edges" in result["metadata"]
+            assert result["metadata"]["depth"] == depth
+
+    @pytest.mark.asyncio
+    async def test_response_structure_with_filters(self, graph_service):
+        """Property: Response structure must be valid with any filter combination"""
+        mock_nodes = [{"id": "node-1", "type": "requirement", "title": "Node 1"}]
+        graph_service._get_full_graph = AsyncMock(return_value=(mock_nodes, []))
+        graph_service._format_node_for_visualization = MagicMock(side_effect=lambda n: {
+            "id": n["id"], "type": n["type"], "label": n["title"]
+        })
+        graph_service._format_edge_for_visualization = MagicMock()
+
+        # Test with various filter combinations
+        filter_combinations = [
+            {"node_types": ["requirement"]},
+            {"relationship_types": ["TESTED_BY"]},
+            {"node_types": ["requirement", "task"], "relationship_types": ["TESTED_BY", "DEPENDS_ON"]},
+            {"limit": 100},
+        ]
+
+        for filters in filter_combinations:
+            result = await graph_service.get_graph_for_visualization(**filters)
+
+            assert "nodes" in result
+            assert "edges" in result
+            assert "metadata" in result
+            assert "total_nodes" in result["metadata"]
+            assert "total_edges" in result["metadata"]
+
+
+class TestNodeFieldCompleteness:
+    """Property-based tests for node field completeness
+
+    Feature: fix-graph-visualization, Property 2: Node Field Completeness
+    **Validates: Requirements 7.4**
+    """
+
+    def test_all_nodes_have_id_field(self, graph_service):
+        """Property: All returned nodes must have an id field"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1"},
+            {"id": "test-1", "type": "test", "title": "Test 1"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+            assert "id" in result
+            assert result["id"] is not None
+            assert len(result["id"]) > 0
+
+    def test_all_nodes_have_type_field(self, graph_service):
+        """Property: All returned nodes must have a type field"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1"},
+            {"id": "test-1", "type": "test", "title": "Test 1"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+            assert "type" in result
+            assert result["type"] is not None
+            assert len(result["type"]) > 0
+
+    def test_all_nodes_have_label_field(self, graph_service):
+        """Property: All returned nodes must have a label field"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1"},
+            {"id": "test-1", "type": "test", "title": "Test 1"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+            assert "label" in result
+            assert result["label"] is not None
+            assert len(result["label"]) > 0
+
+    def test_all_nodes_have_properties_field(self, graph_service):
+        """Property: All returned nodes must have a properties field"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1"},
+            {"id": "test-1", "type": "test", "title": "Test 1"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+            assert "properties" in result
+            assert isinstance(result["properties"], dict)
+
+    def test_nodes_with_minimal_data_have_required_fields(self, graph_service):
+        """Property: Even minimal nodes must have all required fields"""
+        # Test with minimal node data
+        minimal_nodes = [
+            {"id": "node-1"},
+            {"id": "node-2", "type": "requirement"},
+            {"id": "node-3", "title": "Node 3"},
+        ]
+
+        for node in minimal_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            # Must have all required fields
+            assert "id" in result
+            assert "type" in result
+            assert "label" in result
+            assert "properties" in result
+
+    def test_nodes_with_complete_data_have_required_fields(self, graph_service):
+        """Property: Complete nodes must have all required fields"""
+        complete_node = {
+            "id": "req-1",
+            "type": "requirement",
+            "title": "Complete Requirement",
+            "description": "Full description",
+            "status": "active",
+            "priority": 1,
+            "created_by": "user-123",
+            "assigned_to": "user-456"
+        }
+
+        result = graph_service._format_node_for_visualization(complete_node)
+        assert result is not None
+
+        # Must have all required fields
+        assert "id" in result
+        assert "type" in result
+        assert "label" in result
+        assert "properties" in result
+
+        # Properties should contain original data
+        assert result["properties"]["id"] == "req-1"
+        assert result["properties"]["type"] == "requirement"
+
+    def test_node_fields_are_correct_types(self, graph_service):
+        """Property: Node fields must be correct data types"""
+        test_nodes = [
+            {"id": "req-1", "type": "requirement", "title": "Requirement 1"},
+            {"id": "task-1", "type": "task", "title": "Task 1"},
+        ]
+
+        for node in test_nodes:
+            result = graph_service._format_node_for_visualization(node)
+            assert result is not None
+
+            # Check field types
+            assert isinstance(result["id"], str)
+            assert isinstance(result["type"], str)
+            assert isinstance(result["label"], str)
+            assert isinstance(result["properties"], dict)
+
+
+class TestEdgeFieldCompleteness:
+    """Property-based tests for edge field completeness
+
+    Feature: fix-graph-visualization, Property 3: Edge Field Completeness
+    **Validates: Requirements 7.5**
+    """
+
+    def test_all_edges_have_id_field(self, graph_service):
+        """Property: All returned edges must have an id field"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+            {"start_id": "e", "end_id": "f", "type": "DEPENDS_ON"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+            assert "id" in result
+            assert result["id"] is not None
+            assert len(result["id"]) > 0
+
+    def test_all_edges_have_source_field(self, graph_service):
+        """Property: All returned edges must have a source field"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+            {"start_id": "e", "end_id": "f", "type": "DEPENDS_ON"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+            assert "source" in result
+            assert result["source"] is not None
+            assert len(result["source"]) > 0
+
+    def test_all_edges_have_target_field(self, graph_service):
+        """Property: All returned edges must have a target field"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+            {"start_id": "e", "end_id": "f", "type": "DEPENDS_ON"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+            assert "target" in result
+            assert result["target"] is not None
+            assert len(result["target"]) > 0
+
+    def test_all_edges_have_type_field(self, graph_service):
+        """Property: All returned edges must have a type field"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+            {"start_id": "e", "end_id": "f", "type": "DEPENDS_ON"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+            assert "type" in result
+            assert result["type"] is not None
+            assert len(result["type"]) > 0
+
+    def test_edges_with_minimal_data_have_required_fields(self, graph_service):
+        """Property: Even minimal edges must have all required fields"""
+        # Test with minimal edge data (missing type)
+        minimal_edge = {"start_id": "a", "end_id": "b"}
+
+        result = graph_service._format_edge_for_visualization(minimal_edge)
+        assert result is not None
+
+        # Must have all required fields
+        assert "id" in result
+        assert "source" in result
+        assert "target" in result
+        assert "type" in result
+
+    def test_edges_with_complete_data_have_required_fields(self, graph_service):
+        """Property: Complete edges must have all required fields"""
+        complete_edge = {
+            "start_id": "req-1",
+            "end_id": "test-1",
+            "type": "TESTED_BY",
+            "properties": {
+                "created_at": "2024-01-01",
+                "created_by": "user-123"
+            }
+        }
+
+        result = graph_service._format_edge_for_visualization(complete_edge)
+        assert result is not None
+
+        # Must have all required fields
+        assert "id" in result
+        assert "source" in result
+        assert "target" in result
+        assert "type" in result
+
+    def test_edge_source_matches_start_id(self, graph_service):
+        """Property: Edge source must match start_id"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "req-1", "end_id": "test-1", "type": "TESTED_BY"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+            assert result["source"] == edge["start_id"]
+
+    def test_edge_target_matches_end_id(self, graph_service):
+        """Property: Edge target must match end_id"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "req-1", "end_id": "test-1", "type": "TESTED_BY"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+            assert result["target"] == edge["end_id"]
+
+    def test_edge_fields_are_correct_types(self, graph_service):
+        """Property: Edge fields must be correct data types"""
+        test_edges = [
+            {"start_id": "a", "end_id": "b", "type": "TESTED_BY"},
+            {"start_id": "c", "end_id": "d", "type": "MITIGATES"},
+        ]
+
+        for edge in test_edges:
+            result = graph_service._format_edge_for_visualization(edge)
+            assert result is not None
+
+            # Check field types
+            assert isinstance(result["id"], str)
+            assert isinstance(result["source"], str)
+            assert isinstance(result["target"], str)
+            assert isinstance(result["type"], str)
+
+    def test_edge_id_is_unique_and_deterministic(self, graph_service):
+        """Property: Edge ID must be unique and deterministic"""
+        edge = {"start_id": "a", "end_id": "b", "type": "TESTED_BY"}
+
+        # Format same edge multiple times
+        result1 = graph_service._format_edge_for_visualization(edge)
+        result2 = graph_service._format_edge_for_visualization(edge)
+
+        # IDs should be identical (deterministic)
+        assert result1["id"] == result2["id"]
+
+        # ID should contain source, target, and type info
+        assert "a" in result1["id"]
+        assert "b" in result1["id"]
+        assert "TESTED_BY" in result1["id"]

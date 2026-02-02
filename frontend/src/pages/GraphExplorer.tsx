@@ -12,6 +12,7 @@ import { GraphView2D } from '../components/graph/GraphView2D';
 import { GraphExport, type ExportFormat } from '../components/graph/GraphExport';
 import { NodeEditor } from '../components/graph/NodeEditor';
 import { ViewModeToggle } from '../components/graph/ViewModeToggle';
+import { GraphEmptyState } from '../components/graph/GraphEmptyState';
 import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
 
@@ -42,6 +43,7 @@ const GraphView3D = React.lazy(() =>
 
 export function GraphExplorer(): React.ReactElement {
   const {
+    nodes,
     isLoading,
     error,
     loadGraph,
@@ -57,6 +59,9 @@ export function GraphExplorer(): React.ReactElement {
     searchQuery,
     viewMode,
   } = useGraphStore();
+
+  // Check if we have data to display
+  const hasData = nodes.length > 0;
 
   // Local state for search input (controlled separately from store for debouncing)
   const [searchInput, setSearchInput] = useState('');
@@ -371,47 +376,56 @@ export function GraphExplorer(): React.ReactElement {
           </div>
         )}
 
-        {/* Graph Visualization - 2D or 3D based on viewMode */}
-        {viewMode === '2d' ? (
-          <GraphView2D
-            className="graph-view"
-            showMiniMap={true}
-            showControls={true}
-            showBackground={true}
-            onConnectionMade={handleConnectionMade}
-            renderToolbarContent={renderExportButton}
-          />
-        ) : (
-          <Suspense fallback={
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              height: '100%',
-              background: '#f9fafb'
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div className="loading-spinner" />
-                <span style={{ color: '#666', marginTop: '1rem', display: 'block' }}>Loading 3D View...</span>
-              </div>
-            </div>
-          }>
-            <GraphView3D
-              className="graph-view"
-              showVRButton={true}
-              showARButton={false}
-              enableOrbitControls={true}
-              showSimulationControls={true}
-              showCameraControls={true}
-              autoRotate={false}
-              enableKeyboardNavigation={true}
-              showXRStatus={true}
-              enableControllers={true}
-              enableHandTracking={true}
-              enableVoiceCommands={true}
-              showVoiceUI={true}
-            />
-          </Suspense>
+        {/* Empty State - Show when no data and not loading and no error */}
+        {!isLoading && !error && !hasData && (
+          <GraphEmptyState onRefresh={handleRefresh} />
+        )}
+
+        {/* Graph Visualization - Show only when we have data */}
+        {!isLoading && !error && hasData && (
+          <>
+            {viewMode === '2d' ? (
+              <GraphView2D
+                className="graph-view"
+                showMiniMap={true}
+                showControls={true}
+                showBackground={true}
+                onConnectionMade={handleConnectionMade}
+                renderToolbarContent={renderExportButton}
+              />
+            ) : (
+              <Suspense fallback={
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  height: '100%',
+                  background: '#f9fafb'
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div className="loading-spinner" />
+                    <span style={{ color: '#666', marginTop: '1rem', display: 'block' }}>Loading 3D View...</span>
+                  </div>
+                </div>
+              }>
+                <GraphView3D
+                  className="graph-view"
+                  showVRButton={true}
+                  showARButton={false}
+                  enableOrbitControls={true}
+                  showSimulationControls={true}
+                  showCameraControls={true}
+                  autoRotate={false}
+                  enableKeyboardNavigation={true}
+                  showXRStatus={true}
+                  enableControllers={true}
+                  enableHandTracking={true}
+                  enableVoiceCommands={true}
+                  showVoiceUI={true}
+                />
+              </Suspense>
+            )}
+          </>
         )}
 
         {/* Node Editor Panel */}

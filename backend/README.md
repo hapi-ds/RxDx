@@ -36,11 +36,12 @@ After running the initialization script, the following users are available:
 
 | Email | Password | Role |
 |-------|----------|------|
-| test@example.com | AdminPassword123! | user |
-| admin@example.com | AdminPassword123! | admin |
-| validator@example.com | AdminPassword123! | validator |
-| auditor@example.com | AdminPassword123! | auditor |
-| pm@example.com | AdminPassword123! | project_manager |
+| admin@rxdx.example.com | password123 | admin |
+| pm@rxdx.example.com | password123 | project_manager |
+| validator@rxdx.example.com | password123 | validator |
+| auditor@rxdx.example.com | password123 | auditor |
+| developer@rxdx.example.com | password123 | user |
+| tester@rxdx.example.com | password123 | user |
 
 > ⚠️ **Security Note**: Change these passwords in production environments!
 

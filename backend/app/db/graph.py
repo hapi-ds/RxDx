@@ -684,6 +684,12 @@ class GraphService:
                 node_types, relationship_types, limit
             )
 
+        # Defensive: Ensure nodes and edges are always lists (handle None or empty results)
+        if nodes is None:
+            nodes = []
+        if edges is None:
+            edges = []
+
         # Performance optimization: Early termination if we hit the limit
         truncated = len(nodes) >= limit
         if truncated:
@@ -702,12 +708,14 @@ class GraphService:
         # Process nodes for visualization
         for node in nodes:
             node_data = self._format_node_for_visualization(node)
-            formatted_nodes.append(node_data)
+            if node_data is not None:  # Skip None results from defensive checks
+                formatted_nodes.append(node_data)
 
         # Process edges for visualization
         for edge in edges:
             edge_data = self._format_edge_for_visualization(edge)
-            formatted_edges.append(edge_data)
+            if edge_data is not None:  # Skip None results from defensive checks
+                formatted_edges.append(edge_data)
 
         return {
             "nodes": formatted_nodes,
@@ -864,21 +872,31 @@ class GraphService:
 
         return nodes, edges
 
-    def _format_node_for_visualization(self, node: dict[str, Any]) -> dict[str, Any]:
-        """Format node data for react-flow and R3F visualization"""
+    def _format_node_for_visualization(self, node: dict[str, Any]) -> dict[str, Any] | None:
+        """Format node data for react-flow and R3F visualization with defensive checks"""
 
-        # Extract node properties
-        if 'properties' in node:
+        # Defensive: Handle None node (but allow empty dict)
+        if node is None:
+            return None
+
+        # Extract node properties with fallbacks
+        if 'properties' in node and node['properties']:
             props = node['properties']
-        else:
+        elif isinstance(node, dict):
             props = node
+        else:
+            props = {}
 
-        node_id = props.get('id', str(node.get('id', '')))
-        node_type = props.get('type', node.get('label', 'Unknown'))
-        title = props.get('title', props.get('name', f"{node_type} {node_id[:8]}"))
-        description = props.get('description', '')
-        status = props.get('status', 'unknown')
-        priority = props.get('priority', 3)
+        # Defensive: Ensure required fields with defaults
+        import uuid
+        node_id = props.get('id') or node.get('id') or str(uuid.uuid4())
+        node_type = props.get('type') or node.get('label') or 'default'
+        title = props.get('title') or props.get('name') or f"{node_type} {str(node_id)[:8]}"
+        description = props.get('description') or ''
+        status = props.get('status') or 'draft'
+        priority = props.get('priority')
+        if priority is None:
+            priority = 3
 
         # Determine node color based on type and status
         color_map = {
@@ -900,9 +918,12 @@ class GraphService:
         priority_multiplier = (6 - min(priority, 5)) * 0.2  # Higher priority = larger
         node_size = int(base_size * (1 + priority_multiplier))
 
+        # Defensive: Ensure node_id is a string for formatting
+        node_id_str = str(node_id)
+
         # Format for react-flow (2D)
         react_flow_data = {
-            'id': node_id,
+            'id': node_id_str,
             'type': 'custom',
             'position': {'x': 0, 'y': 0},  # Will be calculated by layout algorithm
             'data': {
@@ -931,7 +952,7 @@ class GraphService:
 
         # Format for R3F (3D)
         r3f_data = {
-            'id': node_id,
+            'id': node_id_str,
             'position': [0, 0, 0],  # Will be calculated by 3D layout
             'type': node_type,
             'label': title,
@@ -960,7 +981,7 @@ class GraphService:
         }
 
         return {
-            'id': node_id,
+            'id': node_id_str,
             'type': node_type,
             'label': title,
             'status': status,
@@ -973,18 +994,30 @@ class GraphService:
             'r3f': r3f_data
         }
 
-    def _format_edge_for_visualization(self, edge: dict[str, Any]) -> dict[str, Any]:
-        """Format edge data for react-flow and R3F visualization"""
+    def _format_edge_for_visualization(self, edge: dict[str, Any]) -> dict[str, Any] | None:
+        """Format edge data for react-flow and R3F visualization with defensive checks"""
 
-        # Extract edge properties
-        if 'properties' in edge:
+        # Defensive: Handle None edge (but allow empty dict for validation)
+        if edge is None:
+            return None
+
+        # Extract edge properties with fallbacks
+        if 'properties' in edge and edge['properties']:
             props = edge['properties']
-        else:
+        elif isinstance(edge, dict):
             props = edge
+        else:
+            props = {}
 
-        start_id = edge.get('start_id', props.get('start_id'))
-        end_id = edge.get('end_id', props.get('end_id'))
-        edge_type = edge.get('type', props.get('type', 'RELATED'))
+        # Defensive: Validate required fields (source and target IDs)
+        start_id = edge.get('start_id') or props.get('start_id')
+        end_id = edge.get('end_id') or props.get('end_id')
+
+        # Cannot create edge without source and target
+        if not start_id or not end_id:
+            return None
+
+        edge_type = edge.get('type') or props.get('type') or 'RELATED'
 
         # Generate edge ID
         edge_id = f"{start_id}-{end_id}-{edge_type}"

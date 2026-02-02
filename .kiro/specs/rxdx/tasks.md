@@ -485,36 +485,36 @@
 
 ### 20.1 Navigation Header Component
 **References:** Requirement 19 (Frontend Navigation and Routing)
-- [ ] 20.1.1 Create NavigationHeader component with all navigation links
-- [ ] 20.1.2 Implement navItems array with paths: /requirements, /graph, /tests, /risks, /schedule, /kanban, /documents
-- [ ] 20.1.3 Use useLocation hook to determine active route and apply active state styling
-- [ ] 20.1.4 Include user info display and logout button
-- [ ] 20.1.5 Implement responsive collapse for mobile screens
-- [ ] 20.1.6 Write unit tests for NavigationHeader (link rendering, active state, logout)
-- [ ] 20.1.7 Update AppLayout to use NavigationHeader component
-- [ ] 20.1.8 Ensure header is only shown when authenticated
+- [x] 20.1.1 Create NavigationHeader component with all navigation links
+- [x] 20.1.2 Implement navItems array with paths: /requirements, /graph, /tests, /risks, /schedule, /kanban, /documents
+- [x] 20.1.3 Use useLocation hook to determine active route and apply active state styling
+- [x] 20.1.4 Include user info display and logout button
+- [x] 20.1.5 Implement responsive collapse for mobile screens
+- [x] 20.1.6 Write unit tests for NavigationHeader (link rendering, active state, logout)
+- [x] 20.1.7 Update AppLayout to use NavigationHeader component
+- [x] 20.1.8 Ensure header is only shown when authenticated
 
 ### 20.2 Placeholder Pages
 **References:** Requirement 19 (Frontend Navigation and Routing)
-- [ ] 20.2.1 Create reusable PlaceholderPage component
-- [ ] 20.2.2 Accept props: title, description, icon
-- [ ] 20.2.3 Display "Coming Soon" message and link back to Requirements
-- [ ] 20.2.4 Write property test for PlaceholderPage content rendering
-- [ ] 20.2.5 Create TestsPage using PlaceholderPage
-- [ ] 20.2.6 Create RisksPage using PlaceholderPage
-- [ ] 20.2.7 Create SchedulePage using PlaceholderPage
-- [ ] 20.2.8 Create KanbanPage using PlaceholderPage
-- [ ] 20.2.9 Create DocumentsPage using PlaceholderPage
+- [x] 20.2.1 Create reusable PlaceholderPage component
+- [x] 20.2.2 Accept props: title, description, icon
+- [x] 20.2.3 Display "Coming Soon" message and link back to Requirements
+- [x] 20.2.4 Write property test for PlaceholderPage content rendering
+- [x] 20.2.5 Create TestsPage using PlaceholderPage
+- [x] 20.2.6 Create RisksPage using PlaceholderPage
+- [x] 20.2.7 Create SchedulePage using PlaceholderPage
+- [x] 20.2.8 Create KanbanPage using PlaceholderPage
+- [x] 20.2.9 Create DocumentsPage using PlaceholderPage
 
 ### 20.3 Routing Configuration
 **References:** Requirement 19 (Frontend Navigation and Routing)
-- [ ] 20.3.1 Add route for /graph pointing to existing GraphExplorer component
-- [ ] 20.3.2 Add routes for /tests, /risks, /schedule, /kanban, /documents
-- [ ] 20.3.3 Wrap all new routes with ProtectedRoute
-- [ ] 20.3.4 Update catch-all route to redirect appropriately
-- [ ] 20.3.5 Write property tests for route protection and unknown route redirect
-- [ ] 20.3.6 Verify navigation works between all pages
-- [ ] 20.3.7 Verify GraphExplorer page loads correctly
+- [x] 20.3.1 Add route for /graph pointing to existing GraphExplorer component
+- [x] 20.3.2 Add routes for /tests, /risks, /schedule, /kanban, /documents
+- [x] 20.3.3 Wrap all new routes with ProtectedRoute
+- [x] 20.3.4 Update catch-all route to redirect appropriately
+- [x] 20.3.5 Write property tests for route protection and unknown route redirect
+- [x] 20.3.6 Verify navigation works between all pages
+- [x] 20.3.7 Verify GraphExplorer page loads correctly
 
 ## Phase 21: Frontend - Enhanced Version Control UX
 

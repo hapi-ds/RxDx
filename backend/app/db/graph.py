@@ -690,6 +690,24 @@ class GraphService:
         if edges is None:
             edges = []
 
+        # DEBUG: Log what we got from the database
+        print(f"[GraphService] Raw from DB: {len(nodes)} nodes, {len(edges)} edges")
+        if nodes:
+            print(f"[GraphService] Sample raw node: {nodes[0]}")
+        if edges:
+            print(f"[GraphService] Sample raw edge: {edges[0]}")
+
+        # Build mapping from AGE internal ID to UUID for edge conversion
+        age_id_to_uuid = {}
+        for node in nodes:
+            age_id = node.get('id')
+            if 'properties' in node and node['properties']:
+                uuid = node['properties'].get('id')
+                if age_id and uuid:
+                    age_id_to_uuid[age_id] = uuid
+
+        print(f"[GraphService] Built ID mapping with {len(age_id_to_uuid)} entries")
+
         # Performance optimization: Early termination if we hit the limit
         truncated = len(nodes) >= limit
         if truncated:
@@ -711,11 +729,16 @@ class GraphService:
             if node_data is not None:  # Skip None results from defensive checks
                 formatted_nodes.append(node_data)
 
-        # Process edges for visualization
+        # Process edges for visualization - convert AGE IDs to UUIDs
         for edge in edges:
-            edge_data = self._format_edge_for_visualization(edge)
+            edge_data = self._format_edge_for_visualization(edge, age_id_to_uuid)
             if edge_data is not None:  # Skip None results from defensive checks
                 formatted_edges.append(edge_data)
+
+        # DEBUG: Log formatted results
+        print(f"[GraphService] Formatted: {len(formatted_nodes)} nodes, {len(formatted_edges)} edges")
+        if formatted_edges:
+            print(f"[GraphService] Sample formatted edge: {formatted_edges[0]}")
 
         return {
             "nodes": formatted_nodes,
@@ -838,38 +861,64 @@ class GraphService:
             node_query += f" WHERE {type_conditions}"
         node_query += f" RETURN n LIMIT {limit}"
 
+        print(f"[GraphService] Node query: {node_query}")
+        
         # Get nodes
         node_results = await self.execute_query(node_query)
         nodes = [result for result in node_results if result]
+        
+        print(f"[GraphService] Node query returned {len(nodes)} nodes")
 
-        # Build relationship query - return only the relationship with embedded start/end info
-        # We need to collect start_id and end_id within the relationship properties
+        # Build relationship query - return as a single map to avoid column mismatch
         rel_query = "MATCH (a)-[r]->(b)"
         if relationship_types:
             rel_types_str = "|".join(relationship_types)
             rel_query = f"MATCH (a)-[r:{rel_types_str}]->(b)"
-        # Return a map containing all needed info as a single result
-        rel_query += f" RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r)}} LIMIT {limit * 2}"
+        # Return as a single map/object - AGE will parse this correctly
+        rel_query += f" RETURN r LIMIT {limit * 2}"
 
+        print(f"[GraphService] Edge query: {rel_query}")
+        
         # Get relationships
         rel_results = await self.execute_query(rel_query)
+        
+        print(f"[GraphService] Edge query returned {len(rel_results)} results")
+        
         edges = []
 
         for result in rel_results:
             if result:
-                # Result is now a map with rel, start_id, end_id, rel_type
+                print(f"[GraphService] Processing edge result: {result}")
+                
+                # AGE returns edges with id, label, start_id, end_id, properties
                 edge_data = {}
-                if 'rel' in result and result['rel']:
-                    if isinstance(result['rel'], dict):
-                        edge_data = result['rel'].copy()
-                    else:
-                        edge_data = {}
-                edge_data['start_id'] = result.get('start_id')
-                edge_data['end_id'] = result.get('end_id')
-                edge_data['type'] = result.get('rel_type', 'RELATED')
+                
+                # Check if result has the edge structure
+                if 'id' in result and 'label' in result:
+                    # This is the edge itself
+                    edge_data['start_id'] = result.get('start_id')
+                    edge_data['end_id'] = result.get('end_id')
+                    edge_data['type'] = result.get('label', 'RELATED')
+                    if 'properties' in result and result['properties']:
+                        edge_data.update(result['properties'])
+                elif 'properties' in result:
+                    # Nested structure
+                    edge_data = result['properties'].copy() if result['properties'] else {}
+                    edge_data['start_id'] = result.get('start_id')
+                    edge_data['end_id'] = result.get('end_id')
+                    edge_data['type'] = result.get('label', 'RELATED')
+                else:
+                    # Fallback - treat whole result as edge data
+                    edge_data = result.copy()
+                
                 if edge_data.get('start_id') and edge_data.get('end_id'):
                     edges.append(edge_data)
+                    print(f"[GraphService] Added edge: {edge_data['start_id']} -> {edge_data['end_id']} ({edge_data.get('type', 'UNKNOWN')})")
+                else:
+                    print(f"[GraphService] Skipped edge - missing IDs: {edge_data}")
 
+        print(f"[GraphService] Total edges collected: {len(edges)}")
+        
         return nodes, edges
 
     def _format_node_for_visualization(self, node: dict[str, Any]) -> dict[str, Any] | None:
@@ -921,11 +970,16 @@ class GraphService:
         # Defensive: Ensure node_id is a string for formatting
         node_id_str = str(node_id)
 
+        # Generate random position for visualization (will be improved by layout algorithms)
+        import random
+        position_x = random.uniform(0, 800)
+        position_y = random.uniform(0, 600)
+
         # Format for react-flow (2D)
         react_flow_data = {
             'id': node_id_str,
             'type': 'custom',
-            'position': {'x': 0, 'y': 0},  # Will be calculated by layout algorithm
+            'position': {'x': position_x, 'y': position_y},  # Random position for initial layout
             'data': {
                 'label': title,
                 'type': node_type,
@@ -953,7 +1007,7 @@ class GraphService:
         # Format for R3F (3D)
         r3f_data = {
             'id': node_id_str,
-            'position': [0, 0, 0],  # Will be calculated by 3D layout
+            'position': [position_x * 0.02, 0, position_y * 0.02],  # Convert to 3D space
             'type': node_type,
             'label': title,
             'status': status,
@@ -994,8 +1048,13 @@ class GraphService:
             'r3f': r3f_data
         }
 
-    def _format_edge_for_visualization(self, edge: dict[str, Any]) -> dict[str, Any] | None:
-        """Format edge data for react-flow and R3F visualization with defensive checks"""
+    def _format_edge_for_visualization(self, edge: dict[str, Any], age_id_to_uuid: dict[int, str] | None = None) -> dict[str, Any] | None:
+        """Format edge data for react-flow and R3F visualization with defensive checks
+        
+        Args:
+            edge: Edge data from AGE
+            age_id_to_uuid: Mapping from AGE internal IDs to UUIDs
+        """
 
         # Defensive: Handle None edge (but allow empty dict for validation)
         if edge is None:
@@ -1010,12 +1069,20 @@ class GraphService:
             props = {}
 
         # Defensive: Validate required fields (source and target IDs)
-        start_id = edge.get('start_id') or props.get('start_id')
-        end_id = edge.get('end_id') or props.get('end_id')
+        start_age_id = edge.get('start_id') or props.get('start_id')
+        end_age_id = edge.get('end_id') or props.get('end_id')
 
         # Cannot create edge without source and target
-        if not start_id or not end_id:
+        if not start_age_id or not end_age_id:
             return None
+
+        # Convert AGE internal IDs to UUIDs if mapping provided
+        if age_id_to_uuid:
+            start_id = age_id_to_uuid.get(start_age_id, str(start_age_id))
+            end_id = age_id_to_uuid.get(end_age_id, str(end_age_id))
+        else:
+            start_id = str(start_age_id)
+            end_id = str(end_age_id)
 
         edge_type = edge.get('type') or props.get('type') or 'RELATED'
 

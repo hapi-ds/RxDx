@@ -274,7 +274,8 @@ const transformNode = (node: GraphNode): Node<GraphNodeData> => {
   const position2D = node.position ?? { x: Math.random() * 500, y: Math.random() * 500 };
   // Ensure node type is lowercase to match react-flow nodeTypes keys
   const nodeType = node.type?.toLowerCase() ?? 'default';
-  return {
+  
+  const transformedNode = {
     id: node.id,
     type: nodeType,
     position: position2D,
@@ -284,6 +285,16 @@ const transformNode = (node: GraphNode): Node<GraphNodeData> => {
       properties: node.properties,
     },
   };
+  
+  console.log('[GraphStore] Transformed node:', {
+    id: transformedNode.id,
+    type: transformedNode.type,
+    position: transformedNode.position,
+    hasData: !!transformedNode.data,
+    label: transformedNode.data.label
+  });
+  
+  return transformedNode;
 };
 
 /**
@@ -317,19 +328,30 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
   ...initialState,
 
   loadGraph: async (centerNodeId?: string, depth?: number): Promise<void> => {
+    console.log('[GraphStore] loadGraph called:', { centerNodeId, depth });
     set({ isLoading: true, error: null });
 
     try {
       const params: GraphVisualizationParams = {
-        root_id: centerNodeId ?? get().centerNodeId ?? undefined,
+        center_node_id: centerNodeId ?? get().centerNodeId ?? undefined,
         depth: depth ?? get().depth,
         limit: 1000, // Performance optimization as per design
       };
 
+      console.log('[GraphStore] Calling graphService.getVisualization with params:', params);
       const graphData = await graphService.getVisualization(params);
+      console.log('[GraphStore] Received graph data:', { 
+        nodeCount: graphData.nodes.length, 
+        edgeCount: graphData.edges.length 
+      });
 
       const nodes = graphData.nodes.map(transformNode);
       const edges = graphData.edges.map(transformEdge);
+
+      console.log('[GraphStore] Transformed data:', { 
+        nodeCount: nodes.length, 
+        edgeCount: edges.length 
+      });
 
       // Initialize position mappings for all nodes
       const nodePositions = new Map<string, NodePositionMap>();
@@ -344,6 +366,7 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
         ? nodes.find((n) => n.id === selectedNode.id) ?? null
         : null;
 
+      console.log('[GraphStore] Setting state with nodes and edges');
       set({
         nodes,
         edges,
@@ -353,8 +376,10 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
         nodePositions,
         isLoading: false,
       });
+      console.log('[GraphStore] State updated successfully');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to load graph';
+      console.error('[GraphStore] Error loading graph:', error);
       set({ error: message, isLoading: false });
     }
   },

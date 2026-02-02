@@ -1,0 +1,247 @@
+metadata:
+  name: medical-device
+  version: 1.0.0
+  description: Medical device project template with regulatory-focused requirements and compliance-oriented user roles
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+users:
+  - id: md-admin
+    email: admin@example.com
+    full_name: Regulatory Administrator
+    role: admin
+    is_active: true
+
+  - id: md-qa-manager
+    email: qa.manager@example.com
+    full_name: QA Manager
+    role: project_manager
+    is_active: true
+
+  - id: md-validator
+    email: validator@example.com
+    full_name: Quality Assurance Validator
+    role: validator
+    is_active: true
+
+  - id: md-auditor
+    email: auditor@example.com
+    full_name: FDA Compliance Auditor
+    role: auditor
+    is_active: true
+
+  - id: md-engineer
+    email: engineer@example.com
+    full_name: Medical Device Engineer
+    role: user
+    is_active: true
+
+workitems:
+  requirements:
+    - id: md-req-001
+      title: FDA 21 CFR Part 11 Compliance
+      description: The system shall comply with FDA 21 CFR Part 11 requirements for electronic records and electronic signatures
+      status: active
+      priority: 5
+      acceptance_criteria: Given electronic records, when stored in the system, then they shall be secure, tamper-proof, and include audit trails as required by 21 CFR Part 11
+      business_value: Ensures regulatory compliance for medical device software
+      source: FDA 21 CFR Part 11
+      created_by: md-qa-manager
+
+    - id: md-req-002
+      title: IEC 62304 Software Development Lifecycle
+      description: The system development shall follow IEC 62304 medical device software lifecycle processes
+      status: active
+      priority: 5
+      acceptance_criteria: Given software development activities, when performed, then they shall follow IEC 62304 Class B requirements including risk management and verification
+      business_value: Ensures medical device software safety and effectiveness
+      source: IEC 62304
+      created_by: md-qa-manager
+
+    - id: md-req-003
+      title: ISO 13485 Quality Management System
+      description: The system shall support ISO 13485 quality management system requirements
+      status: active
+      priority: 4
+      acceptance_criteria: Given quality management processes, when executed, then the system shall maintain records and traceability as required by ISO 13485
+      business_value: Demonstrates quality management system compliance
+      source: ISO 13485
+      created_by: md-qa-manager
+
+    - id: md-req-004
+      title: Design History File (DHF) Management
+      description: The system shall maintain a complete Design History File including all design inputs, outputs, reviews, and verification activities
+      status: active
+      priority: 5
+      acceptance_criteria: Given design activities, when completed, then all documentation shall be stored in the DHF with version control and traceability
+      business_value: Provides evidence of design control for regulatory submissions
+      source: FDA Design Control Guidance
+      created_by: md-qa-manager
+
+    - id: md-req-005
+      title: Risk Management per ISO 14971
+      description: The system shall implement risk management processes according to ISO 14971 for medical devices
+      status: active
+      priority: 5
+      acceptance_criteria: Given identified hazards, when analyzed, then risk controls shall be implemented and residual risks shall be acceptable
+      business_value: Ensures patient safety through systematic risk management
+      source: ISO 14971
+      created_by: md-qa-manager
+
+  tasks:
+    - id: md-task-001
+      title: Implement Electronic Signature Module
+      description: Develop electronic signature functionality compliant with 21 CFR Part 11
+      status: active
+      priority: 5
+      estimated_hours: 40
+      assigned_to: md-engineer
+      created_by: md-qa-manager
+
+    - id: md-task-002
+      title: Create Audit Trail System
+      description: Implement comprehensive audit trail for all system activities
+      status: active
+      priority: 5
+      estimated_hours: 32
+      assigned_to: md-engineer
+      created_by: md-qa-manager
+
+    - id: md-task-003
+      title: Develop DHF Document Management
+      description: Create document management system for Design History File
+      status: draft
+      priority: 4
+      estimated_hours: 48
+      assigned_to: md-engineer
+      created_by: md-qa-manager
+
+  tests:
+    - id: md-test-001
+      title: Verify Electronic Signature Integrity
+      description: Validate that electronic signatures cannot be repudiated and are cryptographically secure
+      status: active
+      priority: 5
+      test_type: system
+      test_steps: |
+        1. User signs a document electronically
+        2. Verify signature is cryptographically bound to document
+        3. Attempt to modify signed document
+        4. Verify signature becomes invalid
+        5. Verify signature includes user identity and timestamp
+      expected_result: Electronic signatures meet 21 CFR Part 11 requirements for non-repudiation
+      test_status: not_run
+      assigned_to: md-validator
+      created_by: md-qa-manager
+
+    - id: md-test-002
+      title: Audit Trail Completeness Test
+      description: Verify all user actions are captured in audit trail
+      status: active
+      priority: 5
+      test_type: system
+      test_steps: |
+        1. Perform various user actions (create, read, update, delete)
+        2. Review audit trail entries
+        3. Verify all actions are logged with timestamp, user, and details
+        4. Verify audit trail cannot be modified or deleted
+      expected_result: Complete and immutable audit trail of all system activities
+      test_status: not_run
+      assigned_to: md-validator
+      created_by: md-qa-manager
+
+  risks:
+    - id: md-risk-001
+      title: Patient Data Breach Risk
+      description: Risk of unauthorized access to patient health information
+      status: active
+      priority: 5
+      severity: 10
+      occurrence: 2
+      detection: 3
+      mitigation_actions: Implement encryption at rest and in transit, multi-factor authentication, role-based access control, regular security audits
+      risk_owner: md-admin
+      created_by: md-qa-manager
+
+    - id: md-risk-002
+      title: Software Malfunction Risk
+      description: Risk of software defects causing incorrect medical device operation
+      status: active
+      priority: 5
+      severity: 9
+      occurrence: 3
+      detection: 2
+      mitigation_actions: Implement comprehensive testing strategy, code reviews, static analysis, formal verification for critical functions
+      risk_owner: md-qa-manager
+      created_by: md-qa-manager
+
+    - id: md-risk-003
+      title: Regulatory Non-Compliance Risk
+      description: Risk of failing to meet FDA or international regulatory requirements
+      status: active
+      priority: 4
+      severity: 8
+      occurrence: 2
+      detection: 4
+      mitigation_actions: Regular compliance audits, quality management system, design controls, traceability matrix
+      risk_owner: md-auditor
+      created_by: md-qa-manager
+
+relationships:
+  # Tasks implement Requirements
+  - from_id: md-task-001
+    to_id: md-req-001
+    type: IMPLEMENTS
+
+  - from_id: md-task-002
+    to_id: md-req-001
+    type: IMPLEMENTS
+
+  - from_id: md-task-003
+    to_id: md-req-004
+    type: IMPLEMENTS
+
+  # Requirements tested by Tests
+  - from_id: md-req-001
+    to_id: md-test-001
+    type: TESTED_BY
+
+  - from_id: md-req-001
+    to_id: md-test-002
+    type: TESTED_BY
+
+  # Requirements mitigate Risks
+  - from_id: md-req-001
+    to_id: md-risk-001
+    type: MITIGATES
+
+  - from_id: md-req-002
+    to_id: md-risk-002
+    type: MITIGATES
+
+  - from_id: md-req-003
+    to_id: md-risk-003
+    type: MITIGATES
+
+  - from_id: md-req-004
+    to_id: md-risk-003
+    type: MITIGATES
+
+  - from_id: md-req-005
+    to_id: md-risk-002
+    type: MITIGATES
+
+  # Requirement dependencies
+  - from_id: md-req-003
+    to_id: md-req-002
+    type: DEPENDS_ON
+
+  - from_id: md-req-004
+    to_id: md-req-002
+    type: DEPENDS_ON
+
+  - from_id: md-req-005
+    to_id: md-req-002
+    type: DEPENDS_ON

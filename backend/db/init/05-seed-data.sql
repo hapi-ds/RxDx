@@ -1,3 +1,30 @@
+-- ============================================================================
+-- DEPRECATED: This SQL seed file is deprecated in favor of YAML templates
+-- ============================================================================
+--
+-- This file is maintained for backward compatibility only.
+-- New projects should use the template-based seeding approach instead.
+--
+-- Migration Path:
+-- 1. Use the Python seed script with templates:
+--    uv run python scripts/seed_data.py --template default
+--
+-- 2. Or use the template CLI:
+--    uv run python scripts/template_cli.py apply default
+--
+-- 3. Or use the REST API:
+--    POST /api/v1/templates/default/apply
+--
+-- Available templates:
+-- - default: Same data as this SQL file (7 users, 4 requirements, 3 tasks, 3 tests, 2 risks)
+-- - medical-device: Regulatory-focused template for medical device projects
+-- - software-only: Agile development template for software projects
+-- - minimal: Minimal template with admin user only
+--
+-- For more information, see SEED_DATA.md
+--
+-- ============================================================================
+
 -- Seed data for RxDx development and testing
 -- This script creates example users and sample data for the application
 

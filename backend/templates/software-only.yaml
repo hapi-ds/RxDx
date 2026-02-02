@@ -1,0 +1,242 @@
+metadata:
+  name: software-only
+  version: 1.0.0
+  description: Software-only project template focused on agile development with simplified risk structure
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+users:
+  - id: sw-admin
+    email: admin@example.com
+    full_name: System Administrator
+    role: admin
+    is_active: true
+
+  - id: sw-scrum-master
+    email: scrum.master@example.com
+    full_name: Scrum Master
+    role: project_manager
+    is_active: true
+
+  - id: sw-dev-lead
+    email: dev.lead@example.com
+    full_name: Development Lead
+    role: user
+    is_active: true
+
+  - id: sw-qa-lead
+    email: qa.lead@example.com
+    full_name: QA Lead
+    role: validator
+    is_active: true
+
+workitems:
+  requirements:
+    - id: sw-req-001
+      title: User Authentication and Authorization
+      description: Implement secure user authentication with JWT tokens and role-based authorization
+      status: active
+      priority: 5
+      acceptance_criteria: Users can login with email/password, receive JWT token, and access resources based on their role
+      business_value: Secures application and enables multi-tenant access control
+      source: Product Backlog
+      created_by: sw-scrum-master
+
+    - id: sw-req-002
+      title: RESTful API Design
+      description: Design and implement RESTful API following OpenAPI 3.0 specification
+      status: active
+      priority: 4
+      acceptance_criteria: API endpoints follow REST principles, return appropriate status codes, and are documented with OpenAPI spec
+      business_value: Enables frontend integration and third-party API consumers
+      source: Technical Requirements
+      created_by: sw-scrum-master
+
+    - id: sw-req-003
+      title: Automated Testing Pipeline
+      description: Implement CI/CD pipeline with automated unit, integration, and end-to-end tests
+      status: active
+      priority: 4
+      acceptance_criteria: All code changes trigger automated tests, code coverage >80%, tests run in <5 minutes
+      business_value: Ensures code quality and enables rapid deployment
+      source: DevOps Requirements
+      created_by: sw-scrum-master
+
+    - id: sw-req-004
+      title: Database Migration System
+      description: Implement database migration system for schema versioning and rollback capability
+      status: draft
+      priority: 3
+      acceptance_criteria: Database schema changes are versioned, can be applied incrementally, and rolled back if needed
+      business_value: Enables safe database schema evolution
+      source: Technical Requirements
+      created_by: sw-scrum-master
+
+  tasks:
+    - id: sw-task-001
+      title: Implement JWT Authentication Service
+      description: Create authentication service with JWT token generation and validation
+      status: completed
+      priority: 5
+      estimated_hours: 16
+      actual_hours: 14
+      assigned_to: sw-dev-lead
+      created_by: sw-scrum-master
+
+    - id: sw-task-002
+      title: Create OpenAPI Specification
+      description: Document all API endpoints using OpenAPI 3.0 specification
+      status: active
+      priority: 4
+      estimated_hours: 12
+      actual_hours: 6
+      assigned_to: sw-dev-lead
+      created_by: sw-scrum-master
+
+    - id: sw-task-003
+      title: Setup CI/CD Pipeline
+      description: Configure GitHub Actions for automated testing and deployment
+      status: active
+      priority: 4
+      estimated_hours: 20
+      actual_hours: 8
+      assigned_to: sw-dev-lead
+      created_by: sw-scrum-master
+
+    - id: sw-task-004
+      title: Implement Database Migrations
+      description: Setup Alembic for database schema migrations
+      status: draft
+      priority: 3
+      estimated_hours: 16
+      assigned_to: sw-dev-lead
+      created_by: sw-scrum-master
+
+  tests:
+    - id: sw-test-001
+      title: Authentication Integration Test
+      description: Test complete authentication flow including login, token validation, and logout
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. POST /api/v1/auth/login with valid credentials
+        2. Verify JWT token is returned
+        3. Use token to access protected endpoint
+        4. Verify access is granted
+        5. POST /api/v1/auth/logout
+        6. Verify token is invalidated
+      expected_result: Complete authentication flow works correctly
+      test_status: passed
+      assigned_to: sw-qa-lead
+      created_by: sw-scrum-master
+
+    - id: sw-test-002
+      title: API Contract Test
+      description: Validate API responses match OpenAPI specification
+      status: active
+      priority: 4
+      test_type: integration
+      test_steps: |
+        1. Load OpenAPI specification
+        2. For each endpoint, send valid request
+        3. Validate response schema matches spec
+        4. Validate status codes match spec
+        5. Validate error responses match spec
+      expected_result: All API responses conform to OpenAPI specification
+      test_status: not_run
+      assigned_to: sw-qa-lead
+      created_by: sw-scrum-master
+
+    - id: sw-test-003
+      title: Load Test API Endpoints
+      description: Verify API can handle expected load
+      status: draft
+      priority: 3
+      test_type: acceptance
+      test_steps: |
+        1. Setup load testing tool (Locust/k6)
+        2. Configure 100 concurrent users
+        3. Run load test for 5 minutes
+        4. Monitor response times and error rates
+        5. Verify 95th percentile response time <500ms
+      expected_result: API handles 100 concurrent users with acceptable performance
+      test_status: not_run
+      assigned_to: sw-qa-lead
+      created_by: sw-scrum-master
+
+  risks:
+    - id: sw-risk-001
+      title: API Security Vulnerability
+      description: Risk of security vulnerabilities in API endpoints (SQL injection, XSS, CSRF)
+      status: active
+      priority: 5
+      severity: 8
+      occurrence: 3
+      detection: 4
+      mitigation_actions: Use parameterized queries, input validation, OWASP security headers, regular security scanning
+      risk_owner: sw-dev-lead
+      created_by: sw-scrum-master
+
+    - id: sw-risk-002
+      title: Performance Degradation
+      description: Risk of poor performance under load affecting user experience
+      status: active
+      priority: 3
+      severity: 5
+      occurrence: 4
+      detection: 3
+      mitigation_actions: Implement caching, database indexing, load testing, performance monitoring
+      risk_owner: sw-dev-lead
+      created_by: sw-scrum-master
+
+relationships:
+  # Tasks implement Requirements
+  - from_id: sw-task-001
+    to_id: sw-req-001
+    type: IMPLEMENTS
+
+  - from_id: sw-task-002
+    to_id: sw-req-002
+    type: IMPLEMENTS
+
+  - from_id: sw-task-003
+    to_id: sw-req-003
+    type: IMPLEMENTS
+
+  - from_id: sw-task-004
+    to_id: sw-req-004
+    type: IMPLEMENTS
+
+  # Requirements tested by Tests
+  - from_id: sw-req-001
+    to_id: sw-test-001
+    type: TESTED_BY
+
+  - from_id: sw-req-002
+    to_id: sw-test-002
+    type: TESTED_BY
+
+  - from_id: sw-req-003
+    to_id: sw-test-003
+    type: TESTED_BY
+
+  # Requirements mitigate Risks
+  - from_id: sw-req-001
+    to_id: sw-risk-001
+    type: MITIGATES
+
+  - from_id: sw-req-003
+    to_id: sw-risk-002
+    type: MITIGATES
+
+  # Task dependencies
+  - from_id: sw-task-002
+    to_id: sw-task-001
+    type: DEPENDS_ON
+
+  - from_id: sw-task-003
+    to_id: sw-task-001
+    type: DEPENDS_ON

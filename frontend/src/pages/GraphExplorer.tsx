@@ -71,6 +71,18 @@ export function GraphExplorer(): React.ReactElement {
   // Export state
   const [exportError, setExportError] = useState<string | null>(null);
 
+  // Track if initial load has been done
+  const hasLoadedRef = useRef(false);
+
+  // Load graph data on mount (only once)
+  useEffect(() => {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadGraph();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
+
   // Sync local search input with store query when cleared externally
   useEffect(() => {
     if (searchQuery === '' && searchInput !== '') {
@@ -387,6 +399,15 @@ export function GraphExplorer(): React.ReactElement {
             {viewMode === '2d' ? (
               <GraphView2D
                 className="graph-view"
+                style={{ 
+                  width: '100%', 
+                  height: '100%',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0
+                }}
                 showMiniMap={true}
                 showControls={true}
                 showBackground={true}
@@ -677,12 +698,21 @@ export function GraphExplorer(): React.ReactElement {
           border-radius: 8px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
-          min-height: 400px;
+          min-height: 500px;
+          height: calc(100vh - 250px);
+          display: flex;
+          flex-direction: column;
         }
 
         .graph-view {
           width: 100%;
           height: 100%;
+          flex: 1;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
         }
 
         .error-banner {

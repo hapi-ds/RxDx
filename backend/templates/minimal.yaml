@@ -1,0 +1,29 @@
+metadata:
+  name: minimal
+  version: 1.0.0
+  description: Minimal template with only admin user and one requirement for quick testing and development
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+users:
+  - id: min-admin
+    email: admin@example.com
+    full_name: Administrator
+    role: admin
+    is_active: true
+
+workitems:
+  requirements:
+    - id: min-req-001
+      title: Basic System Setup
+      description: Initial system configuration and setup
+      status: active
+      priority: 3
+      acceptance_criteria: System is configured and ready for development
+      business_value: Enables development to begin
+      source: Initial Setup
+      created_by: min-admin
+
+relationships: []

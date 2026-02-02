@@ -332,7 +332,6 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
 }) => {
   // Get state and actions from graphStore
   const {
-    loadGraph,
     selectNode,
     createRelationship,
     updateNodePosition,
@@ -350,21 +349,81 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   const storeNodes = getFilteredNodes() || [];
   const storeEdges = getFilteredEdges() || [];
 
+  console.log('[GraphView2D] Rendering with nodes:', storeNodes.length, 'edges:', storeEdges.length);
+  if (storeNodes.length > 0) {
+    console.log('[GraphView2D] First node:', storeNodes[0]);
+  }
+
   // Get react-flow instance for viewport synchronization
   const reactFlowInstance = useReactFlow();
 
   // Local state for react-flow (allows smooth dragging)
-  const [flowNodes, , onNodesChange] = useNodesState<Node<GraphNodeData>>(storeNodes);
-  const [flowEdges, , onEdgesChange] = useEdgesState<Edge>(storeEdges);
+  const [flowNodes, setFlowNodes, onNodesChange] = useNodesState<Node<GraphNodeData>>([]);
+  const [flowEdges, setFlowEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  // Store the React Flow instance
+  const [rfInstance, setRfInstance] = React.useState<any>(null);
+
+  // Sync store nodes/edges to flow nodes/edges when they change
+  // Use JSON.stringify for deep comparison to avoid infinite loops
+  const storeNodesJson = JSON.stringify(storeNodes.map(n => n.id));
+  const storeEdgesJson = JSON.stringify(storeEdges.map(e => e.id));
+  
+  useEffect(() => {
+    console.log('[GraphView2D] Syncing storeNodes to flowNodes:', storeNodes.length);
+    if (storeNodes.length > 0) {
+      console.log('[GraphView2D] Sample node being synced:', JSON.stringify(storeNodes[0], null, 2));
+    }
+    setFlowNodes(storeNodes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeNodesJson, setFlowNodes]);
+
+  useEffect(() => {
+    console.log('[GraphView2D] Syncing storeEdges to flowEdges:', storeEdges.length);
+    setFlowEdges(storeEdges);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storeEdgesJson, setFlowEdges]);
+
+  // Fit view when nodes are loaded
+  useEffect(() => {
+    console.log('[GraphView2D] fitView useEffect triggered', {
+      hasRfInstance: !!rfInstance,
+      flowNodesLength: flowNodes.length,
+      hasNodes: flowNodes.length > 0
+    });
+    
+    if (rfInstance && flowNodes.length > 0) {
+      console.log('[GraphView2D] Nodes loaded, calling fitView');
+      console.log('[GraphView2D] Node count:', flowNodes.length);
+      console.log('[GraphView2D] First node position:', flowNodes[0].position);
+      
+      // Try multiple times with different delays to ensure it works
+      setTimeout(() => {
+        console.log('[GraphView2D] Calling fitView (attempt 1)');
+        rfInstance.fitView({ padding: 0.2, duration: 200 });
+        console.log('[GraphView2D] fitView called, viewport:', rfInstance.getViewport());
+      }, 50);
+      
+      setTimeout(() => {
+        console.log('[GraphView2D] Calling fitView (attempt 2)');
+        rfInstance.fitView({ padding: 0.2, duration: 200 });
+        console.log('[GraphView2D] fitView called, viewport:', rfInstance.getViewport());
+      }, 300);
+      
+      setTimeout(() => {
+        console.log('[GraphView2D] Calling fitView (attempt 3)');
+        rfInstance.fitView({ padding: 0.2, duration: 200 });
+        console.log('[GraphView2D] fitView called, viewport:', rfInstance.getViewport());
+      }, 600);
+    }
+  }, [rfInstance, flowNodes.length]);
 
   // State for relationship type dialog
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // Load graph data on mount
-  useEffect(() => {
-    loadGraph();
-  }, [loadGraph]);
+  // Note: Graph data is loaded by the parent GraphExplorer component
+  // No need to load here to avoid duplicate API calls
 
   // Note: React Flow's useNodesState and useEdgesState automatically sync with storeNodes/storeEdges
   // No manual synchronization needed to avoid infinite loops
@@ -487,11 +546,12 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     selectNode(null);
   }, [selectNode]);
 
-  // Container styles
+  // Container styles - ensure explicit dimensions for React Flow
   const containerStyle: React.CSSProperties = {
     width: '100%',
     height: '100%',
-    minHeight: '400px',
+    minHeight: '500px',
+    position: 'relative',
     ...style,
   };
 
@@ -530,9 +590,26 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onMoveEnd={handleMoveEnd}
+        onInit={(instance) => {
+          console.log('[GraphView2D] ReactFlow initialized');
+          console.log('[GraphView2D] Initial nodes:', flowNodes.length);
+          console.log('[GraphView2D] Viewport:', instance.getViewport());
+          // Store the instance for later use
+          setRfInstance(instance);
+          
+          // Try to fit view immediately if we have nodes
+          if (flowNodes.length > 0) {
+            console.log('[GraphView2D] Calling fitView on init (has nodes)');
+            setTimeout(() => {
+              instance.fitView({ padding: 0.2, duration: 200 });
+              console.log('[GraphView2D] fitView on init complete, viewport:', instance.getViewport());
+            }, 100);
+          } else {
+            console.log('[GraphView2D] No nodes yet on init, will wait for useEffect');
+          }
+        }}
         nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{

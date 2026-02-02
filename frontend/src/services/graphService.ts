@@ -32,7 +32,7 @@ export interface GraphData {
 }
 
 export interface GraphVisualizationParams {
-  root_id?: string;
+  center_node_id?: string;
   depth?: number;
   node_types?: string[];
   relationship_types?: string[];
@@ -153,14 +153,14 @@ function transformBackendNode(backendNode: BackendNode): GraphNode | null {
   
   if (backendNode.reactFlow?.position) {
     const pos = backendNode.reactFlow.position;
-    // Validate position values are finite numbers
-    if (Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+    // Validate position values are finite numbers AND not both zero (backend default)
+    if (Number.isFinite(pos.x) && Number.isFinite(pos.y) && (pos.x !== 0 || pos.y !== 0)) {
       position = pos;
     } else {
-      // Generate random position if values are not finite
+      // Generate random position if values are zero (backend default) or not finite
       position = {
-        x: Math.random() * 500,
-        y: Math.random() * 500,
+        x: Math.random() * 800,
+        y: Math.random() * 600,
       };
     }
   } else if (backendNode.properties?.position && 
@@ -168,21 +168,21 @@ function transformBackendNode(backendNode: BackendNode): GraphNode | null {
              'x' in backendNode.properties.position && 
              'y' in backendNode.properties.position) {
     const pos = backendNode.properties.position as { x: number; y: number };
-    // Validate position values are finite numbers
-    if (Number.isFinite(pos.x) && Number.isFinite(pos.y)) {
+    // Validate position values are finite numbers AND not both zero
+    if (Number.isFinite(pos.x) && Number.isFinite(pos.y) && (pos.x !== 0 || pos.y !== 0)) {
       position = { x: pos.x, y: pos.y };
     } else {
-      // Generate random position if values are not finite
+      // Generate random position if values are zero or not finite
       position = {
-        x: Math.random() * 500,
-        y: Math.random() * 500,
+        x: Math.random() * 800,
+        y: Math.random() * 600,
       };
     }
   } else {
     // Generate random position as last resort
     position = {
-      x: Math.random() * 500,
-      y: Math.random() * 500,
+      x: Math.random() * 800,
+      y: Math.random() * 600,
     };
   }
 
@@ -235,7 +235,7 @@ class GraphService {
   async getVisualization(params?: GraphVisualizationParams): Promise<GraphData> {
     try {
       const queryParams = new URLSearchParams();
-      if (params?.root_id) queryParams.append('root_id', params.root_id);
+      if (params?.center_node_id) queryParams.append('center_node_id', params.center_node_id);
       if (params?.depth !== undefined) queryParams.append('depth', params.depth.toString());
       if (params?.node_types) {
         params.node_types.forEach((type) => queryParams.append('node_types', type));
@@ -251,11 +251,17 @@ class GraphService {
         ? `${this.basePath}/visualization?${queryParams.toString()}`
         : `${this.basePath}/visualization`;
 
+      console.log('[GraphService] Fetching visualization from:', url);
       const response = await apiClient.get<BackendGraphResponse>(url);
+      console.log('[GraphService] Response received:', {
+        hasData: !!response?.data,
+        nodeCount: response?.data?.nodes?.length || 0,
+        edgeCount: response?.data?.edges?.length || 0
+      });
       
       // Defensive: Validate response exists and has data
       if (!response || !response.data) {
-        console.error('API returned no data');
+        console.error('[GraphService] API returned no data');
         return { nodes: [], edges: [] };
       }
       
@@ -263,18 +269,29 @@ class GraphService {
       const backendNodes = Array.isArray(response.data.nodes) ? response.data.nodes : [];
       const backendEdges = Array.isArray(response.data.edges) ? response.data.edges : [];
       
+      console.log('[GraphService] Transforming nodes:', backendNodes.length);
+      if (backendNodes.length > 0) {
+        console.log('[GraphService] Sample backend node:', JSON.stringify(backendNodes[0], null, 2));
+      }
+      
       // Transform with validation - filter out null results
       const nodes = backendNodes
         .map(transformBackendNode)
         .filter((node): node is GraphNode => node !== null);
       
+      console.log('[GraphService] Transformed nodes:', nodes.length);
+      if (nodes.length > 0) {
+        console.log('[GraphService] Sample transformed node:', JSON.stringify(nodes[0], null, 2));
+      }
+      
       const edges = backendEdges
         .map(transformBackendEdge)
         .filter((edge): edge is GraphEdge => edge !== null);
 
+      console.log('[GraphService] Returning graph data:', { nodes: nodes.length, edges: edges.length });
       return { nodes, edges };
     } catch (error) {
-      console.error('Graph visualization error:', error);
+      console.error('[GraphService] Graph visualization error:', error);
       throw new Error(getErrorMessage(error));
     }
   }
@@ -282,13 +299,19 @@ class GraphService {
   async search(query: string, limit?: number): Promise<GraphNode[]> {
     try {
       const queryParams = new URLSearchParams();
-      queryParams.append('q', query);
+      queryParams.append('query', query);
       if (limit !== undefined) queryParams.append('limit', limit.toString());
 
-      const response = await apiClient.get<GraphNode[]>(
+      const response = await apiClient.get<{ results: BackendNode[] }>(
         `${this.basePath}/search?${queryParams.toString()}`
       );
-      return response.data;
+      
+      // Transform backend nodes to frontend format
+      const nodes = response.data.results
+        .map(transformBackendNode)
+        .filter((node): node is GraphNode => node !== null);
+      
+      return nodes;
     } catch (error) {
       throw new Error(getErrorMessage(error));
     }

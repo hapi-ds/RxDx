@@ -1,0 +1,429 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rxdx.example.com/schemas/template.json",
+  "title": "RxDx Project Template Schema",
+  "description": "JSON Schema for validating RxDx project template YAML files",
+  "type": "object",
+  "required": ["metadata"],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "description": "Template metadata including name, version, description, and author",
+      "required": ["name", "version", "description", "author"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Template identifier in kebab-case (e.g., 'medical-device')",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version (e.g., '1.0.0')",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable template description",
+          "minLength": 10,
+          "maxLength": 500
+        },
+        "author": {
+          "type": "string",
+          "description": "Template author name",
+          "minLength": 1,
+          "maxLength": 100
+        }
+      }
+    },
+    "settings": {
+      "type": "object",
+      "description": "Template settings including default password",
+      "additionalProperties": false,
+      "properties": {
+        "default_password": {
+          "type": "string",
+          "description": "Default password for all users (hashed during application)",
+          "minLength": 8,
+          "maxLength": 100,
+          "default": "password123"
+        }
+      }
+    },
+    "users": {
+      "type": "array",
+      "description": "List of users to create during template application",
+      "items": {
+        "type": "object",
+        "required": ["id", "email", "full_name", "role"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local user identifier (can be UUID or readable ID like 'admin-user')",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "description": "User email address (must be unique)",
+            "format": "email",
+            "maxLength": 255
+          },
+          "full_name": {
+            "type": "string",
+            "description": "User's full name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "role": {
+            "type": "string",
+            "description": "User role for RBAC",
+            "enum": ["admin", "project_manager", "validator", "auditor", "user"]
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Whether the user account is active",
+            "default": true
+          },
+          "password": {
+            "type": ["string", "null"],
+            "description": "Optional password override (uses default_password if not provided)",
+            "minLength": 8,
+            "maxLength": 100
+          },
+          "failed_login_attempts": {
+            "type": "integer",
+            "description": "Number of failed login attempts (defaults to 0)",
+            "minimum": 0,
+            "default": 0
+          },
+          "locked_until": {
+            "type": ["string", "null"],
+            "description": "Timestamp until which the account is locked (defaults to null)",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    "workitems": {
+      "type": "object",
+      "description": "Workitems grouped by type (requirements, tasks, tests, risks)",
+      "additionalProperties": false,
+      "properties": {
+        "requirements": {
+          "type": "array",
+          "description": "List of requirement workitems",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "priority", "created_by"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Template-local requirement identifier",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "title": {
+                "type": "string",
+                "description": "Requirement title",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed requirement description",
+                "maxLength": 5000
+              },
+              "status": {
+                "type": "string",
+                "description": "Requirement status",
+                "enum": ["draft", "active", "completed", "archived", "rejected"],
+                "default": "draft"
+              },
+              "priority": {
+                "type": "integer",
+                "description": "Priority level (1=lowest, 5=highest)",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "acceptance_criteria": {
+                "type": "string",
+                "description": "Acceptance criteria for the requirement",
+                "maxLength": 2000
+              },
+              "business_value": {
+                "type": "string",
+                "description": "Business value or justification",
+                "maxLength": 1000
+              },
+              "source": {
+                "type": "string",
+                "description": "Source of the requirement (e.g., stakeholder, regulation)",
+                "maxLength": 100
+              },
+              "created_by": {
+                "type": "string",
+                "description": "Template-local user ID who created this requirement",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "description": "List of task workitems",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "priority", "created_by"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Template-local task identifier",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "title": {
+                "type": "string",
+                "description": "Task title",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed task description",
+                "maxLength": 5000
+              },
+              "status": {
+                "type": "string",
+                "description": "Task status",
+                "enum": ["draft", "active", "completed", "archived"],
+                "default": "draft"
+              },
+              "priority": {
+                "type": "integer",
+                "description": "Priority level (1=lowest, 5=highest)",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "estimated_hours": {
+                "type": "number",
+                "description": "Estimated hours to complete",
+                "minimum": 0
+              },
+              "actual_hours": {
+                "type": ["number", "null"],
+                "description": "Actual hours spent",
+                "minimum": 0
+              },
+              "due_date": {
+                "type": ["string", "null"],
+                "description": "Due date for the task",
+                "format": "date-time"
+              },
+              "assigned_to": {
+                "type": "string",
+                "description": "Template-local user ID assigned to this task",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "created_by": {
+                "type": "string",
+                "description": "Template-local user ID who created this task",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "tests": {
+          "type": "array",
+          "description": "List of test workitems",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "priority", "created_by"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Template-local test identifier",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "title": {
+                "type": "string",
+                "description": "Test title",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed test description",
+                "maxLength": 5000
+              },
+              "status": {
+                "type": "string",
+                "description": "Test status",
+                "enum": ["draft", "active", "completed", "archived"],
+                "default": "draft"
+              },
+              "priority": {
+                "type": "integer",
+                "description": "Priority level (1=lowest, 5=highest)",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "test_type": {
+                "type": "string",
+                "description": "Type of test (unit, integration, system, acceptance)",
+                "maxLength": 50
+              },
+              "test_steps": {
+                "type": "string",
+                "description": "Detailed test steps",
+                "maxLength": 2000
+              },
+              "expected_result": {
+                "type": "string",
+                "description": "Expected test result",
+                "maxLength": 1000
+              },
+              "actual_result": {
+                "type": ["string", "null"],
+                "description": "Actual test result (optional)",
+                "maxLength": 1000
+              },
+              "test_status": {
+                "type": "string",
+                "description": "Test execution status",
+                "enum": ["not_run", "passed", "failed", "blocked"],
+                "default": "not_run"
+              },
+              "assigned_to": {
+                "type": "string",
+                "description": "Template-local user ID assigned to this test",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "created_by": {
+                "type": "string",
+                "description": "Template-local user ID who created this test",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "risks": {
+          "type": "array",
+          "description": "List of risk workitems",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "priority", "severity", "occurrence", "detection", "created_by"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Template-local risk identifier",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "title": {
+                "type": "string",
+                "description": "Risk title",
+                "minLength": 5,
+                "maxLength": 500
+              },
+              "description": {
+                "type": "string",
+                "description": "Detailed risk description",
+                "maxLength": 5000
+              },
+              "status": {
+                "type": "string",
+                "description": "Risk status",
+                "enum": ["draft", "active", "completed", "archived"],
+                "default": "draft"
+              },
+              "priority": {
+                "type": "integer",
+                "description": "Priority level (1=lowest, 5=highest)",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "severity": {
+                "type": "integer",
+                "description": "Severity rating (1=lowest, 10=highest impact)",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "occurrence": {
+                "type": "integer",
+                "description": "Occurrence rating (1=rare, 10=very frequent)",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "detection": {
+                "type": "integer",
+                "description": "Detection rating (1=easily detected, 10=undetectable)",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "mitigation_actions": {
+                "type": "string",
+                "description": "Planned mitigation actions",
+                "maxLength": 2000
+              },
+              "risk_owner": {
+                "type": "string",
+                "description": "Template-local user ID responsible for risk management",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "created_by": {
+                "type": "string",
+                "description": "Template-local user ID who created this risk",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "description": "Relationships between workitems in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["from_id", "to_id", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "from_id": {
+            "type": "string",
+            "description": "Template-local ID of the source workitem",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "to_id": {
+            "type": "string",
+            "description": "Template-local ID of the target workitem",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of relationship",
+            "enum": ["IMPLEMENTS", "TESTED_BY", "MITIGATES", "DEPENDS_ON"]
+          }
+        }
+      }
+    }
+  }
+}

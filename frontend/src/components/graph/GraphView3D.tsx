@@ -840,7 +840,6 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
   onXRUnavailable,
 }) => {
   const { 
-    loadGraph, 
     isLoading, 
     error, 
     selectNode, 
@@ -1007,10 +1006,8 @@ export const GraphView3D: React.FC<GraphView3DProps> = ({
    */
   const hasAnyXRButtons = shouldShowVRButton || shouldShowARButton;
 
-  // Load graph data on mount
-  useEffect(() => {
-    loadGraph();
-  }, [loadGraph]);
+  // Note: Graph data is loaded by the parent GraphExplorer component
+  // No need to load here to avoid duplicate API calls
 
   // Handler for entering VR mode using useXRSupport hook
   const handleEnterVR = async (): Promise<void> => {

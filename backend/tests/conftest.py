@@ -102,6 +102,22 @@ class MockGraphService:
         return False
 
     async def create_relationship(self, **kwargs):
+        # Track relationships for existence checks
+        if not hasattr(self, 'relationships'):
+            self.relationships = []
+        
+        from_id = kwargs.get('from_id')
+        to_id = kwargs.get('to_id')
+        rel_type = kwargs.get('rel_type')
+        properties = kwargs.get('properties', {})
+        
+        rel = {
+            'from_id': from_id,
+            'to_id': to_id,
+            'type': rel_type,
+            **properties
+        }
+        self.relationships.append(rel)
         return True
 
     async def remove_relationships(self, **kwargs):
@@ -132,6 +148,37 @@ class MockGraphService:
             mitigations = [item for item in self.workitems.values()
                           if item.get('type') == 'mitigation']
             return [{"m": m} for m in mitigations]
+        elif "MATCH (a" in query and ")-[r:" in query and "]->(b" in query and "RETURN r" in query:
+            # Check for relationship existence
+            # Extract relationship type and node IDs from query
+            # This is a simplified check - in reality would parse the query properly
+            # For now, track relationships separately
+            if not hasattr(self, 'relationships'):
+                self.relationships = []
+            
+            # Check if this relationship already exists
+            # Parse the query to extract from_id, to_id, and rel_type
+            import re
+            from_match = re.search(r"id: '([^']+)'", query)
+            to_match = re.search(r"id: '([^']+)'.*id: '([^']+)'", query)
+            rel_type_match = re.search(r"\[r:(\w+)\]", query)
+            
+            if from_match and to_match and rel_type_match:
+                from_id = from_match.group(1)
+                # Get the second ID match
+                ids = re.findall(r"id: '([^']+)'", query)
+                if len(ids) >= 2:
+                    to_id = ids[1]
+                    rel_type = rel_type_match.group(1)
+                    
+                    # Check if relationship exists
+                    for rel in self.relationships:
+                        if (rel.get('from_id') == from_id and 
+                            rel.get('to_id') == to_id and 
+                            rel.get('type') == rel_type):
+                            return [{"r": rel}]
+            
+            return []
         return []
 
     async def create_node(self, label, properties):

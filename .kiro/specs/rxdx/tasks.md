@@ -481,215 +481,338 @@
 - [x] 19.3.3 Implement graceful degradation for non-XR devices
 - [x] 19.3.4 Write unit tests for view switching
 
-## Phase 20: Frontend - VV Management UI
+## Phase 20: Frontend - Navigation and Routing
 
-### 20.1 VV Components
+### 20.1 Navigation Header Component
+**References:** Requirement 19 (Frontend Navigation and Routing)
+- [ ] 20.1.1 Create NavigationHeader component with all navigation links
+- [ ] 20.1.2 Implement navItems array with paths: /requirements, /graph, /tests, /risks, /schedule, /kanban, /documents
+- [ ] 20.1.3 Use useLocation hook to determine active route and apply active state styling
+- [ ] 20.1.4 Include user info display and logout button
+- [ ] 20.1.5 Implement responsive collapse for mobile screens
+- [ ] 20.1.6 Write unit tests for NavigationHeader (link rendering, active state, logout)
+- [ ] 20.1.7 Update AppLayout to use NavigationHeader component
+- [ ] 20.1.8 Ensure header is only shown when authenticated
+
+### 20.2 Placeholder Pages
+**References:** Requirement 19 (Frontend Navigation and Routing)
+- [ ] 20.2.1 Create reusable PlaceholderPage component
+- [ ] 20.2.2 Accept props: title, description, icon
+- [ ] 20.2.3 Display "Coming Soon" message and link back to Requirements
+- [ ] 20.2.4 Write property test for PlaceholderPage content rendering
+- [ ] 20.2.5 Create TestsPage using PlaceholderPage
+- [ ] 20.2.6 Create RisksPage using PlaceholderPage
+- [ ] 20.2.7 Create SchedulePage using PlaceholderPage
+- [ ] 20.2.8 Create KanbanPage using PlaceholderPage
+- [ ] 20.2.9 Create DocumentsPage using PlaceholderPage
+
+### 20.3 Routing Configuration
+**References:** Requirement 19 (Frontend Navigation and Routing)
+- [ ] 20.3.1 Add route for /graph pointing to existing GraphExplorer component
+- [ ] 20.3.2 Add routes for /tests, /risks, /schedule, /kanban, /documents
+- [ ] 20.3.3 Wrap all new routes with ProtectedRoute
+- [ ] 20.3.4 Update catch-all route to redirect appropriately
+- [ ] 20.3.5 Write property tests for route protection and unknown route redirect
+- [ ] 20.3.6 Verify navigation works between all pages
+- [ ] 20.3.7 Verify GraphExplorer page loads correctly
+
+## Phase 21: Frontend - Enhanced Version Control UX
+
+### 21.1 Version Display Components
+**References:** Requirement 20 (Enhanced Version Control User Experience)
+- [ ] 21.1.1 Create VersionIndicator component to display version number in badge/pill style
+- [ ] 21.1.2 Create VersionPreview component to show next version and informational message
+- [ ] 21.1.3 Create version utility functions (calculateNextVersion, parseVersion)
+- [ ] 21.1.4 Write property test for version calculation
+
+### 21.2 WorkItemForm Version Enhancements
+**References:** Requirement 20 (Enhanced Version Control User Experience)
+- [ ] 21.2.1 Update button text: "Create Work Item" for new, "Save Changes" for edit
+- [ ] 21.2.2 Add VersionIndicator when editing existing item (near form title)
+- [ ] 21.2.3 Add VersionPreview near submit button (show next version for edits, v1.0 for new)
+- [ ] 21.2.4 Write property tests for button text, version indicator, and version preview
+
+### 21.3 WorkItemDetail Version Enhancements
+**References:** Requirement 20 (Enhanced Version Control User Experience)
+- [ ] 21.3.1 Enhance version badge visibility in header
+- [ ] 21.3.2 Add version count indicator (e.g., "v1.2 (5 versions)")
+- [ ] 21.3.3 Make "View History" button more prominent in actions
+- [ ] 21.3.4 Show "View History" only when version history is available
+- [ ] 21.3.5 Write property tests for version badge, view history visibility, and version count
+
+### 21.4 VersionHistory Component Enhancements
+**References:** Requirement 20 (Enhanced Version Control User Experience)
+- [ ] 21.4.1 Add current version highlighting in timeline
+- [ ] 21.4.2 Ensure change descriptions are displayed when available
+- [ ] 21.4.3 Add timeline indicator showing version progression for multiple versions
+- [ ] 21.4.4 Write property tests for current version highlighting and change description display
+
+## Phase 22: Frontend - VV Management UI
+
+### 22.1 VV Components
 **References:** Requirement 9 (Verification and Validation Management)
-- [ ] 20.1.1 Create Tests page
-- [ ] 20.1.2 Create TestSpecList component
-- [ ] 20.1.3 Create TestRunForm component
-- [ ] 20.1.4 Create TestResultsDisplay component
-- [ ] 20.1.5 Create TestCoverageChart component
-- [ ] 20.1.6 Write unit tests for test components
+- [ ] 22.1.1 Create Tests page
+- [ ] 22.1.2 Create TestSpecList component
+- [ ] 22.1.3 Create TestRunForm component
+- [ ] 22.1.4 Create TestResultsDisplay component
+- [ ] 22.1.5 Create TestCoverageChart component
+- [ ] 22.1.6 Write unit tests for test components
 
-## Phase 21: Frontend - Risk Management UI
+## Phase 23: Frontend - Risk Management UI
 
-### 21.1 Risk Components
+### 23.1 Risk Components
 **References:** Requirement 10 (Risk Management with FMEA)
-- [ ] 21.1.1 Create Risks page
-- [ ] 21.1.2 Create RiskCard component with RPN display
-- [ ] 21.1.3 Create FailureChainVisualization component
-- [ ] 21.1.4 Create MitigationTracker component
-- [ ] 21.1.5 Implement FMEA matrix view
-- [ ] 21.1.6 Write unit tests for risk components
+- [ ] 23.1.1 Create Risks page
+- [ ] 23.1.2 Create RiskCard component with RPN display
+- [ ] 23.1.3 Create FailureChainVisualization component
+- [ ] 23.1.4 Create MitigationTracker component
+- [ ] 23.1.5 Implement FMEA matrix view
+- [ ] 23.1.6 Write unit tests for risk components
 
-## Phase 22: Frontend - Project Scheduling UI
+## Phase 24: Frontend - Project Scheduling UI
 
-### 22.1 Schedule Components
+### 24.1 Schedule Components
 **References:** Requirement 7 (Offline Project Scheduling)
-- [ ] 22.1.1 Create Schedule page
-- [ ] 22.1.2 Create GanttChart component
-- [ ] 22.1.3 Create TaskDependencyEditor component
-- [ ] 22.1.4 Create ResourceAllocation component
-- [ ] 22.1.5 Implement schedule conflict display
-- [ ] 22.1.6 Write unit tests for schedule components
+- [ ] 24.1.1 Create Schedule page
+- [ ] 24.1.2 Create GanttChart component
+- [ ] 24.1.3 Create TaskDependencyEditor component
+- [ ] 24.1.4 Create ResourceAllocation component
+- [ ] 24.1.5 Implement schedule conflict display
+- [ ] 24.1.6 Write unit tests for schedule components
 
-### 22.2 Project Management Views
+### 24.2 Project Management Views
 **References:** Requirement 11 (Project Management Workflows)
-- [ ] 22.2.1 Create KanbanBoard component
-- [ ] 22.2.2 Create SprintPlanning component
-- [ ] 22.2.3 Create BurndownChart component
-- [ ] 22.2.4 Create VelocityChart component
-- [ ] 22.2.5 Write unit tests for project management components
+- [ ] 24.2.1 Create KanbanBoard component
+- [ ] 24.2.2 Create SprintPlanning component
+- [ ] 24.2.3 Create BurndownChart component
+- [ ] 24.2.4 Create VelocityChart component
+- [ ] 24.2.5 Write unit tests for project management components
 
-## Phase 23: Frontend - Document Generation UI
+## Phase 25: Frontend - Document Generation UI
 
-### 23.1 Document Components
+### 25.1 Document Components
 **References:** Requirement 8 (Document Generation)
-- [ ] 23.1.1 Create Documents page
-- [ ] 23.1.2 Create DocumentGenerator component with template selection
-- [ ] 23.1.3 Create DocumentPreview component
-- [ ] 23.1.4 Create DocumentHistory component
-- [ ] 23.1.5 Implement document download functionality
-- [ ] 23.1.6 Write unit tests for document components
+- [ ] 25.1.1 Create Documents page
+- [ ] 25.1.2 Create DocumentGenerator component with template selection
+- [ ] 25.1.3 Create DocumentPreview component
+- [ ] 25.1.4 Create DocumentHistory component
+- [ ] 25.1.5 Implement document download functionality
+- [ ] 25.1.6 Write unit tests for document components
 
-## Phase 24: Mobile Time Recording App
+## Phase 25.5: Frontend - Template Management UI
 
-### 24.1 Mobile App Setup
+### 25.5.1 Template Store and Services
+**References:** Requirement 18 (Template Management UI)
+- [ ] 25.5.1.1 Create templateStore with Zustand for state management
+- [ ] 25.5.1.2 Implement loadTemplates action to fetch template list
+- [ ] 25.5.1.3 Implement selectTemplate action to fetch template details
+- [ ] 25.5.1.4 Implement validateTemplate action to validate templates
+- [ ] 25.5.1.5 Implement applyTemplate action with dry-run support
+- [ ] 25.5.1.6 Write unit tests for template store
+
+### 25.5.2 Template List Components
+**References:** Requirement 18 (Template Management UI)
+- [ ] 25.5.2.1 Create Templates page component with layout
+- [ ] 25.5.2.2 Create TemplateList component to display available templates
+- [ ] 25.5.2.3 Implement template selection and highlighting
+- [ ] 25.5.2.4 Add refresh button to reload template list
+- [ ] 25.5.2.5 Implement loading and empty states
+- [ ] 25.5.2.6 Write unit tests for template list components
+
+### 25.5.3 Template Detail Components
+**References:** Requirement 18 (Template Management UI)
+- [ ] 25.5.3.1 Create TemplateDetail component to display template information
+- [ ] 25.5.3.2 Display template metadata (name, version, author, description)
+- [ ] 25.5.3.3 Create tables for users, workitems, and relationships
+- [ ] 25.5.3.4 Implement validate button with validation results display
+- [ ] 25.5.3.5 Implement dry-run preview button (admin only)
+- [ ] 25.5.3.6 Implement apply button with confirmation dialog (admin only)
+- [ ] 25.5.3.7 Write unit tests for template detail components
+
+### 25.5.4 Results Display Components
+**References:** Requirement 18 (Template Management UI)
+- [ ] 25.5.4.1 Create ValidationResults component to display validation status
+- [ ] 25.5.4.2 Display validation errors and warnings with clear formatting
+- [ ] 25.5.4.3 Create ApplicationResults component to display application status
+- [ ] 25.5.4.4 Display created, skipped, and failed entity counts
+- [ ] 25.5.4.5 Create detailed failure table with error messages
+- [ ] 25.5.4.6 Write unit tests for results components
+
+### 25.5.5 Authorization and Error Handling
+**References:** Requirement 18 (Template Management UI)
+- [ ] 25.5.5.1 Implement role-based UI restrictions (admin-only actions)
+- [ ] 25.5.5.2 Display authorization error messages for non-admin users
+- [ ] 25.5.5.3 Implement confirmation dialogs for destructive operations
+- [ ] 25.5.5.4 Add error boundary for template page
+- [ ] 25.5.5.5 Implement loading states for all async operations
+- [ ] 25.5.5.6 Write integration tests for authorization flows
+
+### 25.5.6 Styling and UX
+**References:** Requirement 18 (Template Management UI)
+- [ ] 25.5.6.1 Create CSS styles for template page layout
+- [ ] 25.5.6.2 Style template list with hover and selection states
+- [ ] 25.5.6.3 Style entity tables with proper spacing and borders
+- [ ] 25.5.6.4 Style validation and application results with color coding
+- [ ] 25.5.6.5 Create responsive layout for mobile devices
+- [ ] 25.5.6.6 Ensure accessibility compliance (WCAG 2.1 AA)
+
+## Phase 26: Mobile Time Recording App
+
+### 26.1 Mobile App Setup
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 24.1.1 Initialize React Native project
-- [ ] 24.1.2 Set up navigation (React Navigation)
-- [ ] 24.1.3 Configure AsyncStorage for local data
-- [ ] 24.1.4 Set up NetInfo for connectivity detection
-- [ ] 24.1.5 Configure build for iOS and Android
+- [ ] 26.1.1 Initialize React Native project
+- [ ] 26.1.2 Set up navigation (React Navigation)
+- [ ] 26.1.3 Configure AsyncStorage for local data
+- [ ] 26.1.4 Set up NetInfo for connectivity detection
+- [ ] 26.1.5 Configure build for iOS and Android
 
-### 24.2 Time Entry Screens
+### 26.2 Time Entry Screens
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 24.2.1 Create TimeEntry screen with start/stop timer
-- [ ] 24.2.2 Create TimeList screen
-- [ ] 24.2.3 Create Sync screen with status display
-- [ ] 24.2.4 Create ProjectSelector component
-- [ ] 24.2.5 Create TaskSelector component
-- [ ] 24.2.6 Write unit tests for mobile screens
+- [ ] 26.2.1 Create TimeEntry screen with start/stop timer
+- [ ] 26.2.2 Create TimeList screen
+- [ ] 26.2.3 Create Sync screen with status display
+- [ ] 26.2.4 Create ProjectSelector component
+- [ ] 26.2.5 Create TaskSelector component
+- [ ] 26.2.6 Write unit tests for mobile screens
 
-### 24.3 Offline Sync Service
+### 26.3 Offline Sync Service
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 24.3.1 Create SyncService class
-- [ ] 24.3.2 Implement local storage for pending entries
-- [ ] 24.3.3 Implement background sync on connectivity restore
-- [ ] 24.3.4 Implement conflict resolution
-- [ ] 24.3.5 Write unit tests for sync service
+- [ ] 26.3.1 Create SyncService class
+- [ ] 26.3.2 Implement local storage for pending entries
+- [ ] 26.3.3 Implement background sync on connectivity restore
+- [ ] 26.3.4 Implement conflict resolution
+- [ ] 26.3.5 Write unit tests for sync service
 
-## Phase 25: Offline Support
+## Phase 27: Offline Support
 
-### 25.1 Backend Offline Support
+### 27.1 Backend Offline Support
 **References:** Requirement 15 (Offline Operation Support)
-- [ ] 25.1.1 Implement data export for offline use (JSON format)
-- [ ] 25.1.2 Create GET /api/v1/offline/download endpoint
-- [ ] 25.1.3 Implement offline change tracking
-- [ ] 25.1.4 Create POST /api/v1/offline/sync endpoint
-- [ ] 25.1.5 Implement conflict detection and resolution
-- [ ] 25.1.6 Write integration tests for offline sync
+- [ ] 27.1.1 Implement data export for offline use (JSON format)
+- [ ] 27.1.2 Create GET /api/v1/offline/download endpoint
+- [ ] 27.1.3 Implement offline change tracking
+- [ ] 27.1.4 Create POST /api/v1/offline/sync endpoint
+- [ ] 27.1.5 Implement conflict detection and resolution
+- [ ] 27.1.6 Write integration tests for offline sync
 
-### 25.2 Frontend Offline Support
+### 27.2 Frontend Offline Support
 **References:** Requirement 15 (Offline Operation Support)
-- [ ] 25.2.1 Implement service worker for offline caching
-- [ ] 25.2.2 Create offline indicator UI component
-- [ ] 25.2.3 Implement local IndexedDB storage
-- [ ] 25.2.4 Implement offline queue for pending changes
-- [ ] 25.2.5 Implement conflict resolution UI
-- [ ] 25.2.6 Write integration tests for offline features
+- [ ] 27.2.1 Implement service worker for offline caching
+- [ ] 27.2.2 Create offline indicator UI component
+- [ ] 27.2.3 Implement local IndexedDB storage
+- [ ] 27.2.4 Implement offline queue for pending changes
+- [ ] 27.2.5 Implement conflict resolution UI
+- [ ] 27.2.6 Write integration tests for offline features
 
-## Phase 26: Data Export and Backup
+## Phase 28: Data Export and Backup
 
-### 26.1 Export Service
+### 28.1 Export Service
 **References:** Requirement 14 (Data Export and Backup)
-- [ ] 26.1.1 Create ExportService class
-- [ ] 26.1.2 Implement export_workitems_json method
-- [ ] 26.1.3 Implement export_graph_db method
-- [ ] 26.1.4 Implement export_audit_logs method
-- [ ] 26.1.5 Write unit tests for export service
+- [ ] 28.1.1 Create ExportService class
+- [ ] 28.1.2 Implement export_workitems_json method
+- [ ] 28.1.3 Implement export_graph_db method
+- [ ] 28.1.4 Implement export_audit_logs method
+- [ ] 28.1.5 Write unit tests for export service
 
-### 26.2 Backup Service
+### 28.2 Backup Service
 **References:** Requirement 14 (Data Export and Backup)
-- [ ] 26.2.1 Create BackupService class
-- [ ] 26.2.2 Implement full backup method (WorkItems, Version_History, Digital_Signatures)
-- [ ] 26.2.3 Implement scheduled backup with cron
-- [ ] 26.2.4 Implement backup verification
-- [ ] 26.2.5 Implement restore from backup
-- [ ] 26.2.6 Write integration tests for backup/restore
+- [ ] 28.2.1 Create BackupService class
+- [ ] 28.2.2 Implement full backup method (WorkItems, Version_History, Digital_Signatures)
+- [ ] 28.2.3 Implement scheduled backup with cron
+- [ ] 28.2.4 Implement backup verification
+- [ ] 28.2.5 Implement restore from backup
+- [ ] 28.2.6 Write integration tests for backup/restore
 
-### 26.3 Export API Endpoints
+### 28.3 Export API Endpoints
 **References:** Requirement 14 (Data Export and Backup)
-- [ ] 26.3.1 Create GET /api/v1/export/workitems endpoint
-- [ ] 26.3.2 Create GET /api/v1/export/graph endpoint
-- [ ] 26.3.3 Create GET /api/v1/export/audit-logs endpoint
-- [ ] 26.3.4 Create POST /api/v1/backup/create endpoint
-- [ ] 26.3.5 Create POST /api/v1/backup/restore endpoint
-- [ ] 26.3.6 Write integration tests for export endpoints
+- [ ] 28.3.1 Create GET /api/v1/export/workitems endpoint
+- [ ] 28.3.2 Create GET /api/v1/export/graph endpoint
+- [ ] 28.3.3 Create GET /api/v1/export/audit-logs endpoint
+- [ ] 28.3.4 Create POST /api/v1/backup/create endpoint
+- [ ] 28.3.5 Create POST /api/v1/backup/restore endpoint
+- [ ] 28.3.6 Write integration tests for export endpoints
 
-## Phase 27: Performance Optimization
+## Phase 29: Performance Optimization
 
-### 27.1 Backend Optimization
+### 29.1 Backend Optimization
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 27.1.1 Add database indexes for frequently queried fields
-- [ ] 27.1.2 Implement query result caching with Redis (optional)
-- [ ] 27.1.3 Optimize graph queries (limit results, pagination)
-- [ ] 27.1.4 Implement connection pooling optimization
-- [ ] 27.1.5 Add query performance monitoring
+- [ ] 29.1.1 Add database indexes for frequently queried fields
+- [ ] 29.1.2 Implement query result caching with Redis (optional)
+- [ ] 29.1.3 Optimize graph queries (limit results, pagination)
+- [ ] 29.1.4 Implement connection pooling optimization
+- [ ] 29.1.5 Add query performance monitoring
 
-### 27.2 Frontend Optimization
+### 29.2 Frontend Optimization
 **References:** Requirement 16 (Dual Frontend Interface)
-- [ ] 27.2.1 Implement code splitting and lazy loading
-- [ ] 27.2.2 Optimize 3D rendering (LOD, frustum culling)
-- [ ] 27.2.3 Implement virtual scrolling for large lists
-- [ ] 27.2.4 Optimize bundle size (tree shaking, minification)
-- [ ] 27.2.5 Ensure 72 FPS minimum for VR mode
+- [ ] 29.2.1 Implement code splitting and lazy loading
+- [ ] 29.2.2 Optimize 3D rendering (LOD, frustum culling)
+- [ ] 29.2.3 Implement virtual scrolling for large lists
+- [ ] 29.2.4 Optimize bundle size (tree shaking, minification)
+- [ ] 29.2.5 Ensure 72 FPS minimum for VR mode
 
-## Phase 28: Security Hardening
+## Phase 30: Security Hardening
 
-### 28.1 Security Implementation
+### 30.1 Security Implementation
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 28.1.1 Implement HTTPS enforcement
-- [ ] 28.1.2 Add security headers (HSTS, CSP, X-Frame-Options)
-- [ ] 28.1.3 Implement rate limiting on API endpoints
-- [ ] 28.1.4 Add input sanitization and validation
-- [ ] 28.1.5 Implement CORS configuration
-- [ ] 28.1.6 Add SQL injection prevention checks
-- [ ] 28.1.7 Conduct security audit and penetration testing
+- [ ] 30.1.1 Implement HTTPS enforcement
+- [ ] 30.1.2 Add security headers (HSTS, CSP, X-Frame-Options)
+- [ ] 30.1.3 Implement rate limiting on API endpoints
+- [ ] 30.1.4 Add input sanitization and validation
+- [ ] 30.1.5 Implement CORS configuration
+- [ ] 30.1.6 Add SQL injection prevention checks
+- [ ] 30.1.7 Conduct security audit and penetration testing
 
-## Phase 29: Testing and Quality Assurance
+## Phase 31: Testing and Quality Assurance
 
-### 29.1 Backend Testing
+### 31.1 Backend Testing
 **References:** Requirement 17 (Technology Stack)
-- [ ] 29.1.1 Achieve 80%+ unit test coverage for backend
-- [ ] 29.1.2 Write property-based tests for critical logic
-- [ ] 29.1.3 Write integration tests for all API endpoints
-- [ ] 29.1.4 Implement API contract testing
-- [ ] 29.1.5 Set up continuous integration (CI) pipeline
+- [ ] 31.1.1 Achieve 80%+ unit test coverage for backend
+- [ ] 31.1.2 Write property-based tests for critical logic
+- [ ] 31.1.3 Write integration tests for all API endpoints
+- [ ] 31.1.4 Implement API contract testing
+- [ ] 31.1.5 Set up continuous integration (CI) pipeline
 
-### 29.2 Frontend Testing
+### 31.2 Frontend Testing
 **References:** Requirement 17 (Technology Stack)
-- [ ] 29.2.1 Achieve 80%+ unit test coverage for frontend
-- [ ] 29.2.2 Write integration tests for critical user flows
-- [ ] 29.2.3 Implement E2E tests with Playwright/Cypress
-- [ ] 29.2.4 Test XR features on actual devices
-- [ ] 29.2.5 Perform accessibility testing (WCAG compliance)
+- [ ] 31.2.1 Achieve 80%+ unit test coverage for frontend
+- [ ] 31.2.2 Write integration tests for critical user flows
+- [ ] 31.2.3 Implement E2E tests with Playwright/Cypress
+- [ ] 31.2.4 Test XR features on actual devices
+- [ ] 31.2.5 Perform accessibility testing (WCAG compliance)
 
-### 29.3 Performance Testing
+### 31.3 Performance Testing
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 29.3.1 Load testing for API endpoints
-- [ ] 29.3.2 Stress testing for graph queries
-- [ ] 29.3.3 Performance testing for 3D/VR rendering
-- [ ] 29.3.4 Mobile app performance testing
-- [ ] 29.3.5 Verify 2-second query response time requirement
+- [ ] 31.3.1 Load testing for API endpoints
+- [ ] 31.3.2 Stress testing for graph queries
+- [ ] 31.3.3 Performance testing for 3D/VR rendering
+- [ ] 31.3.4 Mobile app performance testing
+- [ ] 31.3.5 Verify 2-second query response time requirement
 
-## Phase 30: Documentation and Deployment
+## Phase 32: Documentation and Deployment
 
-### 30.1 API Documentation
+### 32.1 API Documentation
 **References:** Requirement 17 (Technology Stack)
-- [ ] 30.1.1 Generate OpenAPI/Swagger documentation
-- [ ] 30.1.2 Create API usage examples
-- [ ] 30.1.3 Document authentication flow
-- [ ] 30.1.4 Create Postman collection for API testing
+- [ ] 32.1.1 Generate OpenAPI/Swagger documentation
+- [ ] 32.1.2 Create API usage examples
+- [ ] 32.1.3 Document authentication flow
+- [ ] 32.1.4 Create Postman collection for API testing
 
-### 30.2 User Documentation
-- [ ] 30.2.1 Create user manual for web interface
-- [ ] 30.2.2 Create user manual for XR interface
-- [ ] 30.2.3 Create mobile app user guide
-- [ ] 30.2.4 Create administrator guide
-- [ ] 30.2.5 Create compliance documentation
+### 32.2 User Documentation
+- [ ] 32.2.1 Create user manual for web interface
+- [ ] 32.2.2 Create user manual for XR interface
+- [ ] 32.2.3 Create mobile app user guide
+- [ ] 32.2.4 Create administrator guide
+- [ ] 32.2.5 Create compliance documentation
 
-### 30.3 Deployment Setup
+### 32.3 Deployment Setup
 **References:** Requirement 17 (Technology Stack)
-- [ ] 30.3.1 Create production Docker images
-- [ ] 30.3.2 Set up production docker-compose configuration
-- [ ] 30.3.3 Configure environment variables for production
-- [ ] 30.3.4 Set up SSL/TLS certificates
-- [ ] 30.3.5 Configure database backups in production
-- [ ] 30.3.6 Set up monitoring and logging (optional: Prometheus, Grafana)
-- [ ] 30.3.7 Create deployment runbook
-- [ ] 30.3.8 Perform production deployment and smoke testing
+- [ ] 32.3.1 Create production Docker images
+- [ ] 32.3.2 Set up production docker-compose configuration
+- [ ] 32.3.3 Configure environment variables for production
+- [ ] 32.3.4 Set up SSL/TLS certificates
+- [ ] 32.3.5 Configure database backups in production
+- [ ] 32.3.6 Set up monitoring and logging (optional: Prometheus, Grafana)
+- [ ] 32.3.7 Create deployment runbook
+- [ ] 32.3.8 Perform production deployment and smoke testing
 
 ## Optional Enhancements
 

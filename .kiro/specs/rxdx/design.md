@@ -3734,7 +3734,813 @@ This section defines the formal correctness properties that the system must sati
 | LLM service unavailability | High | Low | Graceful degradation, system works without LLM |
 | Mobile app sync failures | Medium | Medium | Offline queue, retry logic, conflict resolution |
 
-## 18. Future Enhancements
+## 18. Template Management UI
+
+### 18.1 Overview
+
+The Template Management UI provides administrators with a web interface to browse, validate, and apply project templates. Templates are YAML files that define predefined configurations for users, workitems, and relationships, enabling quick project initialization.
+
+**Backend API Endpoints** (already implemented):
+- `GET /api/v1/templates` - List all available templates
+- `GET /api/v1/templates/{name}` - Get template details
+- `POST /api/v1/templates/{name}/validate` - Validate template
+- `POST /api/v1/templates/{name}/apply` - Apply template (admin only, supports dry_run)
+
+### 18.2 Frontend Components
+
+#### 18.2.1 Template Store (Zustand)
+
+```typescript
+// stores/templateStore.ts
+import { create } from 'zustand';
+
+interface TemplateMetadata {
+  name: string;
+  description: string;
+  version: string;
+  author: string;
+  created_at: string;
+}
+
+interface TemplateDetail extends TemplateMetadata {
+  users: Array<{
+    email: string;
+    full_name: string;
+    role: string;
+  }>;
+  workitems: Array<{
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+  }>;
+  relationships: Array<{
+    from_id: string;
+    to_id: string;
+    type: string;
+  }>;
+}
+
+interface ValidationResult {
+  valid: boolean;
+  errors?: string[];
+  warnings?: string[];
+}
+
+interface ApplicationResult {
+  status: 'success' | 'partial' | 'failed';
+  created: {
+    users: number;
+    workitems: number;
+    relationships: number;
+  };
+  skipped: {
+    users: number;
+    workitems: number;
+    relationships: number;
+  };
+  failed: Array<{
+    entity_type: string;
+    entity_id: string;
+    error: string;
+  }>;
+}
+
+interface TemplateState {
+  templates: TemplateMetadata[];
+  selectedTemplate: TemplateDetail | null;
+  validationResult: ValidationResult | null;
+  applicationResult: ApplicationResult | null;
+  isLoading: boolean;
+  error: string | null;
+  
+  loadTemplates: () => Promise<void>;
+  selectTemplate: (name: string) => Promise<void>;
+  validateTemplate: (name: string) => Promise<void>;
+  applyTemplate: (name: string, dryRun: boolean) => Promise<void>;
+  clearResults: () => void;
+}
+
+export const useTemplateStore = create<TemplateState>((set, get) => ({
+  templates: [],
+  selectedTemplate: null,
+  validationResult: null,
+  applicationResult: null,
+  isLoading: false,
+  error: null,
+  
+  loadTemplates: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch('/api/v1/templates', {
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load templates');
+      }
+      
+      const templates = await response.json();
+      set({ templates, isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        isLoading: false 
+      });
+    }
+  },
+  
+  selectTemplate: async (name: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await fetch(`/api/v1/templates/${name}`, {
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to load template details');
+      }
+      
+      const template = await response.json();
+      set({ selectedTemplate: template, isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        isLoading: false 
+      });
+    }
+  },
+  
+  validateTemplate: async (name: string) => {
+    set({ isLoading: true, error: null, validationResult: null });
+    try {
+      const response = await fetch(`/api/v1/templates/${name}/validate`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Validation request failed');
+      }
+      
+      const result = await response.json();
+      set({ validationResult: result, isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        isLoading: false 
+      });
+    }
+  },
+  
+  applyTemplate: async (name: string, dryRun: boolean) => {
+    set({ isLoading: true, error: null, applicationResult: null });
+    try {
+      const url = `/api/v1/templates/${name}/apply${dryRun ? '?dry_run=true' : ''}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Unauthorized: Admin role required to apply templates');
+        }
+        throw new Error('Failed to apply template');
+      }
+      
+      const result = await response.json();
+      set({ applicationResult: result, isLoading: false });
+    } catch (error) {
+      set({ 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        isLoading: false 
+      });
+    }
+  },
+  
+  clearResults: () => {
+    set({ 
+      validationResult: null, 
+      applicationResult: null,
+      error: null 
+    });
+  }
+}));
+
+function getAuthToken(): string {
+  // Get token from auth store
+  return useAuthStore.getState().token || '';
+}
+```
+
+#### 18.2.2 Templates Page Component
+
+```typescript
+// pages/Templates.tsx
+import React, { useEffect } from 'react';
+import { useTemplateStore } from '../stores/templateStore';
+import { useAuthStore } from '../stores/authStore';
+import { TemplateList } from '../components/templates/TemplateList';
+import { TemplateDetail } from '../components/templates/TemplateDetail';
+import { ValidationResults } from '../components/templates/ValidationResults';
+import { ApplicationResults } from '../components/templates/ApplicationResults';
+
+export const TemplatesPage: React.FC = () => {
+  const { user } = useAuthStore();
+  const { 
+    templates, 
+    selectedTemplate, 
+    loadTemplates, 
+    isLoading, 
+    error 
+  } = useTemplateStore();
+  
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+  
+  const isAdmin = user?.role === 'admin';
+  
+  return (
+    <div className="templates-page">
+      <div className="page-header">
+        <h1>Project Templates</h1>
+        <p>Browse and apply predefined project configurations</p>
+        {!isAdmin && (
+          <div className="info-banner">
+            <span>ℹ️ Admin role required to apply templates</span>
+          </div>
+        )}
+      </div>
+      
+      {error && (
+        <div className="error-banner">
+          <span>❌ {error}</span>
+        </div>
+      )}
+      
+      <div className="templates-layout">
+        <div className="templates-sidebar">
+          <TemplateList 
+            templates={templates} 
+            isLoading={isLoading}
+          />
+        </div>
+        
+        <div className="templates-main">
+          {selectedTemplate ? (
+            <>
+              <TemplateDetail 
+                template={selectedTemplate}
+                isAdmin={isAdmin}
+              />
+              <ValidationResults />
+              <ApplicationResults />
+            </>
+          ) : (
+            <div className="empty-state">
+              <p>Select a template to view details</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+#### 18.2.3 Template List Component
+
+```typescript
+// components/templates/TemplateList.tsx
+import React from 'react';
+import { useTemplateStore } from '../../stores/templateStore';
+
+interface TemplateListProps {
+  templates: TemplateMetadata[];
+  isLoading: boolean;
+}
+
+export const TemplateList: React.FC<TemplateListProps> = ({ 
+  templates, 
+  isLoading 
+}) => {
+  const { selectedTemplate, selectTemplate, loadTemplates } = useTemplateStore();
+  
+  if (isLoading) {
+    return <div className="loading-spinner">Loading templates...</div>;
+  }
+  
+  return (
+    <div className="template-list">
+      <div className="list-header">
+        <h2>Available Templates</h2>
+        <button 
+          onClick={loadTemplates}
+          className="refresh-button"
+          title="Refresh template list"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+      
+      {templates.length === 0 ? (
+        <div className="empty-list">
+          <p>No templates available</p>
+        </div>
+      ) : (
+        <ul className="template-items">
+          {templates.map((template) => (
+            <li 
+              key={template.name}
+              className={`template-item ${
+                selectedTemplate?.name === template.name ? 'selected' : ''
+              }`}
+              onClick={() => selectTemplate(template.name)}
+            >
+              <div className="template-name">{template.name}</div>
+              <div className="template-description">{template.description}</div>
+              <div className="template-meta">
+                <span className="version">v{template.version}</span>
+                <span className="author">{template.author}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+```
+
+#### 18.2.4 Template Detail Component
+
+```typescript
+// components/templates/TemplateDetail.tsx
+import React, { useState } from 'react';
+import { useTemplateStore } from '../../stores/templateStore';
+
+interface TemplateDetailProps {
+  template: TemplateDetail;
+  isAdmin: boolean;
+}
+
+export const TemplateDetail: React.FC<TemplateDetailProps> = ({ 
+  template, 
+  isAdmin 
+}) => {
+  const { 
+    validateTemplate, 
+    applyTemplate, 
+    clearResults, 
+    isLoading 
+  } = useTemplateStore();
+  
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [applyMode, setApplyMode] = useState<'dry-run' | 'apply'>('dry-run');
+  
+  const handleValidate = () => {
+    clearResults();
+    validateTemplate(template.name);
+  };
+  
+  const handleApplyClick = (mode: 'dry-run' | 'apply') => {
+    setApplyMode(mode);
+    setShowConfirmation(true);
+  };
+  
+  const handleConfirmApply = () => {
+    clearResults();
+    applyTemplate(template.name, applyMode === 'dry-run');
+    setShowConfirmation(false);
+  };
+  
+  return (
+    <div className="template-detail">
+      <div className="detail-header">
+        <h2>{template.name}</h2>
+        <div className="detail-meta">
+          <span>Version: {template.version}</span>
+          <span>Author: {template.author}</span>
+          <span>Created: {new Date(template.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+      
+      <div className="detail-description">
+        <p>{template.description}</p>
+      </div>
+      
+      <div className="detail-sections">
+        <section className="detail-section">
+          <h3>Users ({template.users.length})</h3>
+          <table className="entity-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {template.users.map((user, idx) => (
+                <tr key={idx}>
+                  <td>{user.email}</td>
+                  <td>{user.full_name}</td>
+                  <td><span className="role-badge">{user.role}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+        
+        <section className="detail-section">
+          <h3>WorkItems ({template.workitems.length})</h3>
+          <table className="entity-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Title</th>
+              </tr>
+            </thead>
+            <tbody>
+              {template.workitems.map((item, idx) => (
+                <tr key={idx}>
+                  <td><code>{item.id}</code></td>
+                  <td><span className={`type-badge ${item.type}`}>{item.type}</span></td>
+                  <td>{item.title}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+        
+        <section className="detail-section">
+          <h3>Relationships ({template.relationships.length})</h3>
+          <table className="entity-table">
+            <thead>
+              <tr>
+                <th>From</th>
+                <th>Type</th>
+                <th>To</th>
+              </tr>
+            </thead>
+            <tbody>
+              {template.relationships.map((rel, idx) => (
+                <tr key={idx}>
+                  <td><code>{rel.from_id}</code></td>
+                  <td><span className="rel-badge">{rel.type}</span></td>
+                  <td><code>{rel.to_id}</code></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      </div>
+      
+      <div className="detail-actions">
+        <button 
+          onClick={handleValidate}
+          disabled={isLoading}
+          className="btn btn-secondary"
+        >
+          {isLoading ? 'Validating...' : '✓ Validate Template'}
+        </button>
+        
+        {isAdmin && (
+          <>
+            <button 
+              onClick={() => handleApplyClick('dry-run')}
+              disabled={isLoading}
+              className="btn btn-primary"
+            >
+              {isLoading ? 'Processing...' : '👁️ Preview Changes (Dry Run)'}
+            </button>
+            
+            <button 
+              onClick={() => handleApplyClick('apply')}
+              disabled={isLoading}
+              className="btn btn-danger"
+            >
+              {isLoading ? 'Applying...' : '⚡ Apply Template'}
+            </button>
+          </>
+        )}
+      </div>
+      
+      {showConfirmation && (
+        <div className="confirmation-modal">
+          <div className="modal-content">
+            <h3>Confirm Template Application</h3>
+            <p>
+              {applyMode === 'dry-run' 
+                ? 'Preview changes without modifying the database?'
+                : '⚠️ This will apply the template and modify the database. Continue?'
+              }
+            </p>
+            <div className="modal-actions">
+              <button 
+                onClick={() => setShowConfirmation(false)}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmApply}
+                className="btn btn-primary"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+#### 18.2.5 Validation Results Component
+
+```typescript
+// components/templates/ValidationResults.tsx
+import React from 'react';
+import { useTemplateStore } from '../../stores/templateStore';
+
+export const ValidationResults: React.FC = () => {
+  const { validationResult } = useTemplateStore();
+  
+  if (!validationResult) {
+    return null;
+  }
+  
+  return (
+    <div className={`validation-results ${validationResult.valid ? 'valid' : 'invalid'}`}>
+      <h3>
+        {validationResult.valid ? '✅ Validation Passed' : '❌ Validation Failed'}
+      </h3>
+      
+      {validationResult.errors && validationResult.errors.length > 0 && (
+        <div className="validation-errors">
+          <h4>Errors:</h4>
+          <ul>
+            {validationResult.errors.map((error, idx) => (
+              <li key={idx} className="error-item">{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {validationResult.warnings && validationResult.warnings.length > 0 && (
+        <div className="validation-warnings">
+          <h4>Warnings:</h4>
+          <ul>
+            {validationResult.warnings.map((warning, idx) => (
+              <li key={idx} className="warning-item">{warning}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      
+      {validationResult.valid && (
+        <p className="success-message">
+          Template is valid and ready to apply.
+        </p>
+      )}
+    </div>
+  );
+};
+```
+
+#### 18.2.6 Application Results Component
+
+```typescript
+// components/templates/ApplicationResults.tsx
+import React from 'react';
+import { useTemplateStore } from '../../stores/templateStore';
+
+export const ApplicationResults: React.FC = () => {
+  const { applicationResult } = useTemplateStore();
+  
+  if (!applicationResult) {
+    return null;
+  }
+  
+  const { status, created, skipped, failed } = applicationResult;
+  
+  return (
+    <div className={`application-results status-${status}`}>
+      <h3>
+        {status === 'success' && '✅ Application Successful'}
+        {status === 'partial' && '⚠️ Partial Success'}
+        {status === 'failed' && '❌ Application Failed'}
+      </h3>
+      
+      <div className="results-summary">
+        <div className="summary-section created">
+          <h4>Created</h4>
+          <ul>
+            <li>Users: {created.users}</li>
+            <li>WorkItems: {created.workitems}</li>
+            <li>Relationships: {created.relationships}</li>
+          </ul>
+        </div>
+        
+        <div className="summary-section skipped">
+          <h4>Skipped (Already Exist)</h4>
+          <ul>
+            <li>Users: {skipped.users}</li>
+            <li>WorkItems: {skipped.workitems}</li>
+            <li>Relationships: {skipped.relationships}</li>
+          </ul>
+        </div>
+        
+        {failed.length > 0 && (
+          <div className="summary-section failed">
+            <h4>Failed ({failed.length})</h4>
+            <table className="failed-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>ID</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {failed.map((failure, idx) => (
+                  <tr key={idx}>
+                    <td>{failure.entity_type}</td>
+                    <td><code>{failure.entity_id}</code></td>
+                    <td className="error-message">{failure.error}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      
+      <div className="results-total">
+        <strong>Total Entities Processed:</strong> {
+          created.users + created.workitems + created.relationships +
+          skipped.users + skipped.workitems + skipped.relationships +
+          failed.length
+        }
+      </div>
+    </div>
+  );
+};
+```
+
+### 18.3 Styling Considerations
+
+```css
+/* styles/templates.css */
+.templates-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.templates-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.template-list {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.template-item {
+  padding: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.template-item:hover {
+  background: #f5f5f5;
+}
+
+.template-item.selected {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+}
+
+.template-detail {
+  background: white;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.entity-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.entity-table th,
+.entity-table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.role-badge,
+.type-badge,
+.rel-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.validation-results,
+.application-results {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  border-radius: 8px;
+}
+
+.validation-results.valid {
+  background: #e8f5e9;
+  border-left: 4px solid #4caf50;
+}
+
+.validation-results.invalid {
+  background: #ffebee;
+  border-left: 4px solid #f44336;
+}
+
+.results-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.summary-section {
+  padding: 1rem;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+.confirmation-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 500px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+```
+
+### 18.4 Integration with Existing Architecture
+
+The Template Management UI integrates seamlessly with the existing RxDx architecture:
+
+1. **Authentication**: Uses existing `useAuthStore` for role-based access control
+2. **API Client**: Leverages existing API client with JWT token injection
+3. **State Management**: Follows Zustand pattern consistent with other stores
+4. **Component Structure**: Matches existing component organization
+5. **Styling**: Uses consistent design system and CSS patterns
+
+### 18.5 Security Considerations
+
+- **Admin-Only Application**: Template application requires admin role (enforced by backend)
+- **Dry-Run Preview**: Allows administrators to preview changes before applying
+- **Confirmation Dialogs**: Requires explicit confirmation for destructive operations
+- **Error Handling**: Displays detailed error messages for failed operations
+- **Authorization Errors**: Clear messaging when non-admin users attempt restricted actions
+
+## 19. Future Enhancements
 
 ### 18.1 Potential Features (Post-MVP)
 

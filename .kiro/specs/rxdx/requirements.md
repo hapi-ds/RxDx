@@ -297,3 +297,66 @@ This document specifies the requirements for RxDx, a web-based project managemen
 18. THE System SHALL use pytest with hypothesis for property-based testing
 19. THE System SHALL use passlib with Argon2id for password hashing, python-jose for JWT tokens, and cryptography library for digital signatures
 20. THE System SHALL use ReportLab for PDF generation, openpyxl for Excel generation, and python-docx-template for Word document generation
+
+### Requirement 18: Template Management UI
+
+**User Story:** As a project administrator, I want a frontend interface to browse, validate, and apply project templates, so that I can quickly initialize projects with predefined configurations without using command-line tools or APIs directly.
+
+#### Acceptance Criteria
+
+1. WHEN a user navigates to the templates page, THE System SHALL display a list of all available templates with their metadata (name, description, version, author)
+2. WHEN a user selects a template from the list, THE System SHALL display detailed template information including users, workitems, and relationships that will be created
+3. WHEN a user clicks validate on a template, THE System SHALL validate the template against the JSON schema and display validation results with any errors or warnings
+4. WHEN an administrator clicks apply on a template, THE System SHALL require confirmation before applying the template
+5. WHEN an administrator applies a template with dry-run enabled, THE System SHALL preview the changes without modifying the database and display what would be created, updated, or skipped
+6. WHEN an administrator applies a template without dry-run, THE System SHALL apply the template and display the application results showing created entities, skipped entities, and any failures
+7. WHEN a non-administrator user attempts to apply a template, THE System SHALL prevent the action and display an authorization error
+8. WHEN template application completes, THE System SHALL display a summary with counts of created users, workitems, and relationships
+9. WHEN template application fails, THE System SHALL display detailed error messages indicating which entities failed and why
+10. THE System SHALL provide a refresh button to reload the template list from the backend
+
+### Requirement 19: Frontend Navigation and Routing
+
+**User Story:** As a user, I want comprehensive navigation with links to all application pages, so that I can easily navigate between different sections of the application and access features through direct URLs.
+
+#### Acceptance Criteria
+
+1. THE System SHALL provide a navigation header with links to Requirements, Graph, Tests, Risks, Schedule, Kanban, and Documents pages
+2. WHEN a user clicks a navigation link, THE System SHALL navigate to the corresponding page
+3. THE navigation header SHALL display an active state indicator on the currently active page link
+4. THE navigation header SHALL be responsive and collapse to a mobile menu on small screens
+5. THE navigation header SHALL remain visible on all authenticated pages
+6. WHEN the user is not authenticated, THE navigation header SHALL not be displayed
+7. THE System SHALL define routes for /requirements, /graph, /tests, /risks, /schedule, /kanban, and /documents paths
+8. WHEN a user navigates to a defined route, THE System SHALL render the corresponding page component
+9. WHEN a user navigates to an unknown route, THE System SHALL redirect to the default authenticated page
+10. THE System SHALL protect all routes except /login with authentication
+11. WHEN a placeholder page is rendered, THE System SHALL display the page title, "Coming Soon" message, and feature description
+12. THE placeholder pages SHALL use consistent styling with the rest of the application
+13. THE Graph Explorer page SHALL be accessible from the main navigation at /graph
+14. THE Graph Explorer page SHALL load graph data automatically on mount
+15. IF graph data fails to load, THE System SHALL display an error message with retry option
+
+### Requirement 20: Enhanced Version Control User Experience
+
+**User Story:** As a user, I want clear visual indicators and previews of versioning behavior, so that I understand the versioning implications of my actions when creating and editing work items.
+
+#### Acceptance Criteria
+
+1. WHEN creating a new WorkItem, THE WorkItemForm SHALL display "Create Work Item" on the submit button
+2. WHEN editing an existing WorkItem, THE WorkItemForm SHALL display "Save Changes" on the submit button
+3. THE button text SHALL be consistent across all WorkItem types (requirement, task, test, risk, document)
+4. WHEN editing an existing WorkItem, THE WorkItemForm SHALL display the current version number in a prominent badge
+5. THE version indicator SHALL be displayed near the form title
+6. WHEN creating a new WorkItem, THE version indicator SHALL not be displayed
+7. WHEN editing an existing WorkItem, THE WorkItemForm SHALL display a version preview message
+8. THE version preview SHALL indicate that saving will create a new version
+9. THE version preview SHALL show the next version number that will be created
+10. WHEN creating a new WorkItem, THE version preview SHALL indicate version 1.0 will be created
+11. THE WorkItemDetail SHALL display the version number in a prominent badge near the title
+12. WHEN the WorkItem has multiple versions, THE System SHALL display a "View History" link near the version badge
+13. THE WorkItemDetail SHALL display a version history summary showing total version count
+14. WHEN there are multiple versions, THE System SHALL display a timeline indicator showing version progression
+15. THE "View History" button SHALL be prominently displayed in the WorkItemDetail actions
+16. WHEN viewing version history, THE System SHALL highlight the current version in the timeline
+17. THE VersionHistory component SHALL display change descriptions when available

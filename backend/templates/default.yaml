@@ -9,43 +9,43 @@ settings:
 
 users:
   - id: "00000000-0000-0000-0000-000000000001"
-    email: admin@example.com
+    email: admin@rxdx.example.com
     full_name: System Administrator
     role: admin
     is_active: true
 
   - id: "00000000-0000-0000-0000-000000000002"
-    email: pm@example.com
+    email: pm@rxdx.example.com
     full_name: Project Manager
     role: project_manager
     is_active: true
 
   - id: "00000000-0000-0000-0000-000000000003"
-    email: validator@example.com
+    email: validator@rxdx.example.com
     full_name: Quality Validator
     role: validator
     is_active: true
 
   - id: "00000000-0000-0000-0000-000000000004"
-    email: auditor@example.com
+    email: auditor@rxdx.example.com
     full_name: Compliance Auditor
     role: auditor
     is_active: true
 
   - id: "00000000-0000-0000-0000-000000000005"
-    email: developer@example.com
+    email: developer@rxdx.example.com
     full_name: Software Developer
     role: user
     is_active: true
 
   - id: "00000000-0000-0000-0000-000000000006"
-    email: tester@example.com
+    email: tester@rxdx.example.com
     full_name: QA Tester
     role: user
     is_active: true
 
   - id: "00000000-0000-0000-0000-000000000007"
-    email: inactive@example.com
+    email: inactive@rxdx.example.com
     full_name: Inactive User
     role: user
     is_active: false

@@ -225,9 +225,6 @@ class VersionService:
 
         print(f"[VersionService] Returning {len(versions)} total versions")
         return versions
-        versions.sort(key=lambda v: self._version_sort_key(v.get('version', '1.0')), reverse=True)
-
-        return versions
 
     def _version_sort_key(self, version: str) -> tuple:
         """

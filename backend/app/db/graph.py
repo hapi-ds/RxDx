@@ -710,7 +710,9 @@ class GraphService:
             if 'properties' in node and node['properties']:
                 uuid = node['properties'].get('id')
                 if age_id and uuid:
+                    # Ensure age_id is stored as both int and str for flexible lookup
                     age_id_to_uuid[age_id] = uuid
+                    age_id_to_uuid[str(age_id)] = uuid
 
         print(f"[GraphService] Built ID mapping with {len(age_id_to_uuid)} entries")
 
@@ -949,9 +951,16 @@ class GraphService:
         title = props.get('title') or props.get('name') or f"{node_type} {str(node_id)[:8]}"
         description = props.get('description') or ''
         status = props.get('status') or 'draft'
+        
+        # Ensure priority is an integer
         priority = props.get('priority')
         if priority is None:
             priority = 3
+        else:
+            try:
+                priority = int(priority)
+            except (ValueError, TypeError):
+                priority = 3
 
         # Determine node color based on type and status
         color_map = {

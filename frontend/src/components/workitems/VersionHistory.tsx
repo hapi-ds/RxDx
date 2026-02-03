@@ -138,54 +138,60 @@ export function VersionHistory({
             </div>
           ) : (
             <ul className="version-timeline">
-              {versionHistory.map((version, index) => (
-                <li
-                  key={version.version}
-                  className={`version-item ${
-                    selectedVersion === version.version ? 'selected' : ''
-                  } ${index === 0 ? 'latest' : ''}`}
-                  onClick={() => handleVersionClick(version)}
-                >
-                  <div className="version-marker">
-                    <div className="marker-dot" />
-                    {index < versionHistory.length - 1 && (
-                      <div className="marker-line" />
-                    )}
-                  </div>
-                  
-                  <div className="version-content">
-                    <div className="version-header">
-                      <span className="version-number">v{version.version}</span>
-                      <span
-                        className="version-status"
-                        style={{ backgroundColor: getStatusColor(version.status) }}
-                      >
-                        {version.status}
-                      </span>
-                      {index === 0 && (
-                        <span className="latest-badge">Latest</span>
+              {versionHistory.map((version, index) => {
+                const isCurrentVersion = selectedItem && version.version === selectedItem.version;
+                return (
+                  <li
+                    key={version.version}
+                    className={`version-item ${
+                      selectedVersion === version.version ? 'selected' : ''
+                    } ${index === 0 ? 'latest' : ''} ${isCurrentVersion ? 'current' : ''}`}
+                    onClick={() => handleVersionClick(version)}
+                  >
+                    <div className="version-marker">
+                      <div className="marker-dot" />
+                      {index < versionHistory.length - 1 && (
+                        <div className="marker-line" />
                       )}
                     </div>
                     
-                    <div className="version-title">{version.title}</div>
-                    
-                    {version.change_description && (
-                      <div className="version-change">
-                        {version.change_description}
+                    <div className="version-content">
+                      <div className="version-header">
+                        <span className="version-number">v{version.version}</span>
+                        <span
+                          className="version-status"
+                          style={{ backgroundColor: getStatusColor(version.status) }}
+                        >
+                          {version.status}
+                        </span>
+                        {index === 0 && (
+                          <span className="latest-badge">Latest</span>
+                        )}
+                        {isCurrentVersion && (
+                          <span className="current-badge">Current</span>
+                        )}
                       </div>
-                    )}
-                    
-                    <div className="version-meta">
-                      <span className="version-author">
-                        by {version.created_by}
-                      </span>
-                      <span className="version-time" title={formatDate(version.created_at)}>
-                        {formatRelativeTime(version.created_at)}
-                      </span>
+                      
+                      <div className="version-title">{version.title}</div>
+                      
+                      {version.change_description && (
+                        <div className="version-change">
+                          {version.change_description}
+                        </div>
+                      )}
+                      
+                      <div className="version-meta">
+                        <span className="version-author">
+                          by {version.created_by}
+                        </span>
+                        <span className="version-time" title={formatDate(version.created_at)}>
+                          {formatRelativeTime(version.created_at)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -330,6 +336,15 @@ export function VersionHistory({
           background: #eff6ff;
         }
 
+        .version-item.current {
+          background: #fef3c7;
+          border: 1px solid #fbbf24;
+        }
+
+        .version-item.current:hover {
+          background: #fde68a;
+        }
+
         .version-marker {
           display: flex;
           flex-direction: column;
@@ -354,6 +369,11 @@ export function VersionHistory({
         .version-item.selected .marker-dot {
           background: #667eea;
           box-shadow: 0 0 0 2px #667eea;
+        }
+
+        .version-item.current .marker-dot {
+          background: #fbbf24;
+          box-shadow: 0 0 0 2px #fbbf24;
         }
 
         .marker-line {
@@ -396,6 +416,16 @@ export function VersionHistory({
           background: #dbeafe;
           padding: 0.125rem 0.375rem;
           border-radius: 3px;
+        }
+
+        .current-badge {
+          font-size: 0.625rem;
+          font-weight: 500;
+          color: #92400e;
+          background: #fef3c7;
+          padding: 0.125rem 0.375rem;
+          border-radius: 3px;
+          border: 1px solid #fbbf24;
         }
 
         .version-title {

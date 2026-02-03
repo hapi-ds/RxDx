@@ -118,9 +118,17 @@ class WorkItemService {
     }
   }
 
-  async update(id: string, data: WorkItemUpdate): Promise<WorkItem> {
+  async update(id: string, data: WorkItemUpdate, changeDescription?: string): Promise<WorkItem> {
     try {
-      const response = await apiClient.patch<WorkItem>(`${this.basePath}/${id}`, data);
+      const queryParams = new URLSearchParams();
+      if (changeDescription) {
+        queryParams.append('change_description', changeDescription);
+      } else {
+        queryParams.append('change_description', 'WorkItem updated');
+      }
+      
+      const url = `${this.basePath}/${id}?${queryParams.toString()}`;
+      const response = await apiClient.patch<WorkItem>(url, data);
       return response.data;
     } catch (error) {
       throw new Error(getErrorMessage(error));

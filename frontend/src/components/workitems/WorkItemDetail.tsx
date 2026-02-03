@@ -50,7 +50,9 @@ export function WorkItemDetail({
     selectedItem,
     isLoadingItem,
     error,
+    versionHistory,
     fetchItem,
+    fetchVersionHistory,
     clearError,
     clearSelection,
   } = useWorkItemStore();
@@ -58,11 +60,12 @@ export function WorkItemDetail({
   useEffect(() => {
     if (workItemId) {
       fetchItem(workItemId);
+      fetchVersionHistory(workItemId);
     }
     return () => {
       clearSelection();
     };
-  }, [workItemId, fetchItem, clearSelection]);
+  }, [workItemId, fetchItem, fetchVersionHistory, clearSelection]);
 
   const handleEdit = () => {
     if (selectedItem && onEdit) {
@@ -135,7 +138,12 @@ export function WorkItemDetail({
           >
             {selectedItem.status}
           </span>
-          <span className="version-badge">v{selectedItem.version}</span>
+          <span className="version-badge">
+            v{selectedItem.version}
+            {versionHistory.length > 0 && (
+              <span className="version-count"> ({versionHistory.length} version{versionHistory.length !== 1 ? 's' : ''})</span>
+            )}
+          </span>
           <span className="type-label">{selectedItem.type}</span>
         </div>
       </div>
@@ -190,13 +198,13 @@ export function WorkItemDetail({
 
       {showActions && (
         <div className="workitem-detail-actions">
-          {onViewHistory && (
-            <Button variant="secondary" onClick={handleViewHistory}>
-              View History
+          {onViewHistory && versionHistory.length > 0 && (
+            <Button variant="primary" onClick={handleViewHistory}>
+              📜 View History
             </Button>
           )}
           {onEdit && !selectedItem.is_signed && (
-            <Button variant="primary" onClick={handleEdit}>
+            <Button variant="secondary" onClick={handleEdit}>
               Edit
             </Button>
           )}
@@ -287,12 +295,19 @@ export function WorkItemDetail({
         .version-badge {
           display: inline-flex;
           align-items: center;
-          padding: 0.25rem 0.5rem;
-          font-size: 0.75rem;
-          font-weight: 500;
-          background: #f3f4f6;
-          color: #374151;
-          border-radius: 4px;
+          padding: 0.375rem 0.75rem;
+          font-size: 0.875rem;
+          font-weight: 600;
+          background: #dbeafe;
+          color: #1e40af;
+          border: 1px solid #93c5fd;
+          border-radius: 6px;
+        }
+
+        .version-count {
+          margin-left: 0.25rem;
+          font-weight: 400;
+          opacity: 0.8;
         }
 
         .type-label {

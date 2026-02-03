@@ -3,13 +3,48 @@
  * Main page for managing requirements with list, detail, and form views
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { WorkItemList, WorkItemDetail, WorkItemForm, VersionHistory } from '../components/workitems';
 import { Modal, ConfirmModal, Button } from '../components/common';
 import { useWorkItemStore } from '../stores/workitemStore';
 import type { WorkItem } from '../services/workitemService';
 
 type ViewMode = 'list' | 'detail' | 'create' | 'edit' | 'history';
+
+interface EditRequirementModalProps {
+  itemId: string;
+  onSuccess: (item: WorkItem) => void;
+  onCancel: () => void;
+}
+
+function EditRequirementModal({ itemId, onSuccess, onCancel }: EditRequirementModalProps): React.ReactElement {
+  const { selectedItem, fetchItem } = useWorkItemStore();
+
+  useEffect(() => {
+    if (itemId) {
+      fetchItem(itemId);
+    }
+  }, [itemId, fetchItem]);
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={onCancel}
+      title="Edit Requirement"
+      size="lg"
+    >
+      {selectedItem && selectedItem.id === itemId ? (
+        <WorkItemForm
+          item={selectedItem}
+          onSuccess={onSuccess}
+          onCancel={onCancel}
+        />
+      ) : (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>
+      )}
+    </Modal>
+  );
+}
 
 export function Requirements(): React.ReactElement {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -135,18 +170,11 @@ export function Requirements(): React.ReactElement {
         )}
 
         {viewMode === 'edit' && selectedItemId && (
-          <Modal
-            isOpen={true}
-            onClose={handleFormCancel}
-            title="Edit Requirement"
-            size="lg"
-          >
-            <WorkItemForm
-              item={useWorkItemStore.getState().selectedItem || undefined}
-              onSuccess={handleFormSuccess}
-              onCancel={handleFormCancel}
-            />
-          </Modal>
+          <EditRequirementModal
+            itemId={selectedItemId}
+            onSuccess={handleFormSuccess}
+            onCancel={handleFormCancel}
+          />
         )}
 
         {viewMode === 'history' && selectedItemId && (

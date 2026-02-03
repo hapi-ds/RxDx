@@ -52,7 +52,7 @@ export interface WorkItemActions {
   fetchItems: (params?: WorkItemListParams) => Promise<void>;
   fetchItem: (id: string) => Promise<void>;
   createItem: (data: WorkItemCreate) => Promise<WorkItem>;
-  updateItem: (id: string, data: WorkItemUpdate) => Promise<WorkItem>;
+  updateItem: (id: string, data: WorkItemUpdate, changeDescription?: string) => Promise<WorkItem>;
   deleteItem: (id: string) => Promise<void>;
   
   // Version history
@@ -164,11 +164,11 @@ export const useWorkItemStore = create<WorkItemStore>()((set, get) => ({
     }
   },
 
-  updateItem: async (id: string, data: WorkItemUpdate): Promise<WorkItem> => {
+  updateItem: async (id: string, data: WorkItemUpdate, changeDescription?: string): Promise<WorkItem> => {
     set({ isSaving: true, error: null });
     
     try {
-      const updatedItem = await workitemService.update(id, data);
+      const updatedItem = await workitemService.update(id, data, changeDescription);
       
       // Update in items list
       set((state) => ({

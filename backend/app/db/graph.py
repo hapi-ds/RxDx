@@ -360,7 +360,12 @@ class GraphService:
         user_id: str,
         change_description: str
     ) -> dict[str, Any]:
-        """Create a new version of a WorkItem"""
+        """
+        Create a new version of a WorkItem by updating the existing node.
+        
+        This updates the WorkItem node with new version data. Full version history
+        is tracked through audit logs.
+        """
         # Update the data with new version info
         version_data = {**data}
         version_data.update({
@@ -370,7 +375,8 @@ class GraphService:
             "change_description": change_description
         })
 
-        return await self.create_node("WorkItem", version_data)
+        # Update the existing WorkItem node
+        return await self.update_node(workitem_id, version_data)
 
     async def search_workitems(
         self,

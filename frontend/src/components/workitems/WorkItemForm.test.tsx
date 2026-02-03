@@ -111,7 +111,7 @@ describe('WorkItemForm', () => {
 
       expect(screen.getByLabelText(/title/i)).toHaveValue('Test Requirement');
       expect(screen.getByLabelText(/description/i)).toHaveValue('Test description');
-      expect(screen.getByText('Update Work Item')).toBeInTheDocument();
+      expect(screen.getByText('Save Changes')).toBeInTheDocument();
     });
 
     it('should not show type selector in edit mode', () => {
@@ -131,14 +131,15 @@ describe('WorkItemForm', () => {
       const titleInput = screen.getByLabelText(/title/i);
       await user.clear(titleInput);
       await user.type(titleInput, 'Updated Title');
-      await user.click(screen.getByText('Update Work Item'));
+      await user.click(screen.getByText('Save Changes'));
 
       await waitFor(() => {
         expect(mockStoreState.updateItem).toHaveBeenCalledWith(
           '1',
           expect.objectContaining({
             title: 'Updated Title',
-          })
+          }),
+          'WorkItem updated'
         );
       });
 
@@ -223,3 +224,89 @@ describe('WorkItemForm', () => {
     });
   });
 });
+
+  describe('Version Control UX (Requirement 20)', () => {
+    describe('Button text property', () => {
+      it('should display "Create Work Item" for new items', () => {
+        render(<WorkItemForm />);
+        expect(screen.getByText('Create Work Item')).toBeInTheDocument();
+      });
+
+      it('should display "Save Changes" when editing existing items', () => {
+        render(<WorkItemForm item={mockWorkItem} />);
+        expect(screen.getByText('Save Changes')).toBeInTheDocument();
+      });
+
+      it('should display correct button text for all work item types', () => {
+        const types: Array<WorkItem['type']> = ['requirement', 'task', 'test', 'risk', 'document'];
+        
+        types.forEach((type) => {
+          const item = { ...mockWorkItem, type };
+          const { unmount } = render(<WorkItemForm item={item} />);
+          expect(screen.getByText('Save Changes')).toBeInTheDocument();
+          unmount();
+        });
+      });
+    });
+
+    describe('Version indicator property', () => {
+      it('should display version indicator when editing existing item', () => {
+        render(<WorkItemForm item={mockWorkItem} />);
+        expect(screen.getByText('v1.0')).toBeInTheDocument();
+      });
+
+      it('should not display version indicator when creating new item', () => {
+        render(<WorkItemForm />);
+        expect(screen.queryByText(/^v\d+\.\d+$/)).not.toBeInTheDocument();
+      });
+
+      it('should display correct version for different version numbers', () => {
+        const versions = ['1.0', '1.5', '2.3', '10.15'];
+        
+        versions.forEach((version) => {
+          const item = { ...mockWorkItem, version };
+          const { unmount } = render(<WorkItemForm item={item} />);
+          expect(screen.getByText(`v${version}`)).toBeInTheDocument();
+          unmount();
+        });
+      });
+
+      it('should display form header with title when editing', () => {
+        render(<WorkItemForm item={mockWorkItem} />);
+        expect(screen.getByText('Edit Work Item')).toBeInTheDocument();
+      });
+    });
+
+    describe('Version preview property', () => {
+      it('should display version preview for new items', () => {
+        render(<WorkItemForm />);
+        expect(screen.getByText(/This will create version 1\.0/i)).toBeInTheDocument();
+      });
+
+      it('should display version preview for editing items', () => {
+        render(<WorkItemForm item={mockWorkItem} />);
+        expect(screen.getByText(/Saving will create a new version/i)).toBeInTheDocument();
+      });
+
+      it('should show next version number when editing', () => {
+        const item = { ...mockWorkItem, version: '1.2' };
+        render(<WorkItemForm item={item} />);
+        expect(screen.getByText(/1\.3/)).toBeInTheDocument();
+      });
+
+      it('should calculate correct next version for various versions', () => {
+        const testCases = [
+          { current: '1.0', next: '1.1' },
+          { current: '1.9', next: '1.10' },
+          { current: '2.5', next: '2.6' },
+        ];
+
+        testCases.forEach(({ current, next }) => {
+          const item = { ...mockWorkItem, version: current };
+          const { unmount } = render(<WorkItemForm item={item} />);
+          expect(screen.getByText(new RegExp(next.replace('.', '\\.')))).toBeInTheDocument();
+          unmount();
+        });
+      });
+    });
+  });

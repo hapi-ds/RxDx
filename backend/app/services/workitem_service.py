@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from app.db.graph import GraphService, get_graph_service
+from app.db.session import get_db
 from app.models.user import User
 from app.schemas.workitem import (
     WorkItemCreate,
@@ -467,7 +468,7 @@ class WorkItemService:
         workitem_id: UUID
     ) -> list[WorkItemResponse]:
         """
-        Get complete version history for a WorkItem using VersionService
+        Get complete version history for a WorkItem using VersionService.
 
         Args:
             workitem_id: WorkItem UUID
@@ -475,10 +476,14 @@ class WorkItemService:
         Returns:
             List of WorkItem versions ordered by version number (newest first)
         """
+        print(f"[WorkItemService] Getting history for workitem: {workitem_id}")
+        print(f"[WorkItemService] VersionService available: {self.version_service is not None}")
+        
         if self.version_service:
             try:
                 # Use VersionService to get complete history
                 version_history = await self.version_service.get_version_history(workitem_id)
+                print(f"[WorkItemService] Got {len(version_history)} versions from VersionService")
 
                 # Convert to WorkItemResponse objects
                 workitem_responses = []
@@ -487,11 +492,15 @@ class WorkItemService:
                     if response:
                         workitem_responses.append(response)
 
+                print(f"[WorkItemService] Converted to {len(workitem_responses)} WorkItemResponse objects")
                 return workitem_responses
             except Exception as e:
-                print(f"VersionService failed, falling back to current version only: {e}")
+                print(f"VersionService failed: {e}")
+                import traceback
+                traceback.print_exc()
 
         # Fallback: Return current version only
+        print(f"[WorkItemService] Falling back to current version only")
         current = await self.get_workitem(workitem_id)
         return [current] if current else []
 
@@ -543,9 +552,18 @@ async def get_workitem_service() -> WorkItemService:
     """Dependency for getting WorkItem service with VersionService integration"""
     graph_service = await get_graph_service()
 
+    # Get a database session for VersionService
+    db_session = None
+    async for session in get_db():
+        db_session = session
+        break
+
     # Try to get VersionService, but don't fail if it's not available
     try:
-        version_service = await get_version_service(graph_service=graph_service)
+        version_service = await get_version_service(
+            graph_service=graph_service,
+            db_session=db_session
+        )
     except Exception as e:
         print(f"Warning: Could not initialize VersionService: {e}")
         version_service = None

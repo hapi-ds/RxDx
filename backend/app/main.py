@@ -18,6 +18,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     print(f"Starting RxDx Backend v{settings.VERSION}")
     print(f"Environment: {settings.ENVIRONMENT}")
 
+    # Initialize database tables
+    try:
+        from app.db.session import init_db
+        await init_db()
+        print("✓ Database tables initialized")
+    except Exception as e:
+        print(f"⚠ Warning: Could not initialize database tables: {e}")
+
     # Initialize graph database connection
     try:
         await graph_service.connect()

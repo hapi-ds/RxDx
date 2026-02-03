@@ -4,8 +4,13 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.graph import GraphService, get_graph_service
+from app.db.session import get_db
 from app.models.user import User
+from app.models.version_history import VersionHistory
 from app.services.audit_service import AuditService, get_audit_service
 
 
@@ -14,21 +19,25 @@ class VersionService:
     Service for managing WorkItem version control.
 
     This service handles creating new versions of WorkItems, maintaining version history,
-    and managing version relationships in the graph database. It integrates with the
-    audit service to log all version changes and handles signature invalidation when
-    WorkItems are modified.
+    and managing version relationships. It stores version snapshots in PostgreSQL for
+    efficient querying and integrates with the audit service.
 
     Key features:
     - Automatic version number calculation (major.minor format)
-    - Complete version history preservation
-    - Graph-based version relationships (NEXT_VERSION)
+    - Complete version history preservation in PostgreSQL
     - Integration with audit logging
     - Change description tracking
     """
 
-    def __init__(self, graph_service: GraphService, audit_service: AuditService):
+    def __init__(
+        self,
+        graph_service: GraphService,
+        audit_service: AuditService,
+        db_session: AsyncSession
+    ):
         self.graph_service = graph_service
         self.audit_service = audit_service
+        self.db_session = db_session
 
     async def create_version(
         self,
@@ -42,9 +51,9 @@ class VersionService:
 
         This method:
         1. Gets the current version from the graph database
-        2. Calculates the new version number (increments minor version)
-        3. Creates a new version node with updated data
-        4. Creates NEXT_VERSION relationship between versions
+        2. Stores a snapshot of the current version in PostgreSQL
+        3. Calculates the new version number (increments minor version)
+        4. Updates the WorkItem node with new data
         5. Logs the version change in audit trail
 
         Args:
@@ -58,14 +67,6 @@ class VersionService:
 
         Raises:
             ValueError: If WorkItem not found or version calculation fails
-
-        Example:
-            new_version = await version_service.create_version(
-                workitem_id=UUID("..."),
-                updates={"title": "Updated title", "status": "active"},
-                user=current_user,
-                change_description="Updated title and status"
-            )
         """
         # Get current version from graph
         current_workitem = await self.graph_service.get_workitem(str(workitem_id))
@@ -75,6 +76,17 @@ class VersionService:
         # Calculate new version number
         current_version = current_workitem.get("version", "1.0")
         new_version = self._calculate_next_version(current_version)
+
+        # Store snapshot of current version in PostgreSQL before updating
+        version_snapshot = VersionHistory(
+            workitem_id=workitem_id,
+            version=current_version,
+            data=current_workitem,
+            change_description=f"Version {current_version} before update to {new_version}",
+            created_by=UUID(current_workitem.get("created_by", str(user.id)))
+        )
+        self.db_session.add(version_snapshot)
+        await self.db_session.flush()
 
         # Merge current data with updates
         new_workitem_data = {**current_workitem}
@@ -86,7 +98,7 @@ class VersionService:
             "change_description": change_description
         })
 
-        # Create new version node in graph
+        # Update the WorkItem node in graph
         await self.graph_service.create_workitem_version(
             workitem_id=str(workitem_id),
             version=new_version,
@@ -95,19 +107,8 @@ class VersionService:
             change_description=change_description
         )
 
-        # Create NEXT_VERSION relationship from current to new version
-        await self.graph_service.create_relationship(
-            from_id=str(workitem_id),  # Current version node
-            to_id=str(workitem_id),    # New version node (same ID, different version)
-            rel_type="NEXT_VERSION",
-            properties={
-                'from_version': current_version,
-                'to_version': new_version,
-                'created_at': datetime.now(UTC).isoformat(),
-                'created_by': str(user.id),
-                'change_description': change_description
-            }
-        )
+        # Commit the version snapshot
+        await self.db_session.commit()
 
         # Log audit event
         await self.audit_service.log(
@@ -177,47 +178,53 @@ class VersionService:
 
     async def get_version_history(self, workitem_id: UUID) -> list[dict[str, Any]]:
         """
-        Get complete version history for a WorkItem.
+        Get complete version history for a WorkItem from PostgreSQL.
 
-        This method traverses the NEXT_VERSION relationships in the graph database
-        to build a complete chronological history of all versions.
+        This method retrieves all version snapshots from the database,
+        plus the current version from the graph.
 
         Args:
             workitem_id: UUID of the WorkItem
 
         Returns:
             List of WorkItem versions ordered by version number (newest first)
-
-        Example:
-            history = await version_service.get_version_history(workitem_id)
-            # Returns: [{"version": "1.3", ...}, {"version": "1.2", ...}, {"version": "1.1", ...}]
         """
-        # Query to get all versions of a WorkItem following NEXT_VERSION relationships
-        query = """
-        MATCH (w:WorkItem {id: $workitem_id})
-        OPTIONAL MATCH path = (w)-[:NEXT_VERSION*0..]->(version:WorkItem)
-        WHERE version.id = $workitem_id
-        RETURN DISTINCT version
-        ORDER BY version.version DESC
-        """
-
-        results = await self.graph_service.execute_query(
-            query,
-            {'workitem_id': str(workitem_id)}
+        print(f"[VersionService] Getting history for workitem: {workitem_id}")
+        
+        # Get historical versions from PostgreSQL
+        result = await self.db_session.execute(
+            select(VersionHistory)
+            .where(VersionHistory.workitem_id == workitem_id)
+            .order_by(VersionHistory.created_at.desc())
         )
+        history_records = result.scalars().all()
+        print(f"[VersionService] Found {len(history_records)} historical versions in DB")
 
-        # Extract version data from results
+        # Get current version from graph
+        current_workitem = await self.graph_service.get_workitem(str(workitem_id))
+        print(f"[VersionService] Current workitem version: {current_workitem.get('version') if current_workitem else None}")
+
+        # Build version list
         versions = []
-        for result in results:
-            if result and 'properties' in result:
-                version_data = result['properties']
-            else:
-                version_data = result
-
-            if version_data:
-                versions.append(version_data)
+        
+        # Add current version first
+        if current_workitem:
+            versions.append(current_workitem)
+            print(f"[VersionService] Added current version {current_workitem.get('version')}")
+        
+        # Add historical versions
+        for record in history_records:
+            versions.append(record.data)
+            print(f"[VersionService] Added historical version {record.version}")
 
         # Sort by version number (newest first)
+        versions.sort(
+            key=lambda v: self._version_sort_key(v.get('version', '1.0')),
+            reverse=True
+        )
+
+        print(f"[VersionService] Returning {len(versions)} total versions")
+        return versions
         versions.sort(key=lambda v: self._version_sort_key(v.get('version', '1.0')), reverse=True)
 
         return versions
@@ -360,7 +367,8 @@ class VersionService:
 
 async def get_version_service(
     graph_service: GraphService | None = None,
-    audit_service: AuditService | None = None
+    audit_service: AuditService | None = None,
+    db_session: AsyncSession | None = None
 ) -> VersionService:
     """
     Dependency for getting VersionService instance.
@@ -368,6 +376,7 @@ async def get_version_service(
     Args:
         graph_service: Optional GraphService instance (will be created if None)
         audit_service: Optional AuditService instance (will be created if None)
+        db_session: Optional AsyncSession instance (will be created if None)
 
     Returns:
         VersionService instance with dependencies injected
@@ -375,11 +384,13 @@ async def get_version_service(
     if graph_service is None:
         graph_service = await get_graph_service()
 
-    if audit_service is None:
-        # Note: This would need proper dependency injection in a real FastAPI app
-        # For now, we'll create a minimal audit service
-        from app.db.session import get_db
-        db = await get_db().__anext__()  # Get async session
-        audit_service = await get_audit_service(db)
+    if db_session is None:
+        # Get a database session
+        async for session in get_db():
+            db_session = session
+            break
 
-    return VersionService(graph_service, audit_service)
+    if audit_service is None:
+        audit_service = await get_audit_service(db_session)
+
+    return VersionService(graph_service, audit_service, db_session)

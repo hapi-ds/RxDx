@@ -6,6 +6,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useWorkItemStore } from '../../stores/workitemStore';
 import { Input, Select, Textarea, Button, ErrorMessage } from '../common';
+import { VersionIndicator } from './VersionIndicator';
+import { VersionPreview } from './VersionPreview';
 import type {
   WorkItem,
   WorkItemCreate,
@@ -184,7 +186,8 @@ export function WorkItemForm({
           priority: formData.priority ? parseInt(formData.priority) : undefined,
           assigned_to: formData.assigned_to || undefined,
         };
-        result = await updateItem(item.id, updateData);
+        const changeDescription = 'WorkItem updated';
+        result = await updateItem(item.id, updateData, changeDescription);
       } else {
         const createData: WorkItemCreate = {
           type: formData.type,
@@ -210,6 +213,13 @@ export function WorkItemForm({
 
   return (
     <form className="workitem-form" onSubmit={handleSubmit}>
+      {isEditing && item && (
+        <div className="form-header">
+          <h2 className="form-title">Edit Work Item</h2>
+          <VersionIndicator version={item.version} />
+        </div>
+      )}
+
       {error && (
         <ErrorMessage
           message={error}
@@ -280,6 +290,11 @@ export function WorkItemForm({
         />
       </div>
 
+      <VersionPreview
+        currentVersion={item?.version}
+        isNewItem={!isEditing}
+      />
+
       <div className="form-actions">
         {onCancel && (
           <Button
@@ -297,7 +312,7 @@ export function WorkItemForm({
           isLoading={isSaving}
           disabled={isSaving}
         >
-          {isEditing ? 'Update Work Item' : 'Create Work Item'}
+          {isEditing ? 'Save Changes' : 'Create Work Item'}
         </Button>
       </div>
 
@@ -306,6 +321,21 @@ export function WorkItemForm({
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+        }
+
+        .form-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .form-title {
+          margin: 0;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #111827;
         }
 
         .form-grid {

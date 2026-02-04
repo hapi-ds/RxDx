@@ -45,9 +45,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+      args:
+        - VITE_API_BASE_URL=
     container_name: rxdx-frontend
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - backend
     networks:

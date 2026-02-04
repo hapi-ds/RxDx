@@ -15,7 +15,7 @@ export const navItems: NavItem[] = [
   { path: '/requirements', label: 'Requirements', icon: '📋' },
   { path: '/graph', label: 'Graph', icon: '🔗' },
   { path: '/tests', label: 'Tests', icon: '🧪' },
-  { path: '/risks', label: 'Risks', icon: '⚠️' },
+  { path: '/risks/', label: 'Risks', icon: '⚠️' },
   { path: '/schedule', label: 'Schedule', icon: '📅' },
   { path: '/kanban', label: 'Kanban', icon: '📊' },
   { path: '/documents', label: 'Documents', icon: '📄' },

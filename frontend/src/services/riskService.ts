@@ -217,7 +217,7 @@ export async function getRisks(filters?: RiskFilters): Promise<RiskListResponse>
   if (filters?.max_rpn) params.append('max_rpn', filters.max_rpn.toString());
   if (filters?.risk_owner) params.append('risk_owner', filters.risk_owner);
   
-  const response = await apiClient.get<RiskListResponse>(`/risks/?${params.toString()}`);
+  const response = await apiClient.get<RiskListResponse>(`/api/v1/risks/?${params.toString()}`);
   return response.data;
 }
 
@@ -225,7 +225,7 @@ export async function getRisks(filters?: RiskFilters): Promise<RiskListResponse>
  * Get a specific risk by ID
  */
 export async function getRisk(riskId: string): Promise<RiskNode> {
-  const response = await apiClient.get<RiskNode>(`/risks/${riskId}`);
+  const response = await apiClient.get<RiskNode>(`/api/v1/risks/${riskId}`);
   return response.data;
 }
 
@@ -233,7 +233,7 @@ export async function getRisk(riskId: string): Promise<RiskNode> {
  * Create a new risk
  */
 export async function createRisk(riskData: RiskNodeCreate): Promise<RiskNode> {
-  const response = await apiClient.post<RiskNode>('/risks/', riskData);
+  const response = await apiClient.post<RiskNode>('/api/v1/risks/', riskData);
   return response.data;
 }
 
@@ -246,7 +246,7 @@ export async function updateRisk(
   changeDescription: string
 ): Promise<RiskNode> {
   const response = await apiClient.patch<RiskNode>(
-    `/risks/${riskId}?change_description=${encodeURIComponent(changeDescription)}`,
+    `/api/v1/risks/${riskId}?change_description=${encodeURIComponent(changeDescription)}`,
     updates
   );
   return response.data;
@@ -256,7 +256,7 @@ export async function updateRisk(
  * Delete a risk
  */
 export async function deleteRisk(riskId: string): Promise<void> {
-  await apiClient.delete(`/risks/${riskId}`);
+  await apiClient.delete(`/api/v1/risks/${riskId}`);
 }
 
 /**
@@ -264,7 +264,7 @@ export async function deleteRisk(riskId: string): Promise<void> {
  */
 export async function getHighRPNRisks(threshold?: number): Promise<RiskNode[]> {
   const params = threshold ? `?threshold=${threshold}` : '';
-  const response = await apiClient.get<RiskNode[]>(`/risks/high-rpn${params}`);
+  const response = await apiClient.get<RiskNode[]>(`/api/v1/risks/high-rpn${params}`);
   return response.data;
 }
 
@@ -273,7 +273,7 @@ export async function getHighRPNRisks(threshold?: number): Promise<RiskNode[]> {
  */
 export async function getRiskChains(riskId: string, maxDepth?: number): Promise<RiskChain[]> {
   const params = maxDepth ? `?max_depth=${maxDepth}` : '';
-  const response = await apiClient.get<RiskChain[]>(`/risks/${riskId}/chains${params}`);
+  const response = await apiClient.get<RiskChain[]>(`/api/v1/risks/${riskId}/chains${params}`);
   return response.data;
 }
 

@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from hypothesis import given, settings, strategies as st
 
 from app.models.user import User
 from app.schemas.risk import (
@@ -743,3 +744,470 @@ class TestRiskReassessment:
         assert result.new_occurrence == 2  # Changed
         assert result.new_detection == 5  # Unchanged
         assert result.new_rpn == 80  # 8 × 2 × 5
+
+
+class TestRiskQueryMethods:
+    """Test risk query methods including list_risks functionality."""
+
+    @pytest.mark.asyncio
+    async def test_get_risks_returns_workitem_nodes(
+        self,
+        risk_service,
+        mock_graph_service,
+        mock_signature_service,
+    ):
+        """Test that get_risks returns risks created as WorkItem nodes."""
+        # Validates: Requirements 1.1, 1.2
+        risk_id_1 = uuid4()
+        risk_id_2 = uuid4()
+
+        # Mock search_nodes to return WorkItem nodes with type='risk'
+        mock_graph_service.search_nodes.return_value = [
+            {
+                'properties': {
+                    'id': str(risk_id_1),
+                    'type': 'risk',
+                    'title': 'Battery Overheating Risk',
+                    'description': 'Risk of battery overheating',
+                    'status': 'identified',
+                    'severity': 8,
+                    'occurrence': 4,
+                    'detection': 6,
+                    'rpn': 192,
+                    'risk_category': 'safety',
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            },
+            {
+                'properties': {
+                    'id': str(risk_id_2),
+                    'type': 'risk',
+                    'title': 'Component Failure Risk',
+                    'description': 'Risk of component failure',
+                    'status': 'assessed',
+                    'severity': 7,
+                    'occurrence': 5,
+                    'detection': 4,
+                    'rpn': 140,
+                    'risk_category': 'technical',
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            }
+        ]
+        mock_signature_service.get_workitem_signatures.return_value = []
+        mock_graph_service.execute_query.return_value = []
+
+        result = await risk_service.get_risks()
+
+        # Verify search_nodes was called with correct label
+        mock_graph_service.search_nodes.assert_called_once()
+        call_args = mock_graph_service.search_nodes.call_args
+        assert call_args[1]['label'] == 'WorkItem'
+        assert call_args[1]['properties'] == {'type': 'risk'}
+
+        # Verify results
+        assert len(result) == 2
+        assert str(result[0].id) == str(risk_id_1)
+        assert result[0].title == 'Battery Overheating Risk'
+        assert str(result[1].id) == str(risk_id_2)
+        assert result[1].title == 'Component Failure Risk'
+
+    @pytest.mark.asyncio
+    async def test_get_risks_with_status_filter(
+        self,
+        risk_service,
+        mock_graph_service,
+        mock_signature_service,
+    ):
+        """Test get_risks with status filter."""
+        # Validates: Requirements 1.1, 1.2
+        risk_id_1 = uuid4()
+        risk_id_2 = uuid4()
+
+        # Mock search_nodes to return risks with different statuses
+        mock_graph_service.search_nodes.return_value = [
+            {
+                'properties': {
+                    'id': str(risk_id_1),
+                    'type': 'risk',
+                    'title': 'Assessed Risk',
+                    'description': 'Assessed risk description',
+                    'status': 'assessed',
+                    'severity': 8,
+                    'occurrence': 4,
+                    'detection': 6,
+                    'rpn': 192,
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            },
+            {
+                'properties': {
+                    'id': str(risk_id_2),
+                    'type': 'risk',
+                    'title': 'Identified Risk',
+                    'description': 'Identified risk description',
+                    'status': 'identified',
+                    'severity': 7,
+                    'occurrence': 5,
+                    'detection': 4,
+                    'rpn': 140,
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            }
+        ]
+        mock_signature_service.get_workitem_signatures.return_value = []
+        mock_graph_service.execute_query.return_value = []
+
+        # Filter by assessed status
+        result = await risk_service.get_risks(status=RiskStatus.ASSESSED)
+
+        # Verify only assessed risks returned
+        assert len(result) == 1
+        assert result[0].status == RiskStatus.ASSESSED
+        assert result[0].title == 'Assessed Risk'
+
+    @pytest.mark.asyncio
+    async def test_get_risks_with_rpn_filters(
+        self,
+        risk_service,
+        mock_graph_service,
+        mock_signature_service,
+    ):
+        """Test get_risks with RPN min/max filters."""
+        # Validates: Requirements 1.1, 1.2
+        risk_id_1 = uuid4()
+        risk_id_2 = uuid4()
+        risk_id_3 = uuid4()
+
+        # Mock search_nodes to return risks with different RPNs
+        mock_graph_service.search_nodes.return_value = [
+            {
+                'properties': {
+                    'id': str(risk_id_1),
+                    'type': 'risk',
+                    'title': 'Low RPN Risk',
+                    'description': 'Low RPN risk',
+                    'status': 'identified',
+                    'severity': 3,
+                    'occurrence': 3,
+                    'detection': 3,
+                    'rpn': 27,
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            },
+            {
+                'properties': {
+                    'id': str(risk_id_2),
+                    'type': 'risk',
+                    'title': 'Medium RPN Risk',
+                    'description': 'Medium RPN risk',
+                    'status': 'identified',
+                    'severity': 5,
+                    'occurrence': 5,
+                    'detection': 5,
+                    'rpn': 125,
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            },
+            {
+                'properties': {
+                    'id': str(risk_id_3),
+                    'type': 'risk',
+                    'title': 'High RPN Risk',
+                    'description': 'High RPN risk',
+                    'status': 'identified',
+                    'severity': 8,
+                    'occurrence': 7,
+                    'detection': 6,
+                    'rpn': 336,
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            }
+        ]
+        mock_signature_service.get_workitem_signatures.return_value = []
+        mock_graph_service.execute_query.return_value = []
+
+        # Filter by min_rpn
+        result = await risk_service.get_risks(min_rpn=100)
+        assert len(result) == 2
+        assert all(r.rpn >= 100 for r in result)
+
+        # Filter by max_rpn
+        result = await risk_service.get_risks(max_rpn=200)
+        assert len(result) == 2
+        assert all(r.rpn <= 200 for r in result)
+
+        # Filter by both min and max RPN
+        result = await risk_service.get_risks(min_rpn=100, max_rpn=200)
+        assert len(result) == 1
+        assert result[0].rpn == 125
+
+    @pytest.mark.asyncio
+    async def test_get_risks_pagination(
+        self,
+        risk_service,
+        mock_graph_service,
+        mock_signature_service,
+    ):
+        """Test get_risks pagination with limit and offset."""
+        # Validates: Requirements 1.1, 1.2
+        # Create 5 mock risks
+        mock_risks = []
+        for i in range(5):
+            risk_id = uuid4()
+            mock_risks.append({
+                'properties': {
+                    'id': str(risk_id),
+                    'type': 'risk',
+                    'title': f'Risk {i+1}',
+                    'description': f'Description {i+1}',
+                    'status': 'identified',
+                    'severity': 5,
+                    'occurrence': 5,
+                    'detection': 5,
+                    'rpn': 125,
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            })
+
+        mock_graph_service.search_nodes.return_value = mock_risks
+        mock_signature_service.get_workitem_signatures.return_value = []
+        mock_graph_service.execute_query.return_value = []
+
+        # Test limit
+        result = await risk_service.get_risks(limit=2)
+        assert len(result) == 2
+        assert result[0].title == 'Risk 1'
+        assert result[1].title == 'Risk 2'
+
+        # Test offset
+        result = await risk_service.get_risks(limit=2, offset=2)
+        assert len(result) == 2
+        assert result[0].title == 'Risk 3'
+        assert result[1].title == 'Risk 4'
+
+        # Test offset beyond available results
+        result = await risk_service.get_risks(limit=10, offset=3)
+        assert len(result) == 2
+        assert result[0].title == 'Risk 4'
+        assert result[1].title == 'Risk 5'
+
+    @pytest.mark.asyncio
+    async def test_get_risks_empty_result(
+        self,
+        risk_service,
+        mock_graph_service,
+    ):
+        """Test get_risks returns empty list when no risks found."""
+        # Validates: Requirements 1.1, 1.2
+        mock_graph_service.search_nodes.return_value = []
+
+        result = await risk_service.get_risks()
+
+        assert len(result) == 0
+        assert isinstance(result, list)
+
+    @pytest.mark.asyncio
+    async def test_get_risks_with_risk_owner_filter(
+        self,
+        risk_service,
+        mock_graph_service,
+        mock_signature_service,
+    ):
+        """Test get_risks with risk_owner filter."""
+        # Validates: Requirements 1.1, 1.2
+        owner_id = uuid4()
+        other_owner_id = uuid4()
+        risk_id_1 = uuid4()
+        risk_id_2 = uuid4()
+
+        mock_graph_service.search_nodes.return_value = [
+            {
+                'properties': {
+                    'id': str(risk_id_1),
+                    'type': 'risk',
+                    'title': 'Owned Risk',
+                    'description': 'Risk owned by specific user',
+                    'status': 'identified',
+                    'severity': 5,
+                    'occurrence': 5,
+                    'detection': 5,
+                    'rpn': 125,
+                    'risk_owner': str(owner_id),
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            },
+            {
+                'properties': {
+                    'id': str(risk_id_2),
+                    'type': 'risk',
+                    'title': 'Other Risk',
+                    'description': 'Risk owned by different user',
+                    'status': 'identified',
+                    'severity': 5,
+                    'occurrence': 5,
+                    'detection': 5,
+                    'rpn': 125,
+                    'risk_owner': str(other_owner_id),
+                    'version': '1.0',
+                    'created_by': str(uuid4()),
+                    'created_at': datetime.now(UTC).isoformat(),
+                    'updated_at': datetime.now(UTC).isoformat(),
+                }
+            }
+        ]
+        mock_signature_service.get_workitem_signatures.return_value = []
+        mock_graph_service.execute_query.return_value = []
+
+        result = await risk_service.get_risks(risk_owner=owner_id)
+
+        assert len(result) == 1
+        assert result[0].risk_owner == owner_id
+        assert result[0].title == 'Owned Risk'
+
+
+
+class TestRiskQueryProperties:
+    """Property-based tests for risk query methods."""
+
+    @given(
+        st.lists(
+            st.fixed_dictionaries({
+                'id': st.uuids(),
+                'title': st.text(
+                    alphabet=st.characters(min_codepoint=65, max_codepoint=122, blacklist_categories=('Cc', 'Cs')),
+                    min_size=5,
+                    max_size=100
+                ),
+                'description': st.text(
+                    alphabet=st.characters(min_codepoint=32, max_codepoint=126),
+                    min_size=10,
+                    max_size=500
+                ),
+                'status': st.sampled_from(['identified', 'assessed', 'mitigated', 'accepted', 'closed']),
+                'severity': st.integers(min_value=1, max_value=10),
+                'occurrence': st.integers(min_value=1, max_value=10),
+                'detection': st.integers(min_value=1, max_value=10),
+                'risk_category': st.sampled_from(['safety', 'technical', 'schedule', 'cost', 'quality']),
+                'version': st.just('1.0'),
+                'created_by': st.uuids(),
+            }),
+            min_size=1,
+            max_size=50
+        )
+    )
+    @settings(max_examples=100, deadline=None)
+    @pytest.mark.asyncio
+    async def test_property_risk_query_returns_all_risks(self, risk_data_list):
+        """
+        Property 1: Risk Query Returns All Risks
+        
+        **Validates: Requirements 1.1, 1.2**
+        
+        For any database state containing risk nodes, querying with label="WorkItem" 
+        and type='risk' should return all risk nodes that exist in the database.
+        
+        This property test generates random risk nodes with various properties,
+        inserts them as WorkItem nodes with type='risk', and verifies that 
+        list_risks() returns all inserted risks.
+        """
+        # Setup mocks
+        mock_graph_service = AsyncMock()
+        mock_audit_service = AsyncMock()
+        mock_signature_service = AsyncMock()
+        mock_version_service = AsyncMock()
+        
+        risk_service = RiskService(
+            graph_service=mock_graph_service,
+            audit_service=mock_audit_service,
+            signature_service=mock_signature_service,
+            version_service=mock_version_service,
+        )
+        
+        # Calculate RPN for each risk
+        mock_risks = []
+        for risk_data in risk_data_list:
+            rpn = risk_data['severity'] * risk_data['occurrence'] * risk_data['detection']
+            created_at = datetime.now(UTC).isoformat()
+            updated_at = datetime.now(UTC).isoformat()
+            
+            mock_risk = {
+                'properties': {
+                    'id': str(risk_data['id']),
+                    'type': 'risk',
+                    'title': risk_data['title'],
+                    'description': risk_data['description'],
+                    'status': risk_data['status'],
+                    'severity': risk_data['severity'],
+                    'occurrence': risk_data['occurrence'],
+                    'detection': risk_data['detection'],
+                    'rpn': rpn,
+                    'risk_category': risk_data['risk_category'],
+                    'version': risk_data['version'],
+                    'created_by': str(risk_data['created_by']),
+                    'created_at': created_at,
+                    'updated_at': updated_at,
+                }
+            }
+            mock_risks.append(mock_risk)
+        
+        # Mock the graph service to return all risks as WorkItem nodes with type='risk'
+        mock_graph_service.search_nodes.return_value = mock_risks
+        mock_signature_service.get_workitem_signatures.return_value = []
+        mock_graph_service.execute_query.return_value = []
+        
+        # Call get_risks
+        result = await risk_service.get_risks()
+        
+        # Verify search_nodes was called with correct label and type
+        mock_graph_service.search_nodes.assert_called_once()
+        call_args = mock_graph_service.search_nodes.call_args
+        assert call_args[1]['label'] == 'WorkItem', "Query must use label='WorkItem'"
+        assert call_args[1]['properties'] == {'type': 'risk'}, "Query must filter by type='risk'"
+        
+        # Verify all risks were returned
+        assert len(result) == len(risk_data_list), \
+            f"Expected {len(risk_data_list)} risks, but got {len(result)}"
+        
+        # Verify each risk has correct properties
+        result_ids = {str(r.id) for r in result}
+        expected_ids = {str(r['id']) for r in risk_data_list}
+        assert result_ids == expected_ids, "All inserted risks must be returned"
+        
+        # Verify RPN was calculated correctly for each risk
+        for i, risk in enumerate(result):
+            original_data = risk_data_list[i]
+            expected_rpn = (
+                original_data['severity'] * 
+                original_data['occurrence'] * 
+                original_data['detection']
+            )
+            assert risk.rpn == expected_rpn, \
+                f"Risk {risk.id} has incorrect RPN: expected {expected_rpn}, got {risk.rpn}"

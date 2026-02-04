@@ -175,7 +175,7 @@ class RiskService:
 
         # Create risk node in graph database
         await self.graph_service.create_node(
-            label="Risk",
+            label="WorkItem",
             properties={
                 'id': str(risk_id),
                 'type': 'risk',
@@ -1008,7 +1008,7 @@ class RiskService:
         """
         # Search for risk nodes
         results = await self.graph_service.search_nodes(
-            label="Risk",
+            label="WorkItem",
             properties={'type': 'risk'},
             limit=limit + offset  # Get extra to handle offset
         )
@@ -1115,7 +1115,7 @@ class RiskService:
     async def _get_risk_mitigations(self, risk_id: UUID) -> list[dict[str, Any]]:
         """Get all mitigations for a risk."""
         query = f"""
-        MATCH (r:Risk {{id: '{risk_id}'}})-[:HAS_MITIGATION]->(m:Mitigation)
+        MATCH (r:WorkItem {{id: '{risk_id}', type: 'risk'}})-[:HAS_MITIGATION]->(m:Mitigation)
         RETURN m
         """
         try:
@@ -1127,7 +1127,7 @@ class RiskService:
     async def _get_linked_items(self, risk_id: UUID, item_type: str) -> list[UUID]:
         """Get linked design or process items for a risk."""
         query = f"""
-        MATCH (w:WorkItem)-[:MITIGATES]->(r:Risk {{id: '{risk_id}'}})
+        MATCH (w:WorkItem)-[:MITIGATES]->(r:WorkItem {{id: '{risk_id}', type: 'risk'}})
         RETURN w.id as item_id
         """
         try:
@@ -1139,7 +1139,7 @@ class RiskService:
     async def _get_source_risk(self, failure_id: UUID) -> UUID | None:
         """Get the source risk for a failure node."""
         query = f"""
-        MATCH (r:Risk)-[:LEADS_TO]->(f:Failure {{id: '{failure_id}'}})
+        MATCH (r:WorkItem {{type: 'risk'}})-[:LEADS_TO]->(f:Failure {{id: '{failure_id}'}})
         RETURN r.id as risk_id
         LIMIT 1
         """

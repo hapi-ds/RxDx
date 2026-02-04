@@ -43,14 +43,17 @@ export function RisksPage(): React.ReactElement {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('[RisksPage] Loading risks with filters:', filters);
       const response = await riskService.getRisks(filters);
+      console.log('[RisksPage] API response:', response);
+      console.log('[RisksPage] Items count:', response.items?.length || 0);
       setRisks(response.items || []);
       setTotalRisks(response.total || 0);
       setTotalPages(response.pages || 0);
     } catch (err) {
+      console.error('[RisksPage] Error loading risks:', err);
       setError('Failed to load risks');
       setRisks([]);
-      console.error(err);
     } finally {
       setIsLoading(false);
     }

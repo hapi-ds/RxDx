@@ -436,7 +436,7 @@ class TestService:
         """
         # Get all requirements
         requirements_query = """
-        MATCH (r:WorkItem)
+        MATCH (r:Requirement)
         WHERE r.type = 'requirement'
         RETURN r
         """
@@ -454,20 +454,27 @@ class TestService:
 
         # Get requirements with test specs
         requirements_with_tests_query = """
-        MATCH (r:WorkItem)-[:TESTED_BY]->(ts:WorkItem)
-        WHERE r.type = 'requirement' AND ts.type = 'test_spec'
+        MATCH (r:Requirement)-[:TESTED_BY]->(ts:Test)
+        WHERE r.type = 'requirement' AND ts.type = 'test'
         RETURN DISTINCT r.id as requirement_id
         """
         requirements_with_tests_results = await self.graph_service.execute_query(
             requirements_with_tests_query
         )
-        requirements_with_tests = len(requirements_with_tests_results)
+        # Extract requirement IDs from results (results are strings, not dicts)
+        requirements_with_tests_ids = set()
+        for result in requirements_with_tests_results:
+            if isinstance(result, str):
+                requirements_with_tests_ids.add(result)
+            elif isinstance(result, dict):
+                requirements_with_tests_ids.add(result.get('requirement_id'))
+        requirements_with_tests = len(requirements_with_tests_ids)
 
         # Get requirements with passing test runs
         requirements_with_passing_tests_query = """
-        MATCH (r:WorkItem)-[:TESTED_BY]->(ts:WorkItem)-[:HAS_RUN]->(tr:WorkItem)
+        MATCH (r:Requirement)-[:TESTED_BY]->(ts:Test)-[:HAS_RUN]->(tr:TestRun)
         WHERE r.type = 'requirement'
-          AND ts.type = 'test_spec'
+          AND ts.type = 'test'
           AND tr.type = 'test_run'
           AND tr.overall_status = 'pass'
         RETURN DISTINCT r.id as requirement_id
@@ -475,7 +482,14 @@ class TestService:
         requirements_with_passing_tests_results = await self.graph_service.execute_query(
             requirements_with_passing_tests_query
         )
-        requirements_with_passing_tests = len(requirements_with_passing_tests_results)
+        # Extract requirement IDs from results (results are strings, not dicts)
+        requirements_with_passing_tests_ids = set()
+        for result in requirements_with_passing_tests_results:
+            if isinstance(result, str):
+                requirements_with_passing_tests_ids.add(result)
+            elif isinstance(result, dict):
+                requirements_with_passing_tests_ids.add(result.get('requirement_id'))
+        requirements_with_passing_tests = len(requirements_with_passing_tests_ids)
 
         # Calculate coverage percentage
         coverage_percentage = (requirements_with_passing_tests / total_requirements) * 100
@@ -483,20 +497,18 @@ class TestService:
         # Generate detailed coverage per requirement
         detailed_coverage = []
         for req_result in requirements:
-            req = req_result['r']
+            # Extract properties from the AGE node structure
+            if isinstance(req_result, dict) and 'properties' in req_result:
+                req = req_result['properties']
+            else:
+                req = req_result
             req_id = req['id']
 
             # Check if requirement has tests
-            has_tests = any(
-                result['requirement_id'] == req_id
-                for result in requirements_with_tests_results
-            )
+            has_tests = req_id in requirements_with_tests_ids
 
             # Check if requirement has passing tests
-            has_passing_tests = any(
-                result['requirement_id'] == req_id
-                for result in requirements_with_passing_tests_results
-            )
+            has_passing_tests = req_id in requirements_with_passing_tests_ids
 
             detailed_coverage.append({
                 'requirement_id': req_id,
@@ -535,35 +547,73 @@ class TestService:
         """
         # Build query based on filters
         if linked_requirement_id:
-            query = """
-            MATCH (r:WorkItem {id: $req_id})-[:TESTED_BY]->(ts:WorkItem)
-            WHERE r.type = 'requirement' AND ts.type = 'test_spec'
+            query = f"""
+            MATCH (r:Requirement {{id: '{str(linked_requirement_id)}'}})-[:TESTED_BY]->(ts:Test)
+            WHERE r.type = 'requirement' AND ts.type = 'test'
             """
-            params = {'req_id': str(linked_requirement_id)}
         else:
             query = """
-            MATCH (ts:WorkItem)
-            WHERE ts.type = 'test_spec'
+            MATCH (ts:Test)
+            WHERE ts.type = 'test'
             """
-            params = {}
 
         if test_type:
-            query += " AND ts.test_type = $test_type"
-            params['test_type'] = test_type
+            query += f" AND ts.test_type = '{test_type}'"
 
-        query += """
+        query += f"""
         RETURN ts
         ORDER BY ts.created_at DESC
-        SKIP $offset
-        LIMIT $limit
+        SKIP {offset}
+        LIMIT {limit}
         """
-        params.update({'offset': offset, 'limit': limit})
 
-        results = await self.graph_service.execute_query(query, params)
+        results = await self.graph_service.execute_query(query)
+        
+        print(f"[TestService] get_test_specs query: {query}")
+        print(f"[TestService] get_test_specs results count: {len(results)}")
+        if results:
+            print(f"[TestService] First result: {results[0]}")
 
         test_specs = []
         for result in results:
-            test_spec_data = result['ts']
+            # Extract properties from the AGE node structure
+            # Result format: {'id': <internal_id>, 'label': 'Test', 'properties': {...}}
+            if isinstance(result, dict) and 'properties' in result:
+                test_spec_data = result['properties']
+            else:
+                test_spec_data = result
+
+            # Transform test_steps from string to list if needed
+            if isinstance(test_spec_data.get('test_steps'), str):
+                # Parse string test steps into list format
+                steps_text = test_spec_data['test_steps']
+                steps = []
+                for i, line in enumerate(steps_text.strip().split('\n'), 1):
+                    if line.strip():
+                        steps.append({
+                            'step_number': i,
+                            'description': line.strip(),
+                            'expected_result': test_spec_data.get('expected_result', 'See description'),
+                            'status': 'not_run'
+                        })
+                test_spec_data['test_steps'] = steps
+
+            # Map test_type if it's not in the allowed values
+            allowed_test_types = ['unit', 'integration', 'system', 'acceptance', 'regression']
+            if test_spec_data.get('test_type') not in allowed_test_types:
+                # Map common test types to allowed values
+                test_type_mapping = {
+                    'security': 'system',
+                    'performance': 'system',
+                    'usability': 'acceptance',
+                    'functional': 'integration'
+                }
+                original_type = test_spec_data.get('test_type', 'integration')
+                test_spec_data['test_type'] = test_type_mapping.get(original_type, 'integration')
+
+            # Ensure linked_requirements is a list of UUIDs
+            if 'linked_requirements' not in test_spec_data:
+                test_spec_data['linked_requirements'] = []
 
             # Check for valid signatures
             signatures = await self.signature_service.get_workitem_signatures(

@@ -27,7 +27,7 @@ export interface TestRun {
   step_results: TestStepResult[];
   failure_description?: string;
   execution_notes?: string;
-  linked_defects: string[];
+  defect_workitem_ids: string[];
 }
 
 export interface TestStepResult extends TestStep {
@@ -191,7 +191,7 @@ export function TestRunForm({
       step_results: stepResults,
       execution_notes: executionNotes.trim() || undefined,
       failure_description: hasFailedSteps ? failureDescription.trim() : undefined,
-      linked_defects: linkedDefects,
+      defect_workitem_ids: linkedDefects,
     };
 
     await onSubmit(testRun);

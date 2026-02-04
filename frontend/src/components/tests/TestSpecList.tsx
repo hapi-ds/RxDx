@@ -6,30 +6,9 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '../common';
+import type { TestSpec, TestStep } from '../../services/testService';
 
-export interface TestSpec {
-  id: string;
-  title: string;
-  description?: string;
-  test_type: 'unit' | 'integration' | 'system' | 'acceptance' | 'regression';
-  priority?: number;
-  status: 'draft' | 'active' | 'completed' | 'archived';
-  version: string;
-  created_at: string;
-  updated_at: string;
-  is_signed: boolean;
-  linked_requirements: string[];
-  test_steps: TestStep[];
-}
-
-export interface TestStep {
-  step_number: number;
-  description: string;
-  expected_result: string;
-  status: 'pass' | 'fail' | 'blocked' | 'skipped' | 'not_run';
-  actual_result?: string;
-  notes?: string;
-}
+export type { TestSpec, TestStep };
 
 export interface TestSpecListProps {
   testSpecs: TestSpec[];
@@ -37,6 +16,7 @@ export interface TestSpecListProps {
   onViewRuns: (testId: string) => void;
   isLoading?: boolean;
   error?: string | null;
+  onRetry?: () => void;
 }
 
 type SortField = 'title' | 'test_type' | 'priority' | 'status' | 'created_at' | 'updated_at';
@@ -48,6 +28,7 @@ export function TestSpecList({
   onViewRuns,
   isLoading = false,
   error = null,
+  onRetry,
 }: TestSpecListProps): React.ReactElement {
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,8 +96,8 @@ export function TestSpecList({
           bValue = b.priority ?? 999;
           break;
         case 'status':
-          aValue = a.status;
-          bValue = b.status;
+          aValue = a.status ?? 'zzz';
+          bValue = b.status ?? 'zzz';
           break;
         case 'created_at':
           aValue = new Date(a.created_at).getTime();
@@ -364,7 +345,15 @@ export function TestSpecList({
       {/* Error Display */}
       {error && (
         <div className="error-banner" role="alert">
-          {error}
+          <div className="error-content">
+            <span className="error-icon">⚠️</span>
+            <span className="error-message">{error}</span>
+          </div>
+          {onRetry && (
+            <Button variant="secondary" size="sm" onClick={onRetry}>
+              Retry
+            </Button>
+          )}
         </div>
       )}
 
@@ -420,12 +409,14 @@ export function TestSpecList({
                 >
                   {test.test_type}
                 </span>
-                <span
-                  className="status-badge"
-                  style={{ backgroundColor: getStatusColor(test.status) }}
-                >
-                  {test.status}
-                </span>
+                {test.status && (
+                  <span
+                    className="status-badge"
+                    style={{ backgroundColor: getStatusColor(test.status) }}
+                  >
+                    {test.status}
+                  </span>
+                )}
               </div>
 
               <h3 className="test-card-title">{test.title}</h3>
@@ -626,11 +617,30 @@ export function TestSpecList({
 
         /* Error Banner */
         .error-banner {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
           padding: 1rem;
           background: #fee2e2;
           border: 1px solid #fecaca;
           border-radius: 6px;
           color: #dc2626;
+        }
+
+        .error-content {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .error-icon {
+          font-size: 1.25rem;
+        }
+
+        .error-message {
+          font-size: 0.875rem;
+          font-weight: 500;
         }
 
         /* Loading State */
@@ -829,23 +839,119 @@ export function TestSpecList({
           font-weight: 600;
         }
 
-        /* Responsive Design */
+        /* Responsive Design - Mobile Screens (< 768px) */
         @media (max-width: 768px) {
+          .filters-section {
+            padding: 1rem;
+          }
+
           .filters-row {
             flex-direction: column;
+            gap: 0.75rem;
           }
 
           .filter-group {
+            width: 100%;
+            min-width: 100%;
+          }
+
+          .filter-select {
             width: 100%;
           }
 
           .sort-controls {
             flex-direction: column;
             align-items: flex-start;
+            padding: 1rem;
+            gap: 0.75rem;
           }
 
+          .sort-buttons {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .sort-button {
+            flex: 1 1 auto;
+            min-width: fit-content;
+          }
+
+          .results-info {
+            padding: 0.5rem 1rem;
+          }
+
+          .results-count {
+            font-size: 0.8125rem;
+          }
+
+          /* Test cards display in single column on mobile */
           .test-grid {
             grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+
+          .test-card {
+            padding: 1rem;
+          }
+
+          .test-card-title {
+            font-size: 0.9375rem;
+          }
+
+          .test-card-description {
+            font-size: 0.8125rem;
+          }
+
+          .test-card-meta {
+            flex-direction: column;
+            gap: 0.5rem;
+          }
+
+          .test-card-footer {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+          }
+
+          .footer-left {
+            width: 100%;
+            justify-content: space-between;
+          }
+
+          .test-card-footer button {
+            width: 100%;
+          }
+
+          .empty-state {
+            padding: 3rem 1.5rem;
+          }
+
+          .empty-icon {
+            font-size: 3rem;
+          }
+
+          .empty-title {
+            font-size: 1.125rem;
+          }
+
+          .search-input {
+            font-size: 1rem; /* Prevent zoom on iOS */
+          }
+        }
+
+        /* Tablet adjustments (768px - 1024px) */
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .test-grid {
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          }
+
+          .filters-row {
+            gap: 0.75rem;
+          }
+
+          .filter-group {
+            min-width: 140px;
+            flex: 1 1 calc(50% - 0.75rem);
           }
         }
       `}</style>

@@ -520,7 +520,7 @@ describe('TestRunForm', () => {
       expect(submittedData.environment).toBe('qa');
       expect(submittedData.overall_status).toBe('pass');
       expect(submittedData.step_results).toHaveLength(3);
-      expect(submittedData.linked_defects).toEqual([]);
+      expect(submittedData.defect_workitem_ids).toEqual([]);
     });
 
     it('should submit test run with failure information', async () => {
@@ -592,7 +592,7 @@ describe('TestRunForm', () => {
       });
 
       const submittedData = mockOnSubmit.mock.calls[0][0];
-      expect(submittedData.linked_defects).toContain('defect-456');
+      expect(submittedData.defect_workitem_ids).toContain('defect-456');
     });
 
     it('should include execution notes in submission', async () => {

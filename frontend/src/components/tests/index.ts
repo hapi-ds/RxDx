@@ -14,3 +14,12 @@ export type { TestResultsDisplayProps, TestRunSignature } from './TestResultsDis
 
 export { TestCoverageChart } from './TestCoverageChart';
 export type { TestCoverageData, TestCoverageChartProps } from './TestCoverageChart';
+
+export { TestSpecForm } from './TestSpecForm';
+export type { TestSpecFormProps } from './TestSpecForm';
+
+export { TestSpecDetail } from './TestSpecDetail';
+export type { TestSpecDetailProps } from './TestSpecDetail';
+
+export { TestRunsList } from './TestRunsList';
+export type { TestRunsListProps } from './TestRunsList';

@@ -62,3 +62,21 @@ export type {
   ScheduleFilters,
   ScheduleStatistics,
 } from './scheduleService';
+
+export * as testService from './testService';
+export type {
+  TestSpec,
+  TestSpecCreate,
+  TestSpecUpdate,
+  TestRun,
+  TestRunCreate,
+  TestRunUpdate,
+  TestCoverage,
+  TestSpecListResponse,
+  TestRunListResponse,
+  TestFilters,
+  TestType,
+  ExecutionStatus,
+  StepExecutionStatus,
+  TestStep,
+} from './testService';

@@ -9,25 +9,25 @@ settings:
 
 users:
   - id: sw-admin
-    email: admin@example.com
+    email: admin@rxdx.example.com
     full_name: System Administrator
     role: admin
     is_active: true
 
   - id: sw-scrum-master
-    email: scrum.master@example.com
+    email: scrum.master@rxdx.example.com
     full_name: Scrum Master
     role: project_manager
     is_active: true
 
   - id: sw-dev-lead
-    email: dev.lead@example.com
+    email: dev.lead@rxdx.example.com
     full_name: Development Lead
     role: user
     is_active: true
 
   - id: sw-qa-lead
-    email: qa.lead@example.com
+    email: qa.lead@rxdx.example.com
     full_name: QA Lead
     role: validator
     is_active: true
@@ -171,7 +171,7 @@ workitems:
     - id: sw-risk-001
       title: API Security Vulnerability
       description: Risk of security vulnerabilities in API endpoints (SQL injection, XSS, CSRF)
-      status: active
+      status: assessed
       priority: 5
       severity: 8
       occurrence: 3
@@ -183,7 +183,7 @@ workitems:
     - id: sw-risk-002
       title: Performance Degradation
       description: Risk of poor performance under load affecting user experience
-      status: active
+      status: assessed
       priority: 3
       severity: 5
       occurrence: 4

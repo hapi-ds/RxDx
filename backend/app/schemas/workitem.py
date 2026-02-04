@@ -28,7 +28,13 @@ class WorkItemBase(BaseModel):
     @classmethod
     def validate_status(cls, v: str) -> str:
         """Validate status is one of allowed values"""
-        allowed_statuses = {"draft", "active", "completed", "archived", "rejected"}
+        # Combined statuses from all workitem types:
+        # - Requirements/Tasks/Tests/Documents: draft, active, completed, archived, rejected
+        # - Risks: draft, identified, assessed, mitigated, accepted, closed, archived
+        allowed_statuses = {
+            "draft", "active", "completed", "archived", "rejected",
+            "identified", "assessed", "mitigated", "accepted", "closed"
+        }
         if v.lower() not in allowed_statuses:
             raise ValueError(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
         return v.lower()
@@ -87,9 +93,13 @@ class WorkItemUpdate(BaseModel):
         """Validate status if provided"""
         if v is None:
             return v
-        allowed_statuses = {"draft", "active", "completed", "archived"}
+        # Combined statuses from all workitem types
+        allowed_statuses = {
+            "draft", "active", "completed", "archived", "rejected",
+            "identified", "assessed", "mitigated", "accepted", "closed"
+        }
         if v.lower() not in allowed_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(allowed_statuses)}")
+            raise ValueError(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
         return v.lower()
 
     @field_validator("title")

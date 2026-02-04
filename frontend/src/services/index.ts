@@ -34,3 +34,31 @@ export type {
   TraceabilityMatrixItem,
   RiskChain,
 } from './graphService';
+
+export * as riskService from './riskService';
+export type {
+  RiskNode,
+  RiskNodeCreate,
+  RiskNodeUpdate,
+  RiskStatus,
+  MitigationAction,
+  MitigationStatus,
+  FailureNode,
+  FailureType,
+  RiskChain as RiskFailureChain,
+  RPNAnalysis,
+  RiskListResponse,
+  MitigationListResponse,
+  RiskFilters,
+} from './riskService';
+
+export { scheduleService } from './scheduleService';
+export type {
+  Task,
+  Resource,
+  ScheduleConstraints,
+  ScheduledTask,
+  ScheduleResult,
+  ScheduleFilters,
+  ScheduleStatistics,
+} from './scheduleService';

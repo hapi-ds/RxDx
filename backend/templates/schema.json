@@ -348,7 +348,7 @@
               "status": {
                 "type": "string",
                 "description": "Risk status",
-                "enum": ["draft", "active", "completed", "archived"],
+                "enum": ["draft", "identified", "assessed", "mitigated", "accepted", "closed", "archived"],
                 "default": "draft"
               },
               "priority": {

@@ -29,16 +29,28 @@ const statusOptions = [
   { value: '', label: 'All Statuses' },
   { value: 'draft', label: 'Draft' },
   { value: 'active', label: 'Active' },
+  { value: 'identified', label: 'Identified' },
+  { value: 'assessed', label: 'Assessed' },
+  { value: 'mitigated', label: 'Mitigated' },
+  { value: 'accepted', label: 'Accepted' },
+  { value: 'closed', label: 'Closed' },
   { value: 'completed', label: 'Completed' },
   { value: 'archived', label: 'Archived' },
+  { value: 'rejected', label: 'Rejected' },
 ];
 
 const getStatusBadgeClass = (status: WorkItemStatus): string => {
-  const classes: Record<WorkItemStatus, string> = {
+  const classes: Record<string, string> = {
     draft: 'badge-gray',
     active: 'badge-blue',
+    identified: 'badge-yellow',
+    assessed: 'badge-orange',
+    mitigated: 'badge-green',
+    accepted: 'badge-blue',
+    closed: 'badge-gray',
     completed: 'badge-green',
     archived: 'badge-yellow',
+    rejected: 'badge-red',
   };
   return classes[status] || 'badge-gray';
 };

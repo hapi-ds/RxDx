@@ -430,7 +430,7 @@ class TemplateRisk(BaseModel):
     )
     status: str = Field(
         default="draft",
-        description="Risk status (draft, active, completed, archived)"
+        description="Risk status (draft, identified, assessed, mitigated, accepted, closed, archived)"
     )
     priority: int = Field(
         ...,
@@ -474,7 +474,7 @@ class TemplateRisk(BaseModel):
     @classmethod
     def validate_status(cls, v: str) -> str:
         """Validate status is one of allowed values."""
-        allowed_statuses = {"draft", "active", "completed", "archived"}
+        allowed_statuses = {"draft", "identified", "assessed", "mitigated", "accepted", "closed", "archived"}
         if v.lower() not in allowed_statuses:
             raise ValueError(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
         return v.lower()

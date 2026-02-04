@@ -562,31 +562,40 @@
 
 ### 23.1 Risk Components
 **References:** Requirement 10 (Risk Management with FMEA)
-- [ ] 23.1.1 Create Risks page
-- [ ] 23.1.2 Create RiskCard component with RPN display
-- [ ] 23.1.3 Create FailureChainVisualization component
-- [ ] 23.1.4 Create MitigationTracker component
-- [ ] 23.1.5 Implement FMEA matrix view
-- [ ] 23.1.6 Write unit tests for risk components
+- [x] 23.1.1 Create Risks page
+- [x] 23.1.2 Create RiskCard component with RPN display
+- [x] 23.1.3 Create FailureChainVisualization component
+- [x] 23.1.4 Create MitigationTracker component
+- [x] 23.1.5 Implement FMEA matrix view
+- [x] 23.1.6 Write unit tests for risk components
 
 ## Phase 24: Frontend - Project Scheduling UI
 
 ### 24.1 Schedule Components
 **References:** Requirement 7 (Offline Project Scheduling)
-- [ ] 24.1.1 Create Schedule page
-- [ ] 24.1.2 Create GanttChart component
-- [ ] 24.1.3 Create TaskDependencyEditor component
-- [ ] 24.1.4 Create ResourceAllocation component
-- [ ] 24.1.5 Implement schedule conflict display
-- [ ] 24.1.6 Write unit tests for schedule components
+- [x] 24.1.1 Create Schedule page
+- [x] 24.1.2 Create GanttChart component
+- [x] 24.1.3 Create TaskDependencyEditor component
+- [x] 24.1.4 Create ResourceAllocation component
+- [x] 24.1.5 Implement schedule conflict display
+- [x] 24.1.6 Write unit tests for schedule components
 
 ### 24.2 Project Management Views
 **References:** Requirement 11 (Project Management Workflows)
-- [ ] 24.2.1 Create KanbanBoard component
-- [ ] 24.2.2 Create SprintPlanning component
-- [ ] 24.2.3 Create BurndownChart component
-- [ ] 24.2.4 Create VelocityChart component
-- [ ] 24.2.5 Write unit tests for project management components
+- [x] 24.2.1 Create KanbanBoard component
+- [x] 24.2.2 Create SprintPlanning component
+- [x] 24.2.3 Create BurndownChart component
+- [x] 24.2.4 Create VelocityChart component
+- [x] 24.2.5 Write unit tests for project management components
+
+### 24.3 Connect Frontend to Backend Data
+**References:** Requirement 7 (Offline Project Scheduling), Requirement 10 (Risk Management with FMEA)
+- [x] 24.3.1 Fix scheduleService to use /workitems?type=task endpoint instead of /schedule/tasks
+- [x] 24.3.2 Implement statistics calculation in scheduleService from task data
+- [x] 24.3.3 Verify riskService connects to /risks/ endpoint correctly
+- [x] 24.3.4 Test Schedule page displays tasks from seeded medical-device template
+- [x] 24.3.5 Test Risks page displays risks from seeded medical-device template
+- [x] 24.3.6 Verify pagination works correctly for both pages
 
 ## Phase 25: Frontend - Document Generation UI
 

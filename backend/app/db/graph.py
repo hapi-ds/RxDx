@@ -427,7 +427,11 @@ class GraphService:
         LIMIT {limit}
         """
 
+        print(f"[GraphService] Executing search_workitems query: {query}")
         results = await self.execute_query(query)
+        print(f"[GraphService] Got {len(results)} results from execute_query")
+        if results:
+            print(f"[GraphService] First result: {results[0]}")
 
         # Extract WorkItem data from results
         workitems = []
@@ -437,6 +441,7 @@ class GraphService:
             else:
                 workitems.append(result)
 
+        print(f"[GraphService] Returning {len(workitems)} workitems")
         return workitems
 
     async def get_traceability_matrix(

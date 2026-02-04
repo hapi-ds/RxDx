@@ -9,7 +9,7 @@ settings:
 
 users:
   - id: min-admin
-    email: admin@example.com
+    email: admin@rxdx.example.com
     full_name: Administrator
     role: admin
     is_active: true

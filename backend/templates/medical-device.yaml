@@ -156,7 +156,7 @@ workitems:
     - id: md-risk-001
       title: Patient Data Breach Risk
       description: Risk of unauthorized access to patient health information
-      status: active
+      status: assessed
       priority: 5
       severity: 10
       occurrence: 2
@@ -168,7 +168,7 @@ workitems:
     - id: md-risk-002
       title: Software Malfunction Risk
       description: Risk of software defects causing incorrect medical device operation
-      status: active
+      status: assessed
       priority: 5
       severity: 9
       occurrence: 3
@@ -180,7 +180,7 @@ workitems:
     - id: md-risk-003
       title: Regulatory Non-Compliance Risk
       description: Risk of failing to meet FDA or international regulatory requirements
-      status: active
+      status: identified
       priority: 4
       severity: 8
       occurrence: 2

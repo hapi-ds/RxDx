@@ -344,11 +344,11 @@ $$) AS (t agtype);
 
 -- Create sample Risks
 SELECT * FROM cypher('rxdx_graph', $$
-    CREATE (risk1:Risk {
+    CREATE (risk1:WorkItem {
         id: '40000000-0000-0000-0000-000000000001',
         title: 'Unauthorized Access Risk',
         description: 'Risk of unauthorized users gaining access to sensitive data',
-        status: 'active',
+        status: 'assessed',
         priority: 5,
         version: '1.0',
         type: 'risk',
@@ -360,17 +360,18 @@ SELECT * FROM cypher('rxdx_graph', $$
         risk_owner: '00000000-0000-0000-0000-000000000001',
         created_by: '00000000-0000-0000-0000-000000000002',
         created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
+        updated_at: '2026-01-01T00:00:00Z',
+        is_signed: false
     })
     RETURN risk1
 $$) AS (r agtype);
 
 SELECT * FROM cypher('rxdx_graph', $$
-    CREATE (risk2:Risk {
+    CREATE (risk2:WorkItem {
         id: '40000000-0000-0000-0000-000000000002',
         title: 'Data Integrity Risk',
         description: 'Risk of data corruption or unauthorized modification',
-        status: 'active',
+        status: 'assessed',
         priority: 4,
         version: '1.0',
         type: 'risk',
@@ -382,7 +383,8 @@ SELECT * FROM cypher('rxdx_graph', $$
         risk_owner: '00000000-0000-0000-0000-000000000001',
         created_by: '00000000-0000-0000-0000-000000000002',
         created_at: '2026-01-01T00:00:00Z',
-        updated_at: '2026-01-01T00:00:00Z'
+        updated_at: '2026-01-01T00:00:00Z',
+        is_signed: false
     })
     RETURN risk2
 $$) AS (r agtype);
@@ -435,21 +437,21 @@ $$) AS (r agtype, t agtype);
 -- Requirements -> Risks (MITIGATES)
 SELECT * FROM cypher('rxdx_graph', $$
     MATCH (r:Requirement {id: '10000000-0000-0000-0000-000000000001'}),
-          (risk:Risk {id: '40000000-0000-0000-0000-000000000001'})
+          (risk:WorkItem {id: '40000000-0000-0000-0000-000000000001'})
     CREATE (r)-[:MITIGATES {created_at: '2026-01-01T00:00:00Z'}]->(risk)
     RETURN r, risk
 $$) AS (r agtype, risk agtype);
 
 SELECT * FROM cypher('rxdx_graph', $$
     MATCH (r:Requirement {id: '10000000-0000-0000-0000-000000000002'}),
-          (risk:Risk {id: '40000000-0000-0000-0000-000000000001'})
+          (risk:WorkItem {id: '40000000-0000-0000-0000-000000000001'})
     CREATE (r)-[:MITIGATES {created_at: '2026-01-01T00:00:00Z'}]->(risk)
     RETURN r, risk
 $$) AS (r agtype, risk agtype);
 
 SELECT * FROM cypher('rxdx_graph', $$
     MATCH (r:Requirement {id: '10000000-0000-0000-0000-000000000003'}),
-          (risk:Risk {id: '40000000-0000-0000-0000-000000000002'})
+          (risk:WorkItem {id: '40000000-0000-0000-0000-000000000002'})
     CREATE (r)-[:MITIGATES {created_at: '2026-01-01T00:00:00Z'}]->(risk)
     RETURN r, risk
 $$) AS (r agtype, risk agtype);

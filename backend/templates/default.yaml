@@ -175,7 +175,7 @@ workitems:
     - id: "40000000-0000-0000-0000-000000000001"
       title: Unauthorized Access Risk
       description: Risk of unauthorized users gaining access to sensitive data
-      status: active
+      status: assessed
       priority: 5
       severity: 9
       occurrence: 3
@@ -187,7 +187,7 @@ workitems:
     - id: "40000000-0000-0000-0000-000000000002"
       title: Data Integrity Risk
       description: Risk of data corruption or unauthorized modification
-      status: active
+      status: assessed
       priority: 4
       severity: 8
       occurrence: 2

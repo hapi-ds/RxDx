@@ -219,18 +219,18 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 6.1 Update error message display in SchedulePage
+- [x] 6.1 Update error message display in SchedulePage
   - Show full error message from service layer
   - Include error icon or styling
   - Ensure error is accessible (role="alert")
 
-- [ ] 6.2 Enhance retry functionality
+- [x] 6.2 Enhance retry functionality
   - Clear error state before retry
   - Show loading indicator during retry
   - Handle retry failures gracefully
   - Log retry attempts to console
 
-- [ ] 6.3 Add error state for statistics
+- [x] 6.3 Add error state for statistics
   - Handle statistics loading failures separately
   - Don't block task list if statistics fail
   - Show partial data when possible

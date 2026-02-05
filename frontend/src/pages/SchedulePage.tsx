@@ -25,6 +25,7 @@ export function SchedulePage(): React.ReactElement {
   const [isLoading, setIsLoading] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statisticsError, setStatisticsError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,21 +53,31 @@ export function SchedulePage(): React.ReactElement {
       setTotalTasks(response.total || 0);
       setTotalPages(response.pages || 0);
     } catch (err) {
-      setError('Failed to load tasks');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load tasks';
+      setError(errorMessage);
       setTasks([]);
-      console.error(err);
+      console.error('Error loading tasks:', err);
     } finally {
       setIsLoading(false);
     }
   }, [filters]);
 
+  const handleRetry = useCallback(async () => {
+    console.log('Retrying task load...');
+    setError(null);
+    await loadTasks();
+  }, [loadTasks]);
+
   const loadStatistics = useCallback(async () => {
+    setStatisticsError(null);
     try {
       const stats = await scheduleService.getStatistics();
       setStatistics(stats);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load statistics';
+      setStatisticsError(errorMessage);
       console.error('Failed to load statistics:', err);
-      setStatistics(null);
+      // Don't clear statistics - keep showing previous data if available
     }
   }, []);
 
@@ -205,43 +216,51 @@ export function SchedulePage(): React.ReactElement {
       </div>
 
       {/* Statistics Dashboard */}
-      {viewMode === 'list' && statistics && (
+      {viewMode === 'list' && (
         <div className="statistics-dashboard">
           <h2 className="dashboard-title">Schedule Overview</h2>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-label">Total Tasks</div>
-              <div className="stat-value">{statistics.total_tasks ?? 0}</div>
+          {statisticsError && (
+            <div className="statistics-error" role="alert">
+              <span className="error-icon" aria-hidden="true">⚠️</span>
+              <span className="error-text">{statisticsError}</span>
             </div>
-            <div className="stat-card">
-              <div className="stat-label">Completed</div>
-              <div className="stat-value" style={{ color: '#10b981' }}>
-                {statistics.completed_tasks ?? 0}
+          )}
+          {statistics && (
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-label">Total Tasks</div>
+                <div className="stat-value">{statistics.total_tasks ?? 0}</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Completed</div>
+                <div className="stat-value" style={{ color: '#10b981' }}>
+                  {statistics.completed_tasks ?? 0}
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">In Progress</div>
+                <div className="stat-value" style={{ color: '#3b82f6' }}>
+                  {statistics.in_progress_tasks ?? 0}
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Blocked</div>
+                <div className="stat-value" style={{ color: '#ef4444' }}>
+                  {statistics.blocked_tasks ?? 0}
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Total Hours</div>
+                <div className="stat-value">{statistics.total_estimated_hours ?? 0}h</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Completion</div>
+                <div className="stat-value">
+                  {(statistics.completion_percentage ?? 0).toFixed(1)}%
+                </div>
               </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-label">In Progress</div>
-              <div className="stat-value" style={{ color: '#3b82f6' }}>
-                {statistics.in_progress_tasks ?? 0}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Blocked</div>
-              <div className="stat-value" style={{ color: '#ef4444' }}>
-                {statistics.blocked_tasks ?? 0}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Total Hours</div>
-              <div className="stat-value">{statistics.total_estimated_hours ?? 0}h</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Completion</div>
-              <div className="stat-value">
-                {(statistics.completion_percentage ?? 0).toFixed(1)}%
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -324,10 +343,13 @@ export function SchedulePage(): React.ReactElement {
 
               {error && (
                 <div className="error-state" role="alert">
-                  <p>{error}</p>
-                  <Button variant="secondary" onClick={loadTasks}>
-                    Retry
-                  </Button>
+                  <div className="error-icon" aria-hidden="true">⚠️</div>
+                  <div className="error-content">
+                    <p className="error-message">{error}</p>
+                    <Button variant="secondary" onClick={handleRetry}>
+                      Retry
+                    </Button>
+                  </div>
                 </div>
               )}
 

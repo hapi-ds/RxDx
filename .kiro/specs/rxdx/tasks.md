@@ -601,69 +601,69 @@
 
 ### 25.1 Document Components
 **References:** Requirement 8 (Document Generation)
-- [ ] 25.1.1 Create Documents page
-- [ ] 25.1.2 Create DocumentGenerator component with template selection
-- [ ] 25.1.3 Create DocumentPreview component
-- [ ] 25.1.4 Create DocumentHistory component
-- [ ] 25.1.5 Implement document download functionality
-- [ ] 25.1.6 Write unit tests for document components
+- [x] 25.1.1 Create Documents page
+- [x] 25.1.2 Create DocumentGenerator component with template selection
+- [x] 25.1.3 Create DocumentPreview component
+- [x] 25.1.4 Create DocumentHistory component
+- [x] 25.1.5 Implement document download functionality
+- [x] 25.1.6 Write unit tests for document components
 
 ## Phase 25.5: Frontend - Template Management UI
 
 ### 25.5.1 Template Store and Services
 **References:** Requirement 18 (Template Management UI)
-- [ ] 25.5.1.1 Create templateStore with Zustand for state management
-- [ ] 25.5.1.2 Implement loadTemplates action to fetch template list
-- [ ] 25.5.1.3 Implement selectTemplate action to fetch template details
-- [ ] 25.5.1.4 Implement validateTemplate action to validate templates
-- [ ] 25.5.1.5 Implement applyTemplate action with dry-run support
-- [ ] 25.5.1.6 Write unit tests for template store
+- [x] 25.5.1.1 Create templateStore with Zustand for state management
+- [x] 25.5.1.2 Implement loadTemplates action to fetch template list
+- [x] 25.5.1.3 Implement selectTemplate action to fetch template details
+- [x] 25.5.1.4 Implement validateTemplate action to validate templates
+- [x] 25.5.1.5 Implement applyTemplate action with dry-run support
+- [x] 25.5.1.6 Write unit tests for template store
 
 ### 25.5.2 Template List Components
 **References:** Requirement 18 (Template Management UI)
-- [ ] 25.5.2.1 Create Templates page component with layout
-- [ ] 25.5.2.2 Create TemplateList component to display available templates
-- [ ] 25.5.2.3 Implement template selection and highlighting
-- [ ] 25.5.2.4 Add refresh button to reload template list
-- [ ] 25.5.2.5 Implement loading and empty states
-- [ ] 25.5.2.6 Write unit tests for template list components
+- [x] 25.5.2.1 Create Templates page component with layout
+- [x] 25.5.2.2 Create TemplateList component to display available templates
+- [x] 25.5.2.3 Implement template selection and highlighting
+- [x] 25.5.2.4 Add refresh button to reload template list
+- [x] 25.5.2.5 Implement loading and empty states
+- [x] 25.5.2.6 Write unit tests for template list components
 
 ### 25.5.3 Template Detail Components
 **References:** Requirement 18 (Template Management UI)
-- [ ] 25.5.3.1 Create TemplateDetail component to display template information
-- [ ] 25.5.3.2 Display template metadata (name, version, author, description)
-- [ ] 25.5.3.3 Create tables for users, workitems, and relationships
-- [ ] 25.5.3.4 Implement validate button with validation results display
-- [ ] 25.5.3.5 Implement dry-run preview button (admin only)
-- [ ] 25.5.3.6 Implement apply button with confirmation dialog (admin only)
-- [ ] 25.5.3.7 Write unit tests for template detail components
+- [x] 25.5.3.1 Create TemplateDetail component to display template information
+- [x] 25.5.3.2 Display template metadata (name, version, author, description)
+- [x] 25.5.3.3 Create tables for users, workitems, and relationships
+- [x] 25.5.3.4 Implement validate button with validation results display
+- [x] 25.5.3.5 Implement dry-run preview button (admin only)
+- [x] 25.5.3.6 Implement apply button with confirmation dialog (admin only)
+- [x] 25.5.3.7 Write unit tests for template detail components
 
 ### 25.5.4 Results Display Components
 **References:** Requirement 18 (Template Management UI)
-- [ ] 25.5.4.1 Create ValidationResults component to display validation status
-- [ ] 25.5.4.2 Display validation errors and warnings with clear formatting
-- [ ] 25.5.4.3 Create ApplicationResults component to display application status
-- [ ] 25.5.4.4 Display created, skipped, and failed entity counts
-- [ ] 25.5.4.5 Create detailed failure table with error messages
-- [ ] 25.5.4.6 Write unit tests for results components
+- [x] 25.5.4.1 Create ValidationResults component to display validation status
+- [x] 25.5.4.2 Display validation errors and warnings with clear formatting
+- [x] 25.5.4.3 Create ApplicationResults component to display application status
+- [x] 25.5.4.4 Display created, skipped, and failed entity counts
+- [x] 25.5.4.5 Create detailed failure table with error messages
+- [x] 25.5.4.6 Write unit tests for results components
 
 ### 25.5.5 Authorization and Error Handling
 **References:** Requirement 18 (Template Management UI)
-- [ ] 25.5.5.1 Implement role-based UI restrictions (admin-only actions)
-- [ ] 25.5.5.2 Display authorization error messages for non-admin users
-- [ ] 25.5.5.3 Implement confirmation dialogs for destructive operations
-- [ ] 25.5.5.4 Add error boundary for template page
-- [ ] 25.5.5.5 Implement loading states for all async operations
-- [ ] 25.5.5.6 Write integration tests for authorization flows
+- [x] 25.5.5.1 Implement role-based UI restrictions (admin-only actions)
+- [x] 25.5.5.2 Display authorization error messages for non-admin users
+- [x] 25.5.5.3 Implement confirmation dialogs for destructive operations
+- [x] 25.5.5.4 Add error boundary for template page
+- [x] 25.5.5.5 Implement loading states for all async operations
+- [x] 25.5.5.6 Write integration tests for authorization flows
 
 ### 25.5.6 Styling and UX
 **References:** Requirement 18 (Template Management UI)
-- [ ] 25.5.6.1 Create CSS styles for template page layout
-- [ ] 25.5.6.2 Style template list with hover and selection states
-- [ ] 25.5.6.3 Style entity tables with proper spacing and borders
-- [ ] 25.5.6.4 Style validation and application results with color coding
-- [ ] 25.5.6.5 Create responsive layout for mobile devices
-- [ ] 25.5.6.6 Ensure accessibility compliance (WCAG 2.1 AA)
+- [x] 25.5.6.1 Create CSS styles for template page layout
+- [x] 25.5.6.2 Style template list with hover and selection states
+- [x] 25.5.6.3 Style entity tables with proper spacing and borders
+- [x] 25.5.6.4 Style validation and application results with color coding
+- [x] 25.5.6.5 Create responsive layout for mobile devices
+- [x] 25.5.6.6 Ensure accessibility compliance (WCAG 2.1 AA)
 
 ## Phase 26: Mobile Time Recording App
 

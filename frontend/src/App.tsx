@@ -12,6 +12,7 @@ import { RisksPage } from './pages/RisksPage';
 import { SchedulePage } from './pages/SchedulePage';
 import { KanbanPage } from './pages/KanbanPage';
 import { DocumentsPage } from './pages/DocumentsPage';
+import { TemplatesPage } from './pages/TemplatesPage';
 import { ProtectedRoute, NavigationHeader, LoadingPage } from './components/common';
 import { useAuthStore } from './stores/authStore';
 
@@ -233,6 +234,18 @@ function App(): React.ReactElement {
               <ProtectedRoute>
                 <PageErrorBoundary>
                   <DocumentsPage />
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/templates"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
+                  <TemplatesPage />
                 </PageErrorBoundary>
               </ProtectedRoute>
             </AppLayout>

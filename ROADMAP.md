@@ -9,3 +9,4 @@
 - Add templates for "real medical device development"
 - Add template for production equipment for medical device manufactoring
 - Enhance visual appearence of nodes and edges
+- PSP Table with depardments as rows and project phases as columns

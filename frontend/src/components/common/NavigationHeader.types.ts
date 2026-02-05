@@ -19,4 +19,5 @@ export const navItems: NavItem[] = [
   { path: '/schedule', label: 'Schedule', icon: '📅' },
   { path: '/kanban', label: 'Kanban', icon: '📊' },
   { path: '/documents', label: 'Documents', icon: '📄' },
+  { path: '/templates', label: 'Templates', icon: '📑' },
 ];

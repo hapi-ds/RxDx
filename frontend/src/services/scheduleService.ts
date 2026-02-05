@@ -168,12 +168,16 @@ export interface PaginatedResponse<T> {
 class ScheduleService {
   /**
    * Get all tasks with optional filters
+   * Implements client-side pagination since backend doesn't return pagination metadata
    */
   async getTasks(filters?: ScheduleFilters): Promise<PaginatedResponse<Task>> {
     const params = new URLSearchParams();
     
     // Tasks are workitems with type="task"
     params.append('type', 'task');
+    
+    // Fetch all tasks with high limit (backend max is 1000)
+    params.append('limit', '1000');
     
     // Map frontend status to backend status for filtering
     if (filters?.status) {
@@ -182,27 +186,31 @@ class ScheduleService {
     if (filters?.assigned_to) {
       params.append('assigned_to', filters.assigned_to);
     }
-    if (filters?.size) {
-      params.append('limit', filters.size.toString());
-    }
-    
-    // Calculate offset from page and size
-    const offset = ((filters?.page || 1) - 1) * (filters?.size || 20);
-    params.append('offset', offset.toString());
 
     const response = await apiClient.get<WorkItemResponse[]>(`/workitems?${params.toString()}`);
     
     // Map backend WorkItemResponse to frontend Task interface
-    const items = response.data.map(mapWorkItemToTask);
+    const allItems = response.data.map(mapWorkItemToTask);
     
-    // Since workitems endpoint doesn't return pagination metadata,
-    // we'll construct it from the response
+    // Apply client-side pagination with validation
+    const size = filters?.size || 20;
+    const totalPages = allItems.length > 0 ? Math.ceil(allItems.length / size) : 1;
+    
+    // Validate and clamp page number
+    let page = filters?.page || 1;
+    page = Math.max(1, Math.min(page, totalPages)); // Ensure 1 <= page <= totalPages
+    
+    const start = (page - 1) * size;
+    const end = start + size;
+    const items = allItems.slice(start, end);
+    
+    // Calculate correct pagination metadata from all items
     return {
       items,
-      total: items.length, // This is approximate - backend doesn't return total count
-      page: filters?.page || 1,
-      size: filters?.size || 20,
-      pages: Math.ceil(items.length / (filters?.size || 20)),
+      total: allItems.length,
+      page,
+      size,
+      pages: totalPages,
     };
   }
 

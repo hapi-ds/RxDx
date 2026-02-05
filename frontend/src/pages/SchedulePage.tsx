@@ -43,6 +43,7 @@ export function SchedulePage(): React.ReactElement {
   useEffect(() => {
     loadTasks();
     loadStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const loadTasks = useCallback(async () => {

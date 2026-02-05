@@ -433,7 +433,7 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 11.1 Verify API connection (Phase 1 from design)
+- [x] 11.1 Verify API connection (Phase 1 from design)
   - Open DevTools Network tab
   - Navigate to Schedule page
   - Verify API call to `/api/v1/workitems?type=task`
@@ -441,7 +441,7 @@ This task list provides a systematic approach to debugging and fixing the Schedu
   - Inspect response body
   - Verify no console errors
 
-- [ ] 11.2 Verify data display (Phase 2 from design)
+- [x] 11.2 Verify data display (Phase 2 from design)
   - Check tasks appear in table
   - Verify task titles are displayed
   - Verify status badges show correct colors
@@ -449,42 +449,42 @@ This task list provides a systematic approach to debugging and fixing the Schedu
   - Verify missing fields show "-"
   - Check at least 3 tasks from medical-device template
 
-- [ ] 11.3 Verify statistics (Phase 3 from design)
+- [x] 11.3 Verify statistics (Phase 3 from design)
   - Check statistics dashboard displays
   - Verify total task count
   - Verify completed/in-progress/blocked counts
   - Verify completion percentage
   - Check statistics update correctly
 
-- [ ] 11.4 Verify pagination (Phase 4 from design)
+- [x] 11.4 Verify pagination (Phase 4 from design)
   - Check pagination controls appear
   - Verify "Previous" disabled on page 1
   - Click "Next" and verify new data loads
   - Verify page number updates
   - Verify "Next" disabled on last page
 
-- [ ] 11.5 Verify filters (Phase 5 from design)
+- [x] 11.5 Verify filters (Phase 5 from design)
   - Select status filter
   - Verify API call includes status parameter
   - Verify filtered results display
   - Clear filter and verify all tasks return
   - Test assigned_to filter
 
-- [ ] 11.6 Verify error handling (Phase 6 from design)
+- [x] 11.6 Verify error handling (Phase 6 from design)
   - Simulate network error (disconnect network)
   - Verify error message displays
   - Verify retry button appears
   - Click retry and verify reload attempt
   - Test with various error scenarios
 
-- [ ] 11.7 Verify loading states (Phase 7 from design)
+- [x] 11.7 Verify loading states (Phase 7 from design)
   - Throttle network to slow 3G
   - Navigate to Schedule page
   - Verify loading indicator appears
   - Wait for data to load
   - Verify loading indicator disappears
 
-- [ ] 11.8 Verify console errors (Phase 8 from design)
+- [x] 11.8 Verify console errors (Phase 8 from design)
   - Open browser console
   - Clear console
   - Navigate to Schedule page

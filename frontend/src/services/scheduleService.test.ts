@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { scheduleService, Task, WorkItemResponse } from './scheduleService';
+import { scheduleService, WorkItemResponse } from './scheduleService';
 import { apiClient } from './api';
 
 // Mock the API client

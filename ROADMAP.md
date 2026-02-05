@@ -1,7 +1,9 @@
-# next and already planned
-see tasks
+# release 0.0.1
+- already planned, see rxdx tasks
 
-# features not planned yet but coming soon
+# release 0.0.2
+
+# Backlog
 - Add comments to versions and display who changed/created it (data model)
 - Update data-model (Nodes for Project, Phase, Department, ....)
 - Add templates for "real medical device development"

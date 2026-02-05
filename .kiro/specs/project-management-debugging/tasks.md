@@ -24,23 +24,23 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 1.1 Create status mapping functions in scheduleService.ts
+- [x] 1.1 Create status mapping functions in scheduleService.ts
   - Add `mapBackendStatus()` function to convert backend status to frontend
   - Add `mapFrontendStatus()` function to convert frontend status to backend
   - Handle all status values: draft→not_started, active→in_progress, completed→completed, archived→completed
   - Handle blocked status (map to active for backend)
 
-- [ ] 1.2 Update getTasks() to use status mapping
+- [x] 1.2 Update getTasks() to use status mapping
   - Apply `mapBackendStatus()` to each task's status field
   - Update status filter to use `mapFrontendStatus()` when sending to API
   - Ensure all returned tasks have correctly mapped status
 
-- [ ] 1.3 Create WorkItemResponse interface
+- [x] 1.3 Create WorkItemResponse interface
   - Define TypeScript interface matching backend WorkItemResponse model
   - Include all fields: id, type, title, description, status, priority, assigned_to, version, created_by, created_at, updated_at, is_signed
   - Include task-specific fields: estimated_hours, start_date, end_date, dependencies, required_resources, resource_demand
 
-- [ ] 1.4 Create mapWorkItemToTask() function
+- [x] 1.4 Create mapWorkItemToTask() function
   - Convert WorkItemResponse to Task interface
   - Apply status mapping
   - Handle null/undefined fields gracefully
@@ -62,20 +62,20 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 2.1 Update getTask() method
+- [x] 2.1 Update getTask() method
   - Change endpoint from `/schedule/tasks/${taskId}` to `/workitems/${taskId}`
   - Apply `mapWorkItemToTask()` to response
   - Add proper error handling
   - Add console.error logging for failures
 
-- [ ] 2.2 Update createTask() method
+- [x] 2.2 Update createTask() method
   - Change endpoint from `/schedule/tasks` to `/workitems`
   - Create WorkItemCreate payload with type='task'
   - Apply `mapFrontendStatus()` to status field
   - Apply `mapWorkItemToTask()` to response
   - Add proper error handling
 
-- [ ] 2.3 Update updateTask() method
+- [x] 2.3 Update updateTask() method
   - Change endpoint from `/schedule/tasks/${taskId}` to `/workitems/${taskId}`
   - Create WorkItemUpdate payload
   - Add change_description query parameter
@@ -83,12 +83,12 @@ This task list provides a systematic approach to debugging and fixing the Schedu
   - Apply `mapWorkItemToTask()` to response
   - Add proper error handling
 
-- [ ] 2.4 Update deleteTask() method
+- [x] 2.4 Update deleteTask() method
   - Change endpoint from `/schedule/tasks/${taskId}` to `/workitems/${taskId}`
   - Add proper error handling
   - Add console.error logging for failures
 
-- [ ] 2.5 Mark unimplemented methods as coming soon
+- [x] 2.5 Mark unimplemented methods as coming soon
   - Add comments to calculateSchedule() indicating backend not implemented
   - Add comments to getSchedule() indicating backend not implemented
   - Add comments to getGanttData() indicating backend not implemented

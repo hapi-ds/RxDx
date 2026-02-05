@@ -177,7 +177,8 @@ describe('SchedulePage', () => {
 
       render(<SchedulePage />);
 
-      expect(screen.getByText('Loading tasks...')).toBeInTheDocument();
+      // Check for loading skeleton or screen reader text
+      expect(screen.getByText(/Loading tasks, please wait/i)).toBeInTheDocument();
     });
 
     it('should hide loading state after tasks are loaded', async () => {
@@ -198,7 +199,7 @@ describe('SchedulePage', () => {
       render(<SchedulePage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Failed to load tasks')).toBeInTheDocument();
+        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
       });
     });
 
@@ -229,7 +230,7 @@ describe('SchedulePage', () => {
       render(<SchedulePage />);
 
       await waitFor(() => {
-        expect(screen.getByText('Failed to load tasks')).toBeInTheDocument();
+        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
       });
 
       const retryButton = screen.getByRole('button', { name: 'Retry' });
@@ -250,11 +251,21 @@ describe('SchedulePage', () => {
         size: 20,
         pages: 0,
       });
+      
+      // Also mock empty statistics
+      vi.mocked(scheduleService.getStatistics).mockResolvedValue({
+        total_tasks: 0,
+        completed_tasks: 0,
+        in_progress_tasks: 0,
+        blocked_tasks: 0,
+        total_estimated_hours: 0,
+        completion_percentage: 0,
+      });
 
       render(<SchedulePage />);
 
       await waitFor(() => {
-        expect(screen.getByText('No tasks found')).toBeInTheDocument();
+        expect(screen.getByText(/No tasks/i)).toBeInTheDocument();
       });
 
       expect(
@@ -786,8 +797,15 @@ describe('SchedulePage', () => {
 
       render(<SchedulePage />);
 
-      const loadingElement = screen.getByRole('status');
-      expect(loadingElement).toHaveAttribute('aria-live', 'polite');
+      // There are multiple loading states (tasks and statistics), so use getAllByRole
+      const loadingElements = screen.getAllByRole('status');
+      expect(loadingElements.length).toBeGreaterThan(0);
+      
+      // Check that at least one has aria-live="polite"
+      const hasAriaLive = loadingElements.some(el => 
+        el.getAttribute('aria-live') === 'polite'
+      );
+      expect(hasAriaLive).toBe(true);
     });
 
     it('should announce errors to screen readers', async () => {

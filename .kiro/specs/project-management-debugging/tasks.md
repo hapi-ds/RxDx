@@ -391,13 +391,13 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 10.1 Test SchedulePage rendering
+- [x] 10.1 Test SchedulePage rendering
   - Test initial render with loading state
   - Test render with task data
   - Test render with empty data
   - Test render with error state
 
-- [ ] 10.2 Test user interactions
+- [x] 10.2 Test user interactions
   - Test filter changes
   - Test pagination navigation
   - Test task click (navigation to detail)
@@ -405,12 +405,12 @@ This task list provides a systematic approach to debugging and fixing the Schedu
   - Test edit button click
   - Test delete button click and confirmation
 
-- [ ] 10.3 Test statistics dashboard
+- [x] 10.3 Test statistics dashboard
   - Test statistics display with data
   - Test statistics calculation
   - Test statistics with various task statuses
 
-- [ ] 10.4 Test error handling in component
+- [x] 10.4 Test error handling in component
   - Test retry button functionality
   - Test error message display
   - Test error recovery

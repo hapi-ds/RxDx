@@ -147,23 +147,23 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 4.1 Add detailed error messages in getTasks()
+- [x] 4.1 Add detailed error messages in getTasks()
   - Catch axios errors and extract status code
   - Provide specific messages for 400, 401, 403, 404, 500, 503
   - Include error details from backend response
   - Log full error object to console
 
-- [ ] 4.2 Add network error detection
+- [x] 4.2 Add network error detection
   - Check for !error.response to detect network errors
   - Provide user-friendly message: "Network error: Please check your internet connection"
   - Log network errors to console
 
-- [ ] 4.3 Add error handling to all service methods
+- [x] 4.3 Add error handling to all service methods
   - Apply consistent error handling pattern to getTask(), createTask(), updateTask(), deleteTask()
   - Include method name in error logs
   - Preserve error stack traces
 
-- [ ] 4.4 Add data validation in mapWorkItemToTask()
+- [x] 4.4 Add data validation in mapWorkItemToTask()
   - Validate required fields (id, title, estimated_hours)
   - Throw descriptive errors for invalid data
   - Log validation errors to console
@@ -186,17 +186,17 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 5.1 Add type guards for WorkItemResponse
+- [-] 5.1 Add type guards for WorkItemResponse
   - Create isWorkItemResponse() type guard function
   - Validate response structure before mapping
   - Use in getTasks() and other methods
 
-- [ ] 5.2 Add strict null checks
+- [~] 5.2 Add strict null checks
   - Ensure all optional fields use `| undefined` not `| null`
   - Add null coalescing operators (??) where appropriate
   - Use optional chaining (?.) for nested properties
 
-- [ ] 5.3 Add JSDoc comments to service methods
+- [~] 5.3 Add JSDoc comments to service methods
   - Document parameters and return types
   - Document error conditions
   - Add usage examples for complex methods

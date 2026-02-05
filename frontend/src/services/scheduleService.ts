@@ -7,6 +7,85 @@
 import { apiClient } from './api';
 
 /**
+ * Helper function to handle API errors consistently
+ * Extracts error details and provides user-friendly messages
+ * 
+ * @param error - Error object from API call
+ * @param methodName - Name of the method that failed (for logging)
+ * @param context - Additional context for logging
+ * @returns Never (always throws)
+ */
+function handleApiError(error: unknown, methodName: string, context?: Record<string, unknown>): never {
+  // Check if it's an axios error with response
+  if (error && typeof error === 'object' && 'isAxiosError' in error && error.isAxiosError) {
+    const axiosError = error as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+    
+    if (axiosError.response) {
+      const status = axiosError.response.status;
+      const detail = axiosError.response.data?.detail || axiosError.message || 'Unknown error';
+      
+      // Provide specific messages for different HTTP status codes
+      let errorMessage: string;
+      switch (status) {
+        case 400:
+          errorMessage = `Invalid request: ${detail}`;
+          break;
+        case 401:
+          errorMessage = 'Authentication required. Please log in.';
+          break;
+        case 403:
+          errorMessage = 'You do not have permission to perform this action.';
+          break;
+        case 404:
+          errorMessage = 'Resource not found. Please contact support.';
+          break;
+        case 500:
+          errorMessage = `Server error: ${detail}. Please try again later.`;
+          break;
+        case 503:
+          errorMessage = 'Service temporarily unavailable. Please try again later.';
+          break;
+        default:
+          errorMessage = `Error ${status}: ${detail}`;
+      }
+      
+      // Log full error object to console for debugging
+      console.error(`${methodName} failed:`, {
+        status,
+        detail,
+        ...context,
+        error: axiosError,
+      });
+      
+      throw new Error(errorMessage);
+    } else {
+      // No response received - this is a network error
+      console.error(`${methodName} network error:`, {
+        message: axiosError.message,
+        ...context,
+        error: axiosError,
+      });
+      
+      throw new Error('Network error: Please check your internet connection');
+    }
+  }
+  
+  // If we get here, error is not an axios error
+  // This is an unexpected error type
+  console.error(`${methodName} unexpected error:`, {
+    ...context,
+    error,
+  });
+  
+  // Preserve the original error if it's an Error instance
+  if (error instanceof Error) {
+    throw error;
+  }
+  
+  throw new Error('An unexpected error occurred');
+}
+
+/**
  * Backend WorkItem response interface
  * Matches the WorkItemResponse model from backend
  */
@@ -71,16 +150,44 @@ function mapFrontendStatus(frontendStatus: Task['status']): string {
 /**
  * Maps WorkItemResponse from backend to Task interface for frontend
  * Handles type conversions and null/undefined values
+ * Validates required fields and throws descriptive errors for invalid data
  * 
  * @param workitem - WorkItem response from backend API
  * @returns Task object for frontend use
+ * @throws Error if required fields are missing or invalid
  */
 function mapWorkItemToTask(workitem: WorkItemResponse): Task {
+  // Validate required fields
+  if (!workitem.id || typeof workitem.id !== 'string') {
+    console.error('Invalid task data: missing or invalid id', { workitem });
+    throw new Error('Invalid task data: missing or invalid id');
+  }
+  
+  if (!workitem.title || typeof workitem.title !== 'string') {
+    console.error('Invalid task data: missing or invalid title', { workitem });
+    throw new Error('Invalid task data: missing or invalid title');
+  }
+  
+  // estimated_hours is required for scheduling, but may be null in backend
+  // Default to 0 if not provided
+  const estimatedHours = workitem.estimated_hours ?? 0;
+  if (typeof estimatedHours !== 'number' || estimatedHours < 0) {
+    console.error('Invalid task data: invalid estimated_hours', { workitem, estimatedHours });
+    throw new Error('Invalid task data: estimated_hours must be a non-negative number');
+  }
+  
+  // Validate status field exists
+  if (!workitem.status || typeof workitem.status !== 'string') {
+    console.error('Invalid task data: missing or invalid status', { workitem });
+    throw new Error('Invalid task data: missing or invalid status');
+  }
+  
+  // Handle optional fields gracefully
   return {
     id: workitem.id,
     title: workitem.title,
     description: workitem.description || undefined,
-    estimated_hours: workitem.estimated_hours || 0,
+    estimated_hours: estimatedHours,
     start_date: workitem.start_date || undefined,
     end_date: workitem.end_date || undefined,
     status: mapBackendStatus(workitem.status),
@@ -171,47 +278,51 @@ class ScheduleService {
    * Implements client-side pagination since backend doesn't return pagination metadata
    */
   async getTasks(filters?: ScheduleFilters): Promise<PaginatedResponse<Task>> {
-    const params = new URLSearchParams();
-    
-    // Tasks are workitems with type="task"
-    params.append('type', 'task');
-    
-    // Fetch all tasks with high limit (backend max is 1000)
-    params.append('limit', '1000');
-    
-    // Map frontend status to backend status for filtering
-    if (filters?.status) {
-      params.append('status', mapFrontendStatus(filters.status));
-    }
-    if (filters?.assigned_to) {
-      params.append('assigned_to', filters.assigned_to);
-    }
+    try {
+      const params = new URLSearchParams();
+      
+      // Tasks are workitems with type="task"
+      params.append('type', 'task');
+      
+      // Fetch all tasks with high limit (backend max is 1000)
+      params.append('limit', '1000');
+      
+      // Map frontend status to backend status for filtering
+      if (filters?.status) {
+        params.append('status', mapFrontendStatus(filters.status));
+      }
+      if (filters?.assigned_to) {
+        params.append('assigned_to', filters.assigned_to);
+      }
 
-    const response = await apiClient.get<WorkItemResponse[]>(`/workitems?${params.toString()}`);
-    
-    // Map backend WorkItemResponse to frontend Task interface
-    const allItems = response.data.map(mapWorkItemToTask);
-    
-    // Apply client-side pagination with validation
-    const size = filters?.size || 20;
-    const totalPages = allItems.length > 0 ? Math.ceil(allItems.length / size) : 1;
-    
-    // Validate and clamp page number
-    let page = filters?.page || 1;
-    page = Math.max(1, Math.min(page, totalPages)); // Ensure 1 <= page <= totalPages
-    
-    const start = (page - 1) * size;
-    const end = start + size;
-    const items = allItems.slice(start, end);
-    
-    // Calculate correct pagination metadata from all items
-    return {
-      items,
-      total: allItems.length,
-      page,
-      size,
-      pages: totalPages,
-    };
+      const response = await apiClient.get<WorkItemResponse[]>(`/workitems?${params.toString()}`);
+      
+      // Map backend WorkItemResponse to frontend Task interface
+      const allItems = response.data.map(mapWorkItemToTask);
+      
+      // Apply client-side pagination with validation
+      const size = filters?.size || 20;
+      const totalPages = allItems.length > 0 ? Math.ceil(allItems.length / size) : 1;
+      
+      // Validate and clamp page number
+      let page = filters?.page || 1;
+      page = Math.max(1, Math.min(page, totalPages)); // Ensure 1 <= page <= totalPages
+      
+      const start = (page - 1) * size;
+      const end = start + size;
+      const items = allItems.slice(start, end);
+      
+      // Calculate correct pagination metadata from all items
+      return {
+        items,
+        total: allItems.length,
+        page,
+        size,
+        pages: totalPages,
+      };
+    } catch (error) {
+      handleApiError(error, 'getTasks', { filters });
+    }
   }
 
   /**
@@ -222,8 +333,7 @@ class ScheduleService {
       const response = await apiClient.get<WorkItemResponse>(`/workitems/${taskId}`);
       return mapWorkItemToTask(response.data);
     } catch (error) {
-      console.error('Failed to fetch task:', { taskId, error });
-      throw error;
+      handleApiError(error, 'getTask', { taskId });
     }
   }
 
@@ -251,8 +361,7 @@ class ScheduleService {
       const response = await apiClient.post<WorkItemResponse>('/workitems', workitemData);
       return mapWorkItemToTask(response.data);
     } catch (error) {
-      console.error('Failed to create task:', { task, error });
-      throw error;
+      handleApiError(error, 'createTask', { task });
     }
   }
 
@@ -282,8 +391,7 @@ class ScheduleService {
       );
       return mapWorkItemToTask(response.data);
     } catch (error) {
-      console.error('Failed to update task:', { taskId, updates, error });
-      throw error;
+      handleApiError(error, 'updateTask', { taskId, updates });
     }
   }
 
@@ -294,8 +402,7 @@ class ScheduleService {
     try {
       await apiClient.delete(`/workitems/${taskId}`);
     } catch (error) {
-      console.error('Failed to delete task:', { taskId, error });
-      throw error;
+      handleApiError(error, 'deleteTask', { taskId });
     }
   }
 

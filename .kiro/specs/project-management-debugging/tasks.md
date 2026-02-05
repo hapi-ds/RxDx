@@ -281,33 +281,33 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 8.1 Test status mapping functions
+- [x] 8.1 Test status mapping functions
   - Test mapBackendStatus() with all backend status values
   - Test mapFrontendStatus() with all frontend status values
   - Test bidirectional mapping consistency
   - Test handling of unknown status values
 
-- [ ] 8.2 Test mapWorkItemToTask() function
+- [x] 8.2 Test mapWorkItemToTask() function
   - Test with complete WorkItemResponse
   - Test with minimal required fields
   - Test with null/undefined optional fields
   - Test UUID to string conversion for dependencies
 
-- [ ] 8.3 Test getTasks() method
+- [x] 8.3 Test getTasks() method
   - Mock apiClient.get() response
   - Test successful data fetch
   - Test with filters (status, assigned_to)
   - Test pagination calculation
   - Test error handling (network, HTTP errors)
 
-- [ ] 8.4 Test CRUD methods
+- [x] 8.4 Test CRUD methods
   - Test getTask() with valid ID
   - Test createTask() with valid data
   - Test updateTask() with partial updates
   - Test deleteTask() with valid ID
   - Test error handling for each method
 
-- [ ] 8.5 Test getStatistics() method
+- [x] 8.5 Test getStatistics() method
   - Test with various task arrays
   - Test calculation of all statistics
   - Test with empty task array

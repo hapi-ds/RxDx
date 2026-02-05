@@ -88,7 +88,7 @@ export interface ValidationResult {
 }
 
 class TemplateService {
-  private basePath = '/templates';
+  private basePath = '/api/v1/templates';
 
   /**
    * List all available templates

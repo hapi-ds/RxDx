@@ -292,7 +292,7 @@ export async function getRiskMitigations(
   if (status) params.append('status', status);
   
   const response = await apiClient.get<MitigationListResponse>(
-    `/risks/${riskId}/mitigations?${params.toString()}`
+    `/api/v1/risks/${riskId}/mitigations?${params.toString()}`
   );
   return response.data;
 }
@@ -301,7 +301,7 @@ export async function getRiskMitigations(
  * Analyze a risk and get RPN-based recommendations
  */
 export async function analyzeRisk(riskId: string): Promise<RPNAnalysis> {
-  const response = await apiClient.get<RPNAnalysis>(`/risks/${riskId}/analysis`);
+  const response = await apiClient.get<RPNAnalysis>(`/api/v1/risks/${riskId}/analysis`);
   return response.data;
 }
 

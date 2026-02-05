@@ -622,7 +622,7 @@ class ScheduleService {
    * const resources = await scheduleService.getResources();
    */
   async getResources(): Promise<Resource[]> {
-    const response = await apiClient.get<Resource[]>('/schedule/resources');
+    const response = await apiClient.get<Resource[]>('/api/v1/schedule/resources');
     return response.data;
   }
 
@@ -683,7 +683,7 @@ class ScheduleService {
     projectId: string,
     schedule: ScheduledTask[]
   ): Promise<ScheduleResult> {
-    const response = await apiClient.patch<ScheduleResult>(`/schedule/${projectId}`, { schedule });
+    const response = await apiClient.patch<ScheduleResult>(`/api/v1/schedule/${projectId}`, { schedule });
     return response.data;
   }
 
@@ -761,7 +761,7 @@ class ScheduleService {
    * a.click();
    */
   async exportProjectData(projectId: string): Promise<Blob> {
-    const response = await apiClient.get<Blob>(`/schedule/${projectId}/export`, {
+    const response = await apiClient.get<Blob>(`/api/v1/schedule/${projectId}/export`, {
       responseType: 'blob',
     });
     return response.data;
@@ -796,7 +796,7 @@ class ScheduleService {
     formData.append('schedule', scheduleFile);
 
     const response = await apiClient.post<ScheduleResult>(
-      `/schedule/${projectId}/import`,
+      `/api/v1/schedule/${projectId}/import`,
       formData,
       {
         headers: {

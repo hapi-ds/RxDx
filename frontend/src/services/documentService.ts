@@ -163,7 +163,7 @@ export interface DocumentListResponse {
 }
 
 class DocumentService {
-  private basePath = '/documents';
+  private basePath = '/api/v1/documents';
 
   /**
    * Generate a design review PDF document

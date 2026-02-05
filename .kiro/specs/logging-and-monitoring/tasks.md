@@ -285,13 +285,13 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 3, Task 9
 
 **Acceptance Criteria:**
-- [ ] Create integration test that makes API request from frontend
-- [ ] Verify frontend generates request_id
-- [ ] Verify request_id is sent in X-Request-ID header
-- [ ] Verify backend extracts request_id from header
-- [ ] Verify backend logs include request_id
-- [ ] Verify backend returns request_id in response header
-- [ ] Verify frontend logs include request_id from response
+- [x] Create integration test that makes API request from frontend
+- [x] Verify frontend generates request_id
+- [x] Verify request_id is sent in X-Request-ID header
+- [x] Verify backend extracts request_id from header
+- [x] Verify backend logs include request_id
+- [x] Verify backend returns request_id in response header
+- [x] Verify frontend logs include request_id from response
 
 **Files to Create:**
 - `backend/tests/integration/test_request_tracing.py`
@@ -313,12 +313,12 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 3, Task 9
 
 **Acceptance Criteria:**
-- [ ] Test backend unhandled exception is logged with stack trace
-- [ ] Test frontend error is logged with component context
-- [ ] Test error logs include timestamp, error_type, error_message, stack_trace
-- [ ] Test error logs include request_id when available
-- [ ] Test error logs use ERROR or CRITICAL level
-- [ ] Verify error logs are written to log files
+- [x] Test backend unhandled exception is logged with stack trace
+- [x] Test frontend error is logged with component context
+- [x] Test error logs include timestamp, error_type, error_message, stack_trace
+- [x] Test error logs include request_id when available
+- [x] Test error logs use ERROR or CRITICAL level
+- [x] Verify error logs are written to log files
 
 **Files to Create:**
 - `backend/tests/test_error_logging.py`
@@ -340,14 +340,14 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 6
 
 **Acceptance Criteria:**
-- [ ] Test `/api/v1/health/ready` with healthy database
-- [ ] Test `/api/v1/health/ready` with unhealthy database
-- [ ] Test `/api/v1/health/ready` with healthy graph database
-- [ ] Test `/api/v1/health/ready` with unhealthy graph database
-- [ ] Verify response includes check results for each dependency
-- [ ] Verify response includes duration
-- [ ] Verify 503 status when any dependency unhealthy
-- [ ] Verify health check completes within 5 seconds
+- [x] Test `/api/v1/health/ready` with healthy database
+- [x] Test `/api/v1/health/ready` with unhealthy database
+- [x] Test `/api/v1/health/ready` with healthy graph database
+- [x] Test `/api/v1/health/ready` with unhealthy graph database
+- [x] Verify response includes check results for each dependency
+- [x] Verify response includes duration
+- [x] Verify 503 status when any dependency unhealthy
+- [x] Verify health check completes within 5 seconds
 
 **Files to Create:**
 - `backend/tests/integration/test_health_checks.py`
@@ -457,13 +457,13 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 1, Task 3
 
 **Acceptance Criteria:**
-- [ ] Create property test that generates random log messages and levels
-- [ ] Verify all logs are valid JSON
-- [ ] Verify all logs include required fields: timestamp, level, message, service
-- [ ] Verify timestamp is valid ISO 8601 format
-- [ ] Verify level is one of: DEBUG, INFO, WARN, ERROR, CRITICAL
-- [ ] Test with various message types: strings, unicode, special characters
-- [ ] Use Hypothesis library for property-based testing
+- [x] Create property test that generates random log messages and levels
+- [x] Verify all logs are valid JSON
+- [x] Verify all logs include required fields: timestamp, level, message, service
+- [x] Verify timestamp is valid ISO 8601 format
+- [x] Verify level is one of: DEBUG, INFO, WARN, ERROR, CRITICAL
+- [x] Test with various message types: strings, unicode, special characters
+- [x] Use Hypothesis library for property-based testing
 
 **Files to Create:**
 - `backend/tests/test_logging_properties.py`

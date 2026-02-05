@@ -136,24 +136,24 @@ function isWorkItemResponse(obj: unknown): obj is WorkItemResponse {
   if (typeof item.updated_at !== 'string') return false;
   if (typeof item.is_signed !== 'boolean') return false;
   
-  // Check nullable string fields
-  if (item.description !== null && typeof item.description !== 'string') return false;
-  if (item.assigned_to !== null && typeof item.assigned_to !== 'string') return false;
-  if (item.start_date !== null && typeof item.start_date !== 'string') return false;
-  if (item.end_date !== null && typeof item.end_date !== 'string') return false;
+  // Check nullable/optional string fields - allow undefined
+  if (item.description !== null && item.description !== undefined && typeof item.description !== 'string') return false;
+  if (item.assigned_to !== null && item.assigned_to !== undefined && typeof item.assigned_to !== 'string') return false;
+  if (item.start_date !== null && item.start_date !== undefined && typeof item.start_date !== 'string') return false;
+  if (item.end_date !== null && item.end_date !== undefined && typeof item.end_date !== 'string') return false;
   
-  // Check nullable number fields
-  if (item.priority !== null && typeof item.priority !== 'number') return false;
-  if (item.estimated_hours !== null && typeof item.estimated_hours !== 'number') return false;
+  // Check nullable/optional number fields - allow undefined
+  if (item.priority !== null && item.priority !== undefined && typeof item.priority !== 'number') return false;
+  if (item.estimated_hours !== null && item.estimated_hours !== undefined && typeof item.estimated_hours !== 'number') return false;
   
-  // Check nullable array fields
-  if (item.dependencies !== null && !Array.isArray(item.dependencies)) return false;
-  if (item.dependencies !== null && !item.dependencies.every((d: unknown) => typeof d === 'string')) return false;
-  if (item.required_resources !== null && !Array.isArray(item.required_resources)) return false;
-  if (item.required_resources !== null && !item.required_resources.every((r: unknown) => typeof r === 'string')) return false;
+  // Check nullable/optional array fields - allow undefined
+  if (item.dependencies !== null && item.dependencies !== undefined && !Array.isArray(item.dependencies)) return false;
+  if (item.dependencies !== null && item.dependencies !== undefined && !item.dependencies.every((d: unknown) => typeof d === 'string')) return false;
+  if (item.required_resources !== null && item.required_resources !== undefined && !Array.isArray(item.required_resources)) return false;
+  if (item.required_resources !== null && item.required_resources !== undefined && !item.required_resources.every((r: unknown) => typeof r === 'string')) return false;
   
-  // Check nullable object field
-  if (item.resource_demand !== null) {
+  // Check nullable/optional object field - allow undefined
+  if (item.resource_demand !== null && item.resource_demand !== undefined) {
     if (typeof item.resource_demand !== 'object' || Array.isArray(item.resource_demand)) return false;
     // Validate all values are numbers
     const demand = item.resource_demand as Record<string, unknown>;
@@ -378,7 +378,7 @@ class ScheduleService {
         params.append('assigned_to', filters.assigned_to);
       }
 
-      const response = await apiClient.get<WorkItemResponse[]>(`/workitems?${params.toString()}`);
+      const response = await apiClient.get<WorkItemResponse[]>(`/api/v1/workitems?${params.toString()}`);
       
       // Validate response structure before mapping
       if (!Array.isArray(response.data)) {
@@ -443,7 +443,7 @@ class ScheduleService {
    */
   async getTask(taskId: string): Promise<Task> {
     try {
-      const response = await apiClient.get<WorkItemResponse>(`/workitems/${taskId}`);
+      const response = await apiClient.get<WorkItemResponse>(`/api/v1/workitems/${taskId}`);
       
       // Validate response structure before mapping
       if (!isWorkItemResponse(response.data)) {
@@ -508,7 +508,7 @@ class ScheduleService {
         resource_demand: task.resource_demand ?? undefined,
       };
       
-      const response = await apiClient.post<WorkItemResponse>('/workitems', workitemData);
+      const response = await apiClient.post<WorkItemResponse>('/api/v1/workitems', workitemData);
       
       // Validate response structure before mapping
       if (!isWorkItemResponse(response.data)) {
@@ -571,7 +571,7 @@ class ScheduleService {
       if (updates.resource_demand !== undefined) workitemUpdates.resource_demand = updates.resource_demand;
       
       const response = await apiClient.patch<WorkItemResponse>(
-        `/workitems/${taskId}?change_description=Task updated`,
+        `/api/v1/workitems/${taskId}?change_description=Task updated`,
         workitemUpdates
       );
       
@@ -604,7 +604,7 @@ class ScheduleService {
    */
   async deleteTask(taskId: string): Promise<void> {
     try {
-      await apiClient.delete(`/workitems/${taskId}`);
+      await apiClient.delete(`/api/v1/workitems/${taskId}`);
     } catch (error) {
       handleApiError(error, 'deleteTask', { taskId });
     }

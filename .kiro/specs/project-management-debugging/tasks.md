@@ -329,47 +329,47 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 9.1 Write Property 1: Status Mapping Consistency
+- [x] 9.1 Write Property 1: Status Mapping Consistency
   - Generate random backend status values
   - Test mapBackendStatus() → mapFrontendStatus() → mapBackendStatus()
   - Verify semantic meaning is preserved
   - Test with 100+ examples
 
-- [ ] 9.2 Write Property 2: Task Data Rendering
+- [x] 9.2 Write Property 2: Task Data Rendering
   - Generate random Task objects with various field combinations
   - Test that rendering doesn't throw errors
   - Verify all non-null fields are displayed
   - Test with 100+ examples
 
-- [ ] 9.3 Write Property 3: Statistics Calculation Accuracy
+- [x] 9.3 Write Property 3: Statistics Calculation Accuracy
   - Generate random arrays of tasks
   - Calculate statistics
   - Verify counts match actual data
   - Test with arrays of 0-1000 tasks
 
-- [ ] 9.4 Write Property 4: Pagination State Correctness
+- [x] 9.4 Write Property 4: Pagination State Correctness
   - Generate random pagination states
   - Verify button disabled states
   - Test edge cases (page 1, last page)
   - Test with various total page counts
 
-- [ ] 9.5 Write Property 5: Pagination Info Display
+- [x] 9.5 Write Property 5: Pagination Info Display
   - Generate random pagination states
   - Verify info string is correct
   - Test formatting with various numbers
 
-- [ ] 9.6 Write Property 6: Error Message Presence
+- [x] 9.6 Write Property 6: Error Message Presence
   - Generate random error states
   - Verify error message and retry button are present
   - Test with various error types
 
-- [ ] 9.7 Write Property 7: Empty Data Handling
+- [x] 9.7 Write Property 7: Empty Data Handling
   - Test components with empty arrays
   - Test components with null values
   - Verify no errors are thrown
   - Verify empty states are displayed
 
-- [ ] 9.8 Write Property 8: API Call Parameters
+- [x] 9.8 Write Property 8: API Call Parameters
   - Generate random filter states
   - Verify API call includes correct parameters
   - Test parameter encoding

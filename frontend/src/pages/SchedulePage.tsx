@@ -23,6 +23,7 @@ export function SchedulePage(): React.ReactElement {
   const [statistics, setStatistics] = useState<ScheduleStatistics | null>(null);
   const [scheduleResult, setScheduleResult] = useState<ScheduleResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStatisticsLoading, setIsStatisticsLoading] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statisticsError, setStatisticsError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export function SchedulePage(): React.ReactElement {
   }, [loadTasks]);
 
   const loadStatistics = useCallback(async () => {
+    setIsStatisticsLoading(true);
     setStatisticsError(null);
     try {
       const stats = await scheduleService.getStatistics();
@@ -78,6 +80,8 @@ export function SchedulePage(): React.ReactElement {
       setStatisticsError(errorMessage);
       console.error('Failed to load statistics:', err);
       // Don't clear statistics - keep showing previous data if available
+    } finally {
+      setIsStatisticsLoading(false);
     }
   }, []);
 
@@ -225,7 +229,18 @@ export function SchedulePage(): React.ReactElement {
               <span className="error-text">{statisticsError}</span>
             </div>
           )}
-          {statistics && (
+          {isStatisticsLoading && !statistics && (
+            <div className="stats-grid" role="status" aria-live="polite" aria-label="Loading statistics">
+              <span className="sr-only">Loading statistics, please wait...</span>
+              {[...Array(6)].map((_, index) => (
+                <div key={`stat-skeleton-${index}`} className="stat-card skeleton-stat-card">
+                  <div className="skeleton skeleton-text skeleton-stat-label" />
+                  <div className="skeleton skeleton-text skeleton-stat-value" />
+                </div>
+              ))}
+            </div>
+          )}
+          {!isStatisticsLoading && statistics && (
             <div className="stats-grid">
               <div className="stat-card">
                 <div className="stat-label">Total Tasks</div>
@@ -336,8 +351,53 @@ export function SchedulePage(): React.ReactElement {
             {/* Task List */}
             <div className="task-list">
               {isLoading && (
-                <div className="loading-state" role="status" aria-live="polite">
-                  Loading tasks...
+                <div className="loading-skeleton" role="status" aria-live="polite" aria-label="Loading tasks">
+                  <span className="sr-only">Loading tasks, please wait...</span>
+                  <div className="task-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Status</th>
+                          <th>Duration</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Priority</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...Array(5)].map((_, index) => (
+                          <tr key={`skeleton-${index}`} className="skeleton-row">
+                            <td>
+                              <div className="skeleton skeleton-text skeleton-title" />
+                            </td>
+                            <td>
+                              <div className="skeleton skeleton-badge" />
+                            </td>
+                            <td>
+                              <div className="skeleton skeleton-text skeleton-short" />
+                            </td>
+                            <td>
+                              <div className="skeleton skeleton-text skeleton-date" />
+                            </td>
+                            <td>
+                              <div className="skeleton skeleton-text skeleton-date" />
+                            </td>
+                            <td>
+                              <div className="skeleton skeleton-text skeleton-short" />
+                            </td>
+                            <td>
+                              <div className="skeleton-actions">
+                                <div className="skeleton skeleton-button" />
+                                <div className="skeleton skeleton-button" />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
@@ -1046,6 +1106,108 @@ export function SchedulePage(): React.ReactElement {
           .task-table td {
             padding: 0.5rem;
           }
+        }
+
+        /* Skeleton Loading Styles */
+        .loading-skeleton {
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.5;
+          }
+        }
+
+        .skeleton-row {
+          pointer-events: none;
+        }
+
+        .skeleton {
+          background: linear-gradient(
+            90deg,
+            #f0f0f0 0%,
+            #e0e0e0 50%,
+            #f0f0f0 100%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 1.5s ease-in-out infinite;
+          border-radius: 4px;
+        }
+
+        @keyframes shimmer {
+          0% {
+            background-position: -200% 0;
+          }
+          100% {
+            background-position: 200% 0;
+          }
+        }
+
+        .skeleton-text {
+          height: 1rem;
+          width: 100%;
+        }
+
+        .skeleton-title {
+          width: 70%;
+        }
+
+        .skeleton-short {
+          width: 40%;
+        }
+
+        .skeleton-date {
+          width: 60%;
+        }
+
+        .skeleton-badge {
+          height: 1.5rem;
+          width: 80px;
+          border-radius: 9999px;
+        }
+
+        .skeleton-actions {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .skeleton-button {
+          height: 1.5rem;
+          width: 1.5rem;
+          border-radius: 4px;
+        }
+
+        /* Statistics Skeleton Styles */
+        .skeleton-stat-card {
+          animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .skeleton-stat-label {
+          width: 60%;
+          height: 0.75rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .skeleton-stat-value {
+          width: 40%;
+          height: 1.5rem;
+        }
+
+        /* Screen Reader Only - Accessibility */
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
         }
       `}</style>
     </div>

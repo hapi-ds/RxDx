@@ -251,16 +251,16 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [ ] 7.1 Add loading skeleton for task table
+- [x] 7.1 Add loading skeleton for task table
   - Show placeholder rows while loading
   - Match table structure
   - Animate skeleton for better UX
 
-- [ ] 7.2 Add loading state for statistics
+- [x] 7.2 Add loading state for statistics
   - Show skeleton cards while loading
   - Don't show stale data during reload
 
-- [ ] 7.3 Ensure loading states are accessible
+- [x] 7.3 Ensure loading states are accessible
   - Add role="status" and aria-live="polite"
   - Provide screen reader announcements
 

@@ -8,6 +8,7 @@ from app.api.v1 import (
     documents,
     email,
     graph,
+    health,
     llm,
     requirements,
     risks,
@@ -20,6 +21,9 @@ from app.api.v1 import (
 )
 
 api_router = APIRouter()
+
+# Include health check routes (no authentication required)
+api_router.include_router(health.router, tags=["health"])
 
 # Include authentication routes
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])

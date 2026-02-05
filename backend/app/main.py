@@ -1,45 +1,55 @@
 """FastAPI application entry point for RxDx"""
 
+# Configure logging first, before other imports
+from app.core.logging import configure_logging
+configure_logging()
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import api_router
 from app.core.config import settings
 from app.db import graph_service
+from app.middleware.logging import LoggingMiddleware
+
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager for startup and shutdown events"""
     # Startup
-    print(f"Starting RxDx Backend v{settings.VERSION}")
-    print(f"Environment: {settings.ENVIRONMENT}")
+    logger.info("Starting RxDx Backend", version=settings.VERSION, environment=settings.ENVIRONMENT)
 
     # Initialize database tables
     try:
         from app.db.session import init_db
         await init_db()
-        print("✓ Database tables initialized")
+        logger.info("Database tables initialized")
     except Exception as e:
-        print(f"⚠ Warning: Could not initialize database tables: {e}")
+        logger.warning("Could not initialize database tables", error=str(e))
 
     # Initialize graph database connection
     try:
         await graph_service.connect()
-        print("✓ Connected to Apache AGE graph database")
+        logger.info("Connected to Apache AGE graph database")
     except Exception as e:
-        print(f"⚠ Warning: Could not connect to graph database: {e}")
-        print("  The application will start but graph features will be unavailable")
+        logger.warning(
+            "Could not connect to graph database",
+            error=str(e),
+            message="The application will start but graph features will be unavailable"
+        )
 
     yield
 
     # Shutdown
-    print("Shutting down RxDx Backend")
+    logger.info("Shutting down RxDx Backend")
     await graph_service.close()
-    print("✓ Closed graph database connection")
+    logger.info("Closed graph database connection")
 
 
 app = FastAPI(
@@ -60,6 +70,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add logging middleware
+app.add_middleware(LoggingMiddleware)
 
 
 @app.get("/")

@@ -21,13 +21,13 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** None
 
 **Acceptance Criteria:**
-- [ ] Add `structlog` to `backend/pyproject.toml` dependencies
-- [ ] Create `backend/app/core/logging.py` with `configure_logging()` function
-- [ ] Implement log processors for JSON output and console rendering
-- [ ] Configure `RotatingFileHandler` with 100MB max size and 14 backup files
-- [ ] Create `backend/logs/` directory automatically if it doesn't exist
-- [ ] Support different log levels per environment (DEBUG for dev, INFO for prod)
-- [ ] Ensure compatibility with existing `logging.getLogger(__name__)` usage
+- [x] Add `structlog` to `backend/pyproject.toml` dependencies
+- [x] Create `backend/app/core/logging.py` with `configure_logging()` function
+- [x] Implement log processors for JSON output and console rendering
+- [x] Configure `RotatingFileHandler` with 100MB max size and 14 backup files
+- [x] Create `backend/logs/` directory automatically if it doesn't exist
+- [x] Support different log levels per environment (DEBUG for dev, INFO for prod)
+- [x] Ensure compatibility with existing `logging.getLogger(__name__)` usage
 
 **Files to Create:**
 - `backend/app/core/logging.py`
@@ -52,15 +52,15 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 1
 
 **Acceptance Criteria:**
-- [ ] Create `backend/app/middleware/` directory
-- [ ] Create `backend/app/middleware/__init__.py`
-- [ ] Create `backend/app/middleware/logging.py` with `LoggingMiddleware` class
-- [ ] Extract or generate `X-Request-ID` from request headers
-- [ ] Store request_id in contextvars for thread-safe access
-- [ ] Log request start with method, path, and request_id
-- [ ] Log request completion with status_code and duration_ms
-- [ ] Log request failures with error details and stack trace
-- [ ] Add request_id to response headers
+- [x] Create `backend/app/middleware/` directory
+- [x] Create `backend/app/middleware/__init__.py`
+- [x] Create `backend/app/middleware/logging.py` with `LoggingMiddleware` class
+- [x] Extract or generate `X-Request-ID` from request headers
+- [x] Store request_id in contextvars for thread-safe access
+- [x] Log request start with method, path, and request_id
+- [x] Log request completion with status_code and duration_ms
+- [x] Log request failures with error details and stack trace
+- [x] Add request_id to response headers
 
 **Files to Create:**
 - `backend/app/middleware/__init__.py`
@@ -84,12 +84,12 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 1, Task 2
 
 **Acceptance Criteria:**
-- [ ] Call `configure_logging()` at the top of `backend/app/main.py` before other imports
-- [ ] Add `LoggingMiddleware` to app after existing CORS middleware
-- [ ] Verify existing `/health` endpoint remains unchanged
-- [ ] Verify application starts without errors
-- [ ] Verify logs are written to `backend/logs/app.log`
-- [ ] Verify existing services continue to log correctly
+- [x] Call `configure_logging()` at the top of `backend/app/main.py` before other imports
+- [x] Add `LoggingMiddleware` to app after existing CORS middleware
+- [x] Verify existing `/health` endpoint remains unchanged
+- [x] Verify application starts without errors
+- [x] Verify logs are written to `backend/logs/app.log`
+- [x] Verify existing services continue to log correctly
 
 **Files to Modify:**
 - `backend/app/main.py`
@@ -110,12 +110,12 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 1, Task 3
 
 **Acceptance Criteria:**
-- [ ] Write unit test that simulates log file reaching 100MB
-- [ ] Verify new log file is created when size limit reached
-- [ ] Verify rotated files are named with timestamp
-- [ ] Verify old log files beyond backup count are deleted
-- [ ] Test log rotation doesn't lose log entries
-- [ ] Test log rotation doesn't impact application performance
+- [x] Write unit test that simulates log file reaching 100MB
+- [x] Verify new log file is created when size limit reached
+- [x] Verify rotated files are named with timestamp
+- [x] Verify old log files beyond backup count are deleted
+- [x] Test log rotation doesn't lose log entries
+- [x] Test log rotation doesn't impact application performance
 
 **Files to Create:**
 - `backend/tests/test_log_rotation.py`
@@ -137,15 +137,15 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 1
 
 **Acceptance Criteria:**
-- [ ] Create `backend/app/api/v1/health.py` with health check router
-- [ ] Implement `/health` endpoint that returns 200 when service is running
-- [ ] Implement `/health/ready` endpoint that checks all dependencies
-- [ ] Check database connectivity with 2-second timeout
-- [ ] Check graph database connectivity with 2-second timeout
-- [ ] Return 503 if any dependency is unhealthy
-- [ ] Include check results and duration in response
-- [ ] Complete health checks within 5 seconds total
-- [ ] Do not require authentication for health endpoints
+- [x] Create `backend/app/api/v1/health.py` with health check router
+- [x] Implement `/health` endpoint that returns 200 when service is running
+- [x] Implement `/health/ready` endpoint that checks all dependencies
+- [x] Check database connectivity with 2-second timeout
+- [x] Check graph database connectivity with 2-second timeout
+- [x] Return 503 if any dependency is unhealthy
+- [x] Include check results and duration in response
+- [x] Complete health checks within 5 seconds total
+- [x] Do not require authentication for health endpoints
 
 **Files to Create:**
 - `backend/app/api/v1/health.py`
@@ -168,12 +168,12 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 5
 
 **Acceptance Criteria:**
-- [ ] Import health router in `backend/app/api/v1/__init__.py`
-- [ ] Include health router in api_router with "health" tag
-- [ ] Verify existing `/health` endpoint in main.py still works
-- [ ] Verify new `/api/v1/health` endpoint works
-- [ ] Verify new `/api/v1/health/ready` endpoint works
-- [ ] Verify health endpoints appear in OpenAPI docs
+- [x] Import health router in `backend/app/api/v1/__init__.py`
+- [x] Include health router in api_router with "health" tag
+- [x] Verify existing `/health` endpoint in main.py still works
+- [x] Verify new `/api/v1/health` endpoint works
+- [x] Verify new `/api/v1/health/ready` endpoint works
+- [x] Verify health endpoints appear in OpenAPI docs
 
 **Files to Modify:**
 - `backend/app/api/v1/__init__.py`
@@ -196,15 +196,15 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** None
 
 **Acceptance Criteria:**
-- [ ] Create `frontend/src/services/logger.ts` with `LoggerService` class
-- [ ] Implement log levels: DEBUG, INFO, WARN, ERROR
-- [ ] Generate unique session_id on service initialization
-- [ ] Implement methods: debug(), info(), warn(), error()
-- [ ] Include timestamp, level, message, sessionId in all logs
-- [ ] Support optional context object with componentName, requestId, error
-- [ ] Write logs to console in development mode
-- [ ] Respect log level configuration from environment
-- [ ] Export singleton logger instance
+- [x] Create `frontend/src/services/logger.ts` with `LoggerService` class
+- [x] Implement log levels: DEBUG, INFO, WARN, ERROR
+- [x] Generate unique session_id on service initialization
+- [x] Implement methods: debug(), info(), warn(), error()
+- [x] Include timestamp, level, message, sessionId in all logs
+- [x] Support optional context object with componentName, requestId, error
+- [x] Write logs to console in development mode
+- [x] Respect log level configuration from environment
+- [x] Export singleton logger instance
 
 **Files to Create:**
 - `frontend/src/services/logger.ts`

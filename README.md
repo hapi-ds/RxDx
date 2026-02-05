@@ -229,6 +229,91 @@ LLM_STUDIO_URL=http://localhost:1234/v1
 
 See `.env.example` for all available options.
 
+## Logging and Monitoring
+
+RxDx includes comprehensive logging and monitoring capabilities for debugging and system health tracking.
+
+### Log Configuration
+
+Configure logging via environment variables:
+
+```env
+# Backend Logging
+LOG_LEVEL=INFO                    # DEBUG, INFO, WARN, ERROR, CRITICAL
+LOG_DIR=logs                      # Log directory path
+LOG_MAX_BYTES=104857600          # Max log file size (100MB)
+LOG_BACKUP_COUNT=14              # Number of backup files to keep
+
+# Frontend Logging
+VITE_LOG_LEVEL=INFO              # DEBUG, INFO, WARN, ERROR
+```
+
+### Log Files
+
+**Backend logs:** `backend/logs/app.log`
+- Structured JSON format in production
+- Pretty console format in development
+- Automatic rotation at 100MB
+- Keeps 14 backup files (~7 days)
+
+**Frontend logs:** Console output (browser environment)
+- Structured logging with session tracking
+- Request ID tracing for API calls
+
+### Request Tracing
+
+All API requests include a unique `X-Request-ID` header for end-to-end tracing:
+
+```typescript
+// Frontend automatically adds request ID
+logger.info('API request', { requestId: 'abc-123' });
+
+// Backend logs include the same request ID
+logger.info('request_completed', request_id='abc-123', duration_ms=45.2);
+```
+
+### Health Check Endpoints
+
+Monitor system health:
+
+```bash
+# Basic health check
+curl http://localhost:8000/health
+
+# Comprehensive readiness check (includes database status)
+curl http://localhost:8000/api/v1/health/ready
+```
+
+Response includes:
+- Database connectivity status
+- Graph database connectivity status
+- Response time for each check
+
+### Log Cleanup
+
+Automatically clean old log files:
+
+```bash
+# Run cleanup script (removes logs older than 7 days)
+./scripts/cleanup-logs.sh
+
+# Add to crontab for daily cleanup at 2 AM
+0 2 * * * /path/to/rxdx/scripts/cleanup-logs.sh
+```
+
+### Viewing Logs
+
+```bash
+# View backend logs
+tail -f backend/logs/app.log
+
+# View logs in Docker
+docker compose logs -f backend
+
+# Search logs for specific request
+grep "request_id=abc-123" backend/logs/app.log
+```
+
 ## Testing
 
 ### Backend Tests

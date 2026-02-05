@@ -226,15 +226,15 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 7
 
 **Acceptance Criteria:**
-- [ ] Modify `frontend/src/services/api.ts` to import logger
-- [ ] Generate unique request_id for each API request
-- [ ] Add `X-Request-ID` header to all requests
-- [ ] Store request_id and start_time in request config
-- [ ] Log request start with method, url, and request_id
-- [ ] Log request completion with status, duration_ms, and request_id
-- [ ] Log request failure with error details and request_id
-- [ ] Ensure existing auth token refresh logic still works
-- [ ] Do not break existing interceptor functionality
+- [x] Modify `frontend/src/services/api.ts` to import logger
+- [x] Generate unique request_id for each API request
+- [x] Add `X-Request-ID` header to all requests
+- [x] Store request_id and start_time in request config
+- [x] Log request start with method, url, and request_id
+- [x] Log request completion with status, duration_ms, and request_id
+- [x] Log request failure with error details and request_id
+- [x] Ensure existing auth token refresh logic still works
+- [x] Do not break existing interceptor functionality
 
 **Files to Modify:**
 - `frontend/src/services/api.ts`
@@ -258,11 +258,11 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** Task 7, Task 8
 
 **Acceptance Criteria:**
-- [ ] Import logger in `frontend/src/main.tsx`
-- [ ] Log application start with version and environment
-- [ ] Verify interceptors are setup before React render
-- [ ] Verify existing application functionality works
-- [ ] Verify no console errors on startup
+- [x] Import logger in `frontend/src/main.tsx`
+- [x] Log application start with version and environment
+- [x] Verify interceptors are setup before React render
+- [x] Verify existing application functionality works
+- [x] Verify no console errors on startup
 
 **Files to Modify:**
 - `frontend/src/main.tsx`
@@ -370,12 +370,12 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** All previous tasks
 
 **Acceptance Criteria:**
-- [ ] Add LOG_LEVEL, LOG_DIR, LOG_MAX_BYTES, LOG_BACKUP_COUNT to `backend/app/core/config.py`
-- [ ] Add logging environment variables to `backend/.env.example`
-- [ ] Add VITE_LOG_LEVEL to `frontend/.env.example`
-- [ ] Update `docker-compose.yml` with log volume mounts
-- [ ] Update `docker-compose.yml` with logging environment variables
-- [ ] Create `.gitignore` entries for log files
+- [x] Add LOG_LEVEL, LOG_DIR, LOG_MAX_BYTES, LOG_BACKUP_COUNT to `backend/app/core/config.py`
+- [x] Add logging environment variables to `backend/.env.example`
+- [x] Add VITE_LOG_LEVEL to `frontend/.env.example`
+- [x] Update `docker-compose.yml` with log volume mounts
+- [x] Update `docker-compose.yml` with logging environment variables
+- [x] Create `.gitignore` entries for log files
 
 **Files to Modify:**
 - `backend/app/core/config.py`
@@ -399,13 +399,13 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** None
 
 **Acceptance Criteria:**
-- [ ] Create `scripts/cleanup-logs.sh` script
-- [ ] Script finds log files older than 7 days
-- [ ] Script deletes old log files from backend/logs
-- [ ] Script deletes old log files from frontend/logs (if applicable)
-- [ ] Script logs cleanup actions
-- [ ] Script is executable: `chmod +x scripts/cleanup-logs.sh`
-- [ ] Document crontab setup in script comments
+- [x] Create `scripts/cleanup-logs.sh` script
+- [x] Script finds log files older than 7 days
+- [x] Script deletes old log files from backend/logs
+- [x] Script deletes old log files from frontend/logs (if applicable)
+- [x] Script logs cleanup actions
+- [x] Script is executable: `chmod +x scripts/cleanup-logs.sh`
+- [x] Document crontab setup in script comments
 
 **Files to Create:**
 - `scripts/cleanup-logs.sh`
@@ -425,15 +425,15 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** All previous tasks
 
 **Acceptance Criteria:**
-- [ ] Update README.md with logging section
-- [ ] Document log file locations (backend/logs/, frontend/logs/)
-- [ ] Document log rotation policy (100MB, 7 days)
-- [ ] Document log levels and configuration
-- [ ] Document request tracing usage
-- [ ] Document health check endpoints
-- [ ] Create runbook for log analysis
-- [ ] Document how to use logger service in new code
-- [ ] Document migration strategy for existing console.log calls
+- [x] Update README.md with logging section
+- [x] Document log file locations (backend/logs/, frontend/logs/)
+- [x] Document log rotation policy (100MB, 7 days)
+- [x] Document log levels and configuration
+- [x] Document request tracing usage
+- [x] Document health check endpoints
+- [x] Create runbook for log analysis
+- [x] Document how to use logger service in new code
+- [x] Document migration strategy for existing console.log calls
 
 **Files to Modify:**
 - `README.md`
@@ -594,19 +594,19 @@ This task list implements structured logging, request tracing, and health monito
 **Dependencies:** All previous tasks
 
 **Acceptance Criteria:**
-- [ ] Create `LOGGING_GUIDE.md` in root directory
-- [ ] Document how to use backend structured logging in services
-- [ ] Document how to use frontend logger service in components
-- [ ] Provide code examples for common logging scenarios
-- [ ] Document log levels and when to use each
-- [ ] Document request tracing and how to follow requests across services
-- [ ] Document health check endpoints and their responses
-- [ ] Document log file locations and rotation policy
-- [ ] Document how to analyze logs for debugging
-- [ ] Document how to configure log levels per environment
-- [ ] Include troubleshooting section for common issues
-- [ ] Include best practices for logging in RxDx
-- [ ] Provide examples of good vs bad logging practices
+- [x] Create `LOGGING_GUIDE.md` in root directory
+- [x] Document how to use backend structured logging in services
+- [x] Document how to use frontend logger service in components
+- [x] Provide code examples for common logging scenarios
+- [x] Document log levels and when to use each
+- [x] Document request tracing and how to follow requests across services
+- [x] Document health check endpoints and their responses
+- [x] Document log file locations and rotation policy
+- [x] Document how to analyze logs for debugging
+- [x] Document how to configure log levels per environment
+- [x] Include troubleshooting section for common issues
+- [x] Include best practices for logging in RxDx
+- [x] Provide examples of good vs bad logging practices
 
 **Files to Create:**
 - `LOGGING_GUIDE.md`

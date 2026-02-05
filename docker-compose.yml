@@ -29,6 +29,10 @@ services:
       SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production}
       LLM_STUDIO_URL: ${LLM_STUDIO_URL:-http://host.docker.internal:1234/v1}
       LLM_ENABLED: ${LLM_ENABLED:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_DIR: ${LOG_DIR:-logs}
+      LOG_MAX_BYTES: ${LOG_MAX_BYTES:-104857600}
+      LOG_BACKUP_COUNT: ${LOG_BACKUP_COUNT:-14}
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -36,6 +40,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - backend_logs:/app/logs
     command: uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     networks:
       - rxdx-network
@@ -47,6 +52,7 @@ services:
       target: production
       args:
         - VITE_API_BASE_URL=
+        - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-INFO}
     container_name: rxdx-frontend
     ports:
       - "${FRONTEND_PORT:-3000}:80"
@@ -72,6 +78,8 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  backend_logs:
     driver: local
 
 networks:

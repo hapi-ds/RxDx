@@ -116,6 +116,12 @@ class Settings(BaseSettings):
     MAX_LOGIN_ATTEMPTS: int = Field(default=3, description="Max failed login attempts before lock")
     ACCOUNT_LOCK_DURATION_HOURS: int = Field(default=1, description="Account lock duration in hours")
 
+    # Logging
+    LOG_LEVEL: str = Field(default="INFO", description="Log level (DEBUG, INFO, WARN, ERROR, CRITICAL)")
+    LOG_DIR: str = Field(default="logs", description="Log directory path")
+    LOG_MAX_BYTES: int = Field(default=100 * 1024 * 1024, description="Max log file size in bytes (100MB)")
+    LOG_BACKUP_COUNT: int = Field(default=14, description="Number of backup log files to keep")
+
 
 # Global settings instance
 settings = Settings()

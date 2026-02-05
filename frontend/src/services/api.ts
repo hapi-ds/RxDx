@@ -10,6 +10,7 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { useAuthStore } from '../stores/authStore';
+import { logger } from './logger';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -28,6 +29,11 @@ function onTokenRefreshed(token: string): void {
 
 function onRefreshFailed(): void {
   refreshSubscribers = [];
+}
+
+// Generate unique request ID
+function generateRequestId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
 class ApiClient {
@@ -49,20 +55,72 @@ class ApiClient {
   private setupRequestInterceptor(): void {
     this.client.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
+        // Add authentication token
         const token = this.getAccessToken();
         if (token && config.headers) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Add request ID for tracing
+        const requestId = generateRequestId();
+        if (config.headers) {
+          config.headers['X-Request-ID'] = requestId;
+        }
+        
+        // Store request metadata for logging
+        (config as any).requestId = requestId;
+        (config as any).startTime = Date.now();
+        
+        // Log request start
+        logger.debug('API request started', {
+          requestId,
+          method: config.method?.toUpperCase(),
+          url: config.url,
+        });
+        
         return config;
       },
-      (error: AxiosError) => Promise.reject(error)
+      (error: AxiosError) => {
+        logger.error('API request setup failed', {
+          error,
+          message: error.message,
+        });
+        return Promise.reject(error);
+      }
     );
   }
 
   private setupResponseInterceptor(): void {
     this.client.interceptors.response.use(
-      (response: AxiosResponse) => response,
+      (response: AxiosResponse) => {
+        // Log successful response
+        const config = response.config as any;
+        const duration = Date.now() - (config.startTime || 0);
+        
+        logger.debug('API request completed', {
+          requestId: config.requestId,
+          method: config.method?.toUpperCase(),
+          url: config.url,
+          status: response.status,
+          duration_ms: duration,
+        });
+        
+        return response;
+      },
       async (error: AxiosError) => {
+        // Log error response
+        const config = error.config as any;
+        const duration = config ? Date.now() - (config.startTime || 0) : 0;
+        
+        logger.error('API request failed', {
+          requestId: config?.requestId,
+          method: config?.method?.toUpperCase(),
+          url: config?.url,
+          status: error.response?.status,
+          duration_ms: duration,
+          error: error.message,
+        });
+        
         const originalRequest = error.config as InternalAxiosRequestConfig & {
           _retry?: boolean;
         };

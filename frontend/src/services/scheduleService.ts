@@ -112,6 +112,58 @@ export interface WorkItemResponse {
 }
 
 /**
+ * Type guard to validate if an object is a valid WorkItemResponse
+ * Checks for required fields and their types
+ * 
+ * @param obj - Object to validate
+ * @returns True if object is a valid WorkItemResponse
+ */
+function isWorkItemResponse(obj: unknown): obj is WorkItemResponse {
+  if (!obj || typeof obj !== 'object') {
+    return false;
+  }
+  
+  const item = obj as Record<string, unknown>;
+  
+  // Check required string fields
+  if (typeof item.id !== 'string' || !item.id) return false;
+  if (typeof item.type !== 'string' || !item.type) return false;
+  if (typeof item.title !== 'string' || !item.title) return false;
+  if (typeof item.status !== 'string' || !item.status) return false;
+  if (typeof item.version !== 'string') return false;
+  if (typeof item.created_by !== 'string') return false;
+  if (typeof item.created_at !== 'string') return false;
+  if (typeof item.updated_at !== 'string') return false;
+  if (typeof item.is_signed !== 'boolean') return false;
+  
+  // Check nullable string fields
+  if (item.description !== null && typeof item.description !== 'string') return false;
+  if (item.assigned_to !== null && typeof item.assigned_to !== 'string') return false;
+  if (item.start_date !== null && typeof item.start_date !== 'string') return false;
+  if (item.end_date !== null && typeof item.end_date !== 'string') return false;
+  
+  // Check nullable number fields
+  if (item.priority !== null && typeof item.priority !== 'number') return false;
+  if (item.estimated_hours !== null && typeof item.estimated_hours !== 'number') return false;
+  
+  // Check nullable array fields
+  if (item.dependencies !== null && !Array.isArray(item.dependencies)) return false;
+  if (item.dependencies !== null && !item.dependencies.every((d: unknown) => typeof d === 'string')) return false;
+  if (item.required_resources !== null && !Array.isArray(item.required_resources)) return false;
+  if (item.required_resources !== null && !item.required_resources.every((r: unknown) => typeof r === 'string')) return false;
+  
+  // Check nullable object field
+  if (item.resource_demand !== null) {
+    if (typeof item.resource_demand !== 'object' || Array.isArray(item.resource_demand)) return false;
+    // Validate all values are numbers
+    const demand = item.resource_demand as Record<string, unknown>;
+    if (!Object.values(demand).every(v => typeof v === 'number')) return false;
+  }
+  
+  return true;
+}
+
+/**
  * Maps backend status values to frontend status values
  * Backend uses: 'draft', 'active', 'completed', 'archived'
  * Frontend uses: 'not_started', 'in_progress', 'completed', 'blocked'
@@ -169,7 +221,7 @@ function mapWorkItemToTask(workitem: WorkItemResponse): Task {
   }
   
   // estimated_hours is required for scheduling, but may be null in backend
-  // Default to 0 if not provided
+  // Default to 0 if not provided using null coalescing
   const estimatedHours = workitem.estimated_hours ?? 0;
   if (typeof estimatedHours !== 'number' || estimatedHours < 0) {
     console.error('Invalid task data: invalid estimated_hours', { workitem, estimatedHours });
@@ -182,20 +234,20 @@ function mapWorkItemToTask(workitem: WorkItemResponse): Task {
     throw new Error('Invalid task data: missing or invalid status');
   }
   
-  // Handle optional fields gracefully
+  // Handle optional fields gracefully using null coalescing and optional chaining
   return {
     id: workitem.id,
     title: workitem.title,
-    description: workitem.description || undefined,
+    description: workitem.description ?? undefined,
     estimated_hours: estimatedHours,
-    start_date: workitem.start_date || undefined,
-    end_date: workitem.end_date || undefined,
+    start_date: workitem.start_date ?? undefined,
+    end_date: workitem.end_date ?? undefined,
     status: mapBackendStatus(workitem.status),
-    priority: workitem.priority || undefined,
-    assigned_to: workitem.assigned_to || undefined,
-    dependencies: workitem.dependencies || undefined,
-    required_resources: workitem.required_resources || undefined,
-    resource_demand: workitem.resource_demand || undefined,
+    priority: workitem.priority ?? undefined,
+    assigned_to: workitem.assigned_to ?? undefined,
+    dependencies: workitem.dependencies ?? undefined,
+    required_resources: workitem.required_resources ?? undefined,
+    resource_demand: workitem.resource_demand ?? undefined,
   };
 }
 
@@ -276,6 +328,37 @@ class ScheduleService {
   /**
    * Get all tasks with optional filters
    * Implements client-side pagination since backend doesn't return pagination metadata
+   * 
+   * @param filters - Optional filters for tasks
+   * @param filters.project_id - Filter by project ID
+   * @param filters.status - Filter by task status (not_started, in_progress, completed, blocked)
+   * @param filters.assigned_to - Filter by assigned user ID
+   * @param filters.page - Page number for pagination (default: 1)
+   * @param filters.size - Number of items per page (default: 20)
+   * 
+   * @returns Promise resolving to paginated response with tasks
+   * @returns {PaginatedResponse<Task>} Object containing:
+   *   - items: Array of tasks for current page
+   *   - total: Total number of tasks (after filtering)
+   *   - page: Current page number
+   *   - size: Number of items per page
+   *   - pages: Total number of pages
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} HTTP error with specific message based on status code
+   * @throws {Error} Validation error if response data is invalid
+   * 
+   * @example
+   * // Get first page of all tasks
+   * const tasks = await scheduleService.getTasks();
+   * 
+   * @example
+   * // Get completed tasks, page 2
+   * const tasks = await scheduleService.getTasks({
+   *   status: 'completed',
+   *   page: 2,
+   *   size: 10
+   * });
    */
   async getTasks(filters?: ScheduleFilters): Promise<PaginatedResponse<Task>> {
     try {
@@ -297,8 +380,27 @@ class ScheduleService {
 
       const response = await apiClient.get<WorkItemResponse[]>(`/workitems?${params.toString()}`);
       
+      // Validate response structure before mapping
+      if (!Array.isArray(response.data)) {
+        console.error('Invalid response: expected array of WorkItems', { response: response.data });
+        throw new Error('Invalid response from server: expected array of tasks');
+      }
+      
+      // Validate each item and filter out invalid ones
+      const validItems = response.data.filter((item, index) => {
+        if (!isWorkItemResponse(item)) {
+          console.error(`Invalid WorkItem at index ${index}:`, item);
+          return false;
+        }
+        return true;
+      });
+      
+      if (validItems.length < response.data.length) {
+        console.warn(`Filtered out ${response.data.length - validItems.length} invalid WorkItems`);
+      }
+      
       // Map backend WorkItemResponse to frontend Task interface
-      const allItems = response.data.map(mapWorkItemToTask);
+      const allItems = validItems.map(mapWorkItemToTask);
       
       // Apply client-side pagination with validation
       const size = filters?.size || 20;
@@ -327,10 +429,28 @@ class ScheduleService {
 
   /**
    * Get a single task by ID
+   * 
+   * @param taskId - UUID of the task to retrieve
+   * 
+   * @returns Promise resolving to the task object
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 404 error if task not found
+   * @throws {Error} Validation error if response data is invalid
+   * 
+   * @example
+   * const task = await scheduleService.getTask('123e4567-e89b-12d3-a456-426614174000');
    */
   async getTask(taskId: string): Promise<Task> {
     try {
       const response = await apiClient.get<WorkItemResponse>(`/workitems/${taskId}`);
+      
+      // Validate response structure before mapping
+      if (!isWorkItemResponse(response.data)) {
+        console.error('Invalid WorkItem response:', response.data);
+        throw new Error('Invalid response from server: expected valid WorkItem');
+      }
+      
       return mapWorkItemToTask(response.data);
     } catch (error) {
       handleApiError(error, 'getTask', { taskId });
@@ -339,26 +459,63 @@ class ScheduleService {
 
   /**
    * Create a new task
+   * 
+   * @param task - Task data without ID (ID will be generated by backend)
+   * @param task.title - Task title (required)
+   * @param task.estimated_hours - Estimated hours for task completion (required)
+   * @param task.status - Task status (required)
+   * @param task.description - Task description (optional)
+   * @param task.priority - Task priority 1-5 (optional)
+   * @param task.assigned_to - UUID of assigned user (optional)
+   * @param task.start_date - ISO date string for start date (optional)
+   * @param task.end_date - ISO date string for end date (optional)
+   * @param task.dependencies - Array of task IDs this task depends on (optional)
+   * @param task.required_resources - Array of required resource IDs (optional)
+   * @param task.resource_demand - Map of resource ID to demand amount (optional)
+   * 
+   * @returns Promise resolving to the created task with generated ID
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 400 error if validation fails
+   * @throws {Error} 401 error if not authenticated
+   * @throws {Error} Validation error if response data is invalid
+   * 
+   * @example
+   * const newTask = await scheduleService.createTask({
+   *   title: 'Implement user authentication',
+   *   estimated_hours: 8,
+   *   status: 'not_started',
+   *   priority: 1,
+   *   description: 'Add JWT-based authentication'
+   * });
    */
   async createTask(task: Omit<Task, 'id'>): Promise<Task> {
     try {
       // Create WorkItemCreate payload with type='task'
+      // Use null coalescing to handle undefined values
       const workitemData = {
         type: 'task',
         title: task.title,
-        description: task.description || undefined,
+        description: task.description ?? undefined,
         status: mapFrontendStatus(task.status),
-        priority: task.priority || undefined,
-        assigned_to: task.assigned_to || undefined,
+        priority: task.priority ?? undefined,
+        assigned_to: task.assigned_to ?? undefined,
         estimated_hours: task.estimated_hours,
-        start_date: task.start_date || undefined,
-        end_date: task.end_date || undefined,
-        dependencies: task.dependencies || undefined,
-        required_resources: task.required_resources || undefined,
-        resource_demand: task.resource_demand || undefined,
+        start_date: task.start_date ?? undefined,
+        end_date: task.end_date ?? undefined,
+        dependencies: task.dependencies ?? undefined,
+        required_resources: task.required_resources ?? undefined,
+        resource_demand: task.resource_demand ?? undefined,
       };
       
       const response = await apiClient.post<WorkItemResponse>('/workitems', workitemData);
+      
+      // Validate response structure before mapping
+      if (!isWorkItemResponse(response.data)) {
+        console.error('Invalid WorkItem response:', response.data);
+        throw new Error('Invalid response from server: expected valid WorkItem');
+      }
+      
       return mapWorkItemToTask(response.data);
     } catch (error) {
       handleApiError(error, 'createTask', { task });
@@ -367,6 +524,34 @@ class ScheduleService {
 
   /**
    * Update an existing task
+   * 
+   * @param taskId - UUID of the task to update
+   * @param updates - Partial task object with fields to update
+   * @param updates.title - New task title (optional)
+   * @param updates.description - New task description (optional)
+   * @param updates.status - New task status (optional)
+   * @param updates.priority - New task priority (optional)
+   * @param updates.assigned_to - New assigned user ID (optional)
+   * @param updates.estimated_hours - New estimated hours (optional)
+   * @param updates.start_date - New start date (optional)
+   * @param updates.end_date - New end date (optional)
+   * @param updates.dependencies - New dependencies array (optional)
+   * @param updates.required_resources - New required resources (optional)
+   * @param updates.resource_demand - New resource demand (optional)
+   * 
+   * @returns Promise resolving to the updated task
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 400 error if validation fails
+   * @throws {Error} 404 error if task not found
+   * @throws {Error} 401 error if not authenticated
+   * @throws {Error} Validation error if response data is invalid
+   * 
+   * @example
+   * const updatedTask = await scheduleService.updateTask(
+   *   '123e4567-e89b-12d3-a456-426614174000',
+   *   { status: 'in_progress', assigned_to: 'user-uuid' }
+   * );
    */
   async updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
     try {
@@ -389,6 +574,13 @@ class ScheduleService {
         `/workitems/${taskId}?change_description=Task updated`,
         workitemUpdates
       );
+      
+      // Validate response structure before mapping
+      if (!isWorkItemResponse(response.data)) {
+        console.error('Invalid WorkItem response:', response.data);
+        throw new Error('Invalid response from server: expected valid WorkItem');
+      }
+      
       return mapWorkItemToTask(response.data);
     } catch (error) {
       handleApiError(error, 'updateTask', { taskId, updates });
@@ -397,6 +589,18 @@ class ScheduleService {
 
   /**
    * Delete a task
+   * 
+   * @param taskId - UUID of the task to delete
+   * 
+   * @returns Promise that resolves when task is deleted
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 404 error if task not found
+   * @throws {Error} 401 error if not authenticated
+   * @throws {Error} 403 error if not authorized to delete
+   * 
+   * @example
+   * await scheduleService.deleteTask('123e4567-e89b-12d3-a456-426614174000');
    */
   async deleteTask(taskId: string): Promise<void> {
     try {
@@ -408,6 +612,14 @@ class ScheduleService {
 
   /**
    * Get all resources
+   * 
+   * @returns Promise resolving to array of resources
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} HTTP error with specific message based on status code
+   * 
+   * @example
+   * const resources = await scheduleService.getResources();
    */
   async getResources(): Promise<Resource[]> {
     const response = await apiClient.get<Resource[]>('/schedule/resources');
@@ -446,6 +658,26 @@ class ScheduleService {
 
   /**
    * Update schedule manually
+   * 
+   * @param projectId - UUID of the project
+   * @param schedule - Array of scheduled tasks with dates and assignments
+   * 
+   * @returns Promise resolving to schedule result with status and conflicts
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 400 error if validation fails
+   * @throws {Error} 404 error if project not found
+   * 
+   * @example
+   * const result = await scheduleService.updateSchedule(projectId, [
+   *   {
+   *     task_id: 'task-uuid',
+   *     task_title: 'Task 1',
+   *     start_date: '2024-01-01',
+   *     end_date: '2024-01-05',
+   *     duration_hours: 40
+   *   }
+   * ]);
    */
   async updateSchedule(
     projectId: string,
@@ -471,16 +703,32 @@ class ScheduleService {
 
   /**
    * Get schedule statistics
+   * Calculates statistics from all tasks in the system
+   * 
+   * @returns Promise resolving to statistics object containing:
+   *   - total_tasks: Total number of tasks
+   *   - completed_tasks: Number of completed tasks
+   *   - in_progress_tasks: Number of in-progress tasks
+   *   - blocked_tasks: Number of blocked tasks
+   *   - total_estimated_hours: Sum of estimated hours for all tasks
+   *   - completion_percentage: Percentage of completed tasks (0-100)
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} HTTP error with specific message based on status code
+   * 
+   * @example
+   * const stats = await scheduleService.getStatistics();
+   * console.log(`${stats.completion_percentage}% complete`);
    */
   async getStatistics(): Promise<ScheduleStatistics> {
     // Get all tasks and calculate statistics
     const tasks = await this.getTasks({ size: 1000 }); // Get all tasks
     
-    const total_tasks = tasks.items.length;
-    const completed_tasks = tasks.items.filter(t => t.status === 'completed').length;
-    const in_progress_tasks = tasks.items.filter(t => t.status === 'in_progress').length;
-    const blocked_tasks = tasks.items.filter(t => t.status === 'blocked').length;
-    const total_estimated_hours = tasks.items.reduce((sum, t) => sum + (t.estimated_hours || 0), 0);
+    const total_tasks = tasks.items?.length ?? 0;
+    const completed_tasks = tasks.items?.filter(t => t.status === 'completed').length ?? 0;
+    const in_progress_tasks = tasks.items?.filter(t => t.status === 'in_progress').length ?? 0;
+    const blocked_tasks = tasks.items?.filter(t => t.status === 'blocked').length ?? 0;
+    const total_estimated_hours = tasks.items?.reduce((sum, t) => sum + (t.estimated_hours ?? 0), 0) ?? 0;
     const completion_percentage = total_tasks > 0 ? (completed_tasks / total_tasks) * 100 : 0;
     
     return {
@@ -495,6 +743,22 @@ class ScheduleService {
 
   /**
    * Export project data for offline scheduling
+   * Downloads project data as a file that can be used for offline schedule calculation
+   * 
+   * @param projectId - UUID of the project to export
+   * 
+   * @returns Promise resolving to Blob containing project data
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 404 error if project not found
+   * 
+   * @example
+   * const blob = await scheduleService.exportProjectData(projectId);
+   * const url = URL.createObjectURL(blob);
+   * const a = document.createElement('a');
+   * a.href = url;
+   * a.download = 'project-data.json';
+   * a.click();
    */
   async exportProjectData(projectId: string): Promise<Blob> {
     const response = await apiClient.get<Blob>(`/schedule/${projectId}/export`, {
@@ -505,6 +769,24 @@ class ScheduleService {
 
   /**
    * Import schedule calculated offline
+   * Uploads a schedule file that was calculated offline and applies it to the project
+   * 
+   * @param projectId - UUID of the project
+   * @param scheduleFile - File containing the calculated schedule
+   * 
+   * @returns Promise resolving to schedule result with status and any conflicts
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 400 error if file format is invalid
+   * @throws {Error} 404 error if project not found
+   * 
+   * @example
+   * const fileInput = document.querySelector('input[type="file"]');
+   * const file = fileInput.files[0];
+   * const result = await scheduleService.importSchedule(projectId, file);
+   * if (result.status === 'success') {
+   *   console.log('Schedule imported successfully');
+   * }
    */
   async importSchedule(
     projectId: string,

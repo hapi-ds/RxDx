@@ -186,17 +186,17 @@ This task list provides a systematic approach to debugging and fixing the Schedu
 
 #### Subtasks:
 
-- [-] 5.1 Add type guards for WorkItemResponse
+- [x] 5.1 Add type guards for WorkItemResponse
   - Create isWorkItemResponse() type guard function
   - Validate response structure before mapping
   - Use in getTasks() and other methods
 
-- [~] 5.2 Add strict null checks
+- [x] 5.2 Add strict null checks
   - Ensure all optional fields use `| undefined` not `| null`
   - Add null coalescing operators (??) where appropriate
   - Use optional chaining (?.) for nested properties
 
-- [~] 5.3 Add JSDoc comments to service methods
+- [x] 5.3 Add JSDoc comments to service methods
   - Document parameters and return types
   - Document error conditions
   - Add usage examples for complex methods

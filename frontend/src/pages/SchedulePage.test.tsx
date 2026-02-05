@@ -1016,7 +1016,7 @@ describe('SchedulePage', () => {
 
       // Verify priorities are displayed in the table
       const table = screen.getByRole('table');
-      const rows = within(table).getAllByRole('row');
+      within(table).getAllByRole('row');
       
       // Check that priority values 5 and 4 are present
       expect(screen.getAllByText('5').length).toBeGreaterThanOrEqual(2);

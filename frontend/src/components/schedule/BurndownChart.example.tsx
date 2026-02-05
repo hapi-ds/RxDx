@@ -6,13 +6,6 @@
 import React from 'react';
 import { BurndownChart, type BurndownDataPoint } from './BurndownChart';
 
-// Helper to generate dates
-const addDays = (date: Date, days: number): Date => {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-};
-
 // Sprint dates
 const sprintStart = new Date('2024-02-01');
 const sprintEnd = new Date('2024-02-14');

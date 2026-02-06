@@ -4,12 +4,19 @@
 
 This document specifies the requirements for implementing the backend schedule API endpoints and integrating them with the existing frontend schedule components in the RxDx project management system. The system already has a fully functional SchedulerService using OR-Tools for constraint-based scheduling, and frontend components (GanttChart, KanbanBoard) that are currently showing "coming soon" messages. This feature will expose the scheduling capabilities through REST API endpoints and enable the frontend to use real schedule data.
 
-Additionally, this specification includes requirements for implementing Projects, Phases, Workpackages, Resources, and Departments as graph nodes in the Neo4j database. Currently, only WorkItems are stored as graph nodes. By implementing these entities as graph nodes, we enable powerful graph-based queries for organizational structure, project hierarchy, resource allocation, and cross-project analytics.
+This specification implements a **comprehensive dual project management approach** that supports both classic top-down (waterfall/traditional) and agile (Scrum/Kanban) methodologies working together seamlessly. The system enables teams to use the methodology that best fits their workflow while maintaining a unified data model.
+
+Additionally, this specification extends the existing project management entities (Projects, Phases, Workpackages, Resources, Departments) stored as graph nodes using Apache AGE (A Graph Extension) for PostgreSQL. The system adds support for Milestones, Sprints, and Backlogs as graph nodes, enabling powerful graph-based queries for organizational structure, project hierarchy, resource allocation, sprint planning, and cross-project analytics.
 
 **Important Architectural Decisions:**
-- **Users remain in PostgreSQL**: Users are application-level entities for authentication and authorization, NOT project management entities. They are stored only in PostgreSQL and are NOT created as graph nodes.
-- **Resources are graph nodes**: Resources (people, machines, equipment, capacity) are the project management entities used for scheduling and resource allocation. They ARE stored as graph nodes.
-- **Hierarchical structure**: Project → Phase → Workpackage → Task provides a four-level organizational hierarchy for work management.
+- **Apache AGE for graph database**: Uses AGE extension for PostgreSQL instead of separate Neo4j instance, maintaining unified database architecture
+- **Users remain in PostgreSQL**: Users are application-level entities for authentication and authorization, NOT project management entities
+- **Resources are graph nodes**: Resources (people, machines, equipment, capacity) are the project management entities used for scheduling and resource allocation
+- **Dual methodology support**: The system supports BOTH classic (Project → Phase → Workpackage → Task) and agile (Backlog → Sprint → Task) workflows simultaneously
+- **Flexible task assignment**: Tasks can exist in BOTH hierarchies - a task can belong to a Workpackage AND be assigned to a Sprint
+- **Unified scheduling**: The SchedulerService handles both duration-based (classic) and velocity-based (agile) planning with critical path calculation
+- **Kanban for workflow**: Kanban board is used for task ordering, assignment, and workflow management, not for displaying schedule dates
+- **Progress tracking**: Task progress comes from task status updates and journaling, reflected in reports and Gantt charts
 
 ## Glossary
 
@@ -17,78 +24,78 @@ Additionally, this specification includes requirements for implementing Projects
 - **SchedulerService**: The existing OR-Tools-based constraint programming scheduler
 - **WorkItem**: A base entity representing any trackable work element (requirement, task, test, etc.)
 - **Task**: A WorkItem with type="task" that can be scheduled
-- **Schedule**: A calculated plan assigning start and end dates to tasks
+- **Schedule**: A calculated plan assigning start and end dates to tasks with critical path identification
 - **Resource**: A project management entity (person, machine, equipment, or other capacity) used in scheduling and stored as a graph node
 - **Dependency**: A relationship between tasks defining execution order
 - **Constraint**: A rule that must be satisfied in the schedule (deadlines, resources, dependencies)
 - **Conflict**: A situation where constraints cannot be simultaneously satisfied
-- **Gantt_Chart**: A visual timeline showing task schedules and dependencies
-- **Kanban_Board**: A visual board showing tasks organized by status columns
+- **Gantt_Chart**: A visual timeline showing task schedules, dependencies, and critical path
+- **Kanban_Board**: A visual board for task ordering, assignment to resources/sprints, and workflow management (NOT for displaying schedule dates)
 - **Schedule_Version**: A snapshot of a schedule at a specific point in time
-- **Manual_Adjustment**: A user-specified change to a calculated schedule
-- **Critical_Path**: The sequence of tasks that determines the minimum project duration
+- **Critical_Path**: The sequence of tasks that determines the minimum project duration, calculated automatically
 - **User**: An authenticated application user stored in PostgreSQL (for authentication/authorization only, NOT used in project management)
 - **Project_Manager**: A user role responsible for project planning and scheduling
 - **Project**: A container for organizing related work items, phases, workpackages, and resources
-- **Phase**: A high-level stage or milestone within a project (e.g., Planning, Development, Testing, Deployment)
-- **Workpackage**: A logical grouping of related tasks within a phase, providing an intermediate organizational level
+- **Phase**: A high-level stage within a project in the classic methodology (e.g., Planning, Development, Testing, Deployment)
+- **Workpackage**: A logical grouping of related tasks within a phase in the classic methodology
+- **Milestone**: A significant checkpoint or deliverable in a project, represented as a special WorkItem or graph node
 - **Department**: An organizational unit for grouping resources by function or team
-- **Graph_Node**: An entity stored in the Neo4j graph database
+- **Backlog**: A container for unscheduled work items awaiting prioritization and sprint assignment
+- **Sprint**: A time-boxed iteration (typically 1-4 weeks) in the agile methodology, stored as a graph node
+- **Sprint_Goal**: The objective or deliverable target for a sprint
+- **Velocity**: The amount of work a team completes in a sprint, measured in story points or hours
+- **Burndown**: A chart showing remaining work over time within a sprint
+- **Story_Points**: A relative measure of effort or complexity for agile work items
+- **Task_Status**: Status of a task - "draft" (not ready), "ready" (ready to start), "active" (in progress), "completed" (done), "blocked" (cannot proceed)
+- **Task_Journal**: Time-stamped log entries recording task progress, decisions, and changes
+- **AGE**: Apache AGE (A Graph Extension) - PostgreSQL extension for graph database capabilities
+- **Graph_Node**: An entity stored in the AGE graph database within PostgreSQL
 - **Graph_Relationship**: A directed connection between two graph nodes
-- **PostgreSQL**: The relational database used for transactional data (users, audit logs, signatures)
-- **Neo4j**: The graph database used for WorkItems, Projects, Phases, Workpackages, Resources, Departments, and their relationships
+- **PostgreSQL**: The relational database used for all data including graph data via AGE extension
 
 ## Requirements
 
 ### Requirement 1: Schedule Calculation API
 
-**User Story:** As a project manager, I want to calculate project schedules through an API endpoint, so that I can generate optimized task timelines based on dependencies and resource constraints.
+**User Story:** As a project manager, I want to calculate project schedules through an API endpoint, so that I can generate optimized task timelines based on dependencies and resource constraints with automatic critical path identification.
 
 #### Acceptance Criteria
 
 1. WHEN a POST request is made to /api/v1/schedule/calculate with project tasks, resources, and constraints, THE System SHALL calculate an optimized schedule using the SchedulerService
 2. WHEN the schedule calculation succeeds, THE System SHALL return status "success" or "feasible" with the complete schedule including task start dates, end dates, and resource assignments
-3. WHEN the schedule calculation fails due to impossible constraints, THE System SHALL return status "infeasible" with a list of identified conflicts
-4. WHEN calculating a schedule, THE System SHALL respect task dependencies (finish-to-start, start-to-start, finish-to-finish)
-5. WHEN calculating a schedule, THE System SHALL respect resource capacity constraints
-6. WHEN calculating a schedule, THE System SHALL respect task deadlines and earliest start dates
-7. WHEN calculating a schedule, THE System SHALL optimize to minimize total project duration
-8. WHEN a schedule is successfully calculated, THE System SHALL store the schedule with a version number
-9. WHEN storing a schedule, THE System SHALL record the calculation timestamp and applied constraints
-10. THE System SHALL complete schedule calculations within 60 seconds for projects with up to 1000 tasks
+3. WHEN the schedule calculation succeeds, THE System SHALL identify and return the critical path (sequence of tasks determining minimum project duration)
+4. WHEN the schedule calculation fails due to impossible constraints, THE System SHALL return status "infeasible" with a list of identified conflicts
+5. WHEN calculating a schedule, THE System SHALL respect task dependencies (finish-to-start, start-to-start, finish-to-finish)
+6. WHEN calculating a schedule, THE System SHALL respect resource capacity constraints
+7. WHEN calculating a schedule, THE System SHALL respect task deadlines and earliest start dates
+8. WHEN calculating a schedule with milestones in manual mode (is_manual_constraint=true), THE System SHALL treat milestone target_date as a hard constraint
+9. WHEN calculating a schedule with milestones in automatic mode (is_manual_constraint=false), THE System SHALL calculate milestone date from dependent task completion dates
+10. WHEN calculating a schedule with sprint assignments, THE System SHALL respect sprint start_date and end_date boundaries as hard constraints
+11. WHEN a task is in both Workpackage and Sprint, THE System SHALL schedule within sprint boundaries
+12. WHEN calculating a schedule, THE System SHALL optimize to minimize total project duration
+13. WHEN a schedule is successfully calculated, THE System SHALL store the schedule with a version number
+14. WHEN storing a schedule, THE System SHALL record the calculation timestamp and applied constraints
+15. THE System SHALL complete schedule calculations within 60 seconds for projects with up to 1000 tasks
+16. WHEN calculating critical path, THE System SHALL use longest path algorithm through the dependency graph
+17. WHEN returning schedule results, THE System SHALL mark all tasks on the critical path with a boolean flag
 
 ### Requirement 2: Schedule Retrieval API
 
-**User Story:** As a project manager, I want to retrieve the current schedule for a project, so that I can view the planned task timelines and resource allocations.
+**User Story:** As a project manager, I want to retrieve the current schedule for a project, so that I can view the planned task timelines, resource allocations, and critical path.
 
 #### Acceptance Criteria
 
 1. WHEN a GET request is made to /api/v1/schedule/{project_id}, THE System SHALL return the most recent schedule for that project
 2. WHEN no schedule exists for a project, THE System SHALL return a 404 error with a descriptive message
 3. WHEN returning a schedule, THE System SHALL include all scheduled tasks with start dates, end dates, durations, and assigned resources
-4. WHEN returning a schedule, THE System SHALL include project-level metadata (start date, end date, total duration, version)
-5. WHEN returning a schedule, THE System SHALL include the constraints that were applied during calculation
-6. WHEN returning a schedule, THE System SHALL include any manual adjustments that have been applied
+4. WHEN returning a schedule, THE System SHALL include the critical path task IDs
+5. WHEN returning a schedule, THE System SHALL include project-level metadata (start date, end date, total duration, version)
+6. WHEN returning a schedule, THE System SHALL include the constraints that were applied during calculation
 7. THE System SHALL return schedule data within 2 seconds for projects with up to 1000 tasks
 
-### Requirement 3: Manual Schedule Adjustment API
+### Requirement 3: Gantt Chart Data API
 
-**User Story:** As a project manager, I want to manually adjust calculated schedules, so that I can accommodate real-world constraints not captured in the automated calculation.
-
-#### Acceptance Criteria
-
-1. WHEN a PATCH request is made to /api/v1/schedule/{project_id} with task adjustments, THE System SHALL apply the manual changes to the schedule
-2. WHEN applying manual adjustments, THE System SHALL preserve task dependencies by default
-3. WHEN applying manual adjustments with recalculate_downstream enabled, THE System SHALL recalculate affected downstream tasks
-4. WHEN applying manual adjustments, THE System SHALL validate that the adjusted schedule does not violate hard constraints
-5. WHEN manual adjustments violate constraints, THE System SHALL return a 400 error with specific constraint violations
-6. WHEN manual adjustments are successfully applied, THE System SHALL increment the schedule version number
-7. WHEN manual adjustments are applied, THE System SHALL record which tasks were manually adjusted
-8. WHEN returning an adjusted schedule, THE System SHALL include both the original calculated dates and the manually adjusted dates
-
-### Requirement 4: Gantt Chart Data API
-
-**User Story:** As a project manager, I want to retrieve Gantt chart data for a project, so that I can visualize the project timeline with task dependencies and critical path.
+**User Story:** As a project manager, I want to retrieve Gantt chart data for a project, so that I can visualize the project timeline with task dependencies, critical path, milestones, and sprint boundaries.
 
 #### Acceptance Criteria
 
@@ -96,11 +103,17 @@ Additionally, this specification includes requirements for implementing Projects
 2. WHEN returning Gantt data, THE System SHALL include all scheduled tasks with start dates, end dates, and titles
 3. WHEN returning Gantt data, THE System SHALL include task dependencies with relationship types (finish-to-start, start-to-start, finish-to-finish)
 4. WHEN returning Gantt data, THE System SHALL identify and mark critical path tasks
-5. WHEN returning Gantt data, THE System SHALL include resource assignments for each task
-6. WHEN no schedule exists for a project, THE System SHALL return a 404 error
-7. THE System SHALL return Gantt data within 2 seconds for projects with up to 1000 tasks
+5. WHEN returning Gantt data, THE System SHALL include milestones as diamond markers at their target dates
+6. WHEN returning Gantt data, THE System SHALL show milestone dependencies (which tasks must complete before milestone)
+7. WHEN returning Gantt data, THE System SHALL indicate which tasks are assigned to sprints
+8. WHEN returning Gantt data, THE System SHALL show sprint boundaries as vertical lines with sprint name and dates
+9. WHEN returning Gantt data, THE System SHALL include resource assignments for each task
+10. WHEN no schedule exists for a project, THE System SHALL return a 404 error
+11. THE System SHALL return Gantt data within 2 seconds for projects with up to 1000 tasks
+12. WHEN returning Gantt data, THE System SHALL include task completion status (draft, ready, active, completed, blocked)
+13. WHEN returning Gantt data, THE System SHALL calculate and include completion percentage based on completed vs. total tasks
 
-### Requirement 5: Schedule Conflict Detection
+### Requirement 4: Schedule Conflict Detection
 
 **User Story:** As a project manager, I want detailed conflict information when scheduling fails, so that I can understand and resolve the issues preventing a feasible schedule.
 
@@ -112,26 +125,28 @@ Additionally, this specification includes requirements for implementing Projects
 4. WHEN a task requires a non-existent resource, THE System SHALL report the missing resource
 5. WHEN resource capacity is exceeded, THE System SHALL report which resource is over-allocated and by how much
 6. WHEN a task deadline is impossible to meet, THE System SHALL report the task and the time gap
-7. WHEN reporting conflicts, THE System SHALL provide actionable suggestions for resolution
-8. WHEN multiple conflicts exist, THE System SHALL report all conflicts, not just the first one
+7. WHEN a milestone target date (manual mode) cannot be met by dependent tasks, THE System SHALL report the milestone and conflicting tasks
+8. WHEN sprint capacity is exceeded, THE System SHALL report the sprint and the amount of over-allocation
+9. WHEN reporting conflicts, THE System SHALL provide actionable suggestions for resolution
+10. WHEN multiple conflicts exist, THE System SHALL report all conflicts, not just the first one
 
-### Requirement 6: Schedule Versioning and History
+### Requirement 5: Schedule Versioning and History
 
-**User Story:** As a project manager, I want to track schedule versions and changes over time, so that I can understand how the project plan has evolved and revert if needed.
+**User Story:** As a project manager, I want to track schedule versions and changes over time, so that I can understand how the project plan has evolved.
 
 #### Acceptance Criteria
 
 1. WHEN a new schedule is calculated, THE System SHALL assign it version number 1
-2. WHEN a schedule is recalculated or manually adjusted, THE System SHALL increment the version number
+2. WHEN a schedule is recalculated, THE System SHALL increment the version number
 3. WHEN storing a schedule version, THE System SHALL preserve the complete schedule state including all task dates and resource assignments
 4. WHEN storing a schedule version, THE System SHALL record the user who created the version and the timestamp
-5. WHEN storing a schedule version, THE System SHALL record whether it was automatically calculated or manually adjusted
+5. WHEN storing a schedule version, THE System SHALL record whether it was automatically calculated
 6. THE System SHALL support retrieving previous schedule versions by version number
 7. THE System SHALL support comparing two schedule versions to identify changes
 
-### Requirement 7: Integration with WorkItem System
+### Requirement 6: Integration with WorkItem System
 
-**User Story:** As a project manager, I want schedules to integrate seamlessly with the WorkItem system, so that task data is consistent across the application.
+**User Story:** As a project manager, I want schedules to integrate seamlessly with the WorkItem system, so that task data is consistent across the application and progress is accurately tracked.
 
 #### Acceptance Criteria
 
@@ -142,6 +157,14 @@ Additionally, this specification includes requirements for implementing Projects
 5. WHEN a task is deleted from the WorkItem system, THE System SHALL remove it from the schedule
 6. THE System SHALL support scheduling tasks from multiple projects independently
 7. THE System SHALL validate that all task IDs in a schedule request correspond to existing WorkItems
+8. WHEN a task is created, THE System SHALL support status values: "draft", "ready", "active", "completed", "blocked"
+9. WHEN a task status is "draft", THE System SHALL exclude it from schedule calculations
+10. WHEN a task status is "ready", THE System SHALL include it in schedule calculations as available to start
+11. WHEN a task status is "completed", THE System SHALL record the completion date and mark it as done
+12. WHEN a task has a "done" boolean attribute set to true, THE System SHALL treat it as completed in progress calculations
+13. THE System SHALL support adding journal entries to tasks with timestamp, user_id, and entry text
+14. WHEN retrieving task progress, THE System SHALL include the most recent journal entries
+15. WHEN calculating project completion percentage, THE System SHALL use the "done" attribute and "completed" status
 
 ### Requirement 8: Schedule Resource Integration
 
@@ -190,19 +213,28 @@ Additionally, this specification includes requirements for implementing Projects
 7. WHEN returning statistics, THE System SHALL include resource utilization percentages
 8. WHEN returning statistics, THE System SHALL include schedule health indicators (on track, at risk, delayed)
 
-### Requirement 11: Kanban Board Data Integration
+### Requirement 10: Kanban Board for Task Ordering and Assignment
 
-**User Story:** As a project manager, I want Kanban board data to reflect scheduled task information, so that I can see task timelines in the Kanban view.
+**User Story:** As a team member, I want to use a Kanban board to order tasks, assign resources, and assign tasks to sprints, so that I can manage workflow and team assignments visually.
 
 #### Acceptance Criteria
 
-1. WHEN retrieving tasks for the Kanban board, THE System SHALL include scheduled start and end dates if available
+1. WHEN retrieving tasks for the Kanban board, THE System SHALL return tasks ordered by priority within each column
 2. WHEN a task is moved between Kanban columns, THE System SHALL update the task status in the WorkItem system
-3. WHEN a task status is updated, THE System SHALL preserve the scheduled dates unless explicitly changed
-4. THE System SHALL support filtering Kanban tasks by scheduled date range
-5. THE System SHALL support sorting Kanban tasks by scheduled start date
-6. WHEN a task is scheduled, THE System SHALL make the schedule dates visible in the Kanban card
-7. THE System SHALL indicate on the Kanban board which tasks are on the critical path
+3. WHEN a task status changes to "ready", THE System SHALL automatically add the task to the Backlog (create IN_BACKLOG relationship)
+4. WHEN a task status is updated, THE System SHALL NOT modify scheduled dates (schedule dates are read-only on Kanban)
+5. THE System SHALL support assigning resources to tasks via drag-and-drop on the Kanban board
+6. THE System SHALL support assigning tasks to sprints via drag-and-drop on the Kanban board
+7. WHEN a resource is assigned to a task on Kanban, THE System SHALL create an ASSIGNED_TO relationship in the graph
+8. WHEN a task is assigned to a sprint on Kanban, THE System SHALL create an ASSIGNED_TO_SPRINT relationship in the graph
+9. THE System SHALL support filtering Kanban tasks by sprint (show only tasks in selected sprint)
+10. THE System SHALL support filtering Kanban tasks by resource (show only tasks assigned to selected resource)
+11. THE System SHALL support filtering Kanban tasks by workpackage (show only tasks in selected workpackage)
+12. THE System SHALL support filtering Kanban tasks by "in backlog" status
+13. THE System SHALL support reordering tasks within a Kanban column by updating priority values
+14. WHEN a task is moved to a "completed" column, THE System SHALL set the task status to "completed" and done attribute to true
+15. THE System SHALL support custom Kanban columns configured per project
+16. THE System SHALL display task metadata on Kanban cards (title, assignee, sprint, estimated hours, backlog indicator) but NOT schedule dates
 
 ### Requirement 12: Schedule Validation and Constraints
 
@@ -265,34 +297,145 @@ Additionally, this specification includes requirements for implementing Projects
 
 ### Requirement 16: Graph Database Entity Integration
 
-**User Story:** As a system architect, I want Projects, Phases, Workpackages, Resources, and Departments to be stored as graph nodes, so that we can leverage graph relationships for project organization, resource allocation, work hierarchy, and advanced querying capabilities.
+**User Story:** As a system architect, I want Projects, Phases, Workpackages, Resources, Departments, Company, Milestones, Sprints, and Backlogs to be stored as graph nodes, so that we can leverage graph relationships for project organization, resource allocation, work hierarchy, agile planning, and advanced querying capabilities.
 
 #### Acceptance Criteria
 
-1. WHEN a Project is created, THE System SHALL create a Project node in the graph database with properties (id, name, description, status, start_date, end_date, created_at, updated_at, created_by_user_id)
-2. WHEN a Phase is created, THE System SHALL create a Phase node in the graph database with properties (id, name, description, order, start_date, end_date, project_id, created_at)
-3. WHEN a Workpackage is created, THE System SHALL create a Workpackage node in the graph database with properties (id, name, description, order, start_date, end_date, phase_id, created_at)
-4. WHEN a Resource is created, THE System SHALL create a Resource node in the graph database with properties (id, name, type, capacity, department_id, skills, availability, created_at)
-5. WHEN a Department is created, THE System SHALL create a Department node in the graph database with properties (id, name, description, created_at)
+**Organizational Structure:**
+
+1. WHEN a Company is created, THE System SHALL create a Company node in the graph database with properties (id, name, description, created_at, updated_at)
+2. WHEN a Department is created, THE System SHALL create a Department node in the graph database with properties (id, name, description, manager_user_id, company_id, created_at)
+3. THE System SHALL create a PARENT_OF relationship from Company nodes to Department nodes
+4. THE System SHALL create a PARENT_OF relationship from Department nodes to child Department nodes (hierarchical structure)
+5. WHEN a Resource is created, THE System SHALL create a Resource node in the graph database with properties (id, name, type, capacity, department_id, skills, availability, created_at)
 6. THE System SHALL support Resource types: "person", "machine", "equipment", "facility", "other"
-7. THE System SHALL create a BELONGS_TO relationship from WorkItem nodes to Project nodes
-8. THE System SHALL create a BELONGS_TO relationship from Phase nodes to Project nodes
-9. THE System SHALL create a BELONGS_TO relationship from Workpackage nodes to Phase nodes
-10. THE System SHALL create a BELONGS_TO relationship from Task (WorkItem) nodes to Workpackage nodes
-11. THE System SHALL create a BELONGS_TO relationship from Resource nodes to Department nodes
-12. THE System SHALL create an ASSIGNED_TO relationship from Task nodes to Resource nodes
-13. THE System SHALL create an ALLOCATED_TO relationship from Resource nodes to Project nodes
-14. THE System SHALL create a MANAGED_BY relationship from Project nodes to User IDs (stored as property, not graph relationship)
-15. THE System SHALL support querying all WorkItems for a Project through graph traversal
-16. THE System SHALL support querying all Resources in a Department through graph traversal
-17. THE System SHALL support querying all Tasks in a Workpackage through graph traversal
-18. THE System SHALL support querying the complete project hierarchy (Project → Phase → Workpackage → Task) through graph traversal
-19. THE System SHALL support querying all Projects a Resource is allocated to through graph traversal
-20. WHEN a Project is deleted, THE System SHALL cascade delete all related Phase, Workpackage nodes and relationships
-21. WHEN a Phase is deleted, THE System SHALL cascade delete all related Workpackage nodes and relationships
-22. WHEN a Workpackage is deleted, THE System SHALL update Task relationships but NOT delete the Task nodes
-23. WHEN a Resource is deleted, THE System SHALL validate no active task assignments exist before deletion
-24. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletion
+7. THE System SHALL create a BELONGS_TO relationship from Resource nodes to Department nodes
+
+**Classic Project Management Entities:**
+
+8. WHEN a Project is created, THE System SHALL create a Project node in the graph database with properties (id, name, description, status, start_date, end_date, created_at, updated_at, created_by_user_id)
+9. WHEN a Phase is created, THE System SHALL create a Phase node in the graph database with properties (id, name, description, order, start_date, end_date, project_id, created_at)
+10. WHEN a Workpackage is created, THE System SHALL create a Workpackage node in the graph database with properties (id, name, description, order, start_date, end_date, phase_id, created_at)
+11. THE System SHALL create a BELONGS_TO relationship from Phase nodes to Project nodes
+12. THE System SHALL create a BELONGS_TO relationship from Workpackage nodes to Phase nodes
+
+**Task and Milestone Nodes (Separate from WorkItem):**
+
+13. WHEN a Task is created, THE System SHALL create a Task node (NOT WorkItem) in the graph database with properties (id, title, description, status, priority, estimated_hours, actual_hours, story_points, skills_needed, done, start_date, end_date, workpackage_id, version, created_by, created_at, updated_at, is_signed)
+14. WHEN a Milestone is created, THE System SHALL create a Milestone node (NOT WorkItem) in the graph database with properties (id, title, description, target_date, is_manual_constraint, completion_criteria, status, project_id, version, created_by, created_at, updated_at)
+15. THE System SHALL support Task node label "Task" (not WorkItem with type="task")
+16. THE System SHALL support Milestone node label "Milestone" (not WorkItem with type="milestone")
+17. THE System SHALL maintain backward compatibility by allowing WorkItem service to query Task nodes using MATCH (t:Task)
+18. THE System SHALL maintain backward compatibility by allowing WorkItem service to query Milestone nodes using MATCH (m:Milestone)
+
+**Skills-Based Resource Matching:**
+
+19. WHEN a Task is created, THE System SHALL support skills_needed property as an array of strings
+20. WHEN allocating resources to tasks, THE System SHALL match Resource skills with Task skills_needed
+21. THE System SHALL prioritize resources whose skills match the task's skills_needed
+22. THE System SHALL support filtering resources by skills for assignment recommendations
+
+**Classic Hierarchy Relationships:**
+
+23. THE System SHALL create a BELONGS_TO relationship from Task nodes to Workpackage nodes (mandatory - all tasks must belong to a workpackage)
+24. THE System SHALL create a DEPENDS_ON relationship from Task nodes to other Task nodes (task dependencies)
+25. THE System SHALL create a DEPENDS_ON relationship from Milestone nodes to Task nodes (milestone depends on task completion)
+26. THE System SHALL create a BLOCKS relationship from Task nodes to Milestone nodes (task blocks milestone)
+
+**Resource Allocation Patterns:**
+
+27. THE System SHALL create an ALLOCATED_TO relationship from Resource nodes to Project nodes with properties (allocation_percentage, lead, start_date, end_date)
+28. THE System SHALL create an ALLOCATED_TO relationship from Resource nodes to Task nodes with properties (allocation_percentage, lead, start_date, end_date)
+29. THE System SHALL support "lead" boolean property on ALLOCATED_TO relationships (true = primary/lead, false = supporting)
+30. WHEN a Resource is allocated with lead=true, THE System SHALL prioritize that resource as the primary owner
+31. WHEN a Resource is allocated with lead=false, THE System SHALL treat that resource as supporting/collaborating
+32. THE System SHALL support both Project-level allocation (resource available to all tasks) and Task-level allocation (explicit assignment)
+
+**Department-Based Resource Allocation:**
+
+33. THE System SHALL create a LINKED_TO_DEPARTMENT relationship from Workpackage nodes to Department nodes
+34. WHEN a Workpackage is linked to a Department, THE System SHALL make Resources from that Department available for task allocation
+35. THE System SHALL use skills_needed matching when allocating Department resources to tasks
+
+**Agile Workflow Entities:**
+
+36. WHEN a Backlog is created, THE System SHALL create a Backlog node in the graph database with properties (id, name, description, project_id, created_at)
+37. WHEN a Sprint is created, THE System SHALL create a Sprint node in the graph database with properties (id, name, goal, start_date, end_date, capacity_hours, capacity_story_points, status, project_id, created_at)
+38. THE System SHALL support Sprint statuses: "planning", "active", "completed", "cancelled"
+39. THE System SHALL create a BELONGS_TO relationship from Sprint nodes to Project nodes
+40. THE System SHALL create a BELONGS_TO relationship from Backlog nodes to Project nodes
+
+**Backlog and Sprint Relationships (MUTUALLY EXCLUSIVE):**
+
+41. WHEN a Task status changes to "ready", THE System SHALL automatically create an IN_BACKLOG relationship from Task to Backlog
+42. THE System SHALL create an ASSIGNED_TO_SPRINT relationship from Task nodes to Sprint nodes (manual assignment by user)
+43. THE System SHALL enforce mutual exclusivity: A Task can have IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
+44. WHEN a Task is assigned to a Sprint, THE System SHALL remove the IN_BACKLOG relationship
+45. WHEN a Task is removed from a Sprint, THE System SHALL create an IN_BACKLOG relationship (task returns to backlog)
+46. THE System SHALL maintain the BELONGS_TO (Workpackage) relationship regardless of Backlog/Sprint status
+
+**Additional Task Relationships:**
+
+47. THE System SHALL create a has_risk relationship from Task nodes to Risk (WorkItem) nodes
+48. THE System SHALL create an implements relationship from Task nodes to Requirement (WorkItem) nodes
+49. THE System SHALL support multiple concurrent relationships on Task nodes (BELONGS_TO, has_risk, implements, DEPENDS_ON, etc.)
+50. THE System SHALL allow Tasks to have many domain relationships while maintaining only ONE of IN_BACKLOG or ASSIGNED_TO_SPRINT
+
+**Milestone Scheduling Modes:**
+
+51. WHEN a Milestone has is_manual_constraint=true, THE System SHALL use target_date as a hard constraint in schedule calculations
+52. WHEN a Milestone has is_manual_constraint=false, THE System SHALL calculate target_date automatically from dependent task completion dates
+53. THE System SHALL support both manual and automatic milestone scheduling modes simultaneously in the same project
+
+**Sprint Capacity and Velocity:**
+
+54. WHEN a Sprint is created, THE System SHALL calculate capacity_hours based on assigned resources and their availability
+55. WHEN a Sprint completes, THE System SHALL calculate actual velocity (completed story_points and completed hours)
+56. THE System SHALL track historical velocity across sprints for planning recommendations
+57. THE System SHALL support both story_points and estimated_hours as effort measures for tasks
+58. WHEN planning a Sprint, THE System SHALL use average historical velocity to recommend capacity
+
+**Graph Traversal Queries:**
+
+59. THE System SHALL support querying all WorkItems for a Project through graph traversal
+60. THE System SHALL support querying all Resources in a Department through graph traversal
+61. THE System SHALL support querying all Tasks in a Workpackage through graph traversal
+62. THE System SHALL support querying all Tasks in a Backlog through graph traversal (ordered by priority)
+63. THE System SHALL support querying all Tasks in a Sprint through graph traversal
+64. THE System SHALL support querying all Milestones for a Project through graph traversal
+65. THE System SHALL support querying the complete project hierarchy (Project → Phase → Workpackage → Task) through graph traversal
+66. THE System SHALL support querying all Projects a Resource is allocated to through graph traversal
+67. THE System SHALL support querying all Tasks that depend on a Milestone through graph traversal
+68. THE System SHALL support querying all Sprints for a Project through graph traversal (ordered by start_date)
+69. THE System SHALL support querying all Departments under a Company through graph traversal
+
+**Cascade Deletion Rules:**
+
+70. WHEN a Company is deleted, THE System SHALL cascade delete all related Department nodes and relationships
+71. WHEN a Project is deleted, THE System SHALL cascade delete all related Phase, Workpackage, Sprint, Backlog, and Milestone nodes and relationships
+72. WHEN a Phase is deleted, THE System SHALL cascade delete all related Workpackage nodes and relationships
+73. WHEN a Workpackage is deleted, THE System SHALL remove BELONGS_TO relationships but NOT delete the Task nodes
+74. WHEN a Sprint is deleted, THE System SHALL remove ASSIGNED_TO_SPRINT relationships and move tasks back to Backlog (create IN_BACKLOG relationships)
+75. WHEN a Backlog is deleted, THE System SHALL remove IN_BACKLOG relationships but NOT delete the Task nodes
+76. WHEN a Milestone is deleted, THE System SHALL validate no active task dependencies exist before deletion
+77. WHEN a Resource is deleted, THE System SHALL validate no active task assignments exist before deletion
+78. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletionph traversal
+42. THE System SHALL support querying all Milestones for a Project through graph traversal
+43. THE System SHALL support querying the complete project hierarchy (Project → Phase → Workpackage → Task) through graph traversal
+44. THE System SHALL support querying all Projects a Resource is allocated to through graph traversal
+45. THE System SHALL support querying all Tasks that depend on a Milestone through graph traversal
+46. THE System SHALL support querying all Sprints for a Project through graph traversal (ordered by start_date)
+
+**Cascade Deletion Rules:**
+
+47. WHEN a Project is deleted, THE System SHALL cascade delete all related Phase, Workpackage, Sprint, Backlog, and Milestone nodes and relationships
+48. WHEN a Phase is deleted, THE System SHALL cascade delete all related Workpackage nodes and relationships
+49. WHEN a Workpackage is deleted, THE System SHALL remove BELONGS_TO relationships but NOT delete the Task nodes
+50. WHEN a Sprint is deleted, THE System SHALL remove ASSIGNED_TO_SPRINT relationships and move tasks back to Backlog
+51. WHEN a Backlog is deleted, THE System SHALL remove IN_BACKLOG relationships but NOT delete the Task nodes
+52. WHEN a Milestone is deleted, THE System SHALL validate no active task dependencies exist before deletion
+53. WHEN a Resource is deleted, THE System SHALL validate no active task assignments exist before deletion
+54. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletion
 
 ### Requirement 17: Project Management API
 
@@ -381,3 +524,100 @@ Additionally, this specification includes requirements for implementing Projects
 8. WHEN retrieving a department, THE System SHALL include resource count and manager information
 9. THE System SHALL support querying all resources in a department through graph traversal
 10. THE System SHALL support hierarchical department structures with parent-child relationships using PARENT_OF relationships
+
+### Requirement 21: Backlog Management API
+
+**User Story:** As a product owner, I want to manage backlogs through the API, so that I can organize and prioritize work items awaiting sprint assignment.
+
+#### Acceptance Criteria
+
+1. WHEN a POST request is made to /api/v1/projects/{project_id}/backlogs with backlog data, THE System SHALL create a new Backlog node
+2. WHEN a GET request is made to /api/v1/projects/{project_id}/backlogs, THE System SHALL return all backlogs for the project
+3. WHEN a GET request is made to /api/v1/backlogs/{backlog_id}, THE System SHALL return backlog details including all tasks
+4. WHEN a GET request is made to /api/v1/backlogs/{backlog_id}/tasks, THE System SHALL return all tasks in the backlog ordered by priority
+5. WHEN a task status changes to "ready", THE System SHALL automatically add the task to the project's default Backlog (create IN_BACKLOG relationship)
+6. WHEN a task is manually added to a backlog, THE System SHALL create an IN_BACKLOG relationship
+7. WHEN a task is assigned to a sprint, THE System SHALL remove the IN_BACKLOG relationship (mutually exclusive with ASSIGNED_TO_SPRINT)
+8. WHEN a task is removed from a sprint, THE System SHALL create an IN_BACKLOG relationship (task returns to backlog)
+9. WHEN a task is removed from a backlog, THE System SHALL delete the IN_BACKLOG relationship
+10. THE System SHALL support reordering backlog tasks by updating priority values
+11. THE System SHALL support filtering backlog tasks by type (requirement, task, test, etc.)
+12. THE System SHALL support filtering backlog tasks by estimated effort or story points
+13. THE System SHALL calculate total estimated effort for all backlog items
+14. WHEN a PATCH request is made to /api/v1/backlogs/{backlog_id}, THE System SHALL update the backlog properties
+15. WHEN a DELETE request is made to /api/v1/backlogs/{backlog_id}, THE System SHALL remove all IN_BACKLOG relationships but NOT delete the tasks
+16. THE System SHALL enforce that a task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT relationships simultaneously
+
+### Requirement 22: Sprint Management API
+
+**User Story:** As a scrum master, I want to create and manage sprints through the API, so that I can organize work into time-boxed iterations with capacity tracking and velocity measurement.
+
+#### Acceptance Criteria
+
+1. WHEN a POST request is made to /api/v1/projects/{project_id}/sprints with sprint data, THE System SHALL create a new Sprint node
+2. WHEN creating a sprint, THE System SHALL require name, start_date, and end_date
+3. WHEN creating a sprint, THE System SHALL validate end_date is after start_date
+4. WHEN creating a sprint, THE System SHALL calculate capacity_hours based on assigned resources and their availability
+5. WHEN creating a sprint, THE System SHALL default status to "planning"
+6. WHEN a GET request is made to /api/v1/projects/{project_id}/sprints, THE System SHALL return all sprints for the project ordered by start_date
+7. WHEN a GET request is made to /api/v1/sprints/{sprint_id}, THE System SHALL return sprint details including all assigned tasks
+8. WHEN a GET request is made to /api/v1/sprints/{sprint_id}/tasks, THE System SHALL return all tasks assigned to the sprint
+9. WHEN a POST request is made to /api/v1/sprints/{sprint_id}/tasks/{task_id}, THE System SHALL assign the task to the sprint (create ASSIGNED_TO_SPRINT relationship)
+10. WHEN assigning a task to a sprint, THE System SHALL remove the IN_BACKLOG relationship (mutually exclusive)
+11. WHEN assigning a task to a sprint, THE System SHALL validate the task is in "ready" status
+12. WHEN assigning a task to a sprint, THE System SHALL maintain the task's BELONGS_TO (Workpackage) relationship
+13. WHEN a DELETE request is made to /api/v1/sprints/{sprint_id}/tasks/{task_id}, THE System SHALL remove the task from the sprint (delete ASSIGNED_TO_SPRINT relationship)
+14. WHEN removing a task from a sprint, THE System SHALL create an IN_BACKLOG relationship (task returns to backlog)
+15. WHEN a PATCH request is made to /api/v1/sprints/{sprint_id} with status="active", THE System SHALL start the sprint and record actual start date
+16. WHEN a PATCH request is made to /api/v1/sprints/{sprint_id} with status="completed", THE System SHALL complete the sprint and calculate actual velocity
+17. WHEN a sprint completes, THE System SHALL calculate actual velocity as sum of completed task story_points and completed hours
+18. WHEN a sprint completes, THE System SHALL store velocity values in the Sprint node
+19. WHEN a sprint completes with incomplete tasks, THE System SHALL remove ASSIGNED_TO_SPRINT relationships and create IN_BACKLOG relationships for incomplete tasks
+20. THE System SHALL calculate average velocity across the last 3 completed sprints for planning recommendations
+21. THE System SHALL support only one active sprint per project at a time
+22. WHEN a DELETE request is made to /api/v1/sprints/{sprint_id}, THE System SHALL remove all ASSIGNED_TO_SPRINT relationships and create IN_BACKLOG relationships for all tasks
+23. THE System SHALL enforce that a task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT relationships simultaneously
+
+### Requirement 23: Milestone Management API
+
+**User Story:** As a project manager, I want to create and manage milestones through the API, so that I can mark significant checkpoints and control how they affect scheduling.
+
+#### Acceptance Criteria
+
+1. WHEN a POST request is made to /api/v1/projects/{project_id}/milestones with milestone data, THE System SHALL create a new Milestone node
+2. WHEN creating a milestone, THE System SHALL require title and project_id
+3. WHEN creating a milestone, THE System SHALL support is_manual_constraint flag (default: false)
+4. WHEN creating a milestone with is_manual_constraint=true, THE System SHALL require target_date
+5. WHEN creating a milestone with is_manual_constraint=false, THE System SHALL calculate target_date from dependent tasks
+6. WHEN a GET request is made to /api/v1/projects/{project_id}/milestones, THE System SHALL return all milestones for the project ordered by target_date
+7. WHEN a GET request is made to /api/v1/milestones/{milestone_id}, THE System SHALL return milestone details including dependent tasks
+8. WHEN a POST request is made to /api/v1/milestones/{milestone_id}/dependencies/{task_id}, THE System SHALL create a DEPENDS_ON relationship (milestone depends on task)
+9. WHEN a POST request is made to /api/v1/milestones/{milestone_id}/dependencies/{task_id}, THE System SHALL create a BLOCKS relationship (task blocks milestone)
+10. WHEN a DELETE request is made to /api/v1/milestones/{milestone_id}/dependencies/{task_id}, THE System SHALL remove both DEPENDS_ON and BLOCKS relationships
+11. WHEN a PATCH request is made to /api/v1/milestones/{milestone_id}, THE System SHALL update milestone properties
+12. WHEN updating a milestone's target_date (manual mode), THE System SHALL mark dependent task schedules as outdated
+13. WHEN updating a milestone's is_manual_constraint from true to false, THE System SHALL recalculate target_date from dependent tasks
+14. WHEN a milestone is achieved, THE System SHALL record actual_date and update status to "achieved"
+15. WHEN a DELETE request is made to /api/v1/milestones/{milestone_id}, THE System SHALL validate no active task dependencies exist before deletion
+16. THE System SHALL support milestone statuses: "pending", "achieved", "missed", "cancelled"
+
+### Requirement 24: Velocity and Burndown Metrics API
+
+**User Story:** As a scrum master, I want to track team velocity and sprint burndown through the API, so that I can measure team performance and predict future capacity.
+
+#### Acceptance Criteria
+
+1. WHEN a GET request is made to /api/v1/sprints/{sprint_id}/velocity, THE System SHALL return the sprint's actual velocity (story_points and hours)
+2. WHEN a GET request is made to /api/v1/projects/{project_id}/velocity, THE System SHALL return average velocity across the last N completed sprints (default N=3)
+3. WHEN a GET request is made to /api/v1/projects/{project_id}/velocity/history, THE System SHALL return velocity history for all completed sprints
+4. WHEN calculating average velocity, THE System SHALL include both story_points and hours metrics
+5. WHEN planning a new sprint, THE System SHALL provide velocity-based capacity recommendations
+6. WHEN a GET request is made to /api/v1/sprints/{sprint_id}/burndown, THE System SHALL return daily burndown data (remaining hours per day)
+7. WHEN returning burndown data, THE System SHALL include both actual and ideal burndown lines
+8. WHEN returning burndown data, THE System SHALL calculate ideal burndown as linear decrease from total to zero
+9. WHEN actual burndown is significantly above ideal, THE System SHALL flag the sprint as "at risk"
+10. THE System SHALL track completed story_points and hours per day during active sprints
+11. THE System SHALL calculate sprint completion percentage based on completed vs. total estimated hours
+12. WHEN a GET request is made to /api/v1/sprints/{sprint_id}/statistics, THE System SHALL return sprint metrics (total tasks, completed tasks, remaining hours, completion percentage, velocity trend)
+13. THE System SHALL support querying burndown data for visualization in burndown charts
+14. THE System SHALL support both story_points and estimated_hours as effort measures for velocity calculations

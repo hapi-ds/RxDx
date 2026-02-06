@@ -1,688 +1,580 @@
-# Implementation Plan: Backend Schedule API
+# Implementation Tasks: Backend Schedule API
 
 ## Overview
 
-This plan implements REST API endpoints for project scheduling, integrating the existing SchedulerService with the frontend schedule components. The implementation follows the RxDx architecture patterns and enables project managers to calculate, retrieve, and manually adjust project schedules.
-
-## Tasks
-
-- [ ] 1. Create Pydantic schemas for new API models
-  - Create `GanttChartData` schema for Gantt chart visualization
-  - Create `TaskDependencyView` schema for dependency visualization
-  - Create `ScheduleStatistics` schema for schedule metrics
-  - Create `ScheduleCalculateRequest` schema for calculation requests
-  - Add schemas to `backend/app/schemas/schedule.py`
-  - _Requirements: 1.1, 4.1, 10.1_
-
-- [ ] 2. Implement ScheduleAPIService
-  - [ ] 2.1 Create service class structure
-    - Create `backend/app/services/schedule_api_service.py`
-    - Define `ScheduleAPIService` class with dependencies
-    - Implement dependency injection function `get_schedule_api_service`
-    - _Requirements: 1.1, 2.1_
-
-  - [ ] 2.2 Implement schedule calculation method
-    - Implement `calculate_schedule` method
-    - Fetch tasks from WorkItem system
-    - Convert WorkItems to ScheduleTaskCreate
-    - Call SchedulerService
-    - Update WorkItem dates on success
-    - _Requirements: 1.1, 1.2, 7.1, 7.2_
-
-  - [ ]* 2.3 Write property test for schedule calculation
-    - **Property 1: Schedule Calculation Determinism**
-    - **Validates: Requirements 1.1, 1.2**
-
-  - [ ] 2.4 Implement schedule retrieval method
-    - Implement `get_schedule` method
-    - Support version parameter for historical retrieval
-    - _Requirements: 2.1, 2.3, 2.4, 2.5, 2.6_
-
-  - [ ]* 2.5 Write property test for schedule retrieval
-    - **Property 5: Schedule Retrieval Consistency**
-    - **Validates: Requirements 2.3, 2.4**
-
-  - [ ] 2.6 Implement schedule update method
-    - Implement `update_schedule` method
-    - Apply manual adjustments
-    - Update WorkItem dates
-    - _Requirements: 3.1, 3.2, 3.3, 3.6, 3.7_
-
-  - [ ]* 2.7 Write property test for manual adjustments
-    - **Property 6: Manual Adjustment Preservation**
-    - **Validates: Requirements 3.6, 3.7**
-
-  - [ ] 2.8 Implement Gantt data method
-    - Implement `get_gantt_data` method
-    - Fetch task dependencies
-    - Calculate critical path
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
-
-  - [ ]* 2.9 Write property test for Gantt data
-    - **Property 7: Gantt Data Completeness**
-    - **Validates: Requirements 4.2, 4.3**
-
-  - [ ] 2.10 Implement statistics method
-    - Implement `get_statistics` method
-    - Calculate task counts by status
-    - Calculate completion percentage
-    - Calculate resource utilization
-    - Determine schedule health
-    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8_
-
-  - [ ]* 2.11 Write property test for statistics
-    - **Property 10: Statistics Calculation Correctness**
-    - **Validates: Requirements 10.1-10.8**
-
-- [ ] 3. Checkpoint - Ensure service layer tests pass
-  - Ensure all tests pass, ask the user if questions arise.
-
-
-- [ ] 4. Implement API endpoints
-  - [ ] 4.1 Create schedule router
-    - Create `backend/app/api/v1/schedule.py`
-    - Define router with prefix `/schedule`
-    - Import required dependencies
-    - _Requirements: 1.1, 2.1, 3.1, 4.1_
-
-  - [ ] 4.2 Implement POST /schedule/calculate endpoint
-    - Implement `calculate_schedule` endpoint
-    - Add authentication and authorization checks
-    - Handle errors and return appropriate status codes
-    - Add structured logging
-    - _Requirements: 1.1, 1.2, 1.3, 15.1, 15.2_
-
-  - [ ]* 4.3 Write integration test for calculate endpoint
-    - Test successful calculation
-    - Test infeasible schedule
-    - Test authentication required
-    - Test authorization required
-    - _Requirements: 1.1, 1.2, 1.3, 15.1, 15.2_
-
-  - [ ] 4.4 Implement GET /schedule/{project_id} endpoint
-    - Implement `get_schedule` endpoint
-    - Support version query parameter
-    - Handle 404 for non-existent schedules
-    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
-
-  - [ ]* 4.5 Write integration test for get schedule endpoint
-    - Test successful retrieval
-    - Test 404 for non-existent schedule
-    - Test version parameter
-    - _Requirements: 2.1, 2.2_
-
-  - [ ] 4.6 Implement PATCH /schedule/{project_id} endpoint
-    - Implement `update_schedule` endpoint
-    - Add authentication and authorization checks
-    - Validate adjustments
-    - Handle constraint violations
-    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 15.3, 15.4_
-
-  - [ ]* 4.7 Write integration test for update endpoint
-    - Test successful update
-    - Test constraint violation
-    - Test authorization required
-    - _Requirements: 3.1, 3.4, 3.5, 15.4_
-
-  - [ ] 4.8 Implement GET /schedule/{project_id}/gantt endpoint
-    - Implement `get_gantt_data` endpoint
-    - Handle 404 for non-existent schedules
-    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6_
-
-  - [ ]* 4.9 Write integration test for Gantt endpoint
-    - Test successful retrieval
-    - Test 404 for non-existent schedule
-    - _Requirements: 4.1, 4.6_
-
-  - [ ] 4.10 Implement GET /schedule/{project_id}/statistics endpoint
-    - Implement `get_statistics` endpoint
-    - Handle 404 for non-existent schedules
-    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8_
-
-  - [ ]* 4.11 Write integration test for statistics endpoint
-    - Test successful retrieval
-    - Test 404 for non-existent schedule
-    - _Requirements: 10.1_
-
-  - [ ] 4.12 Implement GET /schedule/{project_id}/export endpoint
-    - Implement `export_schedule` endpoint
-    - Return complete schedule data
-    - _Requirements: 9.1, 9.2, 9.3_
-
-  - [ ] 4.13 Implement POST /schedule/{project_id}/import endpoint
-    - Implement `import_schedule` endpoint
-    - Validate imported data
-    - Add authentication and authorization checks
-    - _Requirements: 9.4, 9.5, 9.6, 9.7, 9.8, 15.5_
-
-  - [ ]* 4.14 Write property test for export/import round trip
-    - **Property 11: Export/Import Round Trip**
-    - **Validates: Requirements 9.1-9.8**
-
-  - [ ] 4.15 Register schedule router in API
-    - Update `backend/app/api/v1/__init__.py`
-    - Add schedule router to api_router
-    - _Requirements: 1.1_
-
-- [ ] 5. Checkpoint - Ensure API endpoint tests pass
-  - Ensure all tests pass, ask the user if questions arise.
-
-- [ ] 6. Implement helper methods
-  - [ ] 6.1 Implement WorkItem to ScheduleTask conversion
-    - Implement `_convert_workitems_to_schedule_tasks` method
-    - Extract dependencies from WorkItems
-    - Map WorkItem fields to ScheduleTaskCreate fields
-    - _Requirements: 7.1_
-
-  - [ ]* 6.2 Write unit test for conversion
-    - Test conversion with various WorkItem configurations
-    - Test dependency extraction
-    - _Requirements: 7.1_
-
-  - [ ] 6.3 Implement WorkItem date update
-    - Implement `_update_workitem_dates` method
-    - Update start_date and end_date for scheduled tasks
-    - _Requirements: 7.2_
-
-  - [ ]* 6.4 Write property test for WorkItem integration
-    - **Property 10: WorkItem Integration Round Trip**
-    - **Validates: Requirements 7.2**
-
-  - [ ] 6.5 Implement task dependency fetching
-    - Implement `_fetch_task_dependencies` method
-    - Query WorkItem system for dependencies
-    - Convert to TaskDependencyView format
-    - _Requirements: 4.3_
-
-  - [ ] 6.6 Implement critical path calculation
-    - Implement `_calculate_critical_path` method
-    - Build dependency graph
-    - Find longest path through graph
-    - _Requirements: 4.4, 10.6_
-
-  - [ ]* 6.7 Write unit test for critical path
-    - Test with known critical paths
-    - Test with parallel tasks
-    - Test with complex dependencies
-    - _Requirements: 4.4_
-
-  - [ ] 6.8 Implement statistics calculation
-    - Implement `_calculate_statistics` method
-    - Count tasks by status
-    - Calculate completion percentage
-    - Determine schedule health
-    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8_
-
-- [ ] 7. Implement property-based tests
-  - [ ]* 7.1 Write property test for dependency preservation
-    - **Property 2: Dependency Preservation**
-    - **Validates: Requirements 1.4**
-
-  - [ ]* 7.2 Write property test for resource constraints
-    - **Property 3: Resource Capacity Constraints**
-    - **Validates: Requirements 1.5**
-
-  - [ ]* 7.3 Write property test for deadline compliance
-    - **Property 4: Deadline Compliance**
-    - **Validates: Requirements 1.6**
-
-  - [ ]* 7.4 Write property test for version monotonicity
-    - **Property 9: Version Increment Monotonicity**
-    - **Validates: Requirements 6.2**
-
-  - [ ]* 7.5 Write property test for conflict detection
-    - **Property 8: Conflict Detection Completeness**
-    - **Validates: Requirements 5.1, 5.8**
-
-- [ ] 8. Update frontend schedule service
-  - [ ] 8.1 Remove placeholder methods
-    - Remove "coming soon" error throws from `calculateSchedule`
-    - Remove "coming soon" error throws from `getSchedule`
-    - Remove "coming soon" error throws from `getGanttData`
-    - _Requirements: 1.1, 2.1, 4.1_
-
-  - [ ] 8.2 Implement calculateSchedule method
-    - Call POST /api/v1/schedule/calculate
-    - Handle response and errors
-    - Map response to ScheduleResult interface
-    - _Requirements: 1.1, 1.2, 1.3_
-
-  - [ ] 8.3 Implement getSchedule method
-    - Call GET /api/v1/schedule/{project_id}
-    - Handle response and errors
-    - Map ProjectSchedule to ScheduleResult
-    - _Requirements: 2.1, 2.2_
-
-  - [ ] 8.4 Implement getGanttData method
-    - Call GET /api/v1/schedule/{project_id}/gantt
-    - Handle response and errors
-    - Return ScheduledTask array
-    - _Requirements: 4.1, 4.2_
-
-  - [ ] 8.5 Add TypeScript interfaces for new types
-    - Add GanttChartData interface
-    - Add ScheduleStatistics interface
-    - Add ProjectSchedule interface
-    - _Requirements: 4.1, 10.1_
-
-- [ ] 9. Update frontend schedule page
-  - [ ] 9.1 Remove "coming soon" message from SchedulePage
-    - Update `frontend/src/pages/SchedulePage.tsx`
-    - Remove placeholder content
-    - Add real schedule loading logic
-    - _Requirements: 4.1_
-
-  - [ ] 9.2 Implement schedule data loading
-    - Use scheduleService.getGanttData
-    - Handle loading and error states
-    - Pass data to GanttChart component
-    - _Requirements: 4.1, 4.2_
-
-  - [ ] 9.3 Add schedule calculation UI
-    - Add button to trigger schedule calculation
-    - Show calculation progress
-    - Handle calculation errors
-    - Display conflicts if infeasible
-    - _Requirements: 1.1, 1.2, 1.3_
-
-  - [ ] 9.4 Add schedule statistics display
-    - Fetch statistics from API
-    - Display key metrics (completion %, task counts)
-    - Show schedule health indicator
-    - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 10.6_
-
-- [ ] 10. Update Kanban board integration
-  - [ ] 10.1 Update KanbanBoard to show schedule dates
-    - Display scheduled start/end dates on task cards
-    - Highlight tasks on critical path
-    - _Requirements: 11.1, 11.6, 11.7_
-
-  - [ ] 10.2 Update task status changes to preserve dates
-    - When moving tasks between columns, preserve schedule dates
-    - Update WorkItem status without changing dates
-    - _Requirements: 11.2, 11.3_
-
-- [ ] 11. Add error handling and logging
-  - [ ] 11.1 Add structured logging to service methods
-    - Log schedule calculations with duration
-    - Log manual adjustments with user ID
-    - Log errors with full context
-    - _Requirements: 14.1, 14.2, 14.5, 14.6, 14.7_
-
-  - [ ] 11.2 Implement error response formatting
-    - Create consistent error response structure
-    - Include error codes and context
-    - Add descriptive error messages
-    - _Requirements: 14.2, 14.3, 14.4_
-
-  - [ ]* 11.3 Write integration tests for error handling
-    - Test 400 errors for validation failures
-    - Test 404 errors for not found
-    - Test 401/403 errors for auth failures
-    - Test 500 errors for server errors
-    - _Requirements: 14.2_
-
-- [ ] 12. Add performance monitoring
-  - [ ] 12.1 Add performance logging
-    - Log calculation duration for all operations
-    - Log task count and resource count
-    - Log performance metrics
-    - _Requirements: 13.8_
-
-  - [ ] 12.2 Add timeout handling
-    - Set 60-second timeout for schedule calculations
-    - Return timeout error if exceeded
-    - _Requirements: 13.7_
-
-- [ ] 13. Documentation and deployment
-  - [ ] 13.1 Update API documentation
-    - Add OpenAPI documentation for all endpoints
-    - Include request/response examples
-    - Document error responses
-    - _Requirements: 1.1, 2.1, 3.1, 4.1_
-
-  - [ ] 13.2 Update README
-    - Document schedule API endpoints
-    - Add usage examples
-    - Document environment variables
-    - _Requirements: 1.1_
-
-  - [ ] 13.3 Add environment variables
-    - Add SCHEDULE_CALCULATION_TIMEOUT
-    - Add SCHEDULE_MAX_TASKS
-    - Add SCHEDULE_CACHE_TTL
-    - _Requirements: 13.7_
-
-- [ ] 14. Final checkpoint - Ensure all tests pass
-  - Run full test suite
-  - Verify all integration tests pass
-  - Verify all property tests pass
-  - Check test coverage meets 80% minimum
-  - Ensure all tests pass, ask the user if questions arise.
-
-- [ ] 15. Implement graph database entity schemas
-  - [ ] 15.1 Create Project schemas
-    - Create `backend/app/schemas/project.py`
-    - Implement `ProjectBase`, `ProjectCreate`, `ProjectUpdate`, `ProjectResponse`
-    - Add validation for status field
-    - _Requirements: 17.1, 17.2, 17.3, 17.4_
-
-  - [ ] 15.2 Create Phase schemas
-    - Implement `PhaseBase`, `PhaseCreate`, `PhaseUpdate`, `PhaseResponse`
-    - Add validation for order field
-    - _Requirements: 18.1, 18.2, 18.3, 18.4_
-
-  - [ ] 15.3 Create Workpackage schemas
-    - Implement `WorkpackageBase`, `WorkpackageCreate`, `WorkpackageUpdate`, `WorkpackageResponse`
-    - Add validation for order field
-    - _Requirements: 18.10, 18.11, 18.12, 18.13, 18.14_
-
-  - [ ] 15.4 Create Resource schemas
-    - Implement `ResourceBase`, `ResourceCreate`, `ResourceUpdate`, `ResourceResponse`
-    - Add validation for type field (person, machine, equipment, facility, other)
-    - Add validation for availability field
-    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.6, 19.7_
-
-  - [ ] 15.5 Create Department schemas
-    - Implement `DepartmentBase`, `DepartmentCreate`, `DepartmentUpdate`, `DepartmentResponse`
-    - _Requirements: 20.1, 20.2, 20.3, 20.4_
-
-- [ ] 16. Extend GraphService for new entities
-  - [ ] 16.1 Add Project node methods
-    - Implement `create_project_node` method
-    - Implement `update_project_node` method
-    - Implement `delete_project_node` method (with cascade)
-    - Implement `get_project_node` method
-    - _Requirements: 16.1, 16.20_
-
-  - [ ] 16.2 Add Phase node methods
-    - Implement `create_phase_node` method (with BELONGS_TO relationship)
-    - Implement `update_phase_node` method
-    - Implement `delete_phase_node` method (with cascade)
-    - Implement `get_phase_node` method
-    - _Requirements: 16.2, 16.8, 16.21_
-
-  - [ ] 16.3 Add Workpackage node methods
-    - Implement `create_workpackage_node` method (with BELONGS_TO relationship)
-    - Implement `update_workpackage_node` method
-    - Implement `delete_workpackage_node` method
-    - Implement `get_workpackage_node` method
-    - _Requirements: 16.3, 16.9, 16.22_
-
-  - [ ] 16.4 Add Resource node methods
-    - Implement `create_resource_node` method (with BELONGS_TO relationship to department)
-    - Implement `update_resource_node` method
-    - Implement `delete_resource_node` method (with validation)
-    - Implement `get_resource_node` method
-    - _Requirements: 16.4, 16.6, 16.11, 16.23_
-
-  - [ ] 16.5 Add Department node methods
-    - Implement `create_department_node` method (with PARENT_OF relationship)
-    - Implement `update_department_node` method
-    - Implement `delete_department_node` method (with validation)
-    - Implement `get_department_node` method
-    - _Requirements: 16.5, 16.24_
-
-  - [ ] 16.6 Add resource allocation methods
-    - Implement `allocate_resource_to_project` method (ALLOCATED_TO relationship)
-    - Implement `assign_resource_to_task` method (ASSIGNED_TO relationship)
-    - Implement `get_resource_allocations` method
-    - Implement `get_resource_assignments` method
-    - _Requirements: 16.12, 16.13, 19.9, 19.10_
-
-  - [ ] 16.7 Add graph traversal methods
-    - Implement `get_project_hierarchy` method (Project → Phase → Workpackage → Task)
-    - Implement `get_department_resources` method
-    - Implement `get_project_resources` method
-    - Implement `get_workpackage_tasks` method
-    - _Requirements: 16.15, 16.16, 16.17, 16.18, 16.19_
-
-  - [ ]* 16.8 Write unit tests for graph methods
-    - Test node creation with relationships
-    - Test cascade deletion
-    - Test graph traversal queries
-    - _Requirements: 16.1-16.24_
-
-- [ ] 17. Implement Project service and API
-  - [ ] 17.1 Create ProjectService
-    - Create `backend/app/services/project_service.py`
-    - Implement `create_project` method
-    - Implement `get_project` method
-    - Implement `update_project` method
-    - Implement `delete_project` method
-    - Implement `list_projects` method
-    - Implement `get_project_hierarchy` method
-    - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5_
-
-  - [ ] 17.2 Create Project API endpoints
-    - Create `backend/app/api/v1/projects.py`
-    - Implement POST /projects endpoint
-    - Implement GET /projects endpoint (with filtering)
-    - Implement GET /projects/{project_id} endpoint
-    - Implement PATCH /projects/{project_id} endpoint
-    - Implement DELETE /projects/{project_id} endpoint
-    - Implement GET /projects/{project_id}/hierarchy endpoint
-    - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.8_
-
-  - [ ]* 17.3 Write integration tests for Project API
-    - Test project CRUD operations
-    - Test project hierarchy retrieval
-    - Test filtering and search
-    - _Requirements: 17.1-17.10_
-
-- [ ] 18. Implement Phase and Workpackage services and APIs
-  - [ ] 18.1 Create PhaseService
-    - Create `backend/app/services/phase_service.py`
-    - Implement `create_phase` method
-    - Implement `get_phase` method
-    - Implement `update_phase` method
-    - Implement `delete_phase` method
-    - Implement `list_phases` method
-    - _Requirements: 18.1, 18.2, 18.3, 18.4_
-
-  - [ ] 18.2 Create Phase API endpoints
-    - Create `backend/app/api/v1/phases.py`
-    - Implement POST /projects/{project_id}/phases endpoint
-    - Implement GET /projects/{project_id}/phases endpoint
-    - Implement GET /phases/{phase_id} endpoint
-    - Implement PATCH /phases/{phase_id} endpoint
-    - Implement DELETE /phases/{phase_id} endpoint
-    - _Requirements: 18.1, 18.2, 18.3, 18.4_
-
-  - [ ] 18.3 Create WorkpackageService
-    - Create `backend/app/services/workpackage_service.py`
-    - Implement `create_workpackage` method
-    - Implement `get_workpackage` method
-    - Implement `update_workpackage` method
-    - Implement `delete_workpackage` method
-    - Implement `list_workpackages` method
-    - _Requirements: 18.10, 18.11, 18.12, 18.13, 18.14_
-
-  - [ ] 18.4 Create Workpackage API endpoints
-    - Create `backend/app/api/v1/workpackages.py`
-    - Implement POST /phases/{phase_id}/workpackages endpoint
-    - Implement GET /phases/{phase_id}/workpackages endpoint
-    - Implement GET /workpackages/{workpackage_id} endpoint
-    - Implement PATCH /workpackages/{workpackage_id} endpoint
-    - Implement DELETE /workpackages/{workpackage_id} endpoint
-    - _Requirements: 18.10, 18.11, 18.12, 18.13, 18.14_
-
-  - [ ]* 18.5 Write integration tests for Phase and Workpackage APIs
-    - Test phase CRUD operations
-    - Test workpackage CRUD operations
-    - Test hierarchy relationships
-    - Test cascade deletion
-    - _Requirements: 18.1-18.20_
-
-- [ ] 19. Implement Resource service and API
-  - [ ] 19.1 Create ResourceService
-    - Create `backend/app/services/resource_service.py`
-    - Implement `create_resource` method
-    - Implement `get_resource` method
-    - Implement `update_resource` method
-    - Implement `delete_resource` method (with validation)
-    - Implement `list_resources` method (with filtering)
-    - Implement `allocate_to_project` method
-    - Implement `assign_to_task` method
-    - Implement `calculate_utilization` method
-    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.9, 19.10, 19.19_
-
-  - [ ] 19.2 Create Resource API endpoints
-    - Create `backend/app/api/v1/resources.py`
-    - Implement POST /resources endpoint
-    - Implement GET /resources endpoint (with filtering by type, department, skills)
-    - Implement GET /resources/{resource_id} endpoint
-    - Implement PATCH /resources/{resource_id} endpoint
-    - Implement DELETE /resources/{resource_id} endpoint
-    - Implement POST /resources/{resource_id}/allocate endpoint
-    - Implement POST /resources/{resource_id}/assign endpoint
-    - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 19.9, 19.10_
-
-  - [ ]* 19.3 Write integration tests for Resource API
-    - Test resource CRUD operations
-    - Test resource allocation to projects
-    - Test resource assignment to tasks
-    - Test utilization calculation
-    - Test filtering by type, department, skills
-    - _Requirements: 19.1-19.20_
-
-- [ ] 20. Implement Department service and API
-  - [ ] 20.1 Create DepartmentService
-    - Create `backend/app/services/department_service.py`
-    - Implement `create_department` method
-    - Implement `get_department` method
-    - Implement `update_department` method
-    - Implement `delete_department` method (with validation)
-    - Implement `list_departments` method
-    - Implement `get_department_resources` method
-    - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.5_
-
-  - [ ] 20.2 Create Department API endpoints
-    - Create `backend/app/api/v1/departments.py`
-    - Implement POST /departments endpoint
-    - Implement GET /departments endpoint
-    - Implement GET /departments/{department_id} endpoint
-    - Implement PATCH /departments/{department_id} endpoint
-    - Implement DELETE /departments/{department_id} endpoint
-    - Implement GET /departments/{department_id}/resources endpoint
-    - _Requirements: 20.1, 20.2, 20.3, 20.4, 20.9_
-
-  - [ ]* 20.3 Write integration tests for Department API
-    - Test department CRUD operations
-    - Test hierarchical department structures
-    - Test resource listing
-    - Test deletion validation
-    - _Requirements: 20.1-20.10_
-
-- [ ] 21. Update WorkItem service for graph relationships
-  - [ ] 21.1 Add project relationship to WorkItems
-    - Update `create_workitem` to create BELONGS_TO relationship to Project
-    - Update `create_workitem` to create BELONGS_TO relationship to Workpackage (for tasks)
-    - _Requirements: 16.7, 16.10_
-
-  - [ ] 21.2 Update task assignment to use Resources
-    - Update task assignment logic to use Resource nodes instead of user IDs
-    - Create ASSIGNED_TO relationships from Resources to Tasks
-    - _Requirements: 16.12, 19.10_
-
-- [ ] 22. Update SchedulerService to use graph-based Resources
-  - [ ] 22.1 Update resource fetching
-    - Update `_fetch_resources` method to query Resource nodes from graph
-    - Extract capacity from Resource node properties
-    - Check Resource availability status
-    - _Requirements: 8.1, 8.2, 8.4_
-
-  - [ ] 22.2 Update resource allocation tracking
-    - Query existing ALLOCATED_TO relationships
-    - Calculate current resource utilization
-    - Prevent over-allocation
-    - _Requirements: 8.3, 8.9, 8.10_
-
-  - [ ] 22.3 Update schedule calculation to create resource assignments
-    - Create ASSIGNED_TO relationships when tasks are scheduled
-    - Update Resource utilization metrics
-    - _Requirements: 8.5, 8.6_
-
-  - [ ]* 22.4 Write integration tests for resource-based scheduling
-    - Test scheduling with graph-based resources
-    - Test resource capacity constraints
-    - Test resource allocation tracking
-    - _Requirements: 8.1-8.10_
-
-- [ ] 23. Update graph database initialization
-  - [ ] 23.1 Update schema initialization
-    - Add Project, Phase, Workpackage, Resource, Department to supported node types
-    - Add new relationship types (ALLOCATED_TO, PARENT_OF)
-    - Update `initialize_graph_schema` method
-    - _Requirements: 16.1-16.5_
-
-  - [ ] 23.2 Create migration script for existing data
-    - Create script to migrate existing project references to Project nodes
-    - Create script to create default departments
-    - Create script to create Resource nodes from existing resource data
-    - _Requirements: 16.1, 16.4, 16.5_
-
-- [ ] 24. Update frontend for graph entities
-  - [ ] 24.1 Create TypeScript interfaces
-    - Create Project, Phase, Workpackage, Resource, Department interfaces
-    - Add to `frontend/src/types/index.ts`
-    - _Requirements: 17.1, 18.1, 19.1, 20.1_
-
-  - [ ] 24.2 Create API service methods
-    - Create `projectService.ts` with CRUD methods
-    - Create `phaseService.ts` with CRUD methods
-    - Create `workpackageService.ts` with CRUD methods
-    - Create `resourceService.ts` with CRUD methods
-    - Create `departmentService.ts` with CRUD methods
-    - _Requirements: 17.1-17.5, 18.1-18.4, 19.1-19.5, 20.1-20.4_
-
-  - [ ] 24.3 Create project management UI components
-    - Create ProjectList component
-    - Create ProjectForm component
-    - Create ProjectHierarchy component (showing phases and workpackages)
-    - _Requirements: 17.2, 17.3_
-
-  - [ ] 24.4 Create resource management UI components
-    - Create ResourceList component
-    - Create ResourceForm component
-    - Create ResourceAllocation component
-    - _Requirements: 19.2, 19.3_
-
-- [ ] 25. Final integration and testing
-  - [ ] 25.1 Test complete project hierarchy
-    - Create project with phases, workpackages, and tasks
-    - Verify graph relationships are correct
-    - Test hierarchy traversal queries
-    - _Requirements: 16.18_
-
-  - [ ] 25.2 Test resource allocation workflow
-    - Create resources and departments
-    - Allocate resources to projects
-    - Assign resources to tasks
-    - Calculate and verify utilization
-    - _Requirements: 19.9, 19.10, 19.11, 19.19_
-
-  - [ ] 25.3 Test schedule calculation with graph resources
-    - Create schedule using graph-based resources
-    - Verify resource constraints are respected
-    - Verify ASSIGNED_TO relationships are created
-    - _Requirements: 8.1-8.10_
-
-  - [ ] 25.4 Run full test suite
-    - Run all unit tests
-    - Run all integration tests
-    - Run all property tests
-    - Verify 80% code coverage
-    - Ensure all tests pass, ask the user if questions arise.
-
-## Notes
-
-- Tasks marked with `*` are optional property-based tests that can be skipped for faster MVP
-- Each task references specific requirements for traceability
-- Checkpoints ensure incremental validation
-- Property tests validate universal correctness properties
-- Unit tests validate specific examples and edge cases
-- Integration tests validate end-to-end API functionality
-- **New tasks (15-25)** implement the graph database entity structure with Projects, Phases, Workpackages, Resources, and Departments
-- **Users remain in PostgreSQL** - they are NOT created as graph nodes
-- **Resources are graph nodes** - they are the project management entities used for scheduling
+This task list implements the backend schedule API with dual-methodology project management (classic + agile), graph database integration using Apache AGE, and skill-based resource allocation.
+
+**Key Features:**
+- Company → Department → Resource organizational hierarchy
+- Task and Milestone as separate node types (not WorkItem)
+- Skills-based resource matching
+- Mutually exclusive Backlog/Sprint relationships
+- Resource allocation with lead flag
+- Department-based resource allocation
+
+---
+
+## Phase 1: Graph Database Schema Setup
+
+### Task 1.1: Create Company Node Type
+- [ ] Create Company vertex label in Apache AGE graph
+- [ ] Add Company node creation in graph service
+- [ ] Add Company CRUD endpoints
+- [ ] Write unit tests for Company operations
+- [ ] Write property test: Company nodes have valid UUIDs
+
+**Details:**
+- Properties: id, name, description, created_at, updated_at
+- Endpoint: POST /api/v1/companies
+- Endpoint: GET /api/v1/companies/{id}
+- Endpoint: PUT /api/v1/companies/{id}
+- Endpoint: DELETE /api/v1/companies/{id}
+
+### Task 1.2: Update Department Node Type
+- [ ] Add company_id property to Department nodes
+- [ ] Create PARENT_OF relationship from Company to Department
+- [ ] Update Department creation to require company_id
+- [ ] Update Department endpoints to include company relationship
+- [ ] Write migration script for existing Departments
+- [ ] Write unit tests for Company-Department relationship
+- [ ] Write property test: All Departments belong to a Company
+
+**Details:**
+- Add company_id to Department properties
+- Update graph queries to include Company relationship
+- Migration: Assign existing departments to default company
+
+### Task 1.3: Create Task Node Type (Separate from WorkItem)
+- [ ] Create Task vertex label in Apache AGE graph
+- [ ] Add skills_needed property (array of strings)
+- [ ] Add workpackage_id property for quick lookup
+- [ ] Create Task node creation in graph service
+- [ ] Write migration script: WorkItem(type='task') → Task nodes
+- [ ] Update WorkItem service to query Task nodes
+- [ ] Write unit tests for Task node operations
+- [ ] Write property test: All Tasks have valid workpackage_id
+- [ ] Write property test: skills_needed is always an array
+
+**Details:**
+- Label: "Task" (not WorkItem)
+- Properties: id, title, description, status, priority, estimated_hours, actual_hours, story_points, skills_needed, done, start_date, end_date, due_date, workpackage_id, version, created_by, created_at, updated_at, is_signed
+- Maintain backward compatibility with WorkItem service
+
+### Task 1.4: Create Milestone Node Type (Separate from WorkItem)
+- [ ] Create Milestone vertex label in Apache AGE graph
+- [ ] Add project_id property for quick lookup
+- [ ] Create Milestone node creation in graph service
+- [ ] Write migration script: WorkItem(type='milestone') → Milestone nodes
+- [ ] Update WorkItem service to query Milestone nodes
+- [ ] Write unit tests for Milestone node operations
+- [ ] Write property test: All Milestones have valid project_id
+- [ ] Write property test: is_manual_constraint is always boolean
+
+**Details:**
+- Label: "Milestone" (not WorkItem)
+- Properties: id, title, description, target_date, is_manual_constraint, completion_criteria, status, project_id, version, created_by, created_at, updated_at
+- Maintain backward compatibility with WorkItem service
+
+### Task 1.5: Create LINKED_TO_DEPARTMENT Relationship
+- [ ] Create LINKED_TO_DEPARTMENT edge label in Apache AGE
+- [ ] Add relationship creation in graph service
+- [ ] Add endpoint: POST /api/v1/workpackages/{id}/link-department/{dept_id}
+- [ ] Add endpoint: DELETE /api/v1/workpackages/{id}/link-department/{dept_id}
+- [ ] Add endpoint: GET /api/v1/workpackages/{id}/department
+- [ ] Write unit tests for department linking
+- [ ] Write property test: Workpackage can link to at most one Department
+
+**Details:**
+- From: Workpackage
+- To: Department
+- Properties: None
+- Purpose: Department-based resource allocation
+
+### Task 1.6: Update ALLOCATED_TO Relationship
+- [ ] Add "lead" boolean property to ALLOCATED_TO relationship
+- [ ] Update relationship to support Project OR Task targets
+- [ ] Update graph service to handle dual target types
+- [ ] Update resource allocation endpoints
+- [ ] Write migration script: Add lead=false to existing allocations
+- [ ] Write unit tests for lead flag functionality
+- [ ] Write property test: lead is always boolean
+- [ ] Write property test: Resource allocated to Project XOR Task
+
+**Details:**
+- Properties: allocation_percentage, lead, start_date, end_date
+- lead=true: Primary/responsible resource
+- lead=false: Supporting/collaborating resource
+
+### Task 1.7: Update Backlog/Sprint Relationships (Mutual Exclusivity)
+- [ ] Add constraint validation: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
+- [ ] Update sprint assignment to remove IN_BACKLOG relationship
+- [ ] Update backlog addition to remove ASSIGNED_TO_SPRINT relationship
+- [ ] Add endpoint: POST /api/v1/tasks/{id}/move-to-backlog
+- [ ] Add endpoint: POST /api/v1/tasks/{id}/move-to-sprint/{sprint_id}
+- [ ] Write unit tests for mutual exclusivity
+- [ ] Write property test: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
+- [ ] Write property test: Moving to sprint removes backlog relationship
+
+**Details:**
+- Enforce: A task can be IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
+- When assigned to sprint → remove IN_BACKLOG
+- When removed from sprint → create IN_BACKLOG (if status="ready")
+
+### Task 1.8: Create Additional Task Relationships
+- [ ] Create has_risk edge label in Apache AGE
+- [ ] Create implements edge label in Apache AGE
+- [ ] Add has_risk relationship creation in graph service
+- [ ] Add implements relationship creation in graph service
+- [ ] Add endpoint: POST /api/v1/tasks/{id}/link-risk/{risk_id}
+- [ ] Add endpoint: POST /api/v1/tasks/{id}/link-requirement/{req_id}
+- [ ] Add endpoint: GET /api/v1/tasks/{id}/risks
+- [ ] Add endpoint: GET /api/v1/tasks/{id}/requirements
+- [ ] Write unit tests for task relationships
+- [ ] Write property test: Task can have multiple has_risk relationships
+- [ ] Write property test: Task can have multiple implements relationships
+
+**Details:**
+- has_risk: Task → Risk (WorkItem)
+- implements: Task → Requirement (WorkItem)
+- Tasks can have many domain relationships
+
+---
+
+## Phase 2: Pydantic Schemas
+
+### Task 2.1: Create Company Schemas
+- [ ] Create CompanyBase schema
+- [ ] Create CompanyCreate schema
+- [ ] Create CompanyUpdate schema
+- [ ] Create CompanyResponse schema
+- [ ] Add validation for company name (min 1, max 200 chars)
+- [ ] Write unit tests for schema validation
+
+### Task 2.2: Update Department Schemas
+- [ ] Add company_id to DepartmentBase
+- [ ] Add company relationship to DepartmentResponse
+- [ ] Update DepartmentCreate to require company_id
+- [ ] Write unit tests for updated schemas
+
+### Task 2.3: Create Task Schemas (Separate from WorkItem)
+- [ ] Create TaskBase schema with skills_needed field
+- [ ] Create TaskCreate schema
+- [ ] Create TaskUpdate schema
+- [ ] Create TaskResponse schema
+- [ ] Add validator for skills_needed (must be array)
+- [ ] Add validator for workpackage_id (must exist)
+- [ ] Write unit tests for Task schemas
+- [ ] Write property test: skills_needed validation
+
+**Details:**
+- skills_needed: list[str] | None
+- Validate skills are non-empty strings
+- Maintain compatibility with existing WorkItem schemas
+
+### Task 2.4: Create Milestone Schemas (Separate from WorkItem)
+- [ ] Create MilestoneBase schema
+- [ ] Create MilestoneCreate schema
+- [ ] Create MilestoneUpdate schema
+- [ ] Create MilestoneResponse schema
+- [ ] Add validator for target_date (must be future date)
+- [ ] Add validator for is_manual_constraint (boolean)
+- [ ] Write unit tests for Milestone schemas
+
+### Task 2.5: Update Resource Schemas
+- [ ] Add skills field to ResourceBase (list[str])
+- [ ] Add lead field to ResourceAllocation schema
+- [ ] Update ResourceResponse to include skills
+- [ ] Add validator for skills (non-empty strings)
+- [ ] Write unit tests for updated schemas
+
+### Task 2.6: Create Workpackage-Department Link Schemas
+- [ ] Create WorkpackageDepartmentLink schema
+- [ ] Create WorkpackageDepartmentLinkResponse schema
+- [ ] Add validation for department_id existence
+- [ ] Write unit tests for link schemas
+
+---
+
+## Phase 3: Service Layer
+
+### Task 3.1: Create CompanyService
+- [ ] Implement create_company method
+- [ ] Implement get_company method
+- [ ] Implement update_company method
+- [ ] Implement delete_company method (cascade to departments)
+- [ ] Implement list_companies method
+- [ ] Add error handling for company operations
+- [ ] Write unit tests for CompanyService
+- [ ] Write property test: Company deletion cascades to departments
+
+### Task 3.2: Update DepartmentService
+- [ ] Update create_department to create PARENT_OF from Company
+- [ ] Update get_department to include company relationship
+- [ ] Add get_departments_by_company method
+- [ ] Update delete_department to check for resources
+- [ ] Write unit tests for updated DepartmentService
+
+### Task 3.3: Create TaskService (Separate from WorkItemService)
+- [ ] Implement create_task method (creates Task node)
+- [ ] Implement get_task method
+- [ ] Implement update_task method
+- [ ] Implement delete_task method
+- [ ] Implement list_tasks method with filters
+- [ ] Add automatic BELONGS_TO Workpackage relationship
+- [ ] Add automatic IN_BACKLOG when status="ready"
+- [ ] Add skills_needed handling
+- [ ] Write unit tests for TaskService
+- [ ] Write property test: Tasks always belong to Workpackage
+- [ ] Write property test: Ready tasks automatically in backlog
+
+**Details:**
+- Query Task nodes: MATCH (t:Task)
+- Maintain compatibility with WorkItem patterns
+- Support version history via NEXT_VERSION
+
+### Task 3.4: Create MilestoneService (Separate from WorkItemService)
+- [ ] Implement create_milestone method (creates Milestone node)
+- [ ] Implement get_milestone method
+- [ ] Implement update_milestone method
+- [ ] Implement delete_milestone method
+- [ ] Implement list_milestones method
+- [ ] Add milestone dependency management
+- [ ] Write unit tests for MilestoneService
+- [ ] Write property test: Milestones always belong to Project
+
+### Task 3.5: Update ResourceService for Skills Matching
+- [ ] Add get_resources_by_skills method
+- [ ] Add match_resources_to_task method (skill-based)
+- [ ] Update allocate_resource to support lead flag
+- [ ] Update allocate_resource to support Project OR Task
+- [ ] Add get_lead_resources method
+- [ ] Write unit tests for skill matching
+- [ ] Write property test: Skill matching returns resources with all required skills
+- [ ] Write property test: Lead resources prioritized in allocation
+
+**Details:**
+- Match task.skills_needed with resource.skills
+- Prioritize resources with lead=true
+- Support both project-level and task-level allocation
+
+### Task 3.6: Create WorkpackageDepartmentService
+- [ ] Implement link_workpackage_to_department method
+- [ ] Implement unlink_workpackage_from_department method
+- [ ] Implement get_workpackage_department method
+- [ ] Implement get_department_resources_for_workpackage method
+- [ ] Write unit tests for linking service
+- [ ] Write property test: Workpackage links to at most one department
+
+### Task 3.7: Update BacklogService for Mutual Exclusivity
+- [ ] Update add_task_to_backlog to check for sprint assignment
+- [ ] Update add_task_to_backlog to remove ASSIGNED_TO_SPRINT if exists
+- [ ] Add validation: Cannot add task to backlog if in sprint
+- [ ] Write unit tests for mutual exclusivity
+- [ ] Write property test: Adding to backlog removes sprint assignment
+
+### Task 3.8: Update SprintService for Mutual Exclusivity
+- [ ] Update assign_task_to_sprint to remove IN_BACKLOG
+- [ ] Update remove_task_from_sprint to create IN_BACKLOG (if ready)
+- [ ] Update complete_sprint to handle incomplete tasks (return to backlog)
+- [ ] Add validation: Cannot assign task to sprint if in backlog
+- [ ] Write unit tests for mutual exclusivity
+- [ ] Write property test: Assigning to sprint removes backlog relationship
+- [ ] Write property test: Sprint completion returns incomplete tasks to backlog
+
+---
+
+## Phase 4: Schedule Service Integration
+
+### Task 4.1: Update SchedulerService for Skills-Based Allocation
+- [ ] Add skill matching to resource allocation algorithm
+- [ ] Prioritize resources with matching skills
+- [ ] Prioritize lead resources in allocation
+- [ ] Add get_matching_resources_for_task method
+- [ ] Update schedule calculation to use skill-based matching
+- [ ] Write unit tests for skill-based allocation
+- [ ] Write property test: Allocated resources have required skills
+- [ ] Write property test: Lead resources allocated before non-lead
+
+**Details:**
+- Match task.skills_needed with resource.skills
+- Use set intersection for skill matching
+- Prioritize: lead=true, then skill match quality, then capacity
+
+### Task 4.2: Add Department-Based Resource Allocation
+- [ ] Add get_department_resources method to scheduler
+- [ ] Update resource allocation to check LINKED_TO_DEPARTMENT
+- [ ] Prioritize department resources for workpackage tasks
+- [ ] Write unit tests for department-based allocation
+- [ ] Write property test: Department resources allocated to linked workpackages
+
+**Details:**
+- Query: Workpackage → LINKED_TO_DEPARTMENT → Department → BELONGS_TO → Resources
+- Match skills_needed with department resource skills
+
+### Task 4.3: Update Schedule Calculation for Task Nodes
+- [ ] Update schedule_project to query Task nodes (not WorkItem)
+- [ ] Update task date updates to use Task nodes
+- [ ] Maintain compatibility with existing schedule schemas
+- [ ] Write unit tests for Task node scheduling
+- [ ] Write property test: Scheduled tasks have valid dates
+
+### Task 4.4: Add Sprint Boundary Constraints
+- [ ] Add sprint boundary validation to scheduler
+- [ ] Enforce: Tasks in sprint must fit within sprint dates
+- [ ] Add conflict detection for sprint capacity exceeded
+- [ ] Write unit tests for sprint constraints
+- [ ] Write property test: Sprint tasks scheduled within sprint boundaries
+
+---
+
+## Phase 5: API Endpoints
+
+### Task 5.1: Company Endpoints
+- [ ] POST /api/v1/companies - Create company
+- [ ] GET /api/v1/companies - List companies
+- [ ] GET /api/v1/companies/{id} - Get company
+- [ ] PUT /api/v1/companies/{id} - Update company
+- [ ] DELETE /api/v1/companies/{id} - Delete company (cascade)
+- [ ] GET /api/v1/companies/{id}/departments - Get company departments
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for company endpoints
+
+### Task 5.2: Update Department Endpoints
+- [ ] Update POST /api/v1/departments to require company_id
+- [ ] Update GET /api/v1/departments/{id} to include company
+- [ ] Add GET /api/v1/departments/{id}/company - Get department's company
+- [ ] Write integration tests for updated endpoints
+
+### Task 5.3: Task Endpoints (Separate from WorkItem)
+- [ ] POST /api/v1/tasks - Create task (Task node)
+- [ ] GET /api/v1/tasks - List tasks with filters
+- [ ] GET /api/v1/tasks/{id} - Get task
+- [ ] PUT /api/v1/tasks/{id} - Update task
+- [ ] DELETE /api/v1/tasks/{id} - Delete task
+- [ ] POST /api/v1/tasks/{id}/link-risk/{risk_id} - Link to risk
+- [ ] POST /api/v1/tasks/{id}/link-requirement/{req_id} - Link to requirement
+- [ ] GET /api/v1/tasks/{id}/risks - Get task risks
+- [ ] GET /api/v1/tasks/{id}/requirements - Get task requirements
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for task endpoints
+
+**Details:**
+- Maintain compatibility with existing WorkItem endpoints
+- Support filtering by skills_needed
+- Support filtering by backlog/sprint status
+
+### Task 5.4: Milestone Endpoints (Separate from WorkItem)
+- [ ] POST /api/v1/milestones - Create milestone (Milestone node)
+- [ ] GET /api/v1/milestones - List milestones
+- [ ] GET /api/v1/milestones/{id} - Get milestone
+- [ ] PUT /api/v1/milestones/{id} - Update milestone
+- [ ] DELETE /api/v1/milestones/{id} - Delete milestone
+- [ ] POST /api/v1/milestones/{id}/dependencies/{task_id} - Add dependency
+- [ ] DELETE /api/v1/milestones/{id}/dependencies/{task_id} - Remove dependency
+- [ ] GET /api/v1/milestones/{id}/dependencies - Get dependencies
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for milestone endpoints
+
+### Task 5.5: Workpackage-Department Link Endpoints
+- [ ] POST /api/v1/workpackages/{id}/link-department/{dept_id} - Link to department
+- [ ] DELETE /api/v1/workpackages/{id}/link-department - Unlink department
+- [ ] GET /api/v1/workpackages/{id}/department - Get linked department
+- [ ] GET /api/v1/workpackages/{id}/available-resources - Get department resources
+- [ ] Write integration tests for linking endpoints
+
+### Task 5.6: Update Resource Allocation Endpoints
+- [ ] Update POST /api/v1/resources/{id}/allocate to support lead flag
+- [ ] Update POST /api/v1/resources/{id}/allocate to support Project OR Task
+- [ ] Add GET /api/v1/resources/match-skills - Match resources by skills
+- [ ] Add GET /api/v1/tasks/{id}/recommended-resources - Get skill-matched resources
+- [ ] Add GET /api/v1/projects/{id}/lead-resources - Get lead resources
+- [ ] Write integration tests for allocation endpoints
+
+### Task 5.7: Update Backlog Endpoints for Mutual Exclusivity
+- [ ] Update POST /api/v1/backlogs/{id}/tasks/{task_id} to remove sprint assignment
+- [ ] Add validation: Cannot add task already in sprint
+- [ ] Add GET /api/v1/tasks/{id}/backlog-status - Check if in backlog
+- [ ] Write integration tests for backlog mutual exclusivity
+
+### Task 5.8: Update Sprint Endpoints for Mutual Exclusivity
+- [ ] Update POST /api/v1/sprints/{id}/tasks/{task_id} to remove backlog relationship
+- [ ] Update DELETE /api/v1/sprints/{id}/tasks/{task_id} to return to backlog
+- [ ] Update POST /api/v1/sprints/{id}/complete to handle incomplete tasks
+- [ ] Add validation: Cannot assign task already in backlog
+- [ ] Add GET /api/v1/tasks/{id}/sprint-status - Check if in sprint
+- [ ] Write integration tests for sprint mutual exclusivity
+
+---
+
+## Phase 6: Frontend Integration
+
+### Task 6.1: Update TypeScript Interfaces
+- [ ] Add Company interface
+- [ ] Update Department interface with company_id
+- [ ] Update Task interface with skills_needed
+- [ ] Update Milestone interface (separate from WorkItem)
+- [ ] Add ResourceAllocation interface with lead flag
+- [ ] Add WorkpackageDepartmentLink interface
+- [ ] Write type tests for new interfaces
+
+### Task 6.2: Update API Service
+- [ ] Add CompanyService methods
+- [ ] Update DepartmentService methods
+- [ ] Add TaskService methods (separate from WorkItem)
+- [ ] Add MilestoneService methods (separate from WorkItem)
+- [ ] Update ResourceService for skills and lead flag
+- [ ] Add WorkpackageDepartmentService methods
+- [ ] Write unit tests for API service methods
+
+### Task 6.3: Create Company Management UI
+- [ ] Create CompanyList component
+- [ ] Create CompanyForm component
+- [ ] Create CompanyDetail component
+- [ ] Add company CRUD operations
+- [ ] Add company-department hierarchy view
+- [ ] Write component tests
+
+### Task 6.4: Update Task Form for Skills
+- [ ] Add skills_needed multi-select field
+- [ ] Add skill autocomplete/suggestions
+- [ ] Add recommended resources display (skill-matched)
+- [ ] Update task creation to include skills
+- [ ] Write component tests
+
+### Task 6.5: Update Resource Allocation UI
+- [ ] Add lead checkbox to resource allocation form
+- [ ] Add skill matching indicator
+- [ ] Add lead resource badge/indicator
+- [ ] Update resource allocation to support Project OR Task
+- [ ] Write component tests
+
+### Task 6.6: Update Workpackage UI for Department Linking
+- [ ] Add department selection to workpackage form
+- [ ] Add department resources display
+- [ ] Add link/unlink department actions
+- [ ] Write component tests
+
+### Task 6.7: Update Backlog/Sprint UI for Mutual Exclusivity
+- [ ] Add visual indicator: Task in backlog vs. sprint
+- [ ] Disable sprint assignment for tasks in backlog
+- [ ] Disable backlog addition for tasks in sprint
+- [ ] Add "Move to Sprint" action (removes from backlog)
+- [ ] Add "Return to Backlog" action (removes from sprint)
+- [ ] Write component tests
+
+---
+
+## Phase 7: Testing
+
+### Task 7.1: Property-Based Tests for Graph Constraints
+- [ ] Write property test: Company → Department hierarchy is acyclic
+- [ ] Write property test: All Tasks belong to exactly one Workpackage
+- [ ] Write property test: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
+- [ ] Write property test: Resource allocated to Project XOR Task (not both)
+- [ ] Write property test: Workpackage links to at most one Department
+- [ ] Write property test: All Milestones belong to exactly one Project
+
+**Validates: Requirements 16.1-16.78**
+
+### Task 7.2: Property-Based Tests for Skills Matching
+- [ ] Write property test: Allocated resources have all required skills
+- [ ] Write property test: Lead resources prioritized in allocation
+- [ ] Write property test: Department resources match workpackage tasks
+- [ ] Write property test: Skill matching returns non-empty set when matches exist
+
+**Validates: Requirements 16.19-16.22, 16.27-16.35**
+
+### Task 7.3: Property-Based Tests for Mutual Exclusivity
+- [ ] Write property test: Adding to backlog removes sprint assignment
+- [ ] Write property test: Assigning to sprint removes backlog relationship
+- [ ] Write property test: Sprint completion returns incomplete tasks to backlog
+- [ ] Write property test: Task status="ready" creates IN_BACKLOG if not in sprint
+
+**Validates: Requirements 16.41-16.46, 21.7-21.16, 22.10-22.23**
+
+### Task 7.4: Integration Tests for Complete Workflows
+- [ ] Test: Create company → department → resource → project workflow
+- [ ] Test: Create task → assign skills → match resources → allocate
+- [ ] Test: Create task → ready status → backlog → sprint → complete
+- [ ] Test: Link workpackage to department → allocate department resources
+- [ ] Test: Create milestone → add dependencies → schedule with constraints
+- [ ] Test: Sprint incomplete → tasks return to backlog
+
+### Task 7.5: Performance Tests
+- [ ] Test: Schedule calculation with 1000 tasks and skill matching
+- [ ] Test: Resource matching query performance (1000 resources)
+- [ ] Test: Graph traversal performance (deep hierarchy)
+- [ ] Test: Concurrent schedule calculations
+
+---
+
+## Phase 8: Migration and Deployment
+
+### Task 8.1: Data Migration Scripts
+- [ ] Write migration: Create Company nodes for existing data
+- [ ] Write migration: Add company_id to existing Departments
+- [ ] Write migration: Convert WorkItem(type='task') to Task nodes
+- [ ] Write migration: Convert WorkItem(type='milestone') to Milestone nodes
+- [ ] Write migration: Add lead=false to existing ALLOCATED_TO relationships
+- [ ] Write migration: Add skills=[] to existing Resources
+- [ ] Test migrations on staging data
+- [ ] Write rollback scripts
+
+### Task 8.2: Database Schema Updates
+- [ ] Create Company vertex label in AGE
+- [ ] Create Task vertex label in AGE
+- [ ] Create Milestone vertex label in AGE
+- [ ] Create LINKED_TO_DEPARTMENT edge label
+- [ ] Create has_risk edge label
+- [ ] Create implements edge label
+- [ ] Update ALLOCATED_TO edge properties
+- [ ] Create indexes for performance
+
+### Task 8.3: Documentation Updates
+- [ ] Update API documentation (OpenAPI/Swagger)
+- [ ] Update graph schema documentation
+- [ ] Create migration guide
+- [ ] Update user guide for new features
+- [ ] Create developer guide for Task/Milestone nodes
+
+### Task 8.4: Deployment
+- [ ] Deploy database schema changes
+- [ ] Run data migrations
+- [ ] Deploy backend services
+- [ ] Deploy frontend updates
+- [ ] Verify health checks
+- [ ] Monitor for errors
+
+---
+
+## Summary
+
+**Total Tasks**: 8 phases, 48 main tasks, ~200 sub-tasks
+
+**Estimated Effort**: 
+- Phase 1 (Graph Schema): 2-3 weeks
+- Phase 2 (Schemas): 1 week
+- Phase 3 (Services): 2-3 weeks
+- Phase 4 (Scheduler): 1-2 weeks
+- Phase 5 (API): 2 weeks
+- Phase 6 (Frontend): 2-3 weeks
+- Phase 7 (Testing): 2 weeks
+- Phase 8 (Migration): 1 week
+
+**Total**: 13-17 weeks
+
+**Critical Path**:
+1. Graph schema setup (Phase 1)
+2. Service layer (Phase 3)
+3. Scheduler integration (Phase 4)
+4. API endpoints (Phase 5)
+5. Frontend integration (Phase 6)
+
+**Dependencies**:
+- Phase 2 depends on Phase 1
+- Phase 3 depends on Phase 1, 2
+- Phase 4 depends on Phase 3
+- Phase 5 depends on Phase 3, 4
+- Phase 6 depends on Phase 5
+- Phase 7 can run in parallel with Phases 4-6
+- Phase 8 depends on all previous phases

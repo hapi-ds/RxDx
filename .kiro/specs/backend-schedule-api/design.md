@@ -3,52 +3,1207 @@
 ## 1. System Overview
 
 ### 1.1 Purpose
-This document specifies the technical design for implementing REST API endpoints that expose the existing SchedulerService capabilities and integrate with the frontend schedule components (GanttChart, KanbanBoard). The implementation will enable project managers to calculate, retrieve, and manually adjust project schedules through a RESTful API.
+
+This document specifies the technical design for implementing a comprehensive dual-methodology project management system that supports both classic top-down (waterfall) and agile (Scrum/Kanban) approaches. The system exposes REST API endpoints for schedule calculation, project hierarchy management, sprint planning, and resource allocation, all built on Apache AGE graph database within PostgreSQL.
 
 ### 1.2 Architecture Context
-The schedule API sits between the existing SchedulerService (which uses OR-Tools for constraint programming) and the frontend schedule components. It provides:
-- REST endpoints for schedule operations
-- Integration with the WorkItem system (tasks are WorkItems with type="task")
-- Schedule storage and versioning
-- Conflict detection and reporting
-- Gantt chart and Kanban board data formatting
+
+The schedule API integrates multiple components:
+- **SchedulerService**: OR-Tools constraint programming for schedule optimization
+- **WorkItem System**: Graph-based storage for all work items (tasks, requirements, tests, risks, documents, milestones)
+- **Graph Database**: Apache AGE extension for PostgreSQL providing graph capabilities
+- **Frontend Components**: GanttChart (timeline visualization), KanbanBoard (workflow management)
+- **Resource Management**: Graph-based resource allocation and capacity tracking
+- **Sprint Management**: Agile iteration planning with velocity tracking
 
 ### 1.3 Key Design Decisions
 
-**Decision 1: Reuse Existing SchedulerService**
-- **Rationale**: The SchedulerService already implements constraint-based scheduling with OR-Tools
-- **Trade-off**: API design must match SchedulerService capabilities vs. starting fresh
-- **Impact**: Faster implementation, proven scheduling logic
+**Decision 1: Apache AGE for Graph Database**
+- **Rationale**: Unified database architecture using PostgreSQL with AGE extension instead of separate Neo4j instance
+- **Trade-off**: Single database to manage vs. specialized graph database performance
+- **Impact**: Simpler deployment, unified backup/recovery, ACID transactions across relational and graph data
 
-**Decision 2: Store Schedules in Memory (Initial Implementation)**
-- **Rationale**: SchedulerService already uses in-memory storage; database persistence can be added later
-- **Trade-off**: Schedules lost on restart vs. simpler initial implementation
-- **Impact**: Suitable for MVP, requires database migration for production
+**Decision 2: Dual Methodology Support**
+- **Rationale**: Teams need flexibility to use classic waterfall, agile, or hybrid approaches
+- **Trade-off**: More complex data model vs. flexibility for different team workflows
+- **Impact**: Tasks can exist in both hierarchies simultaneously (Workpackage + Sprint)
 
-**Decision 3: Integrate with Existing WorkItem System**
-- **Rationale**: Tasks are already stored as WorkItems; avoid data duplication
-- **Trade-off**: Dependency on WorkItem service vs. independent task storage
-- **Impact**: Consistent data model, simpler architecture
+**Decision 3: Automatic Backlog Population**
+- **Rationale**: Reduce manual work by automatically adding ready tasks to backlog
+- **Trade-off**: Automatic behavior vs. explicit user control
+- **Impact**: Tasks with status="ready" automatically appear in backlog for sprint planning
 
-**Decision 4: Async API Design**
-- **Rationale**: Schedule calculations can be time-consuming; async prevents blocking
-- **Trade-off**: More complex implementation vs. better scalability
-- **Impact**: Better user experience, supports concurrent operations
+**Decision 4: Critical Path Calculation**
+- **Rationale**: Project managers need to identify schedule-critical tasks
+- **Trade-off**: Computation overhead vs. valuable scheduling insight
+- **Impact**: Longest path algorithm runs during schedule calculation, marks critical tasks
 
-## 2. API Endpoints
+**Decision 5: Milestone Dual Modes**
+- **Rationale**: Support both target-driven (manual) and task-driven (automatic) milestone scheduling
+- **Trade-off**: More complex scheduling logic vs. flexibility
+- **Impact**: Milestones can constrain schedules or be calculated from task completion
 
-### 2.1 Schedule Calculation
+**Decision 6: Story Points and Hours**
+- **Rationale**: Teams use different effort estimation approaches
+- **Trade-off**: Dual tracking complexity vs. team preference support
+- **Impact**: Velocity tracked in both story points and hours, teams choose their metric
 
-**Endpoint**: `POST /api/v1/schedule/calculate`
 
-**Description**: Calculate an optimized project schedule using constraint programming.
 
-**Request Body**:
+## 2. Graph Database Schema
+
+### 2.1 Visual Diagram: Complete Graph Relationships
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                          RxDx Graph Database Schema                                  │
+│                     (Apache AGE on PostgreSQL)                                       │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+ORGANIZATIONAL STRUCTURE:
+┌──────────────┐
+│   Company    │  (Root of organization)
+│   (Node)     │
+│              │
+│ - id         │
+│ - name       │
+│ - description│
+│ - created_at │
+└──────────────┘
+       │
+       │ PARENT_OF
+       │
+       ▼
+┌──────────────┐
+│  Department  │
+│   (Node)     │
+│              │
+│ - id         │
+│ - name       │
+│ - description│
+│ - manager_id │
+│ - company_id │
+└──────────────┘
+       │
+       │ PARENT_OF (hierarchy)
+       │
+       ▼
+┌──────────────┐
+│  Department  │
+│   (Child)    │
+└──────────────┘
+       │
+       │ BELONGS_TO
+       │
+       ▼
+┌──────────────┐
+│   Resource   │
+│   (Node)     │
+│              │
+│ - id         │
+│ - name       │
+│ - type       │
+│ - capacity   │
+│ - skills[]   │
+│ - available  │
+│ - dept_id    │
+└──────────────┘
+       │
+       │ ALLOCATED_TO (Project or Task)
+       │ Properties: allocation_%, lead (true/false)
+       │
+       ▼
+
+
+CLASSIC PROJECT HIERARCHY:
+┌──────────────┐
+│   Project    │◄─────────────────────────────────────────────────┐
+│   (Node)     │                                                   │
+│              │                                                   │
+│ - id         │                                                   │
+│ - name       │                                                   │
+│ - status     │                                                   │
+│ - start_date │                                                   │
+│ - end_date   │                                                   │
+└──────────────┘                                                   │
+       │                                                           │
+       │ BELONGS_TO                                                │
+       │                                                           │
+       ▼                                                           │
+┌──────────────┐                                                   │
+│    Phase     │                                                   │
+│   (Node)     │                                                   │
+│              │                                                   │
+│ - id         │                                                   │
+│ - name       │                                                   │
+│ - order      │                                                   │
+│ - start_date │                                                   │
+│ - end_date   │                                                   │
+│ - project_id │                                                   │
+└──────────────┘                                                   │
+       │                                                           │
+       │ BELONGS_TO                                                │
+       │                                                           │
+       ▼                                                           │
+┌──────────────┐                                                   │
+│ Workpackage  │                                                   │
+│   (Node)     │                                                   │
+│              │                                                   │
+│ - id         │                                                   │
+│ - name       │                                                   │
+│ - order      │                                                   │
+│ - start_date │                                                   │
+│ - end_date   │                                                   │
+│ - phase_id   │                                                   │
+└──────────────┘                                                   │
+       │                                                           │
+       │ BELONGS_TO (mandatory)                                    │
+       │ LINKED_TO_DEPARTMENT (optional)                           │
+       │                                                           │
+       ▼                                                           │
+┌──────────────┐                                                   │
+│     Task     │                                                   │
+│   (Node)     │  *** Separate node type, not WorkItem ***        │
+│              │                                                   │
+│ - id         │                                                   │
+│ - title      │                                                   │
+│ - description│                                                   │
+│ - status     │◄──────────────────────────────────────┐           │
+│ - priority   │                                       │           │
+│ - est_hours  │                                       │           │
+│ - story_pts  │                                       │           │
+│ - skills_    │  *** NEW: for resource matching ***   │           │
+│   needed[]   │                                       │           │
+│ - done       │                                       │           │
+│ - start_date │                                       │           │
+│ - end_date   │                                       │           │
+│ - workpkg_id │                                       │           │
+└──────────────┘                                       │           │
+       │                                               │           │
+       │ DEPENDS_ON (task dependencies)                │           │
+       │ has_risk (to Risk nodes)                      │           │
+       │ implements (to Requirement nodes)             │           │
+       │ ... (other relationships)                     │           │
+       │                                               │           │
+       ▼                                               │           │
+┌──────────────┐                                       │           │
+│     Task     │                                       │           │
+│   (Node)     │                                       │           │
+└──────────────┘                                       │           │
+       │                                               │           │
+       │ ASSIGNED_TO (Resource)                        │           │
+       │ Properties: allocation_%, lead (true/false)   │           │
+       │                                               │           │
+       ▼                                               │           │
+┌──────────────┐                                       │           │
+│   Resource   │                                       │           │
+└──────────────┘                                       │           │
+                                                       │           │
+                                                       │           │
+AGILE WORKFLOW:                                        │           │
+┌──────────────┐                                       │           │
+│   Project    │───────────────────────────────────────┘           │
+└──────────────┘                                                   │
+       │                                                           │
+       │ BELONGS_TO                                                │
+       │                                                           │
+       ▼                                                           │
+┌──────────────┐                                                   │
+│   Backlog    │                                                   │
+│   (Node)     │                                                   │
+│              │                                                   │
+│ - id         │                                                   │
+│ - name       │                                                   │
+│ - description│                                                   │
+│ - project_id │                                                   │
+└──────────────┘                                                   │
+       ▲                                                           │
+       │                                                           │
+       │ IN_BACKLOG (automatic when status="ready")                │
+       │ *** MUTUALLY EXCLUSIVE with ASSIGNED_TO_SPRINT ***        │
+       │                                                           │
+┌──────────────┐                                                   │
+│     Task     │                                                   │
+│   (Node)     │                                                   │
+│              │                                                   │
+│ - status=    │                                                   │
+│   "ready"    │                                                   │
+└──────────────┘                                                   │
+       │                                                           │
+       │ ASSIGNED_TO_SPRINT (manual assignment)                    │
+       │ *** MUTUALLY EXCLUSIVE with IN_BACKLOG ***                │
+       │ *** Task moves from Backlog to Sprint ***                 │
+       │                                                           │
+       ▼                                                           │
+┌──────────────┐                                                   │
+│    Sprint    │                                                   │
+│   (Node)     │                                                   │
+│              │                                                   │
+│ - id         │                                                   │
+│ - name       │                                                   │
+│ - goal       │                                                   │
+│ - start_date │                                                   │
+│ - end_date   │                                                   │
+│ - capacity_h │                                                   │
+│ - capacity_sp│                                                   │
+│ - velocity_h │                                                   │
+│ - velocity_sp│                                                   │
+│ - status     │                                                   │
+│ - project_id │                                                   │
+└──────────────┘                                                   │
+       │                                                           │
+       │ BELONGS_TO                                                │
+       │                                                           │
+       └───────────────────────────────────────────────────────────┘
+
+
+MILESTONES:
+┌──────────────┐
+│  Milestone   │  *** Separate node type, not WorkItem ***
+│   (Node)     │
+│              │
+│ - id         │
+│ - title      │
+│ - description│
+│ - target_date│
+│ - is_manual_ │
+│   constraint │
+│ - status     │
+│ - project_id │
+└──────────────┘
+       │
+       │ DEPENDS_ON (milestone depends on task completion)
+       │
+       ▼
+┌──────────────┐
+│     Task     │
+│   (Node)     │
+└──────────────┘
+       │
+       │ BLOCKS (task blocks milestone)
+       │
+       ▼
+┌──────────────┐
+│  Milestone   │
+└──────────────┘
+
+
+TASK LIFECYCLE & RELATIONSHIPS:
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  1. Task Created → BELONGS_TO Workpackage (mandatory)          │
+│                                                                 │
+│  2. Task can have MANY relationships:                          │
+│     - has_risk → Risk nodes                                    │
+│     - implements → Requirement nodes                           │
+│     - DEPENDS_ON → Other Task nodes                            │
+│     - ASSIGNED_TO → Resource nodes (with lead flag)            │
+│     - ... (other domain relationships)                         │
+│                                                                 │
+│  3. Status = "ready" → IN_BACKLOG (automatic)                  │
+│     Task now in Backlog, ready for sprint planning             │
+│                                                                 │
+│  4. User assigns → ASSIGNED_TO_SPRINT (manual)                 │
+│     - Removes IN_BACKLOG relationship                          │
+│     - Creates ASSIGNED_TO_SPRINT relationship                  │
+│     - Task now in Sprint (MUTUALLY EXCLUSIVE)                  │
+│                                                                 │
+│  5. Sprint ends, task incomplete:                              │
+│     - Removes ASSIGNED_TO_SPRINT relationship                  │
+│     - Creates IN_BACKLOG relationship (back to backlog)        │
+│     OR                                                          │
+│     - Creates ASSIGNED_TO_SPRINT to new sprint                 │
+│                                                                 │
+│  Result: Task has ONE of:                                      │
+│    - IN_BACKLOG (waiting for sprint assignment)                │
+│    - ASSIGNED_TO_SPRINT (actively in sprint)                   │
+│    - Neither (not yet ready or completed)                      │
+│                                                                 │
+│  Plus MANY other relationships:                                │
+│    - BELONGS_TO Workpackage (always)                           │
+│    - has_risk, implements, DEPENDS_ON, etc.                    │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+
+RESOURCE ALLOCATION PATTERNS:
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  Pattern 1: Project-Level Allocation                           │
+│  ┌──────────┐  ALLOCATED_TO   ┌─────────┐                     │
+│  │ Resource │─────────────────>│ Project │                     │
+│  └──────────┘  (allocation_%,  └─────────┘                     │
+│                 lead=true/false)                                │
+│                                                                 │
+│  - Resource available to all tasks in project                  │
+│  - Scheduler assigns based on skills_needed match              │
+│  - Lead resources prioritized for assignment                   │
+│                                                                 │
+│  Pattern 2: Task-Level Allocation                              │
+│  ┌──────────┐  ALLOCATED_TO   ┌──────┐                        │
+│  │ Resource │─────────────────>│ Task │                        │
+│  └──────────┘  (allocation_%,  └──────┘                        │
+│                 lead=true/false)                                │
+│                                                                 │
+│  - Resource explicitly assigned to specific task               │
+│  - Lead resource is primary owner/responsible                  │
+│  - Non-lead resources are supporting/collaborating             │
+│                                                                 │
+│  Pattern 3: Department-Based Allocation                        │
+│  ┌─────────────┐  LINKED_TO_DEPARTMENT  ┌────────────┐        │
+│  │ Workpackage │───────────────────────>│ Department │        │
+│  └─────────────┘                        └────────────┘        │
+│                                                │                │
+│                                         BELONGS_TO             │
+│                                                │                │
+│                                                ▼                │
+│                                         ┌──────────┐           │
+│                                         │ Resource │           │
+│                                         └──────────┘           │
+│                                                                 │
+│  - Workpackage linked to department                            │
+│  - Resources from that department allocated to tasks           │
+│  - Scheduler matches skills_needed with resource skills        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+
+
+### 2.2 Node Types and Properties
+
+#### 2.2.1 Company Node (NEW)
+```python
+{
+    "label": "Company",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "description": "string",
+        "created_at": "ISO8601 datetime",
+        "updated_at": "ISO8601 datetime"
+    }
+}
+```
+
+#### 2.2.2 Department Node (UPDATED)
+```python
+{
+    "label": "Department",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "description": "string",
+        "manager_user_id": "UUID",  # PostgreSQL user reference
+        "company_id": "UUID",  # Reference to Company node
+        "created_at": "ISO8601 datetime"
+    }
+}
+```
+
+#### 2.2.3 Resource Node (UPDATED)
+```python
+{
+    "label": "Resource",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "type": "person|machine|equipment|facility|other",
+        "capacity": "float",  # Hours per week
+        "department_id": "UUID",
+        "skills": "array[string]",  # For person type, used for skill matching
+        "availability": "available|unavailable|limited",
+        "created_at": "ISO8601 datetime"
+    }
+}
+```
+
+#### 2.2.4 Project Node
+```python
+{
+    "label": "Project",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "description": "string",
+        "status": "active|completed|archived",
+        "start_date": "ISO8601 datetime",
+        "end_date": "ISO8601 datetime",
+        "created_at": "ISO8601 datetime",
+        "updated_at": "ISO8601 datetime",
+        "created_by_user_id": "UUID"  # PostgreSQL user reference
+    }
+}
+```
+
+#### 2.2.5 Phase Node
+```python
+{
+    "label": "Phase",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "description": "string",
+        "order": "integer",  # Sequence within project
+        "start_date": "ISO8601 datetime",
+        "end_date": "ISO8601 datetime",
+        "project_id": "UUID",  # For quick lookup
+        "created_at": "ISO8601 datetime"
+    }
+}
+```
+
+#### 2.2.6 Workpackage Node
+```python
+{
+    "label": "Workpackage",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "description": "string",
+        "order": "integer",  # Sequence within phase
+        "start_date": "ISO8601 datetime",
+        "end_date": "ISO8601 datetime",
+        "phase_id": "UUID",  # For quick lookup
+        "created_at": "ISO8601 datetime"
+    }
+}
+```
+
+#### 2.2.7 Task Node (UPDATED - Separate from WorkItem)
+```python
+{
+    "label": "Task",  # NOT WorkItem - separate node type
+    "properties": {
+        "id": "UUID",
+        "title": "string",
+        "description": "string",
+        "status": "draft|ready|active|completed|blocked",
+        "priority": "integer (1-5)",
+        "estimated_hours": "float",
+        "actual_hours": "float",
+        "story_points": "integer",
+        "skills_needed": "array[string]",  # NEW: for resource matching
+        "done": "boolean",  # Completion flag
+        "start_date": "ISO8601 datetime",  # From schedule
+        "end_date": "ISO8601 datetime",  # From schedule
+        "due_date": "ISO8601 datetime",  # Deadline constraint
+        "workpackage_id": "UUID",  # For quick lookup
+        "version": "string",
+        "created_by": "UUID",
+        "created_at": "ISO8601 datetime",
+        "updated_at": "ISO8601 datetime",
+        "is_signed": "boolean"
+    }
+}
+```
+
+**Note**: Task is a separate node type (label="Task"), not a WorkItem with type="task". This maintains compatibility with existing code while providing clearer graph semantics. The WorkItem service can query Task nodes using `MATCH (t:Task)` instead of `MATCH (w:WorkItem WHERE w.type='task')`.
+
+#### 2.2.8 Milestone Node (UPDATED - Separate from WorkItem)
+```python
+{
+    "label": "Milestone",  # NOT WorkItem - separate node type
+    "properties": {
+        "id": "UUID",
+        "title": "string",
+        "description": "string",
+        "target_date": "ISO8601 datetime",
+        "is_manual_constraint": "boolean",  # true = use target_date as constraint
+        "completion_criteria": "string",
+        "status": "draft|active|completed",
+        "project_id": "UUID",
+        "version": "string",
+        "created_by": "UUID",
+        "created_at": "ISO8601 datetime",
+        "updated_at": "ISO8601 datetime"
+    }
+}
+```
+
+**Note**: Milestone is a separate node type (label="Milestone"), not a WorkItem with type="milestone". This provides clearer graph semantics and better query performance.
+
+#### 2.2.9 Backlog Node
+```python
+{
+    "label": "Backlog",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "description": "string",
+        "project_id": "UUID",
+        "created_at": "ISO8601 datetime"
+    }
+}
+```
+
+#### 2.2.10 Sprint Node
+```python
+{
+    "label": "Sprint",
+    "properties": {
+        "id": "UUID",
+        "name": "string",
+        "goal": "string",
+        "start_date": "ISO8601 datetime",
+        "end_date": "ISO8601 datetime",
+        "capacity_hours": "float",  # Calculated from resources
+        "capacity_story_points": "integer",  # Team capacity
+        "actual_velocity_hours": "float",  # Completed work
+        "actual_velocity_story_points": "integer",  # Completed work
+        "status": "planning|active|completed",
+        "project_id": "UUID",
+        "created_at": "ISO8601 datetime"
+    }
+}
+```
+
+
+
+### 2.3 Relationship Types
+
+#### 2.3.1 BELONGS_TO
+- **From**: Phase, Workpackage, Task, Sprint, Backlog, Resource
+- **To**: Project, Phase, Workpackage, Department
+- **Properties**: None
+- **Purpose**: Hierarchical structure
+
+#### 2.3.2 DEPENDS_ON
+- **From**: Task, Milestone
+- **To**: Task
+- **Properties**: 
+  ```python
+  {
+      "dependency_type": "finish-to-start|start-to-start|finish-to-finish",
+      "lag": "integer (days)"
+  }
+  ```
+- **Purpose**: Task dependencies and milestone dependencies
+
+#### 2.3.3 BLOCKS
+- **From**: Task
+- **To**: Milestone
+- **Properties**: None
+- **Purpose**: Inverse of DEPENDS_ON for milestone tracking
+
+#### 2.3.4 IN_BACKLOG (UPDATED)
+- **From**: Task
+- **To**: Backlog
+- **Properties**:
+  ```python
+  {
+      "added_at": "ISO8601 datetime",
+      "priority_order": "integer"
+  }
+  ```
+- **Purpose**: Task in backlog (MUTUALLY EXCLUSIVE with ASSIGNED_TO_SPRINT)
+- **Constraint**: A task can have IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
+- **Behavior**: Automatic creation when task status="ready", removed when assigned to sprint
+
+#### 2.3.5 ASSIGNED_TO_SPRINT (UPDATED)
+- **From**: Task
+- **To**: Sprint
+- **Properties**:
+  ```python
+  {
+      "assigned_at": "ISO8601 datetime",
+      "assigned_by_user_id": "UUID"
+  }
+  ```
+- **Purpose**: Task assigned to sprint (MUTUALLY EXCLUSIVE with IN_BACKLOG)
+- **Constraint**: A task can have ASSIGNED_TO_SPRINT OR IN_BACKLOG, never both
+- **Behavior**: Manual assignment, removes IN_BACKLOG relationship
+
+#### 2.3.6 ASSIGNED_TO (Deprecated - Use ALLOCATED_TO)
+- **From**: Task
+- **To**: Resource
+- **Properties**:
+  ```python
+  {
+      "assigned_at": "ISO8601 datetime",
+      "allocation_percentage": "float"
+  }
+  ```
+- **Purpose**: Resource assignment to tasks (legacy, use ALLOCATED_TO instead)
+
+#### 2.3.7 ALLOCATED_TO (UPDATED)
+- **From**: Resource
+- **To**: Project OR Task
+- **Properties**:
+  ```python
+  {
+      "allocation_percentage": "float",
+      "lead": "boolean",  # NEW: true = lead/primary, false = supporting
+      "start_date": "ISO8601 datetime",
+      "end_date": "ISO8601 datetime"
+  }
+  ```
+- **Purpose**: Resource allocation with lead designation
+- **Patterns**:
+  - **Project-level**: Resource available to all tasks, scheduler assigns based on skills
+  - **Task-level**: Resource explicitly assigned, lead = primary owner
+  - **Lead flag**: Identifies primary responsible resource vs. supporting resources
+
+#### 2.3.8 PARENT_OF
+- **From**: Department, Company
+- **To**: Department
+- **Properties**: None
+- **Purpose**: Hierarchical department structure and company-department relationship
+
+#### 2.3.9 LINKED_TO_DEPARTMENT (NEW)
+- **From**: Workpackage
+- **To**: Department
+- **Properties**: None
+- **Purpose**: Link workpackage to department for resource allocation
+
+#### 2.3.10 has_risk (NEW)
+- **From**: Task
+- **To**: Risk (WorkItem)
+- **Properties**: None
+- **Purpose**: Task has associated risk
+
+#### 2.3.11 implements (NEW)
+- **From**: Task
+- **To**: Requirement (WorkItem)
+- **Properties**: None
+- **Purpose**: Task implements requirement
+
+#### 2.3.12 NEXT_VERSION
+- **From**: WorkItem, Task, Milestone
+- **To**: WorkItem, Task, Milestone (same node, different version)
+- **Properties**:
+  ```python
+  {
+      "from_version": "string",
+      "to_version": "string",
+      "created_at": "ISO8601 datetime"
+  }
+  ```
+- **Purpose**: Version history tracking
+
+
+
+## 3. Core Algorithms
+
+### 3.1 Critical Path Calculation
+
+The critical path is the longest sequence of dependent tasks that determines the minimum project duration.
+
+**Algorithm: Longest Path Through DAG**
+
+```python
+def calculate_critical_path(
+    tasks: list[ScheduledTask],
+    dependencies: list[TaskDependency]
+) -> list[str]:
+    """
+    Calculate critical path using longest path algorithm.
+    
+    Args:
+        tasks: List of scheduled tasks with start/end dates
+        dependencies: List of task dependencies
+    
+    Returns:
+        List of task IDs on the critical path
+    """
+    # Build adjacency list and calculate task durations
+    graph = {}
+    durations = {}
+    in_degree = {}
+    
+    for task in tasks:
+        task_id = task.task_id
+        graph[task_id] = []
+        durations[task_id] = (task.end_date - task.start_date).total_seconds() / 3600
+        in_degree[task_id] = 0
+    
+    # Build dependency graph
+    for dep in dependencies:
+        graph[dep.from_task_id].append(dep.to_task_id)
+        in_degree[dep.to_task_id] += 1
+    
+    # Topological sort with longest path calculation
+    queue = [task_id for task_id in in_degree if in_degree[task_id] == 0]
+    longest_path = {task_id: 0 for task_id in graph}
+    predecessor = {task_id: None for task_id in graph}
+    
+    while queue:
+        current = queue.pop(0)
+        current_path_length = longest_path[current] + durations[current]
+        
+        for neighbor in graph[current]:
+            # Update longest path if we found a longer one
+            if current_path_length > longest_path[neighbor]:
+                longest_path[neighbor] = current_path_length
+                predecessor[neighbor] = current
+            
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                queue.append(neighbor)
+    
+    # Find the task with the longest path (project end)
+    end_task = max(longest_path, key=longest_path.get)
+    
+    # Backtrack to find the critical path
+    critical_path = []
+    current = end_task
+    while current is not None:
+        critical_path.insert(0, current)
+        current = predecessor[current]
+    
+    return critical_path
+```
+
+**Complexity**: O(V + E) where V = number of tasks, E = number of dependencies
+
+**Integration**: Called after schedule calculation, results stored in schedule response
+
+
+
+### 3.2 Automatic Backlog Population
+
+Tasks automatically move to backlog when their status changes to "ready".
+
+**Algorithm: Status Change Trigger**
+
+```python
+async def update_task_status(
+    task_id: UUID,
+    new_status: str,
+    workitem_service: WorkItemService,
+    graph_service: GraphService
+) -> None:
+    """
+    Update task status and handle automatic backlog population.
+    
+    Args:
+        task_id: Task UUID
+        new_status: New status value
+        workitem_service: WorkItem service instance
+        graph_service: Graph service instance
+    """
+    # Update task status
+    await workitem_service.update_workitem(
+        workitem_id=task_id,
+        updates=WorkItemUpdate(status=new_status),
+        change_description=f"Status changed to {new_status}"
+    )
+    
+    # If status is "ready", add to backlog automatically
+    if new_status == "ready":
+        # Get task's project
+        task = await workitem_service.get_workitem(task_id)
+        project_id = await get_task_project(task_id, graph_service)
+        
+        # Get or create project backlog
+        backlog = await get_or_create_backlog(project_id, graph_service)
+        
+        # Check if task is already in backlog
+        existing_rel = await graph_service.get_relationship(
+            from_id=str(task_id),
+            to_id=backlog["id"],
+            rel_type="IN_BACKLOG"
+        )
+        
+        if not existing_rel:
+            # Create IN_BACKLOG relationship
+            await graph_service.create_relationship(
+                from_id=str(task_id),
+                to_id=backlog["id"],
+                rel_type="IN_BACKLOG",
+                properties={
+                    "added_at": datetime.now(UTC).isoformat(),
+                    "priority_order": task.priority or 3
+                }
+            )
+            
+            logger.info(
+                "Task automatically added to backlog",
+                task_id=str(task_id),
+                backlog_id=backlog["id"],
+                status=new_status
+            )
+```
+
+**Trigger Points**:
+1. Task status update via API
+2. Task creation with status="ready"
+3. Bulk status updates
+
+**Removal from Backlog**:
+- Manual removal via API
+- Automatic removal when assigned to sprint (optional, configurable)
+- Status change from "ready" to other status
+
+
+
+### 3.3 Sprint Capacity Calculation
+
+Sprint capacity is automatically calculated from assigned resources and their availability.
+
+**Algorithm: Resource-Based Capacity**
+
+```python
+async def calculate_sprint_capacity(
+    sprint_id: UUID,
+    graph_service: GraphService
+) -> dict[str, float]:
+    """
+    Calculate sprint capacity based on assigned resources.
+    
+    Args:
+        sprint_id: Sprint UUID
+        graph_service: Graph service instance
+    
+    Returns:
+        Dictionary with capacity_hours and capacity_story_points
+    """
+    # Get sprint details
+    sprint = await graph_service.get_node(str(sprint_id))
+    start_date = datetime.fromisoformat(sprint["start_date"])
+    end_date = datetime.fromisoformat(sprint["end_date"])
+    
+    # Calculate sprint duration in working days
+    sprint_days = (end_date - start_date).days
+    working_days = sprint_days * 5 / 7  # Assume 5-day work week
+    
+    # Get all resources allocated to the sprint's project
+    project_id = sprint["project_id"]
+    resources = await graph_service.execute_query(f"""
+        MATCH (r:Resource)-[alloc:ALLOCATED_TO]->(p:Project {{id: '{project_id}'}})
+        WHERE r.availability = 'available'
+        RETURN r, alloc.allocation_percentage as allocation
+    """)
+    
+    total_capacity_hours = 0.0
+    
+    for resource_data in resources:
+        resource = resource_data["r"]
+        allocation_pct = resource_data["allocation"] / 100.0
+        
+        # Calculate available hours for this resource
+        # capacity is hours per week
+        weekly_capacity = resource["capacity"]
+        sprint_weeks = working_days / 5
+        resource_hours = weekly_capacity * sprint_weeks * allocation_pct
+        
+        total_capacity_hours += resource_hours
+    
+    # Calculate story point capacity based on historical velocity
+    # (This would use team's average velocity from previous sprints)
+    avg_velocity = await get_team_average_velocity(project_id, graph_service)
+    capacity_story_points = avg_velocity if avg_velocity else 0
+    
+    return {
+        "capacity_hours": total_capacity_hours,
+        "capacity_story_points": capacity_story_points
+    }
+```
+
+**Factors Considered**:
+- Resource capacity (hours per week)
+- Resource allocation percentage to project
+- Resource availability status
+- Sprint duration (working days)
+- Historical team velocity (for story points)
+
+**Update Triggers**:
+- Sprint creation
+- Resource allocation changes
+- Sprint date changes
+
+
+
+### 3.4 Velocity Tracking
+
+Track team velocity across sprints for planning and forecasting.
+
+**Algorithm: Historical Velocity Calculation**
+
+```python
+async def calculate_sprint_velocity(
+    sprint_id: UUID,
+    graph_service: GraphService
+) -> dict[str, float]:
+    """
+    Calculate actual velocity for a completed sprint.
+    
+    Args:
+        sprint_id: Sprint UUID
+        graph_service: Graph service instance
+    
+    Returns:
+        Dictionary with velocity_hours and velocity_story_points
+    """
+    # Get all completed tasks in the sprint
+    completed_tasks = await graph_service.execute_query(f"""
+        MATCH (t:WorkItem)-[r:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
+        WHERE t.type = 'task' AND t.done = true
+        RETURN t.actual_hours as hours, t.story_points as points
+    """)
+    
+    total_hours = sum(task["hours"] or 0 for task in completed_tasks)
+    total_points = sum(task["points"] or 0 for task in completed_tasks)
+    
+    return {
+        "velocity_hours": total_hours,
+        "velocity_story_points": total_points
+    }
+
+
+async def get_team_average_velocity(
+    project_id: UUID,
+    graph_service: GraphService,
+    num_sprints: int = 3
+) -> float:
+    """
+    Calculate team's average velocity from recent sprints.
+    
+    Args:
+        project_id: Project UUID
+        graph_service: Graph service instance
+        num_sprints: Number of recent sprints to average
+    
+    Returns:
+        Average story points per sprint
+    """
+    # Get recent completed sprints
+    sprints = await graph_service.execute_query(f"""
+        MATCH (s:Sprint)-[:BELONGS_TO]->(p:Project {{id: '{project_id}'}})
+        WHERE s.status = 'completed'
+        RETURN s.actual_velocity_story_points as velocity
+        ORDER BY s.end_date DESC
+        LIMIT {num_sprints}
+    """)
+    
+    if not sprints:
+        return 0.0
+    
+    velocities = [s["velocity"] for s in sprints if s["velocity"]]
+    return sum(velocities) / len(velocities) if velocities else 0.0
+```
+
+**Velocity Metrics**:
+- **Actual Velocity**: Completed work in a sprint (hours and story points)
+- **Average Velocity**: Mean of last N sprints (default N=3)
+- **Velocity Trend**: Increasing, stable, or decreasing
+- **Capacity vs Velocity**: Planned capacity vs actual completion
+
+**Usage**:
+- Sprint planning: Recommend tasks based on average velocity
+- Forecasting: Estimate completion dates for backlog
+- Team performance: Track velocity trends over time
+
+
+
+### 3.5 Milestone Scheduling Modes
+
+Milestones support two scheduling modes: manual constraint and automatic calculation.
+
+**Algorithm: Dual-Mode Milestone Scheduling**
+
+```python
+async def schedule_with_milestones(
+    tasks: list[ScheduleTaskCreate],
+    milestones: list[Milestone],
+    constraints: ScheduleConstraints
+) -> ScheduleResponse:
+    """
+    Schedule tasks considering milestone constraints.
+    
+    Args:
+        tasks: Tasks to schedule
+        milestones: Milestones with dependencies
+        constraints: Schedule constraints
+    
+    Returns:
+        Schedule response with task dates and milestone dates
+    """
+    # Separate manual and automatic milestones
+    manual_milestones = [m for m in milestones if m.is_manual_constraint]
+    auto_milestones = [m for m in milestones if not m.is_manual_constraint]
+    
+    # Add manual milestone constraints to scheduler
+    for milestone in manual_milestones:
+        # Get all tasks that block this milestone
+        blocking_tasks = await get_milestone_dependencies(milestone.id)
+        
+        # Add constraint: all blocking tasks must finish before milestone target_date
+        for task in blocking_tasks:
+            constraints.add_deadline(
+                task_id=task.id,
+                deadline=milestone.target_date,
+                reason=f"Milestone '{milestone.title}' target date"
+            )
+    
+    # Run schedule calculation with constraints
+    schedule = await scheduler_service.schedule_project(
+        tasks=tasks,
+        constraints=constraints
+    )
+    
+    if schedule.status != "success":
+        return schedule
+    
+    # Calculate automatic milestone dates from completed task dates
+    milestone_dates = {}
+    for milestone in auto_milestones:
+        # Get all tasks that block this milestone
+        blocking_tasks = await get_milestone_dependencies(milestone.id)
+        
+        if blocking_tasks:
+            # Milestone date is the latest end date of blocking tasks
+            latest_end = max(
+                task.end_date for task in schedule.schedule
+                if task.task_id in [t.id for t in blocking_tasks]
+            )
+            milestone_dates[milestone.id] = latest_end
+        else:
+            # No dependencies, use target_date if set
+            milestone_dates[milestone.id] = milestone.target_date
+    
+    # Add milestones to schedule response
+    schedule.milestones = [
+        ScheduledMilestone(
+            milestone_id=m.id,
+            title=m.title,
+            date=milestone_dates.get(m.id, m.target_date),
+            is_manual=m.is_manual_constraint
+        )
+        for m in milestones
+    ]
+    
+    return schedule
+```
+
+**Mode Selection**:
+- **Manual Mode** (`is_manual_constraint=true`): 
+  - Use `target_date` as hard constraint
+  - All dependent tasks must complete before target_date
+  - Scheduler treats it like a deadline
+  
+- **Automatic Mode** (`is_manual_constraint=false`):
+  - Calculate milestone date from dependent tasks
+  - Milestone date = max(dependent_task.end_date)
+  - No constraint on scheduling
+
+**Conflict Detection**:
+- If manual milestone target_date cannot be met, report conflict
+- Suggest either: extend target_date or reduce task durations
+
+
+
+### 3.6 Burndown Chart Calculation
+
+Generate burndown data for sprint progress tracking.
+
+**Algorithm: Daily Remaining Work**
+
+```python
+async def calculate_burndown(
+    sprint_id: UUID,
+    graph_service: GraphService
+) -> list[BurndownPoint]:
+    """
+    Calculate burndown chart data for a sprint.
+    
+    Args:
+        sprint_id: Sprint UUID
+        graph_service: Graph service instance
+    
+    Returns:
+        List of burndown points (date, remaining_hours, remaining_points)
+    """
+    # Get sprint details
+    sprint = await graph_service.get_node(str(sprint_id))
+    start_date = datetime.fromisoformat(sprint["start_date"])
+    end_date = datetime.fromisoformat(sprint["end_date"])
+    
+    # Get all tasks in sprint
+    tasks = await graph_service.execute_query(f"""
+        MATCH (t:WorkItem)-[:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
+        WHERE t.type = 'task'
+        RETURN t
+    """)
+    
+    # Calculate total work
+    total_hours = sum(t["estimated_hours"] or 0 for t in tasks)
+    total_points = sum(t["story_points"] or 0 for t in tasks)
+    
+    # Generate ideal burndown line
+    sprint_days = (end_date - start_date).days
+    ideal_burndown = []
+    for day in range(sprint_days + 1):
+        date = start_date + timedelta(days=day)
+        remaining_pct = 1 - (day / sprint_days)
+        ideal_burndown.append(BurndownPoint(
+            date=date,
+            ideal_remaining_hours=total_hours * remaining_pct,
+            ideal_remaining_points=total_points * remaining_pct
+        ))
+    
+    # Calculate actual burndown from task completion history
+    # (This would query task journal entries or completion timestamps)
+    actual_burndown = []
+    current_date = start_date
+    
+    while current_date <= min(end_date, datetime.now(UTC)):
+        # Get tasks completed by this date
+        completed_by_date = await graph_service.execute_query(f"""
+            MATCH (t:WorkItem)-[:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
+            WHERE t.type = 'task' 
+              AND t.done = true 
+              AND t.updated_at <= '{current_date.isoformat()}'
+            RETURN t.estimated_hours as hours, t.story_points as points
+        """)
+        
+        completed_hours = sum(t["hours"] or 0 for t in completed_by_date)
+        completed_points = sum(t["points"] or 0 for t in completed_by_date)
+        
+        actual_burndown.append(BurndownPoint(
+            date=current_date,
+            actual_remaining_hours=total_hours - completed_hours,
+            actual_remaining_points=total_points - completed_points
+        ))
+        
+        current_date += timedelta(days=1)
+    
+    # Merge ideal and actual burndown
+    burndown_data = []
+    for ideal, actual in zip(ideal_burndown, actual_burndown):
+        burndown_data.append(BurndownPoint(
+            date=ideal.date,
+            ideal_remaining_hours=ideal.ideal_remaining_hours,
+            ideal_remaining_points=ideal.ideal_remaining_points,
+            actual_remaining_hours=actual.actual_remaining_hours,
+            actual_remaining_points=actual.actual_remaining_points
+        ))
+    
+    return burndown_data
+```
+
+**Burndown Metrics**:
+- **Ideal Line**: Linear decrease from total work to zero
+- **Actual Line**: Real progress based on task completion
+- **Scope Change**: Track added/removed work during sprint
+- **Trend**: On track, ahead, or behind schedule
+
+
+
+## 4. API Endpoints
+
+### 4.1 Schedule Management
+
+#### POST /api/v1/schedule/calculate
+Calculate optimized project schedule with critical path.
+
+**Request**:
 ```json
 {
   "project_id": "uuid",
   "task_ids": ["task-uuid-1", "task-uuid-2"],
-  "resource_ids": ["resource-id-1", "resource-id-2"],
+  "milestone_ids": ["milestone-uuid-1"],
+  "resource_ids": ["resource-uuid-1"],
   "constraints": {
     "project_start": "2024-01-01T00:00:00Z",
     "project_deadline": "2024-12-31T23:59:59Z",
@@ -59,2450 +1214,2305 @@ The schedule API sits between the existing SchedulerService (which uses OR-Tools
 }
 ```
 
-**Response (Success)**:
+**Response**:
 ```json
 {
   "status": "success",
   "project_id": "uuid",
   "schedule": [
     {
-      "task_id": "task-uuid-1",
-      "task_title": "Implement authentication",
+      "task_id": "uuid",
       "start_date": "2024-01-01T09:00:00Z",
       "end_date": "2024-01-05T17:00:00Z",
-      "duration_hours": 40,
-      "assigned_resources": ["resource-id-1"]
+      "is_critical": true
     }
   ],
-  "project_duration_hours": 320,
-  "project_start_date": "2024-01-01T09:00:00Z",
-  "project_end_date": "2024-02-15T17:00:00Z",
-  "message": "Optimal schedule found",
-  "calculated_at": "2024-01-01T08:00:00Z"
+  "critical_path": ["task-uuid-1", "task-uuid-3"],
+  "milestones": [
+    {
+      "milestone_id": "uuid",
+      "date": "2024-02-01T00:00:00Z",
+      "is_manual": true
+    }
+  ]
 }
 ```
 
+#### GET /api/v1/schedule/{project_id}
+Retrieve current schedule for a project.
 
-**Response (Infeasible)**:
+#### GET /api/v1/schedule/{project_id}/gantt
+Get Gantt chart data with critical path and milestones.
+
+#### GET /api/v1/schedule/{project_id}/statistics
+Get schedule metrics and health indicators.
+
+
+
+### 4.2 Backlog Management
+
+#### POST /api/v1/projects/{project_id}/backlogs
+Create a backlog for a project.
+
+**Request**:
 ```json
 {
-  "status": "infeasible",
-  "project_id": "uuid",
-  "conflicts": [
-    {
-      "conflict_type": "circular_dependency",
-      "description": "Circular dependency detected: task-1 -> task-2 -> task-3 -> task-1",
-      "affected_tasks": ["task-1", "task-2", "task-3"],
-      "suggestion": "Remove one of the dependencies to break the cycle"
-    },
-    {
-      "conflict_type": "resource_overallocation",
-      "description": "Resource 'developer-1' is over-allocated (demand: 200, capacity: 160)",
-      "affected_resources": ["developer-1"],
-      "affected_tasks": ["task-1", "task-2", "task-4"],
-      "suggestion": "Increase resource capacity or reduce task demands"
-    }
-  ],
-  "message": "No feasible schedule found. Check conflicts for details."
+  "name": "Product Backlog",
+  "description": "Main backlog for project"
 }
 ```
 
-**Status Codes**:
-- `200 OK`: Schedule calculated successfully
-- `400 Bad Request`: Invalid request data or validation errors
-- `401 Unauthorized`: Missing or invalid authentication token
-- `403 Forbidden`: User lacks permission to calculate schedules
-- `404 Not Found`: Project or tasks not found
-- `500 Internal Server Error`: Unexpected error during calculation
+#### GET /api/v1/backlogs/{backlog_id}/tasks
+List tasks in backlog, ordered by priority.
 
-### 2.2 Get Schedule
-
-**Endpoint**: `GET /api/v1/schedule/{project_id}`
-
-**Description**: Retrieve the current schedule for a project.
-
-**Path Parameters**:
-- `project_id` (UUID): Project identifier
-
-**Query Parameters**:
-- `version` (integer, optional): Specific version to retrieve (default: latest)
-
-**Response (Success)**:
+**Response**:
 ```json
 {
-  "project_id": "uuid",
-  "schedule": [
-    {
-      "task_id": "task-uuid-1",
-      "task_title": "Implement authentication",
-      "start_date": "2024-01-01T09:00:00Z",
-      "end_date": "2024-01-05T17:00:00Z",
-      "duration_hours": 40,
-      "assigned_resources": ["resource-id-1"]
-    }
-  ],
-  "resources": [
-    {
-      "id": "resource-id-1",
-      "name": "Senior Developer",
-      "capacity": 40
-    }
-  ],
-  "constraints": {
-    "project_start": "2024-01-01T00:00:00Z",
-    "horizon_days": 365,
-    "working_hours_per_day": 8,
-    "respect_weekends": true
-  },
-  "project_duration_hours": 320,
-  "project_start_date": "2024-01-01T09:00:00Z",
-  "project_end_date": "2024-02-15T17:00:00Z",
-  "created_at": "2024-01-01T08:00:00Z",
-  "updated_at": "2024-01-01T08:00:00Z",
-  "version": 1,
-  "manual_adjustments": {}
-}
-```
-
-**Status Codes**:
-- `200 OK`: Schedule retrieved successfully
-- `401 Unauthorized`: Missing or invalid authentication token
-- `404 Not Found`: Schedule not found for project
-- `500 Internal Server Error`: Unexpected error
-
-### 2.3 Update Schedule (Manual Adjustments)
-
-**Endpoint**: `PATCH /api/v1/schedule/{project_id}`
-
-**Description**: Apply manual adjustments to a calculated schedule.
-
-**Path Parameters**:
-- `project_id` (UUID): Project identifier
-
-**Request Body**:
-```json
-{
-  "task_adjustments": {
-    "task-uuid-1": {
-      "start_date": "2024-01-02T09:00:00Z",
-      "end_date": "2024-01-06T17:00:00Z"
-    },
-    "task-uuid-2": {
-      "start_date": "2024-01-08T09:00:00Z"
-    }
-  },
-  "preserve_dependencies": true,
-  "recalculate_downstream": true
-}
-```
-
-**Response (Success)**:
-```json
-{
-  "status": "success",
-  "project_id": "uuid",
-  "schedule": [
-    {
-      "task_id": "task-uuid-1",
-      "task_title": "Implement authentication",
-      "start_date": "2024-01-02T09:00:00Z",
-      "end_date": "2024-01-06T17:00:00Z",
-      "duration_hours": 40,
-      "assigned_resources": ["resource-id-1"]
-    }
-  ],
-  "project_duration_hours": 328,
-  "project_start_date": "2024-01-02T09:00:00Z",
-  "project_end_date": "2024-02-16T17:00:00Z",
-  "message": "Schedule updated (version 2)"
-}
-```
-
-**Status Codes**:
-- `200 OK`: Schedule updated successfully
-- `400 Bad Request`: Invalid adjustments or constraint violations
-- `401 Unauthorized`: Missing or invalid authentication token
-- `403 Forbidden`: User lacks permission to update schedules
-- `404 Not Found`: Schedule not found for project
-- `500 Internal Server Error`: Unexpected error
-
-### 2.4 Get Gantt Chart Data
-
-**Endpoint**: `GET /api/v1/schedule/{project_id}/gantt`
-
-**Description**: Retrieve schedule data formatted for Gantt chart visualization.
-
-**Path Parameters**:
-- `project_id` (UUID): Project identifier
-
-**Response (Success)**:
-```json
-{
+  "backlog_id": "uuid",
   "tasks": [
     {
-      "task_id": "task-uuid-1",
-      "task_title": "Implement authentication",
-      "start_date": "2024-01-01T09:00:00Z",
-      "end_date": "2024-01-05T17:00:00Z",
-      "duration_hours": 40,
-      "assigned_resources": ["resource-id-1"]
+      "task_id": "uuid",
+      "title": "Implement feature X",
+      "priority": 5,
+      "estimated_hours": 8,
+      "story_points": 3,
+      "added_at": "2024-01-01T10:00:00Z"
     }
   ],
-  "dependencies": [
+  "total_count": 25
+}
+```
+
+#### DELETE /api/v1/backlogs/{backlog_id}/tasks/{task_id}
+Remove task from backlog (manual removal).
+
+### 4.3 Sprint Management
+
+#### POST /api/v1/projects/{project_id}/sprints
+Create a new sprint.
+
+**Request**:
+```json
+{
+  "name": "Sprint 1",
+  "goal": "Complete user authentication",
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-01-14T23:59:59Z"
+}
+```
+
+**Response** (includes calculated capacity):
+```json
+{
+  "sprint_id": "uuid",
+  "name": "Sprint 1",
+  "capacity_hours": 320.0,
+  "capacity_story_points": 25,
+  "status": "planning"
+}
+```
+
+#### POST /api/v1/sprints/{sprint_id}/tasks/{task_id}
+Assign task from backlog to sprint (manual assignment).
+
+#### POST /api/v1/sprints/{sprint_id}/start
+Start a sprint (change status to "active").
+
+#### POST /api/v1/sprints/{sprint_id}/complete
+Complete a sprint and calculate velocity.
+
+**Response**:
+```json
+{
+  "sprint_id": "uuid",
+  "status": "completed",
+  "actual_velocity_hours": 280.0,
+  "actual_velocity_story_points": 22,
+  "completion_percentage": 87.5
+}
+```
+
+#### GET /api/v1/sprints/{sprint_id}/velocity
+Get sprint velocity and historical average.
+
+**Response**:
+```json
+{
+  "sprint_velocity_hours": 280.0,
+  "sprint_velocity_story_points": 22,
+  "team_average_velocity_hours": 290.0,
+  "team_average_velocity_story_points": 24,
+  "velocity_trend": "stable"
+}
+```
+
+#### GET /api/v1/sprints/{sprint_id}/burndown
+Get burndown chart data.
+
+**Response**:
+```json
+{
+  "sprint_id": "uuid",
+  "burndown_data": [
     {
-      "from_task_id": "task-uuid-1",
-      "to_task_id": "task-uuid-2",
-      "type": "finish-to-start"
+      "date": "2024-01-01",
+      "ideal_remaining_hours": 320.0,
+      "actual_remaining_hours": 320.0,
+      "ideal_remaining_points": 25,
+      "actual_remaining_points": 25
+    },
+    {
+      "date": "2024-01-02",
+      "ideal_remaining_hours": 297.0,
+      "actual_remaining_hours": 304.0,
+      "ideal_remaining_points": 23,
+      "actual_remaining_points": 24
+    }
+  ]
+}
+```
+
+
+
+### 4.4 Milestone Management
+
+#### POST /api/v1/projects/{project_id}/milestones
+Create a milestone.
+
+**Request**:
+```json
+{
+  "title": "MVP Release",
+  "description": "Minimum viable product ready for beta testing",
+  "target_date": "2024-06-01T00:00:00Z",
+  "is_manual_constraint": true,
+  "completion_criteria": "All core features implemented and tested"
+}
+```
+
+#### POST /api/v1/milestones/{milestone_id}/dependencies/{task_id}
+Add task dependency to milestone (task must complete before milestone).
+
+#### GET /api/v1/milestones/{milestone_id}
+Get milestone details with dependencies and calculated/target date.
+
+**Response**:
+```json
+{
+  "milestone_id": "uuid",
+  "title": "MVP Release",
+  "target_date": "2024-06-01T00:00:00Z",
+  "calculated_date": "2024-05-28T00:00:00Z",
+  "is_manual_constraint": true,
+  "status": "active",
+  "dependent_tasks": [
+    {
+      "task_id": "uuid",
+      "title": "Complete authentication",
+      "end_date": "2024-05-15T00:00:00Z"
     }
   ],
-  "critical_path": ["task-uuid-1", "task-uuid-3", "task-uuid-5"]
+  "is_achievable": true
 }
 ```
 
-**Status Codes**:
-- `200 OK`: Gantt data retrieved successfully
-- `401 Unauthorized`: Missing or invalid authentication token
-- `404 Not Found`: Schedule not found for project
-- `500 Internal Server Error`: Unexpected error
+### 4.5 Project Hierarchy Management
 
-### 2.5 Get Schedule Statistics
+#### POST /api/v1/projects
+Create a project.
 
-**Endpoint**: `GET /api/v1/schedule/{project_id}/statistics`
+#### POST /api/v1/projects/{project_id}/phases
+Create a phase within a project.
 
-**Description**: Retrieve schedule metrics and statistics.
+#### POST /api/v1/phases/{phase_id}/workpackages
+Create a workpackage within a phase.
 
-**Path Parameters**:
-- `project_id` (UUID): Project identifier
+#### GET /api/v1/projects/{project_id}/hierarchy
+Get complete project hierarchy.
 
-**Response (Success)**:
+**Response**:
 ```json
 {
-  "total_tasks": 25,
-  "completed_tasks": 10,
-  "in_progress_tasks": 8,
-  "not_started_tasks": 5,
-  "blocked_tasks": 2,
-  "total_estimated_hours": 400,
-  "total_actual_hours": 180,
-  "completion_percentage": 40.0,
-  "critical_path_tasks": ["task-uuid-1", "task-uuid-3"],
-  "resource_utilization": {
-    "resource-id-1": 85.5,
-    "resource-id-2": 72.3
-  },
-  "schedule_health": "on_track"
-}
-```
-
-**Status Codes**:
-- `200 OK`: Statistics retrieved successfully
-- `401 Unauthorized`: Missing or invalid authentication token
-- `404 Not Found`: Schedule not found for project
-- `500 Internal Server Error`: Unexpected error
-
-### 2.6 Export Schedule
-
-**Endpoint**: `GET /api/v1/schedule/{project_id}/export`
-
-**Description**: Export complete schedule data for offline use or external tools.
-
-**Path Parameters**:
-- `project_id` (UUID): Project identifier
-
-**Response (Success)**:
-```json
-{
-  "project_id": "uuid",
-  "schedule": [...],
-  "resources": [...],
-  "constraints": {...},
-  "metadata": {
-    "version": 1,
-    "created_at": "2024-01-01T08:00:00Z",
-    "created_by": "user-uuid",
-    "exported_at": "2024-01-15T10:00:00Z"
+  "project": {
+    "id": "uuid",
+    "name": "Medical Device Development",
+    "phases": [
+      {
+        "id": "uuid",
+        "name": "Planning",
+        "order": 1,
+        "workpackages": [
+          {
+            "id": "uuid",
+            "name": "Requirements Gathering",
+            "order": 1,
+            "tasks": [
+              {
+                "id": "uuid",
+                "title": "Define user needs",
+                "status": "completed"
+              }
+            ]
+          }
+        ]
+      }
+    ]
   }
 }
 ```
 
-**Status Codes**:
-- `200 OK`: Schedule exported successfully
-- `401 Unauthorized`: Missing or invalid authentication token
-- `404 Not Found`: Schedule not found for project
-- `500 Internal Server Error`: Unexpected error
+### 4.6 Resource Management
 
-### 2.7 Import Schedule
+#### POST /api/v1/resources
+Create a resource.
 
-**Endpoint**: `POST /api/v1/schedule/{project_id}/import`
-
-**Description**: Import a schedule calculated offline or from external tools.
-
-**Path Parameters**:
-- `project_id` (UUID): Project identifier
-
-**Request Body**: Same format as export response
-
-**Response (Success)**:
+**Request**:
 ```json
 {
-  "status": "success",
+  "name": "John Doe",
+  "type": "person",
+  "capacity": 40.0,
+  "department_id": "uuid",
+  "skills": ["Python", "FastAPI", "PostgreSQL"],
+  "availability": "available"
+}
+```
+
+#### POST /api/v1/resources/{resource_id}/allocate
+Allocate resource to project.
+
+**Request**:
+```json
+{
   "project_id": "uuid",
-  "message": "Schedule imported successfully (version 2)",
-  "imported_tasks": 25,
-  "skipped_tasks": 0,
-  "failed_tasks": 0
+  "allocation_percentage": 75.0,
+  "start_date": "2024-01-01T00:00:00Z",
+  "end_date": "2024-12-31T23:59:59Z"
 }
 ```
 
-**Status Codes**:
-- `200 OK`: Schedule imported successfully
-- `400 Bad Request`: Invalid schedule data or validation errors
-- `401 Unauthorized`: Missing or invalid authentication token
-- `403 Forbidden`: User lacks permission to import schedules
-- `404 Not Found`: Project not found
-- `500 Internal Server Error`: Unexpected error
+#### GET /api/v1/resources/{resource_id}/utilization
+Get resource utilization metrics.
 
-### 2.8 Resource Management
-
-**Endpoint**: `GET /api/v1/schedule/resources`
-
-**Description**: List all available resources.
-
-**Response (Success)**:
-```json
-[
-  {
-    "id": "resource-id-1",
-    "name": "Senior Developer",
-    "capacity": 40
-  },
-  {
-    "id": "resource-id-2",
-    "name": "QA Engineer",
-    "capacity": 40
-  }
-]
-```
-
-**Endpoint**: `POST /api/v1/schedule/resources`
-
-**Description**: Create a new resource.
-
-**Request Body**:
+**Response**:
 ```json
 {
-  "id": "resource-id-3",
-  "name": "DevOps Engineer",
-  "capacity": 40
+  "resource_id": "uuid",
+  "name": "John Doe",
+  "capacity": 40.0,
+  "allocated_hours": 30.0,
+  "utilization_percentage": 75.0,
+  "allocations": [
+    {
+      "project_id": "uuid",
+      "project_name": "Project A",
+      "allocation_percentage": 50.0
+    }
+  ]
 }
 ```
 
-**Endpoint**: `PATCH /api/v1/schedule/resources/{resource_id}`
-
-**Description**: Update a resource.
-
-**Endpoint**: `DELETE /api/v1/schedule/resources/{resource_id}`
-
-**Description**: Delete a resource.
-
-## 3. Data Models
-
-### 3.1 Existing Pydantic Schemas
-
-The following schemas are already defined in `backend/app/schemas/schedule.py`:
-
-- `ResourceBase`, `ResourceCreate`, `ResourceResponse`
-- `TaskDependency`
-- `ScheduleTaskBase`, `ScheduleTaskCreate`
-- `ScheduledTask`
-- `ScheduleConstraints`
-- `ScheduleConflict`
-- `ScheduleRequest`, `ScheduleResponse`
-- `ScheduleUpdate`
-- `ProjectSchedule`
-
-### 3.2 New Schemas Required
-
-**GanttChartData**:
-```python
-class GanttChartData(BaseModel):
-    """Schema for Gantt chart visualization data"""
-    
-    tasks: list[ScheduledTask] = Field(..., description="Scheduled tasks")
-    dependencies: list[TaskDependencyView] = Field(
-        default_factory=list,
-        description="Task dependencies for visualization"
-    )
-    critical_path: list[str] = Field(
-        default_factory=list,
-        description="Task IDs on the critical path"
-    )
 
 
-class TaskDependencyView(BaseModel):
-    """Schema for task dependency visualization"""
-    
-    from_task_id: str = Field(..., description="Source task ID")
-    to_task_id: str = Field(..., description="Target task ID")
-    type: Literal["finish-to-start", "start-to-start", "finish-to-finish"] = Field(
-        ...,
-        description="Dependency type"
-    )
+## 5. Service Layer Design
+
+### 5.1 Service Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        API Layer                                 │
+│  (FastAPI Routers: schedule, projects, sprints, milestones)     │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     Service Layer                                │
+│                                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────┐ │
+│  │ ScheduleAPI      │  │ SprintService    │  │ MilestoneServ │ │
+│  │ Service          │  │                  │  │               │ │
+│  └──────────────────┘  └──────────────────┘  └───────────────┘ │
+│           │                     │                     │          │
+│           ▼                     ▼                     ▼          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────┐ │
+│  │ ProjectService   │  │ BacklogService   │  │ ResourceServ  │ │
+│  └──────────────────┘  └──────────────────┘  └───────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Core Services                                 │
+│                                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌───────────────┐ │
+│  │ SchedulerService │  │ WorkItemService  │  │ VersionServ   │ │
+│  │ (OR-Tools)       │  │                  │  │               │ │
+│  └──────────────────┘  └──────────────────┘  └───────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   Data Layer                                     │
+│                                                                  │
+│  ┌──────────────────┐  ┌──────────────────┐                    │
+│  │ GraphService     │  │ PostgreSQL       │                    │
+│  │ (Apache AGE)     │  │ (Users, Audit)   │                    │
+│  └──────────────────┘  └──────────────────┘                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**ScheduleStatistics**:
-```python
-class ScheduleStatistics(BaseModel):
-    """Schema for schedule statistics and metrics"""
-    
-    total_tasks: int = Field(..., description="Total number of tasks")
-    completed_tasks: int = Field(..., description="Number of completed tasks")
-    in_progress_tasks: int = Field(..., description="Number of in-progress tasks")
-    not_started_tasks: int = Field(..., description="Number of not-started tasks")
-    blocked_tasks: int = Field(..., description="Number of blocked tasks")
-    total_estimated_hours: float = Field(..., description="Total estimated hours")
-    total_actual_hours: float = Field(..., description="Total actual hours spent")
-    completion_percentage: float = Field(..., description="Project completion percentage")
-    critical_path_tasks: list[str] = Field(
-        default_factory=list,
-        description="Task IDs on critical path"
-    )
-    resource_utilization: dict[str, float] = Field(
-        default_factory=dict,
-        description="Resource utilization percentages"
-    )
-    schedule_health: Literal["on_track", "at_risk", "delayed"] = Field(
-        ...,
-        description="Overall schedule health indicator"
-    )
-```
+### 5.2 Key Service Classes
 
-**ScheduleCalculateRequest**:
-```python
-class ScheduleCalculateRequest(BaseModel):
-    """Schema for schedule calculation request"""
-    
-    project_id: UUID = Field(..., description="Project identifier")
-    task_ids: list[str] = Field(..., min_length=1, description="Task IDs to schedule")
-    resource_ids: list[str] = Field(default_factory=list, description="Resource IDs to use")
-    constraints: ScheduleConstraints = Field(
-        default_factory=ScheduleConstraints,
-        description="Schedule constraints"
-    )
-```
+#### 5.2.1 ScheduleAPIService
 
-
-## 4. Service Layer Design
-
-### 4.1 Schedule API Service
-
-The Schedule API Service will orchestrate between the API endpoints, the existing SchedulerService, and the WorkItem system.
+Orchestrates schedule calculation with critical path and milestone handling.
 
 ```python
-from uuid import UUID
-from typing import Optional
-from app.services.scheduler_service import SchedulerService, get_scheduler_service
-from app.services.workitem_service import WorkItemService
-from app.schemas.schedule import (
-    ScheduleCalculateRequest,
-    ScheduleResponse,
-    ScheduleUpdate,
-    GanttChartData,
-    ScheduleStatistics,
-    ProjectSchedule,
-)
-
 class ScheduleAPIService:
-    """
-    Service for schedule API operations.
-    Orchestrates between SchedulerService, WorkItemService, and API endpoints.
-    """
+    """Main service for schedule operations"""
     
     def __init__(
         self,
         scheduler_service: SchedulerService,
-        workitem_service: WorkItemService
+        workitem_service: WorkItemService,
+        milestone_service: MilestoneService,
+        graph_service: GraphService
     ):
         self.scheduler = scheduler_service
         self.workitem_service = workitem_service
-        
+        self.milestone_service = milestone_service
+        self.graph_service = graph_service
+    
     async def calculate_schedule(
         self,
         request: ScheduleCalculateRequest,
         user_id: UUID
     ) -> ScheduleResponse:
-        """
-        Calculate project schedule from task IDs.
-        
-        Args:
-            request: Schedule calculation request with task IDs and constraints
-            user_id: User performing the calculation
-            
-        Returns:
-            ScheduleResponse with calculated schedule or conflicts
-        """
-        # 1. Fetch tasks from WorkItem system
-        tasks = await self._fetch_tasks(request.task_ids)
-        
-        # 2. Fetch resources
-        resources = await self._fetch_resources(request.resource_ids)
-        
-        # 3. Convert WorkItems to ScheduleTaskCreate
-        schedule_tasks = self._convert_workitems_to_schedule_tasks(tasks)
-        
-        # 4. Call SchedulerService
-        response = await self.scheduler.schedule_project(
-            project_id=request.project_id,
-            tasks=schedule_tasks,
-            resources=resources,
-            constraints=request.constraints
-        )
-        
-        # 5. If successful, update WorkItem start/end dates
-        if response.status in ["success", "feasible"]:
-            await self._update_workitem_dates(response.schedule)
-            
-        return response
-        
-    async def get_schedule(
+        """Calculate schedule with critical path and milestones"""
+        # 1. Fetch tasks and milestones
+        # 2. Apply milestone constraints
+        # 3. Call SchedulerService
+        # 4. Calculate critical path
+        # 5. Calculate milestone dates
+        # 6. Update WorkItem dates
+        # 7. Return response
+```
+
+#### 5.2.2 SprintService
+
+Manages sprint lifecycle, capacity, and velocity.
+
+```python
+class SprintService:
+    """Service for sprint management"""
+    
+    async def create_sprint(
         self,
         project_id: UUID,
-        version: Optional[int] = None
-    ) -> Optional[ProjectSchedule]:
-        """
-        Retrieve schedule for a project.
-        
-        Args:
-            project_id: Project identifier
-            version: Optional specific version (default: latest)
-            
-        Returns:
-            ProjectSchedule if found, None otherwise
-        """
-        return await self.scheduler.get_schedule(project_id)
-        
-    async def update_schedule(
+        sprint_data: SprintCreate
+    ) -> SprintResponse:
+        """Create sprint and calculate capacity"""
+        # 1. Create Sprint node
+        # 2. Calculate capacity from resources
+        # 3. Return sprint with capacity
+    
+    async def assign_task_to_sprint(
+        self,
+        sprint_id: UUID,
+        task_id: UUID
+    ) -> None:
+        """Manually assign task from backlog to sprint"""
+        # 1. Verify task is in backlog
+        # 2. Create ASSIGNED_TO_SPRINT relationship
+        # 3. Optionally remove from backlog
+    
+    async def complete_sprint(
+        self,
+        sprint_id: UUID
+    ) -> SprintVelocity:
+        """Complete sprint and calculate velocity"""
+        # 1. Calculate actual velocity
+        # 2. Update sprint status
+        # 3. Return velocity metrics
+```
+
+#### 5.2.3 BacklogService
+
+Manages backlog and automatic population.
+
+```python
+class BacklogService:
+    """Service for backlog management"""
+    
+    async def add_task_to_backlog(
+        self,
+        task_id: UUID,
+        backlog_id: UUID
+    ) -> None:
+        """Add task to backlog (automatic or manual)"""
+        # 1. Create IN_BACKLOG relationship
+        # 2. Set priority order
+    
+    async def get_backlog_tasks(
+        self,
+        backlog_id: UUID,
+        order_by: str = "priority"
+    ) -> list[TaskResponse]:
+        """Get tasks in backlog, ordered"""
+        # 1. Query tasks with IN_BACKLOG relationship
+        # 2. Order by priority or other criteria
+        # 3. Return task list
+```
+
+#### 5.2.4 MilestoneService
+
+Manages milestones and dependencies.
+
+```python
+class MilestoneService:
+    """Service for milestone management"""
+    
+    async def create_milestone(
         self,
         project_id: UUID,
-        updates: ScheduleUpdate,
-        user_id: UUID
-    ) -> Optional[ScheduleResponse]:
-        """
-        Apply manual adjustments to a schedule.
-        
-        Args:
-            project_id: Project identifier
-            updates: Manual adjustments to apply
-            user_id: User performing the update
-            
-        Returns:
-            Updated ScheduleResponse or None if schedule not found
-        """
-        response = await self.scheduler.update_schedule(project_id, updates)
-        
-        if response and response.status == "success":
-            await self._update_workitem_dates(response.schedule)
-            
-        return response
-        
-    async def get_gantt_data(
+        milestone_data: MilestoneCreate
+    ) -> MilestoneResponse:
+        """Create milestone node"""
+        # 1. Create WorkItem with type="milestone"
+        # 2. Set is_manual_constraint flag
+        # 3. Return milestone
+    
+    async def add_dependency(
         self,
-        project_id: UUID
-    ) -> Optional[GanttChartData]:
-        """
-        Get Gantt chart data for a project.
-        
-        Args:
-            project_id: Project identifier
-            
-        Returns:
-            GanttChartData if schedule exists, None otherwise
-        """
-        schedule = await self.scheduler.get_schedule(project_id)
-        if not schedule:
-            return None
-            
-        # Fetch task dependencies from WorkItem system
-        task_ids = [task.task_id for task in schedule.schedule]
-        dependencies = await self._fetch_task_dependencies(task_ids)
-        
-        # Calculate critical path
-        critical_path = self._calculate_critical_path(
-            schedule.schedule,
-            dependencies
-        )
-        
-        return GanttChartData(
-            tasks=schedule.schedule,
-            dependencies=dependencies,
-            critical_path=critical_path
-        )
-        
-    async def get_statistics(
+        milestone_id: UUID,
+        task_id: UUID
+    ) -> None:
+        """Add task dependency to milestone"""
+        # 1. Create DEPENDS_ON relationship
+        # 2. Create inverse BLOCKS relationship
+    
+    async def calculate_milestone_date(
         self,
-        project_id: UUID
-    ) -> Optional[ScheduleStatistics]:
-        """
-        Get schedule statistics and metrics.
+        milestone_id: UUID
+    ) -> datetime:
+        """Calculate milestone date from dependencies"""
+        # 1. Get all dependent tasks
+        # 2. Find latest task end_date
+        # 3. Return as milestone date
+```
+
+
+
+## 6. Data Flow Examples
+
+### 6.1 Task Lifecycle: Creation to Sprint Completion
+
+```
+1. Task Created
+   ├─> Create WorkItem node (type="task", status="draft")
+   └─> Create BELONGS_TO relationship to Workpackage (mandatory)
+
+2. Task Ready for Work
+   ├─> Update status to "ready"
+   └─> AUTOMATIC: Create IN_BACKLOG relationship
+       └─> Task now appears in project backlog
+
+3. Sprint Planning
+   ├─> User selects task from backlog
+   ├─> MANUAL: Create ASSIGNED_TO_SPRINT relationship
+   └─> Task now in: Workpackage + Backlog + Sprint
+
+4. Task Assigned to Resource
+   ├─> Create ASSIGNED_TO relationship to Resource
+   └─> Resource utilization updated
+
+5. Schedule Calculation
+   ├─> Scheduler considers:
+   │   ├─> Workpackage hierarchy
+   │   ├─> Sprint boundaries (start_date, end_date)
+   │   ├─> Resource capacity
+   │   └─> Task dependencies
+   ├─> Calculate start_date and end_date
+   ├─> Calculate critical path
+   └─> Update task with schedule dates
+
+6. Task Completed
+   ├─> Update status to "completed"
+   ├─> Set done = true
+   ├─> Record actual_hours
+   └─> Sprint velocity updated
+```
+
+### 6.2 Sprint Planning Flow
+
+```
+1. Create Sprint
+   ├─> Create Sprint node
+   ├─> Calculate capacity from allocated resources
+   │   └─> Query: MATCH (r:Resource)-[:ALLOCATED_TO]->(p:Project)
+   └─> Return sprint with capacity_hours and capacity_story_points
+
+2. View Backlog
+   ├─> Query: MATCH (t:Task)-[:IN_BACKLOG]->(b:Backlog)
+   ├─> Order by priority
+   └─> Display available tasks
+
+3. Assign Tasks to Sprint
+   ├─> For each selected task:
+   │   ├─> Create ASSIGNED_TO_SPRINT relationship
+   │   └─> Check capacity not exceeded
+   └─> Update sprint task count
+
+4. Start Sprint
+   ├─> Update sprint status to "active"
+   └─> Lock sprint scope (no more task additions)
+
+5. During Sprint
+   ├─> Tasks move through Kanban columns (status updates)
+   ├─> Burndown chart updated daily
+   └─> Velocity tracked
+
+6. Complete Sprint
+   ├─> Calculate actual velocity
+   │   └─> Query: SUM(completed_tasks.actual_hours)
+   ├─> Update sprint with velocity
+   ├─> Update team average velocity
+   └─> Sprint status = "completed"
+```
+
+### 6.3 Milestone-Driven Scheduling
+
+```
+1. Create Milestone (Manual Mode)
+   ├─> Create WorkItem (type="milestone")
+   ├─> Set target_date = "2024-06-01"
+   ├─> Set is_manual_constraint = true
+   └─> Add dependent tasks
+
+2. Schedule Calculation
+   ├─> Scheduler receives milestone constraint
+   ├─> For each task blocking milestone:
+   │   └─> Add constraint: task.end_date <= milestone.target_date
+   ├─> Run OR-Tools solver
+   └─> If infeasible:
+       ├─> Report conflict
+       └─> Suggest: extend target_date or reduce task durations
+
+3. Create Milestone (Automatic Mode)
+   ├─> Create WorkItem (type="milestone")
+   ├─> Set is_manual_constraint = false
+   └─> Add dependent tasks
+
+4. Schedule Calculation
+   ├─> Schedule tasks normally (no milestone constraint)
+   ├─> After scheduling:
+   │   ├─> Find latest end_date of dependent tasks
+   │   └─> Set milestone.date = latest_end_date
+   └─> Return schedule with calculated milestone date
+```
+
+
+
+## 7. Pydantic Schemas
+
+### 7.1 Schedule Schemas
+
+```python
+class ScheduleCalculateRequest(BaseModel):
+    """Request for schedule calculation"""
+    project_id: UUID
+    task_ids: list[str]
+    milestone_ids: list[str] = Field(default_factory=list)
+    resource_ids: list[str] = Field(default_factory=list)
+    constraints: ScheduleConstraints
+
+class ScheduledTask(BaseModel):
+    """Scheduled task with dates"""
+    task_id: str
+    task_title: str
+    start_date: datetime
+    end_date: datetime
+    duration_hours: float
+    assigned_resources: list[str]
+    is_critical: bool = False  # On critical path
+
+class ScheduledMilestone(BaseModel):
+    """Scheduled milestone"""
+    milestone_id: str
+    title: str
+    date: datetime
+    is_manual: bool
+    is_achievable: bool = True
+
+class ScheduleResponse(BaseModel):
+    """Schedule calculation response"""
+    status: Literal["success", "infeasible"]
+    project_id: UUID
+    schedule: list[ScheduledTask]
+    critical_path: list[str]
+    milestones: list[ScheduledMilestone]
+    project_duration_hours: float
+    project_start_date: datetime
+    project_end_date: datetime
+    conflicts: list[ScheduleConflict] = Field(default_factory=list)
+    message: str
+    calculated_at: datetime
+```
+
+### 7.2 Sprint Schemas
+
+```python
+class SprintCreate(BaseModel):
+    """Create sprint request"""
+    name: str = Field(..., min_length=1, max_length=200)
+    goal: str = Field(..., min_length=1, max_length=1000)
+    start_date: datetime
+    end_date: datetime
+
+class SprintResponse(BaseModel):
+    """Sprint response with capacity"""
+    id: UUID
+    name: str
+    goal: str
+    start_date: datetime
+    end_date: datetime
+    capacity_hours: float
+    capacity_story_points: int
+    actual_velocity_hours: float = 0.0
+    actual_velocity_story_points: int = 0
+    status: Literal["planning", "active", "completed"]
+    project_id: UUID
+    created_at: datetime
+
+class SprintVelocity(BaseModel):
+    """Sprint velocity metrics"""
+    sprint_velocity_hours: float
+    sprint_velocity_story_points: int
+    team_average_velocity_hours: float
+    team_average_velocity_story_points: int
+    velocity_trend: Literal["increasing", "stable", "decreasing"]
+
+class BurndownPoint(BaseModel):
+    """Single point on burndown chart"""
+    date: datetime
+    ideal_remaining_hours: float
+    actual_remaining_hours: float
+    ideal_remaining_points: int
+    actual_remaining_points: int
+```
+
+### 7.3 Milestone Schemas
+
+```python
+class MilestoneCreate(BaseModel):
+    """Create milestone request"""
+    title: str = Field(..., min_length=1, max_length=500)
+    description: str | None = None
+    target_date: datetime
+    is_manual_constraint: bool = False
+    completion_criteria: str | None = None
+
+class MilestoneResponse(BaseModel):
+    """Milestone response"""
+    id: UUID
+    title: str
+    description: str | None
+    target_date: datetime
+    calculated_date: datetime | None
+    is_manual_constraint: bool
+    status: Literal["draft", "active", "completed"]
+    dependent_tasks: list[TaskSummary]
+    is_achievable: bool
+    created_at: datetime
+
+class TaskSummary(BaseModel):
+    """Brief task info for milestone dependencies"""
+    task_id: UUID
+    title: str
+    end_date: datetime | None
+    status: str
+```
+
+### 7.4 Backlog Schemas
+
+```python
+class BacklogCreate(BaseModel):
+    """Create backlog request"""
+    name: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
+
+class BacklogResponse(BaseModel):
+    """Backlog response"""
+    id: UUID
+    name: str
+    description: str | None
+    project_id: UUID
+    task_count: int
+    created_at: datetime
+
+class BacklogTaskResponse(BaseModel):
+    """Task in backlog with metadata"""
+    task_id: UUID
+    title: str
+    priority: int
+    estimated_hours: float | None
+    story_points: int | None
+    status: str
+    added_at: datetime
+    priority_order: int
+```
+
+
+
+## 8. Database Integration
+
+### 8.1 Apache AGE Query Patterns
+
+#### 8.1.1 Create Node with Relationships
+
+```python
+# Create task and link to workpackage
+async def create_task_in_workpackage(
+    task_data: TaskCreate,
+    workpackage_id: UUID,
+    graph_service: GraphService
+) -> UUID:
+    """Create task and establish workpackage relationship"""
+    
+    # Create task node
+    task_id = str(uuid4())
+    await graph_service.execute_query(f"""
+        CREATE (t:WorkItem {{
+            id: '{task_id}',
+            type: 'task',
+            title: '{task_data.title}',
+            status: '{task_data.status}',
+            priority: {task_data.priority or 3},
+            estimated_hours: {task_data.estimated_hours or 0},
+            story_points: {task_data.story_points or 0},
+            done: false,
+            created_at: '{datetime.now(UTC).isoformat()}'
+        }})
+        RETURN t
+    """)
+    
+    # Create BELONGS_TO relationship (mandatory)
+    await graph_service.execute_query(f"""
+        MATCH (t:WorkItem {{id: '{task_id}'}}),
+              (w:Workpackage {{id: '{workpackage_id}'}})
+        CREATE (t)-[:BELONGS_TO]->(w)
+    """)
+    
+    return UUID(task_id)
+```
+
+#### 8.1.2 Automatic Backlog Population
+
+```python
+# Trigger on status change to "ready"
+async def handle_task_status_change(
+    task_id: UUID,
+    new_status: str,
+    graph_service: GraphService
+) -> None:
+    """Handle automatic backlog population"""
+    
+    if new_status == "ready":
+        # Get task's project
+        result = await graph_service.execute_query(f"""
+            MATCH (t:WorkItem {{id: '{task_id}'}})-[:BELONGS_TO*]->(p:Project)
+            RETURN p.id as project_id
+        """)
         
-        Args:
-            project_id: Project identifier
+        if result:
+            project_id = result[0]["project_id"]
             
-        Returns:
-            ScheduleStatistics if schedule exists, None otherwise
-        """
-        schedule = await self.scheduler.get_schedule(project_id)
-        if not schedule:
-            return None
+            # Get or create backlog
+            backlog = await graph_service.execute_query(f"""
+                MATCH (b:Backlog)-[:BELONGS_TO]->(p:Project {{id: '{project_id}'}})
+                RETURN b.id as backlog_id
+            """)
             
-        # Fetch current task statuses from WorkItem system
-        task_ids = [task.task_id for task in schedule.schedule]
-        tasks = await self._fetch_tasks(task_ids)
-        
-        # Calculate statistics
-        return self._calculate_statistics(schedule, tasks)
-        
-    async def _fetch_tasks(self, task_ids: list[str]) -> list[dict]:
-        """Fetch tasks from WorkItem system"""
-        tasks = []
-        for task_id in task_ids:
-            task = await self.workitem_service.get_workitem(UUID(task_id))
-            if task and task.get('type') == 'task':
-                tasks.append(task)
-        return tasks
-        
-    async def _fetch_resources(self, resource_ids: list[str]) -> list[dict]:
-        """Fetch resources (placeholder - implement resource storage)"""
-        # TODO: Implement resource storage and retrieval
-        return []
-        
-    def _convert_workitems_to_schedule_tasks(
-        self,
-        workitems: list[dict]
-    ) -> list[ScheduleTaskCreate]:
-        """Convert WorkItems to ScheduleTaskCreate"""
-        from app.schemas.schedule import ScheduleTaskCreate, TaskDependency
-        
-        schedule_tasks = []
-        for wi in workitems:
-            # Extract dependencies from WorkItem
-            dependencies = []
-            if wi.get('dependencies'):
-                for dep_id in wi['dependencies']:
-                    dependencies.append(TaskDependency(
-                        predecessor_id=dep_id,
-                        dependency_type="finish_to_start",
-                        lag=0
-                    ))
-            
-            schedule_tasks.append(ScheduleTaskCreate(
-                id=wi['id'],
-                title=wi['title'],
-                estimated_hours=wi.get('estimated_hours', 8),
-                dependencies=dependencies,
-                required_resources=wi.get('required_resources', []),
-                resource_demand=wi.get('resource_demand', {}),
-                earliest_start=wi.get('earliest_start'),
-                deadline=wi.get('deadline'),
-                priority=wi.get('priority', 3)
-            ))
-            
-        return schedule_tasks
-        
-    async def _update_workitem_dates(
-        self,
-        scheduled_tasks: list[ScheduledTask]
-    ):
-        """Update WorkItem start/end dates from schedule"""
-        for task in scheduled_tasks:
-            await self.workitem_service.update_workitem(
-                workitem_id=UUID(task.task_id),
-                updates={
-                    'start_date': task.start_date.isoformat(),
-                    'end_date': task.end_date.isoformat()
-                },
-                change_description="Schedule calculated"
-            )
-            
-    async def _fetch_task_dependencies(
-        self,
-        task_ids: list[str]
-    ) -> list[TaskDependencyView]:
-        """Fetch task dependencies for visualization"""
-        dependencies = []
-        for task_id in task_ids:
-            task = await self.workitem_service.get_workitem(UUID(task_id))
-            if task and task.get('dependencies'):
-                for dep_id in task['dependencies']:
-                    dependencies.append(TaskDependencyView(
-                        from_task_id=dep_id,
-                        to_task_id=task_id,
-                        type="finish-to-start"
-                    ))
-        return dependencies
-        
-    def _calculate_critical_path(
-        self,
-        scheduled_tasks: list[ScheduledTask],
-        dependencies: list[TaskDependencyView]
-    ) -> list[str]:
-        """Calculate critical path using longest path algorithm"""
-        # Build dependency graph
-        graph = {}
-        for task in scheduled_tasks:
-            graph[task.task_id] = []
-            
-        for dep in dependencies:
-            if dep.to_task_id in graph:
-                graph[dep.to_task_id].append(dep.from_task_id)
+            if backlog:
+                backlog_id = backlog[0]["backlog_id"]
                 
-        # Find longest path (critical path)
-        # This is a simplified implementation
-        # TODO: Implement proper critical path algorithm
-        return []
-        
-    def _calculate_statistics(
-        self,
-        schedule: ProjectSchedule,
-        tasks: list[dict]
-    ) -> ScheduleStatistics:
-        """Calculate schedule statistics"""
-        total_tasks = len(tasks)
-        completed = sum(1 for t in tasks if t.get('status') == 'completed')
-        in_progress = sum(1 for t in tasks if t.get('status') == 'active')
-        not_started = sum(1 for t in tasks if t.get('status') == 'draft')
-        blocked = sum(1 for t in tasks if t.get('status') == 'blocked')
-        
-        total_estimated = sum(t.get('estimated_hours', 0) for t in tasks)
-        total_actual = sum(t.get('actual_hours', 0) for t in tasks)
-        
-        completion_pct = (completed / total_tasks * 100) if total_tasks > 0 else 0
-        
-        # Determine schedule health
-        if completion_pct >= 90:
-            health = "on_track"
-        elif completion_pct >= 70:
-            health = "at_risk"
-        else:
-            health = "delayed"
-            
-        return ScheduleStatistics(
-            total_tasks=total_tasks,
-            completed_tasks=completed,
-            in_progress_tasks=in_progress,
-            not_started_tasks=not_started,
-            blocked_tasks=blocked,
-            total_estimated_hours=total_estimated,
-            total_actual_hours=total_actual,
-            completion_percentage=completion_pct,
-            critical_path_tasks=[],
-            resource_utilization={},
-            schedule_health=health
-        )
-
-
-async def get_schedule_api_service(
-    scheduler_service: SchedulerService = Depends(get_scheduler_service),
-    workitem_service: WorkItemService = Depends(get_workitem_service)
-) -> ScheduleAPIService:
-    """Dependency for getting the schedule API service"""
-    return ScheduleAPIService(scheduler_service, workitem_service)
+                # Create IN_BACKLOG relationship
+                await graph_service.execute_query(f"""
+                    MATCH (t:WorkItem {{id: '{task_id}'}}),
+                          (b:Backlog {{id: '{backlog_id}'}})
+                    MERGE (t)-[r:IN_BACKLOG]->(b)
+                    ON CREATE SET r.added_at = '{datetime.now(UTC).isoformat()}'
+                """)
 ```
 
-
-## 5. API Endpoint Implementation
-
-### 5.1 Schedule Router
-
-Create `backend/app/api/v1/schedule.py`:
+#### 8.1.3 Query Project Hierarchy
 
 ```python
-from fastapi import APIRouter, Depends, HTTPException, status
-from uuid import UUID
-from typing import Optional
-
-from app.api.deps import get_current_user
-from app.models.user import User
-from app.services.schedule_api_service import (
-    ScheduleAPIService,
-    get_schedule_api_service
-)
-from app.schemas.schedule import (
-    ScheduleCalculateRequest,
-    ScheduleResponse,
-    ScheduleUpdate,
-    ProjectSchedule,
-    GanttChartData,
-    ScheduleStatistics,
-)
-
-router = APIRouter(prefix="/schedule", tags=["schedule"])
-
-
-@router.post("/calculate", response_model=ScheduleResponse)
-async def calculate_schedule(
-    request: ScheduleCalculateRequest,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
-) -> ScheduleResponse:
-    """
-    Calculate project schedule using constraint programming.
-    
-    Requires: project_manager or admin role
-    """
-    # Check permissions
-    if current_user.role not in ["project_manager", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only project managers and admins can calculate schedules"
-        )
-    
-    try:
-        response = await service.calculate_schedule(request, current_user.id)
-        return response
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        logger.exception("Schedule calculation failed")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Schedule calculation failed"
-        )
-
-
-@router.get("/{project_id}", response_model=ProjectSchedule)
-async def get_schedule(
+# Get complete project structure
+async def get_project_hierarchy(
     project_id: UUID,
-    version: Optional[int] = None,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
-) -> ProjectSchedule:
-    """
-    Get current schedule for a project.
-    
-    Requires: authenticated user
-    """
-    schedule = await service.get_schedule(project_id, version)
-    
-    if not schedule:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule not found for project {project_id}"
-        )
-    
-    return schedule
-
-
-@router.patch("/{project_id}", response_model=ScheduleResponse)
-async def update_schedule(
-    project_id: UUID,
-    updates: ScheduleUpdate,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
-) -> ScheduleResponse:
-    """
-    Apply manual adjustments to a schedule.
-    
-    Requires: project_manager or admin role
-    """
-    # Check permissions
-    if current_user.role not in ["project_manager", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only project managers and admins can update schedules"
-        )
-    
-    response = await service.update_schedule(project_id, updates, current_user.id)
-    
-    if not response:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule not found for project {project_id}"
-        )
-    
-    if response.status == "error":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=response.message or "Schedule update failed"
-        )
-    
-    return response
-
-
-@router.get("/{project_id}/gantt", response_model=GanttChartData)
-async def get_gantt_data(
-    project_id: UUID,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
-) -> GanttChartData:
-    """
-    Get Gantt chart data for a project.
-    
-    Requires: authenticated user
-    """
-    gantt_data = await service.get_gantt_data(project_id)
-    
-    if not gantt_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule not found for project {project_id}"
-        )
-    
-    return gantt_data
-
-
-@router.get("/{project_id}/statistics", response_model=ScheduleStatistics)
-async def get_statistics(
-    project_id: UUID,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
-) -> ScheduleStatistics:
-    """
-    Get schedule statistics and metrics.
-    
-    Requires: authenticated user
-    """
-    statistics = await service.get_statistics(project_id)
-    
-    if not statistics:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule not found for project {project_id}"
-        )
-    
-    return statistics
-
-
-@router.get("/{project_id}/export", response_model=ProjectSchedule)
-async def export_schedule(
-    project_id: UUID,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
-) -> ProjectSchedule:
-    """
-    Export complete schedule data.
-    
-    Requires: authenticated user
-    """
-    schedule = await service.get_schedule(project_id)
-    
-    if not schedule:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Schedule not found for project {project_id}"
-        )
-    
-    return schedule
-
-
-@router.post("/{project_id}/import", response_model=dict)
-async def import_schedule(
-    project_id: UUID,
-    schedule_data: ProjectSchedule,
-    current_user: User = Depends(get_current_user),
-    service: ScheduleAPIService = Depends(get_schedule_api_service)
+    graph_service: GraphService
 ) -> dict:
-    """
-    Import a schedule calculated offline.
+    """Query complete project hierarchy"""
     
-    Requires: project_manager or admin role
-    """
-    # Check permissions
-    if current_user.role not in ["project_manager", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only project managers and admins can import schedules"
-        )
+    result = await graph_service.execute_query(f"""
+        MATCH (p:Project {{id: '{project_id}'}})
+        OPTIONAL MATCH (p)<-[:BELONGS_TO]-(ph:Phase)
+        OPTIONAL MATCH (ph)<-[:BELONGS_TO]-(wp:Workpackage)
+        OPTIONAL MATCH (wp)<-[:BELONGS_TO]-(t:WorkItem)
+        WHERE t.type = 'task'
+        RETURN p, 
+               collect(DISTINCT ph) as phases,
+               collect(DISTINCT wp) as workpackages,
+               collect(DISTINCT t) as tasks
+    """)
     
-    try:
-        result = await service.import_schedule(project_id, schedule_data, current_user.id)
-        return result
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    return result[0] if result else None
 ```
 
-### 5.2 Register Router
-
-Update `backend/app/api/v1/__init__.py`:
+#### 8.1.4 Calculate Sprint Capacity
 
 ```python
-from fastapi import APIRouter
-from app.api.v1 import auth, workitems, schedule
-
-api_router = APIRouter()
-api_router.include_router(auth.router)
-api_router.include_router(workitems.router)
-api_router.include_router(schedule.router)  # Add this line
-```
-
-## 6. Frontend Integration
-
-### 6.1 Update Schedule Service
-
-Update `frontend/src/services/scheduleService.ts` to remove placeholder methods and use real API endpoints:
-
-```typescript
-async calculateSchedule(
-  projectId: string,
-  taskIds: string[],
-  resourceIds: string[] = [],
-  constraints?: ScheduleConstraints
-): Promise<ScheduleResult> {
-  try {
-    const response = await apiClient.post<ScheduleResult>('/api/v1/schedule/calculate', {
-      project_id: projectId,
-      task_ids: taskIds,
-      resource_ids: resourceIds,
-      constraints: constraints || {}
-    });
-    return response.data;
-  } catch (error) {
-    handleApiError(error, 'calculateSchedule', { projectId, taskIds });
-  }
-}
-
-async getSchedule(projectId: string): Promise<ScheduleResult> {
-  try {
-    const response = await apiClient.get<ProjectSchedule>(`/api/v1/schedule/${projectId}`);
+# Query resources and calculate capacity
+async def calculate_sprint_capacity_query(
+    sprint_id: UUID,
+    graph_service: GraphService
+) -> dict:
+    """Calculate sprint capacity from resources"""
     
-    // Convert ProjectSchedule to ScheduleResult format
+    result = await graph_service.execute_query(f"""
+        MATCH (s:Sprint {{id: '{sprint_id}'}})-[:BELONGS_TO]->(p:Project)
+        MATCH (r:Resource)-[alloc:ALLOCATED_TO]->(p)
+        WHERE r.availability = 'available'
+        RETURN s.start_date as start_date,
+               s.end_date as end_date,
+               collect({{
+                   capacity: r.capacity,
+                   allocation: alloc.allocation_percentage
+               }}) as resources
+    """)
+    
+    if not result:
+        return {"capacity_hours": 0.0, "capacity_story_points": 0}
+    
+    data = result[0]
+    start = datetime.fromisoformat(data["start_date"])
+    end = datetime.fromisoformat(data["end_date"])
+    sprint_weeks = (end - start).days / 7
+    
+    total_hours = sum(
+        r["capacity"] * sprint_weeks * (r["allocation"] / 100.0)
+        for r in data["resources"]
+    )
+    
     return {
-      status: 'success',
-      schedule: response.data.schedule,
-      project_duration_hours: response.data.project_duration_hours,
-      conflicts: []
-    };
-  } catch (error) {
-    handleApiError(error, 'getSchedule', { projectId });
-  }
-}
-
-async getGanttData(projectId: string): Promise<ScheduledTask[]> {
-  try {
-    const response = await apiClient.get<GanttChartData>(`/api/v1/schedule/${projectId}/gantt`);
-    return response.data.tasks;
-  } catch (error) {
-    handleApiError(error, 'getGanttData', { projectId });
-  }
-}
-```
-
-### 6.2 Update Schedule Page
-
-Update `frontend/src/pages/SchedulePage.tsx` to use real API:
-
-```typescript
-import React, { useEffect, useState } from 'react';
-import { scheduleService } from '../services/scheduleService';
-import { GanttChart } from '../components/schedule/GanttChart';
-import type { ScheduledTask } from '../services/scheduleService';
-
-export function SchedulePage(): React.ReactElement {
-  const [tasks, setTasks] = useState<ScheduledTask[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
-  // TODO: Get project ID from context or route params
-  const projectId = 'default-project-id';
-  
-  useEffect(() => {
-    async function loadSchedule() {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const ganttData = await scheduleService.getGanttData(projectId);
-        setTasks(ganttData);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load schedule');
-      } finally {
-        setIsLoading(false);
-      }
+        "capacity_hours": total_hours,
+        "capacity_story_points": 0  # Calculate from velocity
     }
-    
-    loadSchedule();
-  }, [projectId]);
-  
-  if (isLoading) {
-    return <div>Loading schedule...</div>;
-  }
-  
-  if (error) {
-    return <div>Error: {error}</div>;
-  }
-  
-  return (
-    <div className="schedule-page">
-      <h1>Project Schedule</h1>
-      <GanttChart tasks={tasks} />
-    </div>
-  );
-}
 ```
 
-## 7. Correctness Properties
+#### 8.1.5 Get Tasks on Critical Path
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+```python
+# Mark critical path tasks
+async def mark_critical_path_tasks(
+    project_id: UUID,
+    critical_path_task_ids: list[str],
+    graph_service: GraphService
+) -> None:
+    """Mark tasks on critical path"""
+    
+    # Reset all tasks
+    await graph_service.execute_query(f"""
+        MATCH (t:WorkItem)-[:BELONGS_TO*]->(p:Project {{id: '{project_id}'}})
+        WHERE t.type = 'task'
+        SET t.is_critical = false
+    """)
+    
+    # Mark critical path tasks
+    for task_id in critical_path_task_ids:
+        await graph_service.execute_query(f"""
+            MATCH (t:WorkItem {{id: '{task_id}'}})
+            SET t.is_critical = true
+        """)
+```
 
-### Property 1: Schedule Calculation Determinism
+### 8.2 Transaction Management
 
-*For any* set of tasks, resources, and constraints, calculating the schedule multiple times with the same inputs should produce the same schedule (same start/end dates for all tasks).
+All multi-step operations should use transactions:
 
-**Validates: Requirements 1.1, 1.2**
-
-### Property 2: Dependency Preservation
-
-*For any* schedule with task dependencies, if task A depends on task B (finish-to-start), then task A's start date must be greater than or equal to task B's end date.
-
-**Validates: Requirements 1.4**
-
-### Property 3: Resource Capacity Constraints
-
-*For any* schedule with resource constraints, at any point in time, the sum of resource demands from concurrent tasks must not exceed the resource capacity.
-
-**Validates: Requirements 1.5**
-
-### Property 4: Deadline Compliance
-
-*For any* task with a deadline, the scheduled end date must be less than or equal to the deadline.
-
-**Validates: Requirements 1.6**
-
-### Property 5: Schedule Retrieval Consistency
-
-*For any* project with a calculated schedule, retrieving the schedule should return the same data that was stored during calculation.
-
-**Validates: Requirements 2.3, 2.4**
-
-### Property 6: Manual Adjustment Preservation
-
-*For any* schedule with manual adjustments, retrieving the schedule should include all manually adjusted dates and preserve the adjustment history.
-
-**Validates: Requirements 3.6, 3.7**
-
-### Property 7: Gantt Data Completeness
-
-*For any* project with a schedule, the Gantt chart data should include all scheduled tasks with their dependencies.
-
-**Validates: Requirements 4.2, 4.3**
-
-### Property 8: Conflict Detection Completeness
-
-*For any* infeasible schedule, the system should identify and report at least one constraint violation that prevents a feasible solution.
-
-**Validates: Requirements 5.1, 5.8**
-
-### Property 9: Version Increment Monotonicity
-
-*For any* schedule, each modification (recalculation or manual adjustment) should increment the version number by exactly 1.
-
-**Validates: Requirements 6.2**
-
-### Property 10: WorkItem Integration Round Trip
-
-*For any* task scheduled with start and end dates, retrieving the task from the WorkItem system should return the same dates that were set during scheduling.
-
-**Validates: Requirements 7.2**
+```python
+async def create_sprint_with_tasks(
+    sprint_data: SprintCreate,
+    task_ids: list[UUID],
+    graph_service: GraphService
+) -> UUID:
+    """Create sprint and assign tasks in a transaction"""
+    
+    async with graph_service.transaction() as tx:
+        # Create sprint
+        sprint_id = await tx.create_sprint(sprint_data)
+        
+        # Assign tasks
+        for task_id in task_ids:
+            await tx.assign_task_to_sprint(sprint_id, task_id)
+        
+        # Calculate capacity
+        capacity = await tx.calculate_capacity(sprint_id)
+        await tx.update_sprint_capacity(sprint_id, capacity)
+        
+        # Commit transaction
+        await tx.commit()
+        
+        return sprint_id
+```
 
 
-## 8. Error Handling
 
-### 8.1 Error Response Format
+## 9. Error Handling and Validation
 
-All API errors follow a consistent format:
+### 9.1 Validation Rules
+
+#### 9.1.1 Task Validation
+
+**Mandatory Workpackage Assignment**:
+```python
+async def validate_task_creation(task_data: TaskCreate) -> None:
+    """Validate task has workpackage assignment"""
+    if not task_data.workpackage_id:
+        raise ValidationError(
+            "Task must belong to a workpackage",
+            field="workpackage_id"
+        )
+```
+
+**Status Transition Rules**:
+```python
+VALID_STATUS_TRANSITIONS = {
+    "draft": ["ready", "archived"],
+    "ready": ["active", "archived"],
+    "active": ["completed", "blocked", "ready"],
+    "blocked": ["active", "ready"],
+    "completed": ["archived"],
+    "archived": []
+}
+
+async def validate_status_change(
+    current_status: str,
+    new_status: str
+) -> None:
+    """Validate status transition is allowed"""
+    if new_status not in VALID_STATUS_TRANSITIONS.get(current_status, []):
+        raise ValidationError(
+            f"Cannot transition from {current_status} to {new_status}",
+            field="status"
+        )
+```
+
+#### 9.1.2 Sprint Validation
+
+**Date Validation**:
+```python
+async def validate_sprint_dates(sprint_data: SprintCreate) -> None:
+    """Validate sprint date constraints"""
+    if sprint_data.end_date <= sprint_data.start_date:
+        raise ValidationError(
+            "Sprint end date must be after start date",
+            field="end_date"
+        )
+    
+    duration = (sprint_data.end_date - sprint_data.start_date).days
+    if duration > 30:
+        raise ValidationError(
+            "Sprint duration cannot exceed 30 days",
+            field="end_date"
+        )
+```
+
+
+**Capacity Validation**:
+```python
+async def validate_sprint_capacity(
+    sprint_id: UUID,
+    task_ids: list[UUID],
+    graph_service: GraphService
+) -> None:
+    """Validate sprint capacity not exceeded"""
+    sprint = await graph_service.get_node(str(sprint_id))
+    capacity_hours = sprint["capacity_hours"]
+    
+    # Calculate total estimated hours for tasks
+    tasks = await graph_service.get_nodes(
+        [str(tid) for tid in task_ids]
+    )
+    total_hours = sum(t.get("estimated_hours", 0) for t in tasks)
+    
+    if total_hours > capacity_hours * 1.2:  # Allow 20% buffer
+        raise ValidationError(
+            f"Tasks exceed sprint capacity: {total_hours}h > {capacity_hours}h",
+            field="task_ids"
+        )
+```
+
+#### 9.1.3 Milestone Validation
+
+**Dependency Cycle Detection**:
+```python
+async def validate_no_dependency_cycles(
+    milestone_id: UUID,
+    task_id: UUID,
+    graph_service: GraphService
+) -> None:
+    """Ensure adding dependency doesn't create cycle"""
+    # Check if task already depends on milestone (directly or indirectly)
+    result = await graph_service.execute_query(f"""
+        MATCH path = (t:WorkItem {{id: '{task_id}'}})-[:DEPENDS_ON*]->(m:WorkItem {{id: '{milestone_id}'}})
+        RETURN path
+    """)
+    
+    if result:
+        raise ValidationError(
+            "Adding this dependency would create a cycle",
+            field="task_id"
+        )
+```
+
+### 9.2 Error Response Format
+
+All API errors follow consistent format:
+
+```python
+class ErrorResponse(BaseModel):
+    """Standard error response"""
+    error: str
+    message: str
+    field: str | None = None
+    details: dict | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+```
+
+
+**Example Error Responses**:
 
 ```json
 {
-  "detail": "Human-readable error message",
-  "error_code": "SCHEDULE_NOT_FOUND",
-  "context": {
-    "project_id": "uuid",
-    "additional_info": "..."
-  }
+  "error": "ValidationError",
+  "message": "Task must belong to a workpackage",
+  "field": "workpackage_id",
+  "timestamp": "2024-01-15T10:30:00Z"
 }
 ```
 
-### 8.2 Error Codes
+```json
+{
+  "error": "ScheduleInfeasible",
+  "message": "Cannot meet milestone target date with current task estimates",
+  "details": {
+    "milestone_id": "uuid",
+    "target_date": "2024-06-01T00:00:00Z",
+    "earliest_possible": "2024-06-15T00:00:00Z",
+    "blocking_tasks": ["task-uuid-1", "task-uuid-2"]
+  },
+  "timestamp": "2024-01-15T10:30:00Z"
+}
+```
 
-| Error Code | HTTP Status | Description |
-|------------|-------------|-------------|
-| `SCHEDULE_NOT_FOUND` | 404 | Schedule does not exist for project |
-| `INVALID_TASK_IDS` | 400 | One or more task IDs are invalid |
-| `INVALID_RESOURCE_IDS` | 400 | One or more resource IDs are invalid |
-| `CIRCULAR_DEPENDENCY` | 400 | Task dependencies form a cycle |
-| `RESOURCE_OVERALLOCATION` | 400 | Resource capacity exceeded |
-| `IMPOSSIBLE_DEADLINE` | 400 | Task deadline cannot be met |
-| `CONSTRAINT_VIOLATION` | 400 | Schedule violates constraints |
-| `UNAUTHORIZED` | 401 | Missing or invalid authentication |
-| `FORBIDDEN` | 403 | User lacks required permissions |
-| `CALCULATION_TIMEOUT` | 500 | Schedule calculation exceeded timeout |
-| `INTERNAL_ERROR` | 500 | Unexpected server error |
-
-### 8.3 Logging Strategy
-
-All schedule operations are logged with structured logging:
+### 9.3 Exception Hierarchy
 
 ```python
-import logging
+class ScheduleAPIException(Exception):
+    """Base exception for schedule API"""
+    pass
+
+class ValidationError(ScheduleAPIException):
+    """Validation failed"""
+    def __init__(self, message: str, field: str | None = None):
+        self.message = message
+        self.field = field
+        super().__init__(message)
+
+class ScheduleInfeasibleError(ScheduleAPIException):
+    """Schedule cannot be calculated"""
+    def __init__(self, message: str, details: dict | None = None):
+        self.message = message
+        self.details = details
+        super().__init__(message)
+
+class ResourceConflictError(ScheduleAPIException):
+    """Resource allocation conflict"""
+    pass
+
+class DependencyCycleError(ScheduleAPIException):
+    """Dependency cycle detected"""
+    pass
+```
+
+
+### 9.4 Error Handling Patterns
+
+#### 9.4.1 Service Layer Error Handling
+
+```python
+async def create_sprint(
+    self,
+    project_id: UUID,
+    sprint_data: SprintCreate
+) -> SprintResponse:
+    """Create sprint with comprehensive error handling"""
+    try:
+        # Validate dates
+        await validate_sprint_dates(sprint_data)
+        
+        # Create sprint node
+        sprint_id = await self.graph_service.create_node(
+            label="Sprint",
+            properties={
+                "id": str(uuid4()),
+                "name": sprint_data.name,
+                "goal": sprint_data.goal,
+                "start_date": sprint_data.start_date.isoformat(),
+                "end_date": sprint_data.end_date.isoformat(),
+                "status": "planning",
+                "project_id": str(project_id)
+            }
+        )
+        
+        # Calculate capacity
+        capacity = await self.calculate_capacity(sprint_id)
+        
+        logger.info(
+            "Sprint created",
+            sprint_id=sprint_id,
+            project_id=str(project_id),
+            capacity_hours=capacity["capacity_hours"]
+        )
+        
+        return SprintResponse(
+            id=UUID(sprint_id),
+            **sprint_data.model_dump(),
+            **capacity,
+            status="planning",
+            project_id=project_id,
+            created_at=datetime.now(UTC)
+        )
+        
+    except ValidationError:
+        raise
+    except Exception as e:
+        logger.exception(
+            "Failed to create sprint",
+            project_id=str(project_id),
+            error=str(e)
+        )
+        raise ScheduleAPIException(f"Failed to create sprint: {e}")
+```
+
+
+#### 9.4.2 API Layer Error Handling
+
+```python
+@router.post("/sprints", response_model=SprintResponse)
+async def create_sprint(
+    project_id: UUID,
+    sprint_data: SprintCreate,
+    service: SprintService = Depends(get_sprint_service),
+    current_user: User = Depends(get_current_user)
+) -> SprintResponse:
+    """Create sprint with error handling"""
+    try:
+        return await service.create_sprint(project_id, sprint_data)
+    except ValidationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=ErrorResponse(
+                error="ValidationError",
+                message=e.message,
+                field=e.field
+            ).model_dump()
+        )
+    except ScheduleAPIException as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ErrorResponse(
+                error=type(e).__name__,
+                message=str(e)
+            ).model_dump()
+        )
+```
+
+
+
+## 10. Authentication and Authorization
+
+### 10.1 Authentication
+
+All API endpoints require authentication via JWT token:
+
+```python
+from app.core.auth import get_current_user
+
+@router.post("/schedule/calculate")
+async def calculate_schedule(
+    request: ScheduleCalculateRequest,
+    current_user: User = Depends(get_current_user)
+) -> ScheduleResponse:
+    """Calculate schedule - requires authentication"""
+    return await service.calculate_schedule(request, current_user.id)
+```
+
+### 10.2 Authorization Rules
+
+#### 10.2.1 Project-Level Permissions
+
+Users must have appropriate role on project:
+
+```python
+class ProjectRole(str, Enum):
+    OWNER = "owner"
+    MANAGER = "manager"
+    MEMBER = "member"
+    VIEWER = "viewer"
+
+ROLE_PERMISSIONS = {
+    "owner": ["read", "write", "delete", "manage_users"],
+    "manager": ["read", "write", "manage_schedule"],
+    "member": ["read", "write"],
+    "viewer": ["read"]
+}
+```
+
+
+#### 10.2.2 Permission Checks
+
+```python
+async def check_project_permission(
+    user_id: UUID,
+    project_id: UUID,
+    required_permission: str,
+    db: AsyncSession
+) -> bool:
+    """Check if user has permission on project"""
+    # Query user's role on project
+    result = await db.execute(
+        select(ProjectMember.role)
+        .where(
+            ProjectMember.user_id == user_id,
+            ProjectMember.project_id == project_id
+        )
+    )
+    role = result.scalar_one_or_none()
+    
+    if not role:
+        return False
+    
+    return required_permission in ROLE_PERMISSIONS.get(role, [])
+
+
+async def require_project_permission(
+    project_id: UUID,
+    permission: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> None:
+    """Dependency to enforce project permission"""
+    has_permission = await check_project_permission(
+        current_user.id,
+        project_id,
+        permission,
+        db
+    )
+    
+    if not has_permission:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"User does not have '{permission}' permission on project"
+        )
+```
+
+#### 10.2.3 Endpoint Authorization
+
+```python
+@router.post("/schedule/calculate")
+async def calculate_schedule(
+    request: ScheduleCalculateRequest,
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(
+        lambda req=request: require_project_permission(
+            req.project_id,
+            "manage_schedule"
+        )
+    )
+) -> ScheduleResponse:
+    """Calculate schedule - requires manage_schedule permission"""
+    return await service.calculate_schedule(request, current_user.id)
+```
+
+
+### 10.3 Audit Logging
+
+All schedule operations are audited:
+
+```python
+async def audit_schedule_calculation(
+    project_id: UUID,
+    user_id: UUID,
+    result: ScheduleResponse,
+    audit_service: AuditService
+) -> None:
+    """Log schedule calculation for audit"""
+    await audit_service.log_event(
+        event_type="schedule_calculated",
+        user_id=user_id,
+        entity_type="project",
+        entity_id=project_id,
+        details={
+            "status": result.status,
+            "task_count": len(result.schedule),
+            "critical_path_length": len(result.critical_path),
+            "project_duration_hours": result.project_duration_hours
+        }
+    )
+```
+
+
+
+## 11. Testing Strategy
+
+### 11.1 Unit Tests
+
+#### 11.1.1 Algorithm Tests
+
+Test core algorithms with known inputs/outputs:
+
+```python
+def test_critical_path_calculation():
+    """Test critical path algorithm"""
+    tasks = [
+        ScheduledTask(
+            task_id="A",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 5),
+            duration_hours=32
+        ),
+        ScheduledTask(
+            task_id="B",
+            start_date=datetime(2024, 1, 5),
+            end_date=datetime(2024, 1, 10),
+            duration_hours=40
+        ),
+        ScheduledTask(
+            task_id="C",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 3),
+            duration_hours=16
+        )
+    ]
+    
+    dependencies = [
+        TaskDependency(from_task_id="A", to_task_id="B"),
+        TaskDependency(from_task_id="C", to_task_id="B")
+    ]
+    
+    critical_path = calculate_critical_path(tasks, dependencies)
+    
+    assert critical_path == ["A", "B"]
+    assert "C" not in critical_path
+```
+
+
+#### 11.1.2 Service Tests
+
+Test service layer with mocked dependencies:
+
+```python
+@pytest.mark.asyncio
+async def test_create_sprint_calculates_capacity():
+    """Test sprint creation calculates capacity"""
+    # Mock dependencies
+    graph_service = Mock(GraphService)
+    graph_service.create_node.return_value = "sprint-uuid"
+    graph_service.execute_query.return_value = [
+        {
+            "start_date": "2024-01-01T00:00:00Z",
+            "end_date": "2024-01-14T23:59:59Z",
+            "resources": [
+                {"capacity": 40.0, "allocation": 100.0},
+                {"capacity": 40.0, "allocation": 50.0}
+            ]
+        }
+    ]
+    
+    service = SprintService(graph_service)
+    
+    # Create sprint
+    sprint = await service.create_sprint(
+        project_id=UUID("project-uuid"),
+        sprint_data=SprintCreate(
+            name="Sprint 1",
+            goal="Complete features",
+            start_date=datetime(2024, 1, 1),
+            end_date=datetime(2024, 1, 14)
+        )
+    )
+    
+    # Verify capacity calculated
+    assert sprint.capacity_hours == 120.0  # (40 * 2 + 40 * 2 * 0.5) weeks
+    assert graph_service.create_node.called
+```
+
+### 11.2 Property-Based Tests
+
+Use Hypothesis for property-based testing of core invariants:
+
+#### 11.2.1 Critical Path Properties
+
+**Property: Critical path is always the longest path**
+
+```python
+from hypothesis import given, strategies as st
+
+@given(
+    tasks=st.lists(
+        st.builds(
+            ScheduledTask,
+            task_id=st.text(min_size=1, max_size=10),
+            start_date=st.datetimes(),
+            end_date=st.datetimes(),
+            duration_hours=st.floats(min_value=1, max_value=100)
+        ),
+        min_size=1,
+        max_size=20
+    ),
+    dependencies=st.lists(
+        st.builds(
+            TaskDependency,
+            from_task_id=st.text(min_size=1, max_size=10),
+            to_task_id=st.text(min_size=1, max_size=10)
+        )
+    )
+)
+def test_critical_path_is_longest_path(tasks, dependencies):
+    """
+    Property: Critical path duration >= any other path duration
+    
+    **Validates: Requirements 1.1, 1.2**
+    """
+    # Filter valid dependencies
+    task_ids = {t.task_id for t in tasks}
+    valid_deps = [
+        d for d in dependencies
+        if d.from_task_id in task_ids and d.to_task_id in task_ids
+    ]
+    
+    # Calculate critical path
+    critical_path = calculate_critical_path(tasks, valid_deps)
+    
+    if not critical_path:
+        return  # No path found
+    
+    # Calculate critical path duration
+    critical_duration = sum(
+        t.duration_hours for t in tasks
+        if t.task_id in critical_path
+    )
+    
+    # Calculate all other paths
+    all_paths = find_all_paths(tasks, valid_deps)
+    
+    # Critical path should be longest
+    for path in all_paths:
+        path_duration = sum(
+            t.duration_hours for t in tasks
+            if t.task_id in path
+        )
+        assert critical_duration >= path_duration
+```
+
+
+#### 11.2.2 Backlog Population Properties
+
+**Property: Tasks with status="ready" are always in backlog**
+
+```python
+@given(
+    task_status=st.sampled_from(["draft", "ready", "active", "completed", "blocked"])
+)
+@pytest.mark.asyncio
+async def test_ready_tasks_in_backlog(task_status):
+    """
+    Property: If task.status == "ready", then task IN_BACKLOG relationship exists
+    
+    **Validates: Requirements 21.1, 21.2**
+    """
+    # Create task with given status
+    task_id = uuid4()
+    await create_task(task_id, status=task_status)
+    
+    # Check backlog relationship
+    in_backlog = await check_task_in_backlog(task_id)
+    
+    # Property: ready tasks must be in backlog
+    if task_status == "ready":
+        assert in_backlog, "Ready task must be in backlog"
+    # Note: Non-ready tasks MAY be in backlog (manual addition allowed)
+```
+
+#### 11.2.3 Sprint Capacity Properties
+
+**Property: Sprint capacity never negative**
+
+```python
+@given(
+    resources=st.lists(
+        st.builds(
+            Resource,
+            capacity=st.floats(min_value=0, max_value=80),
+            allocation=st.floats(min_value=0, max_value=100)
+        ),
+        min_size=0,
+        max_size=10
+    ),
+    sprint_days=st.integers(min_value=1, max_value=30)
+)
+def test_sprint_capacity_non_negative(resources, sprint_days):
+    """
+    Property: Sprint capacity is always >= 0
+    
+    **Validates: Requirements 22.1, 22.2**
+    """
+    capacity = calculate_sprint_capacity_from_resources(
+        resources,
+        sprint_days
+    )
+    
+    assert capacity["capacity_hours"] >= 0
+    assert capacity["capacity_story_points"] >= 0
+```
+
+#### 11.2.4 Milestone Scheduling Properties
+
+**Property: Manual milestone constraints are respected**
+
+```python
+@given(
+    milestone_target=st.datetimes(
+        min_value=datetime(2024, 1, 1),
+        max_value=datetime(2024, 12, 31)
+    ),
+    task_durations=st.lists(
+        st.floats(min_value=1, max_value=100),
+        min_size=1,
+        max_size=10
+    )
+)
+def test_manual_milestone_constraint_respected(milestone_target, task_durations):
+    """
+    Property: If milestone is manual constraint, all dependent tasks
+    complete before target_date
+    
+    **Validates: Requirements 24.1, 24.3**
+    """
+    # Create milestone with manual constraint
+    milestone = Milestone(
+        id=uuid4(),
+        target_date=milestone_target,
+        is_manual_constraint=True
+    )
+    
+    # Create dependent tasks
+    tasks = [
+        Task(id=uuid4(), estimated_hours=duration)
+        for duration in task_durations
+    ]
+    
+    # Calculate schedule
+    schedule = calculate_schedule_with_milestone(tasks, milestone)
+    
+    if schedule.status == "success":
+        # All dependent tasks must finish before milestone
+        for task in schedule.schedule:
+            if task.task_id in [str(t.id) for t in tasks]:
+                assert task.end_date <= milestone_target
+```
+
+
+### 11.3 Integration Tests
+
+#### 11.3.1 End-to-End Schedule Calculation
+
+```python
+@pytest.mark.asyncio
+async def test_schedule_calculation_end_to_end(
+    client: AsyncClient,
+    test_project: Project,
+    test_user: User
+):
+    """Test complete schedule calculation flow"""
+    # Create project hierarchy
+    phase = await create_phase(test_project.id, "Phase 1")
+    workpackage = await create_workpackage(phase.id, "WP 1")
+    
+    # Create tasks with dependencies
+    task1 = await create_task(workpackage.id, "Task 1", estimated_hours=8)
+    task2 = await create_task(workpackage.id, "Task 2", estimated_hours=16)
+    await create_dependency(task1.id, task2.id)
+    
+    # Create milestone
+    milestone = await create_milestone(
+        test_project.id,
+        "Milestone 1",
+        target_date=datetime(2024, 6, 1),
+        is_manual_constraint=True
+    )
+    await add_milestone_dependency(milestone.id, task2.id)
+    
+    # Calculate schedule
+    response = await client.post(
+        "/api/v1/schedule/calculate",
+        json={
+            "project_id": str(test_project.id),
+            "task_ids": [str(task1.id), str(task2.id)],
+            "milestone_ids": [str(milestone.id)],
+            "constraints": {
+                "project_start": "2024-01-01T00:00:00Z",
+                "horizon_days": 365
+            }
+        },
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    # Verify schedule
+    assert data["status"] == "success"
+    assert len(data["schedule"]) == 2
+    assert len(data["critical_path"]) > 0
+    assert len(data["milestones"]) == 1
+    
+    # Verify task order (task1 before task2)
+    task1_sched = next(t for t in data["schedule"] if t["task_id"] == str(task1.id))
+    task2_sched = next(t for t in data["schedule"] if t["task_id"] == str(task2.id))
+    assert task1_sched["end_date"] <= task2_sched["start_date"]
+    
+    # Verify milestone constraint
+    milestone_sched = data["milestones"][0]
+    assert datetime.fromisoformat(task2_sched["end_date"]) <= datetime.fromisoformat(milestone_sched["date"])
+```
+
+
+#### 11.3.2 Sprint Workflow Integration
+
+```python
+@pytest.mark.asyncio
+async def test_sprint_workflow_integration(
+    client: AsyncClient,
+    test_project: Project,
+    test_user: User
+):
+    """Test complete sprint workflow"""
+    # Create backlog
+    backlog_response = await client.post(
+        f"/api/v1/projects/{test_project.id}/backlogs",
+        json={"name": "Product Backlog"},
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    backlog_id = backlog_response.json()["id"]
+    
+    # Create tasks with status="ready" (auto-added to backlog)
+    task1 = await create_task_with_status(test_project.id, "ready")
+    task2 = await create_task_with_status(test_project.id, "ready")
+    
+    # Verify tasks in backlog
+    backlog_tasks = await client.get(
+        f"/api/v1/backlogs/{backlog_id}/tasks",
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    assert len(backlog_tasks.json()["tasks"]) == 2
+    
+    # Create sprint
+    sprint_response = await client.post(
+        f"/api/v1/projects/{test_project.id}/sprints",
+        json={
+            "name": "Sprint 1",
+            "goal": "Complete features",
+            "start_date": "2024-01-01T00:00:00Z",
+            "end_date": "2024-01-14T23:59:59Z"
+        },
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    sprint_id = sprint_response.json()["id"]
+    assert sprint_response.json()["capacity_hours"] > 0
+    
+    # Assign tasks to sprint
+    await client.post(
+        f"/api/v1/sprints/{sprint_id}/tasks/{task1.id}",
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    
+    # Start sprint
+    await client.post(
+        f"/api/v1/sprints/{sprint_id}/start",
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    
+    # Complete task
+    await update_task_status(task1.id, "completed", actual_hours=8)
+    
+    # Complete sprint
+    complete_response = await client.post(
+        f"/api/v1/sprints/{sprint_id}/complete",
+        headers={"Authorization": f"Bearer {test_user.token}"}
+    )
+    
+    # Verify velocity calculated
+    velocity_data = complete_response.json()
+    assert velocity_data["actual_velocity_hours"] > 0
+    assert velocity_data["status"] == "completed"
+```
+
+
+### 11.4 Performance Tests
+
+#### 11.4.1 Schedule Calculation Performance
+
+```python
+@pytest.mark.performance
+async def test_schedule_calculation_performance():
+    """Test schedule calculation with large project"""
+    # Create project with 1000 tasks
+    tasks = [
+        create_test_task(f"Task {i}", estimated_hours=8)
+        for i in range(1000)
+    ]
+    
+    # Add random dependencies (10% of tasks)
+    dependencies = create_random_dependencies(tasks, density=0.1)
+    
+    # Measure calculation time
+    start_time = time.time()
+    schedule = await calculate_schedule(tasks, dependencies)
+    elapsed = time.time() - start_time
+    
+    # Should complete within 30 seconds for 1000 tasks
+    assert elapsed < 30.0
+    assert schedule.status == "success"
+```
+
+#### 11.4.2 Graph Query Performance
+
+```python
+@pytest.mark.performance
+async def test_project_hierarchy_query_performance():
+    """Test hierarchy query with deep nesting"""
+    # Create project with 10 phases, 10 workpackages each, 10 tasks each
+    # Total: 1000 tasks
+    project = await create_large_project(
+        phases=10,
+        workpackages_per_phase=10,
+        tasks_per_workpackage=10
+    )
+    
+    # Measure query time
+    start_time = time.time()
+    hierarchy = await get_project_hierarchy(project.id)
+    elapsed = time.time() - start_time
+    
+    # Should complete within 2 seconds
+    assert elapsed < 2.0
+    assert len(hierarchy["phases"]) == 10
+```
+
+
+
+## 12. Performance Considerations
+
+### 12.1 Optimization Strategies
+
+#### 12.1.1 Graph Query Optimization
+
+**Use Indexes**:
+```sql
+-- Create indexes on frequently queried properties
+CREATE INDEX ON WorkItem(id);
+CREATE INDEX ON WorkItem(type);
+CREATE INDEX ON WorkItem(status);
+CREATE INDEX ON Project(id);
+CREATE INDEX ON Sprint(project_id);
+```
+
+**Limit Query Depth**:
+```python
+# Avoid unbounded path queries
+# BAD: MATCH (a)-[*]->(b)
+# GOOD: MATCH (a)-[*1..5]->(b)
+
+async def get_task_dependencies(task_id: UUID, max_depth: int = 5):
+    """Get dependencies with depth limit"""
+    result = await graph_service.execute_query(f"""
+        MATCH (t:WorkItem {{id: '{task_id}'}})-[:DEPENDS_ON*1..{max_depth}]->(dep)
+        RETURN dep
+    """)
+    return result
+```
+
+
+#### 12.1.2 Caching Strategy
+
+**Cache Schedule Results**:
+```python
+from functools import lru_cache
+from datetime import timedelta
+
+class ScheduleCache:
+    """Cache for schedule calculations"""
+    
+    def __init__(self, ttl_seconds: int = 300):
+        self.cache: dict[str, tuple[ScheduleResponse, datetime]] = {}
+        self.ttl = timedelta(seconds=ttl_seconds)
+    
+    def get(self, cache_key: str) -> ScheduleResponse | None:
+        """Get cached schedule if not expired"""
+        if cache_key in self.cache:
+            schedule, cached_at = self.cache[cache_key]
+            if datetime.now(UTC) - cached_at < self.ttl:
+                return schedule
+            else:
+                del self.cache[cache_key]
+        return None
+    
+    def set(self, cache_key: str, schedule: ScheduleResponse) -> None:
+        """Cache schedule result"""
+        self.cache[cache_key] = (schedule, datetime.now(UTC))
+    
+    def invalidate(self, project_id: UUID) -> None:
+        """Invalidate cache for project"""
+        keys_to_delete = [
+            k for k in self.cache.keys()
+            if k.startswith(f"schedule:{project_id}")
+        ]
+        for key in keys_to_delete:
+            del self.cache[key]
+
+
+# Usage in service
+async def calculate_schedule(
+    self,
+    request: ScheduleCalculateRequest
+) -> ScheduleResponse:
+    """Calculate schedule with caching"""
+    cache_key = f"schedule:{request.project_id}:{hash(frozenset(request.task_ids))}"
+    
+    # Check cache
+    cached = self.cache.get(cache_key)
+    if cached:
+        logger.info("Returning cached schedule", project_id=str(request.project_id))
+        return cached
+    
+    # Calculate schedule
+    schedule = await self._calculate_schedule_impl(request)
+    
+    # Cache result
+    self.cache.set(cache_key, schedule)
+    
+    return schedule
+```
+
+#### 12.1.3 Batch Operations
+
+**Batch Task Updates**:
+```python
+async def update_tasks_batch(
+    task_updates: list[tuple[UUID, dict]],
+    graph_service: GraphService
+) -> None:
+    """Update multiple tasks in single transaction"""
+    async with graph_service.transaction() as tx:
+        for task_id, updates in task_updates:
+            await tx.update_node(str(task_id), updates)
+        await tx.commit()
+```
+
+
+### 12.2 Scalability Limits
+
+#### 12.2.1 Recommended Limits
+
+- **Tasks per project**: 10,000 (soft limit), 50,000 (hard limit)
+- **Dependencies per task**: 50 (soft limit), 100 (hard limit)
+- **Sprints per project**: 1,000 (soft limit)
+- **Tasks per sprint**: 100 (soft limit), 500 (hard limit)
+- **Resources per project**: 500 (soft limit)
+- **Concurrent schedule calculations**: 10 per server
+
+#### 12.2.2 Performance Targets
+
+- **Schedule calculation**: < 5 seconds for 1,000 tasks
+- **Critical path calculation**: < 2 seconds for 1,000 tasks
+- **Graph hierarchy query**: < 1 second for 1,000 nodes
+- **Backlog query**: < 500ms for 500 tasks
+- **Sprint capacity calculation**: < 200ms
+
+### 12.3 Monitoring Metrics
+
+Track these metrics for performance monitoring:
+
+```python
+# Schedule calculation metrics
+schedule_calculation_duration_seconds = Histogram(
+    "schedule_calculation_duration_seconds",
+    "Time to calculate schedule",
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0]
+)
+
+schedule_task_count = Histogram(
+    "schedule_task_count",
+    "Number of tasks in schedule calculation",
+    buckets=[10, 50, 100, 500, 1000, 5000]
+)
+
+# Graph query metrics
+graph_query_duration_seconds = Histogram(
+    "graph_query_duration_seconds",
+    "Time to execute graph query",
+    buckets=[0.01, 0.05, 0.1, 0.5, 1.0, 5.0]
+)
+
+# Cache metrics
+schedule_cache_hits = Counter(
+    "schedule_cache_hits_total",
+    "Number of schedule cache hits"
+)
+
+schedule_cache_misses = Counter(
+    "schedule_cache_misses_total",
+    "Number of schedule cache misses"
+)
+```
+
+
+
+## 13. Deployment and Configuration
+
+### 13.1 Environment Variables
+
+```bash
+# Database Configuration
+DATABASE_URL=postgresql://user:pass@localhost:5432/rxdx
+AGE_GRAPH_NAME=rxdx_graph
+
+# Schedule Service Configuration
+SCHEDULE_CACHE_TTL_SECONDS=300
+SCHEDULE_MAX_TASKS=10000
+SCHEDULE_MAX_HORIZON_DAYS=730
+SCHEDULE_CALCULATION_TIMEOUT_SECONDS=60
+
+# Sprint Configuration
+SPRINT_MAX_DURATION_DAYS=30
+SPRINT_DEFAULT_VELOCITY_LOOKBACK=3
+
+# Performance Configuration
+MAX_CONCURRENT_SCHEDULES=10
+GRAPH_QUERY_TIMEOUT_SECONDS=30
+```
+
+
+### 13.2 Apache AGE Setup
+
+#### 13.2.1 Installation
+
+```bash
+# Install PostgreSQL 14+ with AGE extension
+sudo apt-get install postgresql-14 postgresql-14-age
+
+# Enable AGE extension
+psql -U postgres -d rxdx -c "CREATE EXTENSION IF NOT EXISTS age;"
+
+# Load AGE into search path
+psql -U postgres -d rxdx -c "SET search_path = ag_catalog, public;"
+```
+
+#### 13.2.2 Graph Initialization
+
+```sql
+-- Create graph
+SELECT create_graph('rxdx_graph');
+
+-- Verify graph created
+SELECT * FROM ag_catalog.ag_graph;
+
+-- Create vertex labels
+SELECT create_vlabel('rxdx_graph', 'Project');
+SELECT create_vlabel('rxdx_graph', 'Phase');
+SELECT create_vlabel('rxdx_graph', 'Workpackage');
+SELECT create_vlabel('rxdx_graph', 'WorkItem');
+SELECT create_vlabel('rxdx_graph', 'Sprint');
+SELECT create_vlabel('rxdx_graph', 'Backlog');
+SELECT create_vlabel('rxdx_graph', 'Resource');
+SELECT create_vlabel('rxdx_graph', 'Department');
+
+-- Create edge labels
+SELECT create_elabel('rxdx_graph', 'BELONGS_TO');
+SELECT create_elabel('rxdx_graph', 'DEPENDS_ON');
+SELECT create_elabel('rxdx_graph', 'BLOCKS');
+SELECT create_elabel('rxdx_graph', 'IN_BACKLOG');
+SELECT create_elabel('rxdx_graph', 'ASSIGNED_TO_SPRINT');
+SELECT create_elabel('rxdx_graph', 'ASSIGNED_TO');
+SELECT create_elabel('rxdx_graph', 'ALLOCATED_TO');
+SELECT create_elabel('rxdx_graph', 'PARENT_OF');
+SELECT create_elabel('rxdx_graph', 'NEXT_VERSION');
+```
+
+### 13.3 Database Migrations
+
+Use Alembic for schema migrations:
+
+```python
+# alembic/versions/xxx_add_schedule_tables.py
+
+def upgrade():
+    """Add schedule-related tables"""
+    # Project members table (for authorization)
+    op.create_table(
+        'project_members',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('project_id', sa.UUID(), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('role', sa.String(50), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE')
+    )
+    
+    # Create indexes
+    op.create_index('ix_project_members_project_id', 'project_members', ['project_id'])
+    op.create_index('ix_project_members_user_id', 'project_members', ['user_id'])
+```
+
+
+### 13.4 Service Dependencies
+
+#### 13.4.1 Required Services
+
+```yaml
+# docker-compose.yml
+services:
+  postgres:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_DB: rxdx
+      POSTGRES_USER: rxdx_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://rxdx_user:${DB_PASSWORD}@postgres:5432/rxdx
+      AGE_GRAPH_NAME: rxdx_graph
+      SCHEDULE_CACHE_TTL_SECONDS: 300
+    depends_on:
+      - postgres
+    ports:
+      - "8000:8000"
+```
+
+#### 13.4.2 OR-Tools Installation
+
+```dockerfile
+# Dockerfile
+FROM python:3.11-slim
+
+# Install OR-Tools
+RUN pip install ortools==9.8.3296
+
+# Install other dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application
+COPY . /app
+WORKDIR /app
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### 13.5 Monitoring and Logging
+
+#### 13.5.1 Structured Logging
+
+```python
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 # Log schedule calculation
 logger.info(
-    "schedule_calculation_started",
-    project_id=str(project_id),
-    task_count=len(tasks),
-    resource_count=len(resources),
-    user_id=str(user_id)
-)
-
-# Log calculation result
-logger.info(
-    "schedule_calculation_completed",
-    project_id=str(project_id),
-    status=response.status,
-    duration_seconds=elapsed,
-    project_duration_hours=response.project_duration_hours
-)
-
-# Log errors
-logger.error(
-    "schedule_calculation_failed",
-    project_id=str(project_id),
-    error=str(e),
-    exc_info=True
-)
-```
-
-## 9. Testing Strategy
-
-### 9.1 Unit Tests
-
-Unit tests verify individual components in isolation:
-
-**Test Coverage**:
-- ScheduleAPIService methods
-- Data conversion functions (WorkItem to ScheduleTask)
-- Statistics calculation
-- Critical path calculation
-- Error handling
-
-**Example Test**:
-```python
-import pytest
-from app.services.schedule_api_service import ScheduleAPIService
-
-@pytest.mark.asyncio
-async def test_calculate_schedule_success(
-    mock_scheduler_service,
-    mock_workitem_service,
-    sample_tasks
-):
-    """Test successful schedule calculation"""
-    service = ScheduleAPIService(mock_scheduler_service, mock_workitem_service)
-    
-    request = ScheduleCalculateRequest(
-        project_id=UUID("..."),
-        task_ids=["task-1", "task-2"],
-        resource_ids=["resource-1"],
-        constraints=ScheduleConstraints()
-    )
-    
-    response = await service.calculate_schedule(request, UUID("user-1"))
-    
-    assert response.status == "success"
-    assert len(response.schedule) == 2
-    assert response.project_duration_hours > 0
-```
-
-### 9.2 Property-Based Tests
-
-Property-based tests verify universal properties across many generated inputs:
-
-**Test Coverage**:
-- Schedule calculation determinism (Property 1)
-- Dependency preservation (Property 2)
-- Resource capacity constraints (Property 3)
-- Deadline compliance (Property 4)
-- Version increment monotonicity (Property 9)
-
-**Example Property Test**:
-```python
-from hypothesis import given, strategies as st
-import pytest
-
-@given(
-    tasks=st.lists(
-        st.builds(
-            ScheduleTaskCreate,
-            id=st.text(min_size=1),
-            title=st.text(min_size=1),
-            estimated_hours=st.integers(min_value=1, max_value=100),
-            dependencies=st.just([]),
-            required_resources=st.just([]),
-            resource_demand=st.just({})
-        ),
-        min_size=1,
-        max_size=10
-    )
-)
-@pytest.mark.asyncio
-async def test_schedule_calculation_determinism(tasks, scheduler_service):
-    """
-    Property 1: Schedule Calculation Determinism
-    
-    For any set of tasks, calculating the schedule multiple times
-    should produce the same result.
-    
-    Feature: backend-schedule-api, Property 1: Schedule Calculation Determinism
-    """
-    resources = []
-    constraints = ScheduleConstraints()
-    project_id = UUID("test-project")
-    
-    # Calculate schedule twice
-    result1 = await scheduler_service.schedule_project(
-        project_id, tasks, resources, constraints
-    )
-    result2 = await scheduler_service.schedule_project(
-        project_id, tasks, resources, constraints
-    )
-    
-    # Both should succeed or both should fail
-    assert result1.status == result2.status
-    
-    # If successful, schedules should be identical
-    if result1.status in ["success", "feasible"]:
-        assert len(result1.schedule) == len(result2.schedule)
-        
-        for task1, task2 in zip(result1.schedule, result2.schedule):
-            assert task1.task_id == task2.task_id
-            assert task1.start_date == task2.start_date
-            assert task1.end_date == task2.end_date
-```
-
-**Example Property Test for Dependencies**:
-```python
-@given(
-    task_count=st.integers(min_value=2, max_value=10),
-    dependency_pairs=st.lists(
-        st.tuples(st.integers(min_value=0), st.integers(min_value=0)),
-        min_size=1,
-        max_size=5
-    )
-)
-@pytest.mark.asyncio
-async def test_dependency_preservation(task_count, dependency_pairs, scheduler_service):
-    """
-    Property 2: Dependency Preservation
-    
-    For any schedule with finish-to-start dependencies,
-    successor tasks must start after predecessor tasks end.
-    
-    Feature: backend-schedule-api, Property 2: Dependency Preservation
-    """
-    # Create tasks with dependencies
-    tasks = []
-    for i in range(task_count):
-        deps = []
-        for pred_idx, succ_idx in dependency_pairs:
-            if succ_idx == i and pred_idx < task_count and pred_idx != i:
-                deps.append(TaskDependency(
-                    predecessor_id=f"task-{pred_idx}",
-                    dependency_type="finish_to_start",
-                    lag=0
-                ))
-        
-        tasks.append(ScheduleTaskCreate(
-            id=f"task-{i}",
-            title=f"Task {i}",
-            estimated_hours=8,
-            dependencies=deps,
-            required_resources=[],
-            resource_demand={}
-        ))
-    
-    # Calculate schedule
-    result = await scheduler_service.schedule_project(
-        UUID("test-project"),
-        tasks,
-        [],
-        ScheduleConstraints()
-    )
-    
-    # If successful, verify dependencies are preserved
-    if result.status in ["success", "feasible"]:
-        schedule_map = {t.task_id: t for t in result.schedule}
-        
-        for task in tasks:
-            if task.id in schedule_map:
-                scheduled_task = schedule_map[task.id]
-                
-                for dep in task.dependencies:
-                    if dep.predecessor_id in schedule_map:
-                        pred_task = schedule_map[dep.predecessor_id]
-                        
-                        # Successor must start after predecessor ends
-                        assert scheduled_task.start_date >= pred_task.end_date
-```
-
-### 9.3 Integration Tests
-
-Integration tests verify end-to-end API functionality:
-
-**Test Coverage**:
-- POST /api/v1/schedule/calculate
-- GET /api/v1/schedule/{project_id}
-- PATCH /api/v1/schedule/{project_id}
-- GET /api/v1/schedule/{project_id}/gantt
-- GET /api/v1/schedule/{project_id}/statistics
-- Authentication and authorization
-- Error responses
-
-**Example Integration Test**:
-```python
-import pytest
-from httpx import AsyncClient
-
-@pytest.mark.asyncio
-async def test_calculate_schedule_endpoint(
-    async_client: AsyncClient,
-    auth_headers: dict,
-    sample_project_id: UUID
-):
-    """Test schedule calculation endpoint"""
-    request_data = {
-        "project_id": str(sample_project_id),
-        "task_ids": ["task-1", "task-2"],
-        "resource_ids": [],
-        "constraints": {
-            "horizon_days": 30,
-            "working_hours_per_day": 8,
-            "respect_weekends": True
-        }
-    }
-    
-    response = await async_client.post(
-        "/api/v1/schedule/calculate",
-        json=request_data,
-        headers=auth_headers
-    )
-    
-    assert response.status_code == 200
-    data = response.json()
-    
-    assert data["status"] in ["success", "feasible", "infeasible"]
-    assert data["project_id"] == str(sample_project_id)
-    
-    if data["status"] in ["success", "feasible"]:
-        assert "schedule" in data
-        assert len(data["schedule"]) > 0
-        assert "project_duration_hours" in data
-
-
-@pytest.mark.asyncio
-async def test_get_schedule_not_found(
-    async_client: AsyncClient,
-    auth_headers: dict
-):
-    """Test getting non-existent schedule returns 404"""
-    project_id = UUID("00000000-0000-0000-0000-000000000000")
-    
-    response = await async_client.get(
-        f"/api/v1/schedule/{project_id}",
-        headers=auth_headers
-    )
-    
-    assert response.status_code == 404
-    assert "not found" in response.json()["detail"].lower()
-
-
-@pytest.mark.asyncio
-async def test_calculate_schedule_unauthorized(
-    async_client: AsyncClient,
-    sample_project_id: UUID
-):
-    """Test schedule calculation requires authentication"""
-    request_data = {
-        "project_id": str(sample_project_id),
-        "task_ids": ["task-1"],
-        "resource_ids": [],
-        "constraints": {}
-    }
-    
-    response = await async_client.post(
-        "/api/v1/schedule/calculate",
-        json=request_data
-    )
-    
-    assert response.status_code == 401
-```
-
-### 9.4 Test Configuration
-
-**Minimum Test Coverage**: 80% for all new code
-
-**Property Test Configuration**: Minimum 100 iterations per property test
-
-**Test Execution**:
-```bash
-# Run all tests
-cd backend
-uvx pytest
-
-# Run with coverage
-uvx pytest --cov=app --cov-report=term-missing
-
-# Run only schedule tests
-uvx pytest tests/test_schedule_api.py
-
-# Run property tests
-uvx pytest tests/test_schedule_properties.py
-```
-
-## 10. Performance Considerations
-
-### 10.1 Performance Targets
-
-| Operation | Target | Maximum |
-|-----------|--------|---------|
-| Calculate schedule (100 tasks) | < 5s | 10s |
-| Calculate schedule (500 tasks) | < 30s | 60s |
-| Calculate schedule (1000 tasks) | < 60s | 120s |
-| Retrieve schedule | < 2s | 5s |
-| Update schedule | < 5s | 10s |
-| Get Gantt data | < 2s | 5s |
-
-### 10.2 Optimization Strategies
-
-1. **Async Operations**: Use async/await for all I/O operations
-2. **Caching**: Cache frequently accessed schedules
-3. **Batch Operations**: Fetch multiple WorkItems in parallel
-4. **Timeout Handling**: Set reasonable timeouts for OR-Tools solver
-5. **Resource Limits**: Limit maximum number of tasks per schedule
-
-### 10.3 Monitoring
-
-Log performance metrics for all operations:
-
-```python
-import time
-
-start_time = time.time()
-response = await scheduler_service.schedule_project(...)
-elapsed = time.time() - start_time
-
-logger.info(
-    "schedule_calculation_performance",
+    "schedule_calculated",
     project_id=str(project_id),
     task_count=len(tasks),
     duration_seconds=elapsed,
-    status=response.status
+    status=result.status,
+    critical_path_length=len(result.critical_path)
 )
 ```
 
-## 11. Security Considerations
+#### 13.5.2 Health Checks
 
-### 11.1 Authentication
-
-All endpoints require valid JWT token in Authorization header:
-
+```python
+@router.get("/health/schedule")
+async def schedule_health_check(
+    graph_service: GraphService = Depends(get_graph_service)
+) -> dict:
+    """Health check for schedule service"""
+    try:
+        # Test graph connection
+        await graph_service.execute_query("MATCH (n) RETURN count(n) LIMIT 1")
+        
+        # Test OR-Tools
+        from ortools.sat.python import cp_model
+        model = cp_model.CpModel()
+        
+        return {
+            "status": "healthy",
+            "graph_db": "connected",
+            "or_tools": "available",
+            "timestamp": datetime.now(UTC).isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "error": str(e),
+            "timestamp": datetime.now(UTC).isoformat()
+        }
 ```
-Authorization: Bearer <jwt_token>
-```
 
-### 11.2 Authorization
 
-Role-based access control:
+### 13.6 Backup and Recovery
 
-| Endpoint | Required Role |
-|----------|---------------|
-| POST /schedule/calculate | project_manager, admin |
-| GET /schedule/{id} | any authenticated user |
-| PATCH /schedule/{id} | project_manager, admin |
-| GET /schedule/{id}/gantt | any authenticated user |
-| GET /schedule/{id}/statistics | any authenticated user |
-| POST /schedule/{id}/import | project_manager, admin |
-
-### 11.3 Input Validation
-
-All inputs validated using Pydantic schemas:
-- Task IDs must be valid UUIDs
-- Resource IDs must exist
-- Constraints must be within reasonable bounds
-- No SQL injection or XSS vulnerabilities
-
-### 11.4 Rate Limiting
-
-Implement rate limiting for expensive operations:
-- Schedule calculation: 10 requests per minute per user
-- Other operations: 100 requests per minute per user
-
-## 12. Deployment Considerations
-
-### 12.1 Environment Variables
+#### 13.6.1 Database Backup
 
 ```bash
-# Schedule API Configuration
-SCHEDULE_CALCULATION_TIMEOUT=60  # seconds
-SCHEDULE_MAX_TASKS=1000
-SCHEDULE_CACHE_TTL=300  # seconds
+#!/bin/bash
+# backup_schedule_data.sh
+
+# Backup PostgreSQL (includes AGE graph data)
+pg_dump -U rxdx_user -d rxdx -F c -f "backup_$(date +%Y%m%d_%H%M%S).dump"
+
+# Backup specific graph data
+psql -U rxdx_user -d rxdx -c "
+  SELECT * FROM cypher('rxdx_graph', $$
+    MATCH (n)
+    RETURN n
+  $$) as (node agtype);
+" > "graph_backup_$(date +%Y%m%d_%H%M%S).sql"
 ```
 
-### 12.2 Database Migration
+#### 13.6.2 Recovery Procedure
 
-Initial implementation uses in-memory storage. For production:
+```bash
+#!/bin/bash
+# restore_schedule_data.sh
 
-1. Create `schedules` table in PostgreSQL
-2. Migrate existing in-memory schedules
-3. Update SchedulerService to use database storage
+# Restore PostgreSQL database
+pg_restore -U rxdx_user -d rxdx -c backup_20240115_120000.dump
 
-### 12.3 Monitoring and Alerting
+# Verify graph data
+psql -U rxdx_user -d rxdx -c "
+  SELECT count(*) FROM cypher('rxdx_graph', $$
+    MATCH (n)
+    RETURN n
+  $$) as (node agtype);
+"
+```
 
-Monitor:
-- Schedule calculation success rate
-- Average calculation duration
-- API error rates
-- Resource utilization
+### 13.7 Configuration Management
 
-Alert on:
-- Calculation failures > 10% in 5 minutes
-- Average duration > 60 seconds
-- Error rate > 5% in 5 minutes
-
-## 13. Future Enhancements
-
-### 13.1 Database Persistence
-
-Replace in-memory storage with PostgreSQL:
-- Create `schedules` table
-- Store schedule versions
-- Enable schedule history queries
-
-### 13.2 Real-time Updates
-
-Implement WebSocket support for real-time schedule updates:
-- Notify clients when schedule is recalculated
-- Push schedule changes to connected clients
-- Enable collaborative schedule editing
-
-### 13.3 Advanced Scheduling Features
-
-- Multi-project resource allocation
-- Skill-based resource matching
-- Cost optimization
-- Risk-based scheduling
-- What-if scenario analysis
-
-### 13.4 Performance Optimization
-
-- Implement schedule calculation queue
-- Add background job processing
-- Cache frequently accessed schedules
-- Optimize critical path calculation
-
-## 14. Graph Database Entity Design
-
-### 14.1 Overview
-
-The system uses Neo4j graph database to store project management entities and their relationships. This enables powerful graph traversal queries for organizational structure, project hierarchy, resource allocation, and cross-project analytics.
-
-**Entities Stored as Graph Nodes:**
-- Projects
-- Phases
-- Workpackages
-- WorkItems (Tasks, Requirements, Tests, Risks, Documents)
-- Resources (people, machines, equipment, facilities)
-- Departments
-
-**Entities Stored in PostgreSQL Only:**
-- Users (authentication/authorization entities, NOT project management entities)
-- Audit logs
-- Digital signatures
-- Version history
-
-### 14.2 Node Schemas
-
-#### 14.2.1 Project Node
+#### 13.7.1 Settings Class
 
 ```python
-class ProjectNode:
-    """Project node in graph database"""
+from pydantic_settings import BaseSettings
+
+class ScheduleSettings(BaseSettings):
+    """Schedule service configuration"""
     
-    # Node label
-    label = "Project"
+    # Database
+    database_url: str
+    age_graph_name: str = "rxdx_graph"
     
-    # Properties
-    id: UUID  # Unique project identifier
-    name: str  # Project name (unique)
-    description: str | None  # Project description
-    status: str  # active, completed, archived
-    start_date: datetime | None  # Project start date
-    end_date: datetime | None  # Project end date
-    created_at: datetime  # Creation timestamp
-    updated_at: datetime  # Last update timestamp
-    created_by_user_id: UUID  # User ID who created (PostgreSQL reference)
-    manager_user_id: UUID | None  # Project manager user ID (PostgreSQL reference)
+    # Cache
+    schedule_cache_ttl_seconds: int = 300
+    
+    # Limits
+    schedule_max_tasks: int = 10000
+    schedule_max_horizon_days: int = 730
+    schedule_calculation_timeout_seconds: int = 60
+    
+    # Sprint
+    sprint_max_duration_days: int = 30
+    sprint_default_velocity_lookback: int = 3
+    
+    # Performance
+    max_concurrent_schedules: int = 10
+    graph_query_timeout_seconds: int = 30
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+
+# Usage
+settings = ScheduleSettings()
 ```
 
-**Cypher Creation Example:**
-```cypher
-CREATE (p:Project {
-    id: $id,
-    name: $name,
-    description: $description,
-    status: 'active',
-    start_date: $start_date,
-    end_date: $end_date,
-    created_at: datetime(),
-    updated_at: datetime(),
-    created_by_user_id: $user_id,
-    manager_user_id: $manager_id
-})
-RETURN p
-```
-
-#### 14.2.2 Phase Node
-
-```python
-class PhaseNode:
-    """Phase node in graph database"""
-    
-    # Node label
-    label = "Phase"
-    
-    # Properties
-    id: UUID  # Unique phase identifier
-    name: str  # Phase name
-    description: str | None  # Phase description
-    order: int  # Sequence order within project
-    start_date: datetime | None  # Phase start date
-    end_date: datetime | None  # Phase end date
-    project_id: UUID  # Parent project ID
-    created_at: datetime  # Creation timestamp
-```
-
-**Cypher Creation Example:**
-```cypher
-MATCH (proj:Project {id: $project_id})
-CREATE (phase:Phase {
-    id: $id,
-    name: $name,
-    description: $description,
-    order: $order,
-    start_date: $start_date,
-    end_date: $end_date,
-    project_id: $project_id,
-    created_at: datetime()
-})
-CREATE (phase)-[:BELONGS_TO]->(proj)
-RETURN phase
-```
-
-#### 14.2.3 Workpackage Node
-
-```python
-class WorkpackageNode:
-    """Workpackage node in graph database"""
-    
-    # Node label
-    label = "Workpackage"
-    
-    # Properties
-    id: UUID  # Unique workpackage identifier
-    name: str  # Workpackage name
-    description: str | None  # Workpackage description
-    order: int  # Sequence order within phase
-    start_date: datetime | None  # Workpackage start date
-    end_date: datetime | None  # Workpackage end date
-    phase_id: UUID  # Parent phase ID
-    created_at: datetime  # Creation timestamp
-```
-
-**Cypher Creation Example:**
-```cypher
-MATCH (phase:Phase {id: $phase_id})
-CREATE (wp:Workpackage {
-    id: $id,
-    name: $name,
-    description: $description,
-    order: $order,
-    start_date: $start_date,
-    end_date: $end_date,
-    phase_id: $phase_id,
-    created_at: datetime()
-})
-CREATE (wp)-[:BELONGS_TO]->(phase)
-RETURN wp
-```
-
-#### 14.2.4 Resource Node
-
-```python
-class ResourceNode:
-    """Resource node in graph database"""
-    
-    # Node label
-    label = "Resource"
-    
-    # Properties
-    id: UUID  # Unique resource identifier
-    name: str  # Resource name (unique)
-    type: str  # person, machine, equipment, facility, other
-    capacity: float  # Resource capacity (hours per week for person, units for others)
-    department_id: UUID | None  # Department ID
-    skills: list[str] | None  # Skills (for person type)
-    availability: str  # available, unavailable, limited
-    created_at: datetime  # Creation timestamp
-    updated_at: datetime  # Last update timestamp
-```
-
-**Cypher Creation Example:**
-```cypher
-CREATE (r:Resource {
-    id: $id,
-    name: $name,
-    type: $type,
-    capacity: $capacity,
-    department_id: $department_id,
-    skills: $skills,
-    availability: 'available',
-    created_at: datetime(),
-    updated_at: datetime()
-})
-RETURN r
-```
-
-#### 14.2.5 Department Node
-
-```python
-class DepartmentNode:
-    """Department node in graph database"""
-    
-    # Node label
-    label = "Department"
-    
-    # Properties
-    id: UUID  # Unique department identifier
-    name: str  # Department name (unique)
-    description: str | None  # Department description
-    manager_user_id: UUID | None  # Manager user ID (PostgreSQL reference)
-    parent_id: UUID | None  # Parent department ID (for hierarchy)
-    created_at: datetime  # Creation timestamp
-```
-
-**Cypher Creation Example:**
-```cypher
-CREATE (d:Department {
-    id: $id,
-    name: $name,
-    description: $description,
-    manager_user_id: $manager_id,
-    parent_id: $parent_id,
-    created_at: datetime()
-})
-RETURN d
-```
-
-### 14.3 Relationship Schemas
-
-#### 14.3.1 BELONGS_TO Relationships
-
-**Phase → Project:**
-```cypher
-MATCH (phase:Phase {id: $phase_id}), (proj:Project {id: $project_id})
-CREATE (phase)-[:BELONGS_TO]->(proj)
-```
-
-**Workpackage → Phase:**
-```cypher
-MATCH (wp:Workpackage {id: $wp_id}), (phase:Phase {id: $phase_id})
-CREATE (wp)-[:BELONGS_TO]->(phase)
-```
-
-**Task → Workpackage:**
-```cypher
-MATCH (task:WorkItem {id: $task_id, type: 'task'}), (wp:Workpackage {id: $wp_id})
-CREATE (task)-[:BELONGS_TO]->(wp)
-```
-
-**WorkItem → Project (for non-task items):**
-```cypher
-MATCH (wi:WorkItem {id: $wi_id}), (proj:Project {id: $project_id})
-CREATE (wi)-[:BELONGS_TO]->(proj)
-```
-
-**Resource → Department:**
-```cypher
-MATCH (res:Resource {id: $resource_id}), (dept:Department {id: $dept_id})
-CREATE (res)-[:BELONGS_TO]->(dept)
-```
-
-#### 14.3.2 ALLOCATED_TO Relationship
-
-**Resource → Project (with allocation percentage):**
-```cypher
-MATCH (res:Resource {id: $resource_id}), (proj:Project {id: $project_id})
-CREATE (res)-[:ALLOCATED_TO {
-    allocation_percentage: $percentage,
-    start_date: $start_date,
-    end_date: $end_date,
-    created_at: datetime()
-}]->(proj)
-```
-
-#### 14.3.3 ASSIGNED_TO Relationship
-
-**Resource → Task:**
-```cypher
-MATCH (res:Resource {id: $resource_id}), (task:WorkItem {id: $task_id, type: 'task'})
-CREATE (res)-[:ASSIGNED_TO {
-    assigned_at: datetime(),
-    estimated_hours: $hours
-}]->(task)
-```
-
-#### 14.3.4 PARENT_OF Relationship
-
-**Department → Department (hierarchical):**
-```cypher
-MATCH (parent:Department {id: $parent_id}), (child:Department {id: $child_id})
-CREATE (parent)-[:PARENT_OF]->(child)
-```
-
-### 14.4 Graph Service Extensions
-
-Update `backend/app/db/graph.py` to add methods for new entities:
-
-```python
-class GraphService:
-    """Extended GraphService with project management entities"""
-    
-    async def create_project_node(
-        self,
-        project_id: UUID,
-        name: str,
-        description: str | None,
-        status: str,
-        start_date: datetime | None,
-        end_date: datetime | None,
-        created_by_user_id: UUID,
-        manager_user_id: UUID | None = None
-    ) -> dict[str, Any]:
-        """Create a Project node"""
-        properties = {
-            "id": str(project_id),
-            "name": name,
-            "description": description,
-            "status": status,
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat(),
-            "created_by_user_id": str(created_by_user_id),
-            "manager_user_id": str(manager_user_id) if manager_user_id else None
-        }
-        
-        return await self.create_node("Project", properties)
-    
-    async def create_phase_node(
-        self,
-        phase_id: UUID,
-        name: str,
-        description: str | None,
-        order: int,
-        project_id: UUID,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None
-    ) -> dict[str, Any]:
-        """Create a Phase node and link to Project"""
-        properties = {
-            "id": str(phase_id),
-            "name": name,
-            "description": description,
-            "order": order,
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "project_id": str(project_id),
-            "created_at": datetime.now(UTC).isoformat()
-        }
-        
-        phase = await self.create_node("Phase", properties)
-        
-        # Create BELONGS_TO relationship
-        await self.create_relationship(
-            from_id=str(phase_id),
-            to_id=str(project_id),
-            rel_type="BELONGS_TO"
-        )
-        
-        return phase
-    
-    async def create_workpackage_node(
-        self,
-        workpackage_id: UUID,
-        name: str,
-        description: str | None,
-        order: int,
-        phase_id: UUID,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None
-    ) -> dict[str, Any]:
-        """Create a Workpackage node and link to Phase"""
-        properties = {
-            "id": str(workpackage_id),
-            "name": name,
-            "description": description,
-            "order": order,
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "phase_id": str(phase_id),
-            "created_at": datetime.now(UTC).isoformat()
-        }
-        
-        workpackage = await self.create_node("Workpackage", properties)
-        
-        # Create BELONGS_TO relationship
-        await self.create_relationship(
-            from_id=str(workpackage_id),
-            to_id=str(phase_id),
-            rel_type="BELONGS_TO"
-        )
-        
-        return workpackage
-    
-    async def create_resource_node(
-        self,
-        resource_id: UUID,
-        name: str,
-        resource_type: str,
-        capacity: float,
-        department_id: UUID | None = None,
-        skills: list[str] | None = None,
-        availability: str = "available"
-    ) -> dict[str, Any]:
-        """Create a Resource node"""
-        properties = {
-            "id": str(resource_id),
-            "name": name,
-            "type": resource_type,
-            "capacity": capacity,
-            "department_id": str(department_id) if department_id else None,
-            "skills": skills or [],
-            "availability": availability,
-            "created_at": datetime.now(UTC).isoformat(),
-            "updated_at": datetime.now(UTC).isoformat()
-        }
-        
-        resource = await self.create_node("Resource", properties)
-        
-        # Create BELONGS_TO relationship if department specified
-        if department_id:
-            await self.create_relationship(
-                from_id=str(resource_id),
-                to_id=str(department_id),
-                rel_type="BELONGS_TO"
-            )
-        
-        return resource
-    
-    async def create_department_node(
-        self,
-        department_id: UUID,
-        name: str,
-        description: str | None,
-        manager_user_id: UUID | None = None,
-        parent_id: UUID | None = None
-    ) -> dict[str, Any]:
-        """Create a Department node"""
-        properties = {
-            "id": str(department_id),
-            "name": name,
-            "description": description,
-            "manager_user_id": str(manager_user_id) if manager_user_id else None,
-            "parent_id": str(parent_id) if parent_id else None,
-            "created_at": datetime.now(UTC).isoformat()
-        }
-        
-        department = await self.create_node("Department", properties)
-        
-        # Create PARENT_OF relationship if parent specified
-        if parent_id:
-            await self.create_relationship(
-                from_id=str(parent_id),
-                to_id=str(department_id),
-                rel_type="PARENT_OF"
-            )
-        
-        return department
-    
-    async def allocate_resource_to_project(
-        self,
-        resource_id: UUID,
-        project_id: UUID,
-        allocation_percentage: float,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None
-    ) -> dict[str, Any]:
-        """Allocate a resource to a project"""
-        properties = {
-            "allocation_percentage": allocation_percentage,
-            "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None,
-            "created_at": datetime.now(UTC).isoformat()
-        }
-        
-        return await self.create_relationship(
-            from_id=str(resource_id),
-            to_id=str(project_id),
-            rel_type="ALLOCATED_TO",
-            properties=properties
-        )
-    
-    async def assign_resource_to_task(
-        self,
-        resource_id: UUID,
-        task_id: UUID,
-        estimated_hours: float
-    ) -> dict[str, Any]:
-        """Assign a resource to a task"""
-        properties = {
-            "assigned_at": datetime.now(UTC).isoformat(),
-            "estimated_hours": estimated_hours
-        }
-        
-        return await self.create_relationship(
-            from_id=str(resource_id),
-            to_id=str(task_id),
-            rel_type="ASSIGNED_TO",
-            properties=properties
-        )
-    
-    async def get_project_hierarchy(
-        self,
-        project_id: UUID
-    ) -> dict[str, Any]:
-        """Get complete project hierarchy: Project → Phases → Workpackages → Tasks"""
-        query = f"""
-        MATCH (proj:Project {{id: '{project_id}'}})
-        OPTIONAL MATCH (proj)<-[:BELONGS_TO]-(phase:Phase)
-        OPTIONAL MATCH (phase)<-[:BELONGS_TO]-(wp:Workpackage)
-        OPTIONAL MATCH (wp)<-[:BELONGS_TO]-(task:WorkItem {{type: 'task'}})
-        RETURN proj, 
-               COLLECT(DISTINCT phase) as phases,
-               COLLECT(DISTINCT wp) as workpackages,
-               COLLECT(DISTINCT task) as tasks
-        """
-        
-        results = await self.execute_query(query)
-        return results[0] if results else {}
-    
-    async def get_resource_allocations(
-        self,
-        resource_id: UUID
-    ) -> list[dict[str, Any]]:
-        """Get all project allocations for a resource"""
-        query = f"""
-        MATCH (res:Resource {{id: '{resource_id}'}})-[alloc:ALLOCATED_TO]->(proj:Project)
-        RETURN proj, alloc
-        """
-        
-        return await self.execute_query(query)
-    
-    async def get_department_resources(
-        self,
-        department_id: UUID
-    ) -> list[dict[str, Any]]:
-        """Get all resources in a department"""
-        query = f"""
-        MATCH (dept:Department {{id: '{department_id}'}})<-[:BELONGS_TO]-(res:Resource)
-        RETURN res
-        ORDER BY res.name
-        """
-        
-        return await self.execute_query(query)
-```
-
-### 14.5 Pydantic Schemas for Graph Entities
-
-Create `backend/app/schemas/project.py`:
-
-```python
-from datetime import datetime
-from uuid import UUID
-from pydantic import BaseModel, Field, field_validator
-
-
-class ProjectBase(BaseModel):
-    """Base Project schema"""
-    
-    name: str = Field(..., min_length=3, max_length=200, description="Project name")
-    description: str | None = Field(None, description="Project description")
-    status: str = Field(default="active", description="Project status")
-    start_date: datetime | None = Field(None, description="Project start date")
-    end_date: datetime | None = Field(None, description="Project end date")
-    manager_user_id: UUID | None = Field(None, description="Project manager user ID")
-    
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, v: str) -> str:
-        allowed = {"active", "completed", "archived", "on_hold"}
-        if v.lower() not in allowed:
-            raise ValueError(f"Status must be one of: {', '.join(allowed)}")
-        return v.lower()
-
-
-class ProjectCreate(ProjectBase):
-    """Schema for creating a project"""
-    pass
-
-
-class ProjectUpdate(BaseModel):
-    """Schema for updating a project"""
-    
-    name: str | None = Field(None, min_length=3, max_length=200)
-    description: str | None = None
-    status: str | None = None
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-    manager_user_id: UUID | None = None
-
-
-class ProjectResponse(ProjectBase):
-    """Schema for project response"""
-    
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-    created_by_user_id: UUID
-    
-    # Statistics (computed)
-    total_tasks: int = 0
-    completed_tasks: int = 0
-    team_size: int = 0
-    
-    model_config = {"from_attributes": True}
-
-
-class PhaseBase(BaseModel):
-    """Base Phase schema"""
-    
-    name: str = Field(..., min_length=3, max_length=200, description="Phase name")
-    description: str | None = Field(None, description="Phase description")
-    order: int = Field(..., ge=1, description="Sequence order")
-    start_date: datetime | None = Field(None, description="Phase start date")
-    end_date: datetime | None = Field(None, description="Phase end date")
-
-
-class PhaseCreate(PhaseBase):
-    """Schema for creating a phase"""
-    pass
-
-
-class PhaseUpdate(BaseModel):
-    """Schema for updating a phase"""
-    
-    name: str | None = Field(None, min_length=3, max_length=200)
-    description: str | None = None
-    order: int | None = Field(None, ge=1)
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-
-
-class PhaseResponse(PhaseBase):
-    """Schema for phase response"""
-    
-    id: UUID
-    project_id: UUID
-    created_at: datetime
-    
-    # Statistics (computed)
-    workpackage_count: int = 0
-    task_count: int = 0
-    completion_percentage: float = 0.0
-    
-    model_config = {"from_attributes": True}
-
-
-class WorkpackageBase(BaseModel):
-    """Base Workpackage schema"""
-    
-    name: str = Field(..., min_length=3, max_length=200, description="Workpackage name")
-    description: str | None = Field(None, description="Workpackage description")
-    order: int = Field(..., ge=1, description="Sequence order")
-    start_date: datetime | None = Field(None, description="Workpackage start date")
-    end_date: datetime | None = Field(None, description="Workpackage end date")
-
-
-class WorkpackageCreate(WorkpackageBase):
-    """Schema for creating a workpackage"""
-    pass
-
-
-class WorkpackageUpdate(BaseModel):
-    """Schema for updating a workpackage"""
-    
-    name: str | None = Field(None, min_length=3, max_length=200)
-    description: str | None = None
-    order: int | None = Field(None, ge=1)
-    start_date: datetime | None = None
-    end_date: datetime | None = None
-
-
-class WorkpackageResponse(WorkpackageBase):
-    """Schema for workpackage response"""
-    
-    id: UUID
-    phase_id: UUID
-    created_at: datetime
-    
-    # Statistics (computed)
-    task_count: int = 0
-    completion_percentage: float = 0.0
-    
-    model_config = {"from_attributes": True}
-
-
-class ResourceBase(BaseModel):
-    """Base Resource schema"""
-    
-    name: str = Field(..., min_length=2, max_length=200, description="Resource name")
-    type: str = Field(..., description="Resource type")
-    capacity: float = Field(..., gt=0, description="Resource capacity")
-    department_id: UUID | None = Field(None, description="Department ID")
-    skills: list[str] | None = Field(None, description="Skills (for person type)")
-    availability: str = Field(default="available", description="Availability status")
-    
-    @field_validator("type")
-    @classmethod
-    def validate_type(cls, v: str) -> str:
-        allowed = {"person", "machine", "equipment", "facility", "other"}
-        if v.lower() not in allowed:
-            raise ValueError(f"Type must be one of: {', '.join(allowed)}")
-        return v.lower()
-    
-    @field_validator("availability")
-    @classmethod
-    def validate_availability(cls, v: str) -> str:
-        allowed = {"available", "unavailable", "limited"}
-        if v.lower() not in allowed:
-            raise ValueError(f"Availability must be one of: {', '.join(allowed)}")
-        return v.lower()
-
-
-class ResourceCreate(ResourceBase):
-    """Schema for creating a resource"""
-    pass
-
-
-class ResourceUpdate(BaseModel):
-    """Schema for updating a resource"""
-    
-    name: str | None = Field(None, min_length=2, max_length=200)
-    type: str | None = None
-    capacity: float | None = Field(None, gt=0)
-    department_id: UUID | None = None
-    skills: list[str] | None = None
-    availability: str | None = None
-
-
-class ResourceResponse(ResourceBase):
-    """Schema for resource response"""
-    
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
-    
-    # Statistics (computed)
-    utilization_percentage: float = 0.0
-    active_projects: int = 0
-    active_tasks: int = 0
-    
-    model_config = {"from_attributes": True}
-
-
-class DepartmentBase(BaseModel):
-    """Base Department schema"""
-    
-    name: str = Field(..., min_length=2, max_length=200, description="Department name")
-    description: str | None = Field(None, description="Department description")
-    manager_user_id: UUID | None = Field(None, description="Manager user ID")
-    parent_id: UUID | None = Field(None, description="Parent department ID")
-
-
-class DepartmentCreate(DepartmentBase):
-    """Schema for creating a department"""
-    pass
-
-
-class DepartmentUpdate(BaseModel):
-    """Schema for updating a department"""
-    
-    name: str | None = Field(None, min_length=2, max_length=200)
-    description: str | None = None
-    manager_user_id: UUID | None = None
-    parent_id: UUID | None = None
-
-
-class DepartmentResponse(DepartmentBase):
-    """Schema for department response"""
-    
-    id: UUID
-    created_at: datetime
-    
-    # Statistics (computed)
-    resource_count: int = 0
-    subdepartment_count: int = 0
-    
-    model_config = {"from_attributes": True}
-```
-
-### 14.6 API Endpoints for Graph Entities
-
-The following endpoints will be implemented:
-
-**Projects:**
-- `POST /api/v1/projects` - Create project
-- `GET /api/v1/projects` - List projects
-- `GET /api/v1/projects/{project_id}` - Get project details
-- `PATCH /api/v1/projects/{project_id}` - Update project
-- `DELETE /api/v1/projects/{project_id}` - Delete project
-- `GET /api/v1/projects/{project_id}/hierarchy` - Get project hierarchy
-
-**Phases:**
-- `POST /api/v1/projects/{project_id}/phases` - Create phase
-- `GET /api/v1/projects/{project_id}/phases` - List phases
-- `GET /api/v1/phases/{phase_id}` - Get phase details
-- `PATCH /api/v1/phases/{phase_id}` - Update phase
-- `DELETE /api/v1/phases/{phase_id}` - Delete phase
-
-**Workpackages:**
-- `POST /api/v1/phases/{phase_id}/workpackages` - Create workpackage
-- `GET /api/v1/phases/{phase_id}/workpackages` - List workpackages
-- `GET /api/v1/workpackages/{workpackage_id}` - Get workpackage details
-- `PATCH /api/v1/workpackages/{workpackage_id}` - Update workpackage
-- `DELETE /api/v1/workpackages/{workpackage_id}` - Delete workpackage
-
-**Resources:**
-- `POST /api/v1/resources` - Create resource
-- `GET /api/v1/resources` - List resources
-- `GET /api/v1/resources/{resource_id}` - Get resource details
-- `PATCH /api/v1/resources/{resource_id}` - Update resource
-- `DELETE /api/v1/resources/{resource_id}` - Delete resource
-- `POST /api/v1/resources/{resource_id}/allocate` - Allocate to project
-- `POST /api/v1/resources/{resource_id}/assign` - Assign to task
-
-**Departments:**
-- `POST /api/v1/departments` - Create department
-- `GET /api/v1/departments` - List departments
-- `GET /api/v1/departments/{department_id}` - Get department details
-- `PATCH /api/v1/departments/{department_id}` - Update department
-- `DELETE /api/v1/departments/{department_id}` - Delete department
-- `GET /api/v1/departments/{department_id}/resources` - Get department resources
-
+### 13.8 Deployment Checklist
+
+Before deploying to production:
+
+- [ ] PostgreSQL 14+ installed with AGE extension
+- [ ] Graph initialized with all vertex and edge labels
+- [ ] Database migrations applied
+- [ ] Environment variables configured
+- [ ] OR-Tools installed and tested
+- [ ] Health check endpoint responding
+- [ ] Monitoring and logging configured
+- [ ] Backup procedures tested
+- [ ] Performance limits configured
+- [ ] Authentication and authorization tested
+- [ ] API documentation generated (OpenAPI/Swagger)
+- [ ] Load testing completed
+- [ ] Security scan completed
+
+
+
+## 14. Summary
+
+This design document specifies a comprehensive dual-methodology project management system that seamlessly integrates classic waterfall and agile approaches. Key features include:
+
+**Core Capabilities**:
+- Classic project hierarchy (Project → Phase → Workpackage → Task)
+- Agile workflow (Backlog → Sprint → Task)
+- Automatic backlog population when tasks become ready
+- Manual sprint assignment with capacity calculation
+- Critical path identification using longest path algorithm
+- Dual-mode milestone scheduling (manual constraint vs. automatic calculation)
+- Velocity tracking in both story points and hours
+- Burndown chart generation
+
+**Technical Architecture**:
+- Apache AGE graph database on PostgreSQL for unified data storage
+- OR-Tools constraint programming for schedule optimization
+- FastAPI REST endpoints for all operations
+- Comprehensive validation and error handling
+- Property-based testing for core invariants
+- Performance optimization with caching and batch operations
+
+**Integration Points**:
+- Extends existing WorkItem system (no duplicate structures)
+- Maintains version history and audit trails
+- Supports role-based access control
+- Provides health checks and monitoring
+
+The system supports flexible project management workflows where teams can use classic planning fo

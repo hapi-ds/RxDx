@@ -278,7 +278,7 @@ This task list implements the backend schedule API with dual-methodology project
 - [x] Update add_task_to_backlog to check for sprint assignment
 - [x] Update add_task_to_backlog to remove ASSIGNED_TO_SPRINT if exists
 - [x] Add validation: Cannot add task to backlog if in sprint
-- [ ] Write unit tests for mutual exclusivity
+- [x] Write unit tests for mutual exclusivity
 - [x] Write property test: Adding to backlog removes sprint assignment
 
 ### Task 3.8: Update SprintService for Mutual Exclusivity
@@ -286,7 +286,7 @@ This task list implements the backend schedule API with dual-methodology project
 - [x] Update remove_task_from_sprint to create IN_BACKLOG (if ready)
 - [x] Update complete_sprint to handle incomplete tasks (return to backlog)
 - [x] Add validation: Cannot assign task to sprint if in backlog
-- [ ] Write unit tests for mutual exclusivity
+- [x] Write unit tests for mutual exclusivity
 - [x] Write property test: Assigning to sprint removes backlog relationship
 - [x] Write property test: Sprint completion returns incomplete tasks to backlog
 
@@ -295,14 +295,14 @@ This task list implements the backend schedule API with dual-methodology project
 ## Phase 4: Schedule Service Integration
 
 ### Task 4.1: Update SchedulerService for Skills-Based Allocation
-- [ ] Add skill matching to resource allocation algorithm
-- [ ] Prioritize resources with matching skills
-- [ ] Prioritize lead resources in allocation
-- [ ] Add get_matching_resources_for_task method
-- [ ] Update schedule calculation to use skill-based matching
-- [ ] Write unit tests for skill-based allocation
-- [ ] Write property test: Allocated resources have required skills
-- [ ] Write property test: Lead resources allocated before non-lead
+- [x] Add skill matching to resource allocation algorithm
+- [x] Prioritize resources with matching skills
+- [x] Prioritize lead resources in allocation
+- [x] Add get_matching_resources_for_task method
+- [x] Update schedule calculation to use skill-based matching
+- [x] Write unit tests for skill-based allocation
+- [x] Write property test: Allocated resources have required skills
+- [x] Write property test: Lead resources allocated before non-lead
 
 **Details:**
 - Match task.skills_needed with resource.skills
@@ -310,22 +310,22 @@ This task list implements the backend schedule API with dual-methodology project
 - Prioritize: lead=true, then skill match quality, then capacity
 
 ### Task 4.2: Add Department-Based Resource Allocation
-- [ ] Add get_department_resources method to scheduler
-- [ ] Update resource allocation to check LINKED_TO_DEPARTMENT
-- [ ] Prioritize department resources for workpackage tasks
-- [ ] Write unit tests for department-based allocation
-- [ ] Write property test: Department resources allocated to linked workpackages
+- [x] Add get_department_resources method to scheduler
+- [x] Update resource allocation to check LINKED_TO_DEPARTMENT
+- [x] Prioritize department resources for workpackage tasks
+- [x] Write unit tests for department-based allocation
+- [x] Write property test: Department resources allocated to linked workpackages
 
 **Details:**
 - Query: Workpackage → LINKED_TO_DEPARTMENT → Department → BELONGS_TO → Resources
 - Match skills_needed with department resource skills
 
 ### Task 4.3: Update Schedule Calculation for WorkItem Tasks
-- [ ] Update schedule_project to query WorkItem nodes with type='task'
-- [ ] Update task date updates to use WorkItem nodes (type='task')
-- [ ] Maintain compatibility with existing schedule schemas
-- [ ] Write unit tests for WorkItem task scheduling
-- [ ] Write property test: Scheduled tasks have valid dates
+- [x] Update schedule_project to query WorkItem nodes with type='task'
+- [x] Update task date updates to use WorkItem nodes (type='task')
+- [x] Maintain compatibility with existing schedule schemas
+- [x] Write unit tests for WorkItem task scheduling
+- [x] Write property test: Scheduled tasks have valid dates
 
 **Details:**
 - Query pattern: MATCH (w:WorkItem {type: 'task'})
@@ -333,25 +333,25 @@ This task list implements the backend schedule API with dual-methodology project
 - Use existing WorkItem infrastructure
 
 ### Task 4.4: Add Sprint Boundary Constraints
-- [ ] Add sprint boundary validation to scheduler
-- [ ] Enforce: Tasks in sprint must fit within sprint dates
-- [ ] Add conflict detection for sprint capacity exceeded
-- [ ] Write unit tests for sprint constraints
-- [ ] Write property test: Sprint tasks scheduled within sprint boundaries
+- [x] Add sprint boundary validation to scheduler
+- [x] Enforce: Tasks in sprint must fit within sprint dates
+- [x] Add conflict detection for sprint capacity exceeded
+- [x] Write unit tests for sprint constraints
+- [x] Write property test: Sprint tasks scheduled within sprint boundaries
 
 ---
 
 ## Phase 5: API Endpoints
 
 ### Task 5.1: Company Endpoints
-- [ ] POST /api/v1/companies - Create company
-- [ ] GET /api/v1/companies - List companies
-- [ ] GET /api/v1/companies/{id} - Get company
-- [ ] PUT /api/v1/companies/{id} - Update company
-- [ ] DELETE /api/v1/companies/{id} - Delete company (cascade)
-- [ ] GET /api/v1/companies/{id}/departments - Get company departments
-- [ ] Add authentication and authorization
-- [ ] Write integration tests for company endpoints
+- [x] POST /api/v1/companies - Create company
+- [x] GET /api/v1/companies - List companies
+- [x] GET /api/v1/companies/{id} - Get company
+- [x] PUT /api/v1/companies/{id} - Update company
+- [x] DELETE /api/v1/companies/{id} - Delete company (cascade)
+- [x] GET /api/v1/companies/{id}/departments - Get company departments
+- [x] Add authentication and authorization
+- [x] Write integration tests for company endpoints
 
 ### Task 5.2: Update Department Endpoints
 - [ ] Update POST /api/v1/departments to require company_id

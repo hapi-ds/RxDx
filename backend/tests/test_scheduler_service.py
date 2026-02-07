@@ -36,7 +36,9 @@ def sample_tasks():
             title="Implementation",
             estimated_hours=80,
             dependencies=[
-                TaskDependency(predecessor_id="task-1", dependency_type="finish_to_start")
+                TaskDependency(
+                    predecessor_id="task-1", dependency_type="finish_to_start"
+                )
             ],
             required_resources=["dev-1"],
         ),
@@ -45,7 +47,9 @@ def sample_tasks():
             title="Testing",
             estimated_hours=40,
             dependencies=[
-                TaskDependency(predecessor_id="task-2", dependency_type="finish_to_start")
+                TaskDependency(
+                    predecessor_id="task-2", dependency_type="finish_to_start"
+                )
             ],
             required_resources=["qa-1"],
         ),
@@ -90,7 +94,9 @@ class TestSchedulerServiceBasic:
         assert "No tasks" in result.message
 
     @pytest.mark.asyncio
-    async def test_schedule_single_task(self, scheduler_service, sample_resources, sample_constraints):
+    async def test_schedule_single_task(
+        self, scheduler_service, sample_resources, sample_constraints
+    ):
         """Test scheduling a single task"""
         project_id = uuid4()
         tasks = [
@@ -146,7 +152,9 @@ class TestDependencyConstraints:
     """Tests for task dependency constraints"""
 
     @pytest.mark.asyncio
-    async def test_finish_to_start_dependency(self, scheduler_service, sample_constraints):
+    async def test_finish_to_start_dependency(
+        self, scheduler_service, sample_constraints
+    ):
         """Test finish-to-start dependency constraint"""
         project_id = uuid4()
         tasks = [
@@ -183,7 +191,9 @@ class TestDependencyConstraints:
         assert task_map["task-b"].start_date >= task_map["task-a"].end_date
 
     @pytest.mark.asyncio
-    async def test_start_to_start_dependency(self, scheduler_service, sample_constraints):
+    async def test_start_to_start_dependency(
+        self, scheduler_service, sample_constraints
+    ):
         """Test start-to-start dependency constraint"""
         project_id = uuid4()
         tasks = [
@@ -220,7 +230,9 @@ class TestDependencyConstraints:
         assert task_map["task-b"].start_date >= task_map["task-a"].start_date
 
     @pytest.mark.asyncio
-    async def test_finish_to_finish_dependency(self, scheduler_service, sample_constraints):
+    async def test_finish_to_finish_dependency(
+        self, scheduler_service, sample_constraints
+    ):
         """Test finish-to-finish dependency constraint"""
         project_id = uuid4()
         tasks = [
@@ -293,11 +305,15 @@ class TestDependencyConstraints:
         task_map = {t.task_id: t for t in result.schedule}
 
         # Task B should start at least lag_hours after Task A finishes
-        time_diff = (task_map["task-b"].start_date - task_map["task-a"].end_date).total_seconds() / 3600
+        time_diff = (
+            task_map["task-b"].start_date - task_map["task-a"].end_date
+        ).total_seconds() / 3600
         assert time_diff >= lag_hours
 
     @pytest.mark.asyncio
-    async def test_missing_dependency_conflict(self, scheduler_service, sample_constraints):
+    async def test_missing_dependency_conflict(
+        self, scheduler_service, sample_constraints
+    ):
         """Test that missing dependency is detected"""
         project_id = uuid4()
         tasks = [
@@ -330,7 +346,9 @@ class TestResourceConstraints:
     """Tests for resource capacity constraints"""
 
     @pytest.mark.asyncio
-    async def test_resource_capacity_respected(self, scheduler_service, sample_constraints):
+    async def test_resource_capacity_respected(
+        self, scheduler_service, sample_constraints
+    ):
         """Test that resource capacity is respected"""
         project_id = uuid4()
 
@@ -371,11 +389,15 @@ class TestResourceConstraints:
         task_b = task_map["task-b"]
 
         # Either A ends before B starts, or B ends before A starts
-        no_overlap = (task_a.end_date <= task_b.start_date) or (task_b.end_date <= task_a.start_date)
+        no_overlap = (task_a.end_date <= task_b.start_date) or (
+            task_b.end_date <= task_a.start_date
+        )
         assert no_overlap
 
     @pytest.mark.asyncio
-    async def test_parallel_tasks_with_sufficient_capacity(self, scheduler_service, sample_constraints):
+    async def test_parallel_tasks_with_sufficient_capacity(
+        self, scheduler_service, sample_constraints
+    ):
         """Test that tasks can run in parallel with sufficient resource capacity"""
         project_id = uuid4()
 
@@ -417,7 +439,9 @@ class TestResourceConstraints:
         assert result.project_duration_hours <= 16
 
     @pytest.mark.asyncio
-    async def test_missing_resource_conflict(self, scheduler_service, sample_constraints):
+    async def test_missing_resource_conflict(
+        self, scheduler_service, sample_constraints
+    ):
         """Test that missing resource is detected"""
         project_id = uuid4()
         tasks = [
@@ -446,7 +470,9 @@ class TestOptimization:
     """Tests for schedule optimization"""
 
     @pytest.mark.asyncio
-    async def test_minimizes_project_duration(self, scheduler_service, sample_constraints):
+    async def test_minimizes_project_duration(
+        self, scheduler_service, sample_constraints
+    ):
         """Test that scheduler minimizes project duration"""
         project_id = uuid4()
 
@@ -490,7 +516,9 @@ class TestConflictIdentification:
     """Tests for conflict identification"""
 
     @pytest.mark.asyncio
-    async def test_circular_dependency_detection(self, scheduler_service, sample_constraints):
+    async def test_circular_dependency_detection(
+        self, scheduler_service, sample_constraints
+    ):
         """Test that circular dependencies are detected"""
         project_id = uuid4()
 
@@ -501,7 +529,9 @@ class TestConflictIdentification:
                 title="Task A",
                 estimated_hours=8,
                 dependencies=[
-                    TaskDependency(predecessor_id="task-c", dependency_type="finish_to_start")
+                    TaskDependency(
+                        predecessor_id="task-c", dependency_type="finish_to_start"
+                    )
                 ],
             ),
             ScheduleTaskCreate(
@@ -509,7 +539,9 @@ class TestConflictIdentification:
                 title="Task B",
                 estimated_hours=8,
                 dependencies=[
-                    TaskDependency(predecessor_id="task-a", dependency_type="finish_to_start")
+                    TaskDependency(
+                        predecessor_id="task-a", dependency_type="finish_to_start"
+                    )
                 ],
             ),
             ScheduleTaskCreate(
@@ -517,7 +549,9 @@ class TestConflictIdentification:
                 title="Task C",
                 estimated_hours=8,
                 dependencies=[
-                    TaskDependency(predecessor_id="task-b", dependency_type="finish_to_start")
+                    TaskDependency(
+                        predecessor_id="task-b", dependency_type="finish_to_start"
+                    )
                 ],
             ),
         ]
@@ -589,9 +623,7 @@ class TestScheduleStorage:
         # Apply manual adjustment
         new_start = datetime.now(UTC) + timedelta(days=7)
         updates = ScheduleUpdate(
-            task_adjustments={
-                "task-1": {"start_date": new_start.isoformat()}
-            }
+            task_adjustments={"task-1": {"start_date": new_start.isoformat()}}
         )
 
         updated = await scheduler_service.update_schedule(project_id, updates)
@@ -602,3 +634,395 @@ class TestScheduleStorage:
         # Verify the adjustment was applied
         task_1 = next(t for t in updated.schedule if t.task_id == "task-1")
         assert task_1.start_date.date() == new_start.date()
+
+
+class TestSkillsBasedAllocation:
+    """Tests for skills-based resource allocation"""
+
+    @pytest.mark.asyncio
+    async def test_get_matching_resources_no_skills_required(self, scheduler_service):
+        """Test matching resources when task has no skill requirements"""
+        task = ScheduleTaskCreate(
+            id="task-1",
+            title="Task without skills",
+            estimated_hours=8,
+            skills_needed=[],
+        )
+
+        resources = [
+            ResourceCreate(
+                id="r1", name="Resource 1", capacity=1, skills=["Python"], lead=False
+            ),
+            ResourceCreate(
+                id="r2", name="Resource 2", capacity=1, skills=["Java"], lead=True
+            ),
+            ResourceCreate(
+                id="r3", name="Resource 3", capacity=1, skills=[], lead=False
+            ),
+        ]
+
+        matches = scheduler_service.get_matching_resources_for_task(task, resources)
+
+        # All resources should be returned, sorted by lead status
+        assert len(matches) == 3
+        # Lead resource should be first
+        assert matches[0][0].id == "r2"
+        assert matches[0][0].lead is True
+
+    @pytest.mark.asyncio
+    async def test_get_matching_resources_with_skills(self, scheduler_service):
+        """Test matching resources based on required skills"""
+        task = ScheduleTaskCreate(
+            id="task-1",
+            title="Python Development",
+            estimated_hours=8,
+            skills_needed=["Python", "Django"],
+        )
+
+        resources = [
+            ResourceCreate(
+                id="r1",
+                name="Python Dev",
+                capacity=1,
+                skills=["Python", "Django"],
+                lead=False,
+            ),
+            ResourceCreate(
+                id="r2", name="Java Dev", capacity=1, skills=["Java"], lead=False
+            ),
+            ResourceCreate(
+                id="r3",
+                name="Full Stack",
+                capacity=1,
+                skills=["Python", "Django", "React"],
+                lead=True,
+            ),
+            ResourceCreate(
+                id="r4", name="Junior Python", capacity=1, skills=["Python"], lead=False
+            ),
+        ]
+
+        matches = scheduler_service.get_matching_resources_for_task(task, resources)
+
+        # Should return resources with matching skills
+        assert len(matches) == 3  # r1, r3, r4 have Python
+
+        # Lead resource with all skills should be first
+        assert matches[0][0].id == "r3"
+        assert matches[0][0].lead is True
+        assert matches[0][1] == 2  # Matches 2 skills
+
+        # Non-lead with all skills should be second
+        assert matches[1][0].id == "r1"
+        assert matches[1][0].lead is False
+        assert matches[1][1] == 2  # Matches 2 skills
+
+        # Partial match should be last
+        assert matches[2][0].id == "r4"
+        assert matches[2][1] == 1  # Matches 1 skill
+
+    @pytest.mark.asyncio
+    async def test_lead_resources_prioritized(self, scheduler_service):
+        """Test that lead resources are prioritized in allocation"""
+        task = ScheduleTaskCreate(
+            id="task-1",
+            title="Development Task",
+            estimated_hours=8,
+            skills_needed=["Python"],
+        )
+
+        resources = [
+            ResourceCreate(
+                id="r1", name="Regular Dev", capacity=1, skills=["Python"], lead=False
+            ),
+            ResourceCreate(
+                id="r2", name="Lead Dev", capacity=1, skills=["Python"], lead=True
+            ),
+            ResourceCreate(
+                id="r3", name="Senior Dev", capacity=2, skills=["Python"], lead=False
+            ),
+        ]
+
+        matches = scheduler_service.get_matching_resources_for_task(task, resources)
+
+        # Lead resource should be first despite lower capacity
+        assert matches[0][0].id == "r2"
+        assert matches[0][0].lead is True
+
+        # Higher capacity non-lead should be second
+        assert matches[1][0].id == "r3"
+        assert matches[1][0].capacity == 2
+
+    @pytest.mark.asyncio
+    async def test_skill_match_quality_prioritization(self, scheduler_service):
+        """Test that resources with better skill matches are prioritized"""
+        task = ScheduleTaskCreate(
+            id="task-1",
+            title="Full Stack Task",
+            estimated_hours=8,
+            skills_needed=["Python", "React", "PostgreSQL"],
+        )
+
+        resources = [
+            ResourceCreate(
+                id="r1", name="Backend Dev", capacity=1, skills=["Python"], lead=False
+            ),
+            ResourceCreate(
+                id="r2",
+                name="Full Stack",
+                capacity=1,
+                skills=["Python", "React", "PostgreSQL"],
+                lead=False,
+            ),
+            ResourceCreate(
+                id="r3",
+                name="Python+DB",
+                capacity=1,
+                skills=["Python", "PostgreSQL"],
+                lead=False,
+            ),
+        ]
+
+        matches = scheduler_service.get_matching_resources_for_task(task, resources)
+
+        # Full match should be first
+        assert matches[0][0].id == "r2"
+        assert matches[0][1] == 3  # All 3 skills
+
+        # Partial match (2 skills) should be second
+        assert matches[1][0].id == "r3"
+        assert matches[1][1] == 2
+
+        # Partial match (1 skill) should be last
+        assert matches[2][0].id == "r1"
+        assert matches[2][1] == 1
+
+    @pytest.mark.asyncio
+    async def test_auto_assign_resources_based_on_skills(
+        self, scheduler_service, sample_constraints
+    ):
+        """Test that resources are auto-assigned based on skills when not specified"""
+        project_id = uuid4()
+
+        tasks = [
+            ScheduleTaskCreate(
+                id="task-1",
+                title="Python Development",
+                estimated_hours=8,
+                skills_needed=["Python"],
+                required_resources=[],  # No resources specified
+            ),
+        ]
+
+        resources = [
+            ResourceCreate(
+                id="python-dev",
+                name="Python Developer",
+                capacity=1,
+                skills=["Python"],
+                lead=True,
+            ),
+            ResourceCreate(
+                id="java-dev",
+                name="Java Developer",
+                capacity=1,
+                skills=["Java"],
+                lead=False,
+            ),
+        ]
+
+        result = await scheduler_service.schedule_project(
+            project_id=project_id,
+            tasks=tasks,
+            resources=resources,
+            constraints=sample_constraints,
+        )
+
+        # Should succeed and auto-assign Python developer
+        assert result.status in ["success", "feasible"]
+        assert len(result.schedule) == 1
+        assert "python-dev" in result.schedule[0].assigned_resources
+
+    @pytest.mark.asyncio
+    async def test_skill_mismatch_conflict(self, scheduler_service, sample_constraints):
+        """Test that skill mismatches are detected as conflicts"""
+        project_id = uuid4()
+
+        tasks = [
+            ScheduleTaskCreate(
+                id="task-1",
+                title="Python Development",
+                estimated_hours=8,
+                skills_needed=["Python", "Django"],
+                required_resources=["java-dev"],  # Wrong resource assigned
+            ),
+        ]
+
+        resources = [
+            ResourceCreate(
+                id="java-dev",
+                name="Java Developer",
+                capacity=1,
+                skills=["Java"],
+                lead=False,
+            ),
+        ]
+
+        result = await scheduler_service.schedule_project(
+            project_id=project_id,
+            tasks=tasks,
+            resources=resources,
+            constraints=sample_constraints,
+        )
+
+        # Should detect skill mismatch
+        assert len(result.conflicts) > 0
+        assert any("skill" in c.conflict_type.lower() for c in result.conflicts)
+
+    @pytest.mark.asyncio
+    async def test_no_matching_resources_conflict(
+        self, scheduler_service, sample_constraints
+    ):
+        """Test that missing skills are detected when no resources match"""
+        project_id = uuid4()
+
+        tasks = [
+            ScheduleTaskCreate(
+                id="task-1",
+                title="Rust Development",
+                estimated_hours=8,
+                skills_needed=["Rust", "WebAssembly"],
+                required_resources=[],
+            ),
+        ]
+
+        resources = [
+            ResourceCreate(
+                id="python-dev",
+                name="Python Developer",
+                capacity=1,
+                skills=["Python"],
+                lead=False,
+            ),
+            ResourceCreate(
+                id="java-dev",
+                name="Java Developer",
+                capacity=1,
+                skills=["Java"],
+                lead=False,
+            ),
+        ]
+
+        result = await scheduler_service.schedule_project(
+            project_id=project_id,
+            tasks=tasks,
+            resources=resources,
+            constraints=sample_constraints,
+        )
+
+        # Should detect no matching resources
+        assert len(result.conflicts) > 0
+        assert any("no_matching_resources" in c.conflict_type for c in result.conflicts)
+
+    @pytest.mark.asyncio
+    async def test_multiple_tasks_skill_based_allocation(
+        self, scheduler_service, sample_constraints
+    ):
+        """Test scheduling multiple tasks with different skill requirements"""
+        project_id = uuid4()
+
+        tasks = [
+            ScheduleTaskCreate(
+                id="backend-task",
+                title="Backend Development",
+                estimated_hours=16,
+                skills_needed=["Python", "Django"],
+                required_resources=[],
+            ),
+            ScheduleTaskCreate(
+                id="frontend-task",
+                title="Frontend Development",
+                estimated_hours=16,
+                skills_needed=["React", "TypeScript"],
+                required_resources=[],
+            ),
+            ScheduleTaskCreate(
+                id="fullstack-task",
+                title="Full Stack Feature",
+                estimated_hours=24,
+                skills_needed=["Python", "React"],
+                required_resources=[],
+            ),
+        ]
+
+        resources = [
+            ResourceCreate(
+                id="backend-dev",
+                name="Backend Developer",
+                capacity=1,
+                skills=["Python", "Django", "PostgreSQL"],
+                lead=True,
+            ),
+            ResourceCreate(
+                id="frontend-dev",
+                name="Frontend Developer",
+                capacity=1,
+                skills=["React", "TypeScript", "CSS"],
+                lead=False,
+            ),
+            ResourceCreate(
+                id="fullstack-dev",
+                name="Full Stack Developer",
+                capacity=1,
+                skills=["Python", "React", "Django"],
+                lead=False,
+            ),
+        ]
+
+        result = await scheduler_service.schedule_project(
+            project_id=project_id,
+            tasks=tasks,
+            resources=resources,
+            constraints=sample_constraints,
+        )
+
+        # Should successfully schedule all tasks
+        assert result.status in ["success", "feasible"]
+        assert len(result.schedule) == 3
+
+        # Verify resources were assigned based on skills
+        task_map = {t.task_id: t for t in result.schedule}
+
+        # Backend task should have backend or fullstack dev
+        backend_resources = task_map["backend-task"].assigned_resources
+        assert any(r in ["backend-dev", "fullstack-dev"] for r in backend_resources)
+
+        # Frontend task should have frontend or fullstack dev
+        frontend_resources = task_map["frontend-task"].assigned_resources
+        assert any(r in ["frontend-dev", "fullstack-dev"] for r in frontend_resources)
+
+    @pytest.mark.asyncio
+    async def test_resources_without_skills_field(self, scheduler_service):
+        """Test that resources without skills field are handled correctly"""
+        task = ScheduleTaskCreate(
+            id="task-1",
+            title="Generic Task",
+            estimated_hours=8,
+            skills_needed=["Python"],
+        )
+
+        resources = [
+            ResourceCreate(
+                id="r1", name="Resource 1", capacity=1, skills=["Python"], lead=False
+            ),
+            ResourceCreate(
+                id="r2", name="Resource 2", capacity=1, skills=[], lead=False
+            ),  # No skills
+        ]
+
+        matches = scheduler_service.get_matching_resources_for_task(task, resources)
+
+        # Should return resource with matching skill and resource without skills
+        assert len(matches) == 2
+        assert matches[0][0].id == "r1"  # Has matching skill
+        assert matches[1][0].id == "r2"  # No skills defined

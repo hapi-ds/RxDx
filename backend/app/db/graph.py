@@ -599,7 +599,16 @@ class GraphService:
             "Failure",       # Failure nodes for FMEA chains
             "Document",      # Document nodes
             "Entity",        # Entities extracted from emails/meetings
-            "User"           # User nodes for relationships
+            "User",          # User nodes for relationships
+            "Company",       # Company nodes
+            "Department",    # Department nodes
+            "Resource",      # Resource nodes
+            "Project",       # Project nodes
+            "Phase",         # Phase nodes
+            "Workpackage",   # Workpackage nodes
+            "Milestone",     # Milestone nodes
+            "Sprint",        # Sprint nodes
+            "Backlog"        # Backlog nodes
         ]
 
         # Define supported relationship types
@@ -614,7 +623,16 @@ class GraphService:
             "REFERENCES",    # WorkItem -> WorkItem
             "NEXT_VERSION",  # WorkItem -> WorkItem (version history)
             "CREATED_BY",    # WorkItem -> User
-            "ASSIGNED_TO"    # WorkItem -> User
+            "ASSIGNED_TO",   # WorkItem -> User
+            "PARENT_OF",     # Company -> Department, Department -> Department
+            "BELONGS_TO",    # Phase -> Project, Workpackage -> Phase, Task -> Workpackage, etc.
+            "ALLOCATED_TO",  # Resource -> Project OR Task (with lead property)
+            "LINKED_TO_DEPARTMENT",  # Workpackage -> Department
+            "IN_BACKLOG",    # Task -> Backlog
+            "ASSIGNED_TO_SPRINT",  # Task -> Sprint
+            "has_risk",      # Task -> Risk
+            "implements",    # Task -> Requirement
+            "BLOCKS"         # Task -> Milestone
         ]
 
         # Note: AGE doesn't support CREATE INDEX in Cypher queries like Neo4j
@@ -624,6 +642,1037 @@ class GraphService:
             "node_types": node_types,
             "relationship_types": relationship_types
         }
+
+    async def link_workpackage_to_department(
+        self,
+        workpackage_id: str,
+        department_id: str
+    ) -> dict[str, Any]:
+        """
+        Create LINKED_TO_DEPARTMENT relationship from Workpackage to Department.
+        A workpackage can only be linked to one department at a time.
+
+        Args:
+            workpackage_id: Workpackage UUID
+            department_id: Department UUID
+
+        Returns:
+            Created relationship
+
+        Raises:
+            ValueError: If workpackage or department doesn't exist, or if workpackage
+                       is already linked to a different department
+        """
+        # Verify workpackage exists
+        wp_query = f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        wp_results = await self.execute_query(wp_query)
+        if not wp_results:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+
+        # Verify department exists
+        dept_query = f"MATCH (d:Department {{id: '{department_id}'}}) RETURN d"
+        dept_results = await self.execute_query(dept_query)
+        if not dept_results:
+            raise ValueError(f"Department {department_id} not found")
+
+        # Check if workpackage is already linked to a department
+        existing_link_query = f"""
+        MATCH (wp:Workpackage {{id: '{workpackage_id}'}})-[r:LINKED_TO_DEPARTMENT]->(d:Department)
+        RETURN d.id as dept_id
+        """
+        existing_results = await self.execute_query(existing_link_query)
+        
+        if existing_results:
+            existing_dept_id = existing_results[0].get('dept_id')
+            if existing_dept_id and existing_dept_id != department_id:
+                raise ValueError(
+                    f"Workpackage {workpackage_id} is already linked to department {existing_dept_id}. "
+                    "Remove the existing link first."
+                )
+            elif existing_dept_id == department_id:
+                # Already linked to this department, return existing relationship
+                return {"workpackage_id": workpackage_id, "department_id": department_id}
+
+        # Create the relationship
+        return await self.create_relationship(
+            from_id=workpackage_id,
+            to_id=department_id,
+            rel_type="LINKED_TO_DEPARTMENT"
+        )
+
+    async def unlink_workpackage_from_department(
+        self,
+        workpackage_id: str,
+        department_id: str | None = None
+    ) -> bool:
+        """
+        Remove LINKED_TO_DEPARTMENT relationship from Workpackage to Department.
+
+        Args:
+            workpackage_id: Workpackage UUID
+            department_id: Optional Department UUID. If provided, only removes link to this specific department.
+                          If None, removes any existing department link.
+
+        Returns:
+            True if relationship was removed, False if no relationship existed
+
+        Raises:
+            ValueError: If workpackage doesn't exist
+        """
+        # Verify workpackage exists
+        wp_query = f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        wp_results = await self.execute_query(wp_query)
+        if not wp_results:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+
+        # Build query to delete relationship
+        if department_id:
+            query = f"""
+            MATCH (wp:Workpackage {{id: '{workpackage_id}'}})-[r:LINKED_TO_DEPARTMENT]->(d:Department {{id: '{department_id}'}})
+            DELETE r
+            RETURN count(r) as deleted_count
+            """
+        else:
+            query = f"""
+            MATCH (wp:Workpackage {{id: '{workpackage_id}'}})-[r:LINKED_TO_DEPARTMENT]->(d:Department)
+            DELETE r
+            RETURN count(r) as deleted_count
+            """
+
+        results = await self.execute_query(query)
+        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        return deleted_count > 0
+
+    async def get_workpackage_department(
+        self,
+        workpackage_id: str
+    ) -> dict[str, Any] | None:
+        """
+        Get the department linked to a workpackage.
+
+        Args:
+            workpackage_id: Workpackage UUID
+
+        Returns:
+            Department data if linked, None otherwise
+
+        Raises:
+            ValueError: If workpackage doesn't exist
+        """
+        # Verify workpackage exists
+        wp_query = f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        wp_results = await self.execute_query(wp_query)
+        if not wp_results:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+
+        # Get linked department
+        query = f"""
+        MATCH (wp:Workpackage {{id: '{workpackage_id}'}})-[:LINKED_TO_DEPARTMENT]->(d:Department)
+        RETURN d
+        """
+        results = await self.execute_query(query)
+        
+        if not results:
+            return None
+
+        department_data = results[0]
+        if 'properties' in department_data:
+            return department_data['properties']
+        return department_data
+
+    async def get_department_resources_for_workpackage(
+        self,
+        workpackage_id: str,
+        skills_filter: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        Get resources from the department linked to a workpackage.
+        Optionally filter by skills.
+
+        Args:
+            workpackage_id: Workpackage UUID
+            skills_filter: Optional list of required skills
+
+        Returns:
+            List of resource data
+
+        Raises:
+            ValueError: If workpackage doesn't exist
+        """
+        # Verify workpackage exists
+        wp_query = f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        wp_results = await self.execute_query(wp_query)
+        if not wp_results:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+
+        # Get resources from linked department
+        query = f"""
+        MATCH (wp:Workpackage {{id: '{workpackage_id}'}})-[:LINKED_TO_DEPARTMENT]->(d:Department)<-[:BELONGS_TO]-(r:Resource)
+        RETURN r
+        """
+        results = await self.execute_query(query)
+        
+        resources = []
+        for result in results:
+            resource_data = result
+            if 'properties' in resource_data:
+                resource_data = resource_data['properties']
+            
+            # Apply skills filter if provided
+            if skills_filter:
+                resource_skills = resource_data.get('skills', [])
+                if isinstance(resource_skills, str):
+                    # Handle case where skills might be stored as JSON string
+                    import json
+                    try:
+                        resource_skills = json.loads(resource_skills)
+                    except json.JSONDecodeError:
+                        resource_skills = []
+                
+                # Check if resource has all required skills
+                if all(skill in resource_skills for skill in skills_filter):
+                    resources.append(resource_data)
+            else:
+                resources.append(resource_data)
+        
+        return resources
+
+    async def allocate_resource_to_project(
+        self,
+        resource_id: str,
+        project_id: str,
+        allocation_percentage: float,
+        lead: bool = False,
+        start_date: str | None = None,
+        end_date: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Allocate a resource to a project with ALLOCATED_TO relationship.
+        
+        Args:
+            resource_id: Resource UUID
+            project_id: Project UUID
+            allocation_percentage: Percentage of resource capacity (0-100)
+            lead: Whether this is a lead/primary resource (default False)
+            start_date: Optional allocation start date (ISO format)
+            end_date: Optional allocation end date (ISO format)
+        
+        Returns:
+            Created relationship
+        
+        Raises:
+            ValueError: If resource or project doesn't exist, or if resource is already allocated to a task
+        """
+        # Verify resource exists
+        resource_query = f"MATCH (r:Resource {{id: '{resource_id}'}}) RETURN r"
+        resource_results = await self.execute_query(resource_query)
+        if not resource_results:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        # Verify project exists
+        project_query = f"MATCH (p:Project {{id: '{project_id}'}}) RETURN p"
+        project_results = await self.execute_query(project_query)
+        if not project_results:
+            raise ValueError(f"Project {project_id} not found")
+        
+        # Check if resource is already allocated to a task (mutually exclusive)
+        task_allocation_query = f"""
+        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(t:WorkItem {{type: 'task'}})
+        RETURN {{task_allocations: count(rel)}} as result
+        """
+        task_allocation_results = await self.execute_query(task_allocation_query)
+        if task_allocation_results and task_allocation_results[0].get('task_allocations', 0) > 0:
+            raise ValueError(
+                f"Resource {resource_id} is already allocated to a task. "
+                "A resource cannot be allocated to both a project and a task."
+            )
+        
+        # Validate allocation percentage
+        if not 0 <= allocation_percentage <= 100:
+            raise ValueError("Allocation percentage must be between 0 and 100")
+        
+        # Build relationship properties
+        properties = {
+            "allocation_percentage": allocation_percentage,
+            "lead": lead
+        }
+        
+        if start_date:
+            properties["start_date"] = start_date
+        if end_date:
+            properties["end_date"] = end_date
+        
+        # Create the ALLOCATED_TO relationship
+        return await self.create_relationship(
+            from_id=resource_id,
+            to_id=project_id,
+            rel_type="ALLOCATED_TO",
+            properties=properties
+        )
+
+    async def allocate_resource_to_task(
+        self,
+        resource_id: str,
+        task_id: str,
+        allocation_percentage: float,
+        lead: bool = False,
+        start_date: str | None = None,
+        end_date: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Allocate a resource to a task with ALLOCATED_TO relationship.
+        
+        Args:
+            resource_id: Resource UUID
+            task_id: Task UUID (WorkItem with type='task')
+            allocation_percentage: Percentage of resource capacity (0-100)
+            lead: Whether this is a lead/primary resource (default False)
+            start_date: Optional allocation start date (ISO format)
+            end_date: Optional allocation end date (ISO format)
+        
+        Returns:
+            Created relationship
+        
+        Raises:
+            ValueError: If resource or task doesn't exist, or if resource is already allocated to a project
+        """
+        # Verify resource exists
+        resource_query = f"MATCH (r:Resource {{id: '{resource_id}'}}) RETURN r"
+        resource_results = await self.execute_query(resource_query)
+        if not resource_results:
+            raise ValueError(f"Resource {resource_id} not found")
+        
+        # Verify task exists and is of type 'task'
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Check if resource is already allocated to a project (mutually exclusive)
+        project_allocation_query = f"""
+        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(p:Project)
+        RETURN {{project_allocations: count(rel)}} as result
+        """
+        project_allocation_results = await self.execute_query(project_allocation_query)
+        if project_allocation_results and project_allocation_results[0].get('project_allocations', 0) > 0:
+            raise ValueError(
+                f"Resource {resource_id} is already allocated to a project. "
+                "A resource cannot be allocated to both a project and a task."
+            )
+        
+        # Validate allocation percentage
+        if not 0 <= allocation_percentage <= 100:
+            raise ValueError("Allocation percentage must be between 0 and 100")
+        
+        # Build relationship properties
+        properties = {
+            "allocation_percentage": allocation_percentage,
+            "lead": lead
+        }
+        
+        if start_date:
+            properties["start_date"] = start_date
+        if end_date:
+            properties["end_date"] = end_date
+        
+        # Create the ALLOCATED_TO relationship
+        return await self.create_relationship(
+            from_id=resource_id,
+            to_id=task_id,
+            rel_type="ALLOCATED_TO",
+            properties=properties
+        )
+
+    async def update_resource_allocation(
+        self,
+        resource_id: str,
+        target_id: str,
+        allocation_percentage: float | None = None,
+        lead: bool | None = None,
+        start_date: str | None = None,
+        end_date: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Update an existing ALLOCATED_TO relationship.
+        
+        Args:
+            resource_id: Resource UUID
+            target_id: Project or Task UUID
+            allocation_percentage: Optional new allocation percentage
+            lead: Optional new lead status
+            start_date: Optional new start date
+            end_date: Optional new end date
+        
+        Returns:
+            Updated relationship
+        
+        Raises:
+            ValueError: If relationship doesn't exist
+        """
+        # Check if relationship exists
+        check_query = f"""
+        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(target {{id: '{target_id}'}})
+        RETURN rel
+        """
+        check_results = await self.execute_query(check_query)
+        if not check_results:
+            raise ValueError(
+                f"No ALLOCATED_TO relationship found between resource {resource_id} and target {target_id}"
+            )
+        
+        # Build SET clauses for properties to update
+        set_clauses = []
+        if allocation_percentage is not None:
+            if not 0 <= allocation_percentage <= 100:
+                raise ValueError("Allocation percentage must be between 0 and 100")
+            set_clauses.append(f"rel.allocation_percentage = {allocation_percentage}")
+        
+        if lead is not None:
+            set_clauses.append(f"rel.lead = {str(lead).lower()}")
+        
+        if start_date is not None:
+            set_clauses.append(f"rel.start_date = '{start_date}'")
+        
+        if end_date is not None:
+            set_clauses.append(f"rel.end_date = '{end_date}'")
+        
+        if not set_clauses:
+            # Nothing to update
+            return check_results[0]
+        
+        # Update the relationship
+        update_query = f"""
+        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(target {{id: '{target_id}'}})
+        SET {', '.join(set_clauses)}
+        RETURN rel
+        """
+        results = await self.execute_query(update_query)
+        return results[0] if results else {}
+
+    async def remove_resource_allocation(
+        self,
+        resource_id: str,
+        target_id: str
+    ) -> bool:
+        """
+        Remove an ALLOCATED_TO relationship.
+        
+        Args:
+            resource_id: Resource UUID
+            target_id: Project or Task UUID
+        
+        Returns:
+            True if relationship was removed, False if it didn't exist
+        """
+        query = f"""
+        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(target {{id: '{target_id}'}})
+        DELETE rel
+        RETURN count(rel) as deleted_count
+        """
+        results = await self.execute_query(query)
+        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        return deleted_count > 0
+
+    async def get_resource_allocations(
+        self,
+        resource_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        Get all allocations for a resource.
+        
+        Args:
+            resource_id: Resource UUID
+        
+        Returns:
+            List of allocations with target information
+        """
+        query = f"""
+        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(target)
+        RETURN {{
+            rel: rel,
+            target: target,
+            target_labels: labels(target)
+        }} as result
+        """
+        results = await self.execute_query(query)
+        
+        allocations = []
+        for result in results:
+            rel_data = result.get('rel', {})
+            target_data = result.get('target', {})
+            target_labels = result.get('target_labels', [])
+            
+            # Extract properties
+            if 'properties' in rel_data:
+                rel_props = rel_data['properties']
+            else:
+                rel_props = rel_data
+            
+            if 'properties' in target_data:
+                target_props = target_data['properties']
+            else:
+                target_props = target_data
+            
+            # Determine target type
+            target_type = 'Project' if 'Project' in target_labels else 'Task' if 'WorkItem' in target_labels else 'Unknown'
+            
+            allocations.append({
+                'allocation_percentage': rel_props.get('allocation_percentage'),
+                'lead': rel_props.get('lead', False),
+                'start_date': rel_props.get('start_date'),
+                'end_date': rel_props.get('end_date'),
+                'target_id': target_props.get('id'),
+                'target_type': target_type,
+                'target_name': target_props.get('name') or target_props.get('title'),
+            })
+        
+        return allocations
+
+    async def get_lead_resources_for_project(
+        self,
+        project_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        Get all lead resources allocated to a project.
+        
+        Args:
+            project_id: Project UUID
+        
+        Returns:
+            List of lead resources
+        """
+        query = f"""
+        MATCH (r:Resource)-[rel:ALLOCATED_TO {{lead: true}}]->(p:Project {{id: '{project_id}'}})
+        RETURN {{r: r, rel: rel}} as result
+        """
+        results = await self.execute_query(query)
+        
+        resources = []
+        for result in results:
+            resource_data = result.get('r', {})
+            rel_data = result.get('rel', {})
+            
+            if 'properties' in resource_data:
+                resource_props = resource_data['properties']
+            else:
+                resource_props = resource_data
+            
+            if 'properties' in rel_data:
+                rel_props = rel_data['properties']
+            else:
+                rel_props = rel_data
+            
+            resources.append({
+                **resource_props,
+                'allocation_percentage': rel_props.get('allocation_percentage'),
+                'start_date': rel_props.get('start_date'),
+                'end_date': rel_props.get('end_date'),
+            })
+        
+        return resources
+
+    async def get_lead_resources_for_task(
+        self,
+        task_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        Get all lead resources allocated to a task.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+        
+        Returns:
+            List of lead resources
+        """
+        query = f"""
+        MATCH (r:Resource)-[rel:ALLOCATED_TO {{lead: true}}]->(t:WorkItem {{id: '{task_id}', type: 'task'}})
+        RETURN {{r: r, rel: rel}} as result
+        """
+        results = await self.execute_query(query)
+        
+        resources = []
+        for result in results:
+            resource_data = result.get('r', {})
+            rel_data = result.get('rel', {})
+            
+            if 'properties' in resource_data:
+                resource_props = resource_data['properties']
+            else:
+                resource_props = resource_data
+            
+            if 'properties' in rel_data:
+                rel_props = rel_data['properties']
+            else:
+                rel_props = rel_data
+            
+            resources.append({
+                **resource_props,
+                'allocation_percentage': rel_props.get('allocation_percentage'),
+                'start_date': rel_props.get('start_date'),
+                'end_date': rel_props.get('end_date'),
+            })
+        
+        return resources
+
+    async def check_task_backlog_sprint_status(
+        self,
+        task_id: str
+    ) -> dict[str, Any]:
+        """
+        Check if a task is in backlog or assigned to a sprint.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+        
+        Returns:
+            Dictionary with in_backlog (bool), sprint_id (str|None), and backlog_id (str|None)
+        
+        Raises:
+            ValueError: If task doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Check for IN_BACKLOG relationship
+        backlog_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:IN_BACKLOG]->(b:Backlog)
+        RETURN b.id as backlog_id
+        """
+        backlog_results = await self.execute_query(backlog_query)
+        
+        # Check for ASSIGNED_TO_SPRINT relationship
+        sprint_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:ASSIGNED_TO_SPRINT]->(s:Sprint)
+        RETURN s.id as sprint_id
+        """
+        sprint_results = await self.execute_query(sprint_query)
+        
+        # Extract IDs from results - AGE returns values directly
+        backlog_id = None
+        if backlog_results:
+            result = backlog_results[0]
+            if isinstance(result, dict):
+                backlog_id = result.get('backlog_id')
+            elif isinstance(result, str):
+                backlog_id = result
+        
+        sprint_id = None
+        if sprint_results:
+            result = sprint_results[0]
+            if isinstance(result, dict):
+                sprint_id = result.get('sprint_id')
+            elif isinstance(result, str):
+                sprint_id = result
+        
+        return {
+            'in_backlog': len(backlog_results) > 0,
+            'backlog_id': backlog_id,
+            'in_sprint': len(sprint_results) > 0,
+            'sprint_id': sprint_id
+        }
+
+    async def move_task_to_backlog(
+        self,
+        task_id: str,
+        backlog_id: str,
+        priority_order: int | None = None
+    ) -> dict[str, Any]:
+        """
+        Move a task to backlog, removing any sprint assignment (mutual exclusivity).
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            backlog_id: Backlog UUID
+            priority_order: Optional priority order in backlog
+        
+        Returns:
+            Created IN_BACKLOG relationship
+        
+        Raises:
+            ValueError: If task or backlog doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Verify backlog exists
+        backlog_query = f"MATCH (b:Backlog {{id: '{backlog_id}'}}) RETURN b"
+        backlog_results = await self.execute_query(backlog_query)
+        if not backlog_results:
+            raise ValueError(f"Backlog {backlog_id} not found")
+        
+        # Remove any existing ASSIGNED_TO_SPRINT relationship (mutual exclusivity)
+        remove_sprint_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:ASSIGNED_TO_SPRINT]->(:Sprint)
+        DELETE r
+        """
+        await self.execute_query(remove_sprint_query)
+        
+        # Remove any existing IN_BACKLOG relationship (to avoid duplicates)
+        remove_backlog_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:IN_BACKLOG]->(:Backlog)
+        DELETE r
+        """
+        await self.execute_query(remove_backlog_query)
+        
+        # Create IN_BACKLOG relationship
+        properties = {
+            'added_at': datetime.now(UTC).isoformat()
+        }
+        if priority_order is not None:
+            properties['priority_order'] = priority_order
+        
+        return await self.create_relationship(
+            from_id=task_id,
+            to_id=backlog_id,
+            rel_type='IN_BACKLOG',
+            properties=properties
+        )
+
+    async def move_task_to_sprint(
+        self,
+        task_id: str,
+        sprint_id: str,
+        assigned_by_user_id: str
+    ) -> dict[str, Any]:
+        """
+        Move a task to sprint, removing any backlog assignment (mutual exclusivity).
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            sprint_id: Sprint UUID
+            assigned_by_user_id: User ID who assigned the task
+        
+        Returns:
+            Created ASSIGNED_TO_SPRINT relationship
+        
+        Raises:
+            ValueError: If task or sprint doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Verify sprint exists
+        sprint_query = f"MATCH (s:Sprint {{id: '{sprint_id}'}}) RETURN s"
+        sprint_results = await self.execute_query(sprint_query)
+        if not sprint_results:
+            raise ValueError(f"Sprint {sprint_id} not found")
+        
+        # Remove any existing IN_BACKLOG relationship (mutual exclusivity)
+        remove_backlog_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:IN_BACKLOG]->(:Backlog)
+        DELETE r
+        """
+        await self.execute_query(remove_backlog_query)
+        
+        # Remove any existing ASSIGNED_TO_SPRINT relationship (to avoid duplicates)
+        remove_sprint_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:ASSIGNED_TO_SPRINT]->(:Sprint)
+        DELETE r
+        """
+        await self.execute_query(remove_sprint_query)
+        
+        # Create ASSIGNED_TO_SPRINT relationship
+        properties = {
+            'assigned_at': datetime.now(UTC).isoformat(),
+            'assigned_by_user_id': assigned_by_user_id
+        }
+        
+        return await self.create_relationship(
+            from_id=task_id,
+            to_id=sprint_id,
+            rel_type='ASSIGNED_TO_SPRINT',
+            properties=properties
+        )
+
+    async def remove_task_from_sprint(
+        self,
+        task_id: str,
+        sprint_id: str,
+        return_to_backlog: bool = True,
+        backlog_id: str | None = None
+    ) -> bool:
+        """
+        Remove a task from a sprint, optionally returning it to backlog.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            sprint_id: Sprint UUID
+            return_to_backlog: Whether to return task to backlog (default True)
+            backlog_id: Backlog UUID (required if return_to_backlog is True)
+        
+        Returns:
+            True if relationship was removed
+        
+        Raises:
+            ValueError: If task or sprint doesn't exist, or if return_to_backlog is True but backlog_id is None
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Remove ASSIGNED_TO_SPRINT relationship
+        remove_query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+        results = await self.execute_query(remove_query)
+        
+        # Extract deleted count - AGE may return int directly or in dict
+        deleted_count = 0
+        if results:
+            result = results[0]
+            if isinstance(result, dict):
+                deleted_count = result.get('deleted_count', 0)
+            elif isinstance(result, int):
+                deleted_count = result
+        
+        # Return to backlog if requested
+        if return_to_backlog and deleted_count > 0:
+            if not backlog_id:
+                raise ValueError("backlog_id is required when return_to_backlog is True")
+            
+            # Check if task status is "ready" before adding to backlog
+            task_data = task_results[0]
+            if 'properties' in task_data:
+                task_props = task_data['properties']
+            else:
+                task_props = task_data
+            
+            task_status = task_props.get('status')
+            if task_status == 'ready':
+                await self.move_task_to_backlog(task_id, backlog_id)
+        
+        return deleted_count > 0
+
+    async def link_task_to_risk(
+        self,
+        task_id: str,
+        risk_id: str
+    ) -> dict[str, Any]:
+        """
+        Create has_risk relationship from Task to Risk.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            risk_id: Risk UUID (WorkItem with type='risk')
+        
+        Returns:
+            Created relationship
+        
+        Raises:
+            ValueError: If task or risk doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Verify risk exists
+        risk_query = f"MATCH (r:WorkItem {{id: '{risk_id}', type: 'risk'}}) RETURN r"
+        risk_results = await self.execute_query(risk_query)
+        if not risk_results:
+            raise ValueError(f"Risk {risk_id} not found or is not of type 'risk'")
+        
+        # Create has_risk relationship
+        return await self.create_relationship(
+            from_id=task_id,
+            to_id=risk_id,
+            rel_type='has_risk'
+        )
+
+    async def unlink_task_from_risk(
+        self,
+        task_id: str,
+        risk_id: str
+    ) -> bool:
+        """
+        Remove has_risk relationship from Task to Risk.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            risk_id: Risk UUID (WorkItem with type='risk')
+        
+        Returns:
+            True if relationship was removed, False if it didn't exist
+        """
+        query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:has_risk]->(risk:WorkItem {{id: '{risk_id}', type: 'risk'}})
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+        results = await self.execute_query(query)
+        
+        # Extract deleted count - AGE may return int directly or in dict
+        deleted_count = 0
+        if results:
+            result = results[0]
+            if isinstance(result, dict):
+                deleted_count = result.get('deleted_count', 0)
+            elif isinstance(result, int):
+                deleted_count = result
+        
+        return deleted_count > 0
+
+    async def get_task_risks(
+        self,
+        task_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        Get all risks linked to a task.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+        
+        Returns:
+            List of risk data
+        
+        Raises:
+            ValueError: If task doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Get linked risks
+        query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:has_risk]->(r:WorkItem {{type: 'risk'}})
+        RETURN r
+        """
+        results = await self.execute_query(query)
+        
+        risks = []
+        for result in results:
+            risk_data = result
+            if 'properties' in risk_data:
+                risks.append(risk_data['properties'])
+            else:
+                risks.append(risk_data)
+        
+        return risks
+
+    async def link_task_to_requirement(
+        self,
+        task_id: str,
+        requirement_id: str
+    ) -> dict[str, Any]:
+        """
+        Create implements relationship from Task to Requirement.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            requirement_id: Requirement UUID (WorkItem with type='requirement')
+        
+        Returns:
+            Created relationship
+        
+        Raises:
+            ValueError: If task or requirement doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Verify requirement exists
+        req_query = f"MATCH (r:WorkItem {{id: '{requirement_id}', type: 'requirement'}}) RETURN r"
+        req_results = await self.execute_query(req_query)
+        if not req_results:
+            raise ValueError(f"Requirement {requirement_id} not found or is not of type 'requirement'")
+        
+        # Create implements relationship
+        return await self.create_relationship(
+            from_id=task_id,
+            to_id=requirement_id,
+            rel_type='implements'
+        )
+
+    async def unlink_task_from_requirement(
+        self,
+        task_id: str,
+        requirement_id: str
+    ) -> bool:
+        """
+        Remove implements relationship from Task to Requirement.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+            requirement_id: Requirement UUID (WorkItem with type='requirement')
+        
+        Returns:
+            True if relationship was removed, False if it didn't exist
+        """
+        query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:implements]->(req:WorkItem {{id: '{requirement_id}', type: 'requirement'}})
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+        results = await self.execute_query(query)
+        
+        # Extract deleted count - AGE may return int directly or in dict
+        deleted_count = 0
+        if results:
+            result = results[0]
+            if isinstance(result, dict):
+                deleted_count = result.get('deleted_count', 0)
+            elif isinstance(result, int):
+                deleted_count = result
+        
+        return deleted_count > 0
+
+    async def get_task_requirements(
+        self,
+        task_id: str
+    ) -> list[dict[str, Any]]:
+        """
+        Get all requirements implemented by a task.
+        
+        Args:
+            task_id: Task UUID (WorkItem with type='task')
+        
+        Returns:
+            List of requirement data
+        
+        Raises:
+            ValueError: If task doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+        
+        # Get linked requirements
+        query = f"""
+        MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:implements]->(r:WorkItem {{type: 'requirement'}})
+        RETURN r
+        """
+        results = await self.execute_query(query)
+        
+        requirements = []
+        for result in results:
+            req_data = result
+            if 'properties' in req_data:
+                requirements.append(req_data['properties'])
+            else:
+                requirements.append(req_data)
+        
+        return requirements
 
     def _dict_to_cypher_props(self, props: dict[str, Any]) -> str:
         """Convert Python dict to Cypher properties string"""

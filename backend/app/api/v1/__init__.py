@@ -14,6 +14,7 @@ from app.api.v1 import (
     llm,
     milestones,
     requirements,
+    resources,
     risks,
     schedule,
     signatures,
@@ -21,6 +22,7 @@ from app.api.v1 import (
     tests,
     time_entries,
     workitems,
+    workpackages,
 )
 
 api_router = APIRouter()
@@ -36,6 +38,9 @@ api_router.include_router(companies.router, tags=["companies"])
 
 # Include department routes
 api_router.include_router(departments.router, prefix="/departments", tags=["departments"])
+
+# Include resource routes
+api_router.include_router(resources.router, prefix="/resources", tags=["resources"])
 
 # Include audit routes
 api_router.include_router(audit.router, tags=["audit"])
@@ -78,3 +83,6 @@ api_router.include_router(time_entries.router, tags=["time-entries"])
 
 # Include template routes
 api_router.include_router(templates.router, tags=["templates"])
+
+# Include workpackage routes
+api_router.include_router(workpackages.router, tags=["workpackages"])

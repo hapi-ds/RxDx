@@ -14,6 +14,7 @@ from app.schemas.workitem import (
     WorkItemResponse,
     WorkItemUpdate,
 )
+from app.db.graph import GraphService, get_graph_service
 from app.services.audit_service import AuditService, get_audit_service
 from app.services.workitem_service import WorkItemService, get_workitem_service
 
@@ -534,4 +535,552 @@ async def compare_workitem_versions(
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error comparing WorkItem versions: {str(e)}"
+        )
+
+
+# Task-specific endpoints (Tasks are WorkItems with type='task')
+
+@router.get("/tasks/{task_id}/backlog-sprint-status")
+async def get_task_backlog_sprint_status(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Check if a task is in backlog or assigned to a sprint.
+    
+    Returns:
+    - in_backlog: Boolean indicating if task is in backlog
+    - backlog_id: UUID of backlog if in_backlog is true
+    - in_sprint: Boolean indicating if task is assigned to sprint
+    - sprint_id: UUID of sprint if in_sprint is true
+    
+    Note: A task can be in backlog OR sprint, never both (mutual exclusivity).
+    """
+    # Check read permission
+    if not has_permission(current_user.role, Permission.READ_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to read tasks"
+        )
+    
+    try:
+        status = await graph_service.check_task_backlog_sprint_status(str(task_id))
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="READ",
+            entity_type="Task",
+            entity_id=task_id,
+            details={
+                "action_type": "check_backlog_sprint_status",
+                "in_backlog": status['in_backlog'],
+                "in_sprint": status['in_sprint']
+            }
+        )
+        
+        return status
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error checking task status: {str(e)}"
+        )
+
+
+@router.post("/tasks/{task_id}/move-to-backlog", status_code=http_status.HTTP_200_OK)
+async def move_task_to_backlog(
+    task_id: UUID,
+    backlog_id: UUID = Query(..., description="Backlog UUID to move task to"),
+    priority_order: int | None = Query(None, description="Optional priority order in backlog"),
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Move a task to backlog, removing any sprint assignment (mutual exclusivity).
+    
+    This endpoint enforces mutual exclusivity between backlog and sprint:
+    - Removes any existing ASSIGNED_TO_SPRINT relationship
+    - Creates IN_BACKLOG relationship
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    - backlog_id: Backlog UUID to move task to
+    - priority_order: Optional priority order in backlog
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to move tasks"
+        )
+    
+    try:
+        relationship = await graph_service.move_task_to_backlog(
+            task_id=str(task_id),
+            backlog_id=str(backlog_id),
+            priority_order=priority_order
+        )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="UPDATE",
+            entity_type="Task",
+            entity_id=task_id,
+            details={
+                "action_type": "move_to_backlog",
+                "backlog_id": str(backlog_id),
+                "priority_order": priority_order
+            }
+        )
+        
+        return {
+            "message": "Task moved to backlog successfully",
+            "task_id": str(task_id),
+            "backlog_id": str(backlog_id),
+            "relationship": relationship
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error moving task to backlog: {str(e)}"
+        )
+
+
+@router.post("/tasks/{task_id}/move-to-sprint/{sprint_id}", status_code=http_status.HTTP_200_OK)
+async def move_task_to_sprint(
+    task_id: UUID,
+    sprint_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Move a task to sprint, removing any backlog assignment (mutual exclusivity).
+    
+    This endpoint enforces mutual exclusivity between backlog and sprint:
+    - Removes any existing IN_BACKLOG relationship
+    - Creates ASSIGNED_TO_SPRINT relationship
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    - sprint_id: Sprint UUID to assign task to
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to move tasks"
+        )
+    
+    try:
+        relationship = await graph_service.move_task_to_sprint(
+            task_id=str(task_id),
+            sprint_id=str(sprint_id),
+            assigned_by_user_id=str(current_user.id)
+        )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="UPDATE",
+            entity_type="Task",
+            entity_id=task_id,
+            details={
+                "action_type": "move_to_sprint",
+                "sprint_id": str(sprint_id)
+            }
+        )
+        
+        return {
+            "message": "Task moved to sprint successfully",
+            "task_id": str(task_id),
+            "sprint_id": str(sprint_id),
+            "relationship": relationship
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error moving task to sprint: {str(e)}"
+        )
+
+
+@router.post("/tasks/{task_id}/link-risk/{risk_id}", status_code=http_status.HTTP_200_OK)
+async def link_task_to_risk(
+    task_id: UUID,
+    risk_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Create has_risk relationship from Task to Risk.
+    
+    Links a task to a risk, indicating that the task has an associated risk.
+    A task can have multiple risks.
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    - risk_id: Risk UUID (WorkItem with type='risk')
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to link tasks to risks"
+        )
+    
+    try:
+        relationship = await graph_service.link_task_to_risk(
+            task_id=str(task_id),
+            risk_id=str(risk_id)
+        )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="CREATE",
+            entity_type="TaskRiskLink",
+            entity_id=None,
+            details={
+                "task_id": str(task_id),
+                "risk_id": str(risk_id),
+                "relationship_type": "has_risk"
+            }
+        )
+        
+        return {
+            "message": "Task linked to risk successfully",
+            "task_id": str(task_id),
+            "risk_id": str(risk_id),
+            "relationship": relationship
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error linking task to risk: {str(e)}"
+        )
+
+
+@router.delete("/tasks/{task_id}/link-risk/{risk_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def unlink_task_from_risk(
+    task_id: UUID,
+    risk_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Remove has_risk relationship from Task to Risk.
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    - risk_id: Risk UUID (WorkItem with type='risk')
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to unlink tasks from risks"
+        )
+    
+    try:
+        success = await graph_service.unlink_task_from_risk(
+            task_id=str(task_id),
+            risk_id=str(risk_id)
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail="Task-risk relationship not found"
+            )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="DELETE",
+            entity_type="TaskRiskLink",
+            entity_id=None,
+            details={
+                "task_id": str(task_id),
+                "risk_id": str(risk_id),
+                "relationship_type": "has_risk"
+            }
+        )
+        
+        return JSONResponse(
+            status_code=http_status.HTTP_204_NO_CONTENT,
+            content=None
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error unlinking task from risk: {str(e)}"
+        )
+
+
+@router.get("/tasks/{task_id}/risks")
+async def get_task_risks(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Get all risks linked to a task.
+    
+    Returns a list of risks (WorkItems with type='risk') that are linked to the task
+    via has_risk relationships.
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    """
+    # Check read permission
+    if not has_permission(current_user.role, Permission.READ_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to read task risks"
+        )
+    
+    try:
+        risks = await graph_service.get_task_risks(str(task_id))
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="READ",
+            entity_type="Task",
+            entity_id=task_id,
+            details={
+                "action_type": "get_risks",
+                "risk_count": len(risks)
+            }
+        )
+        
+        return {
+            "task_id": str(task_id),
+            "risks": risks,
+            "count": len(risks)
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving task risks: {str(e)}"
+        )
+
+
+@router.post("/tasks/{task_id}/link-requirement/{requirement_id}", status_code=http_status.HTTP_200_OK)
+async def link_task_to_requirement(
+    task_id: UUID,
+    requirement_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Create implements relationship from Task to Requirement.
+    
+    Links a task to a requirement, indicating that the task implements the requirement.
+    A task can implement multiple requirements.
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    - requirement_id: Requirement UUID (WorkItem with type='requirement')
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to link tasks to requirements"
+        )
+    
+    try:
+        relationship = await graph_service.link_task_to_requirement(
+            task_id=str(task_id),
+            requirement_id=str(requirement_id)
+        )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="CREATE",
+            entity_type="TaskRequirementLink",
+            entity_id=None,
+            details={
+                "task_id": str(task_id),
+                "requirement_id": str(requirement_id),
+                "relationship_type": "implements"
+            }
+        )
+        
+        return {
+            "message": "Task linked to requirement successfully",
+            "task_id": str(task_id),
+            "requirement_id": str(requirement_id),
+            "relationship": relationship
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error linking task to requirement: {str(e)}"
+        )
+
+
+@router.delete("/tasks/{task_id}/link-requirement/{requirement_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def unlink_task_from_requirement(
+    task_id: UUID,
+    requirement_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Remove implements relationship from Task to Requirement.
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    - requirement_id: Requirement UUID (WorkItem with type='requirement')
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to unlink tasks from requirements"
+        )
+    
+    try:
+        success = await graph_service.unlink_task_from_requirement(
+            task_id=str(task_id),
+            requirement_id=str(requirement_id)
+        )
+        
+        if not success:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail="Task-requirement relationship not found"
+            )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="DELETE",
+            entity_type="TaskRequirementLink",
+            entity_id=None,
+            details={
+                "task_id": str(task_id),
+                "requirement_id": str(requirement_id),
+                "relationship_type": "implements"
+            }
+        )
+        
+        return JSONResponse(
+            status_code=http_status.HTTP_204_NO_CONTENT,
+            content=None
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error unlinking task from requirement: {str(e)}"
+        )
+
+
+@router.get("/tasks/{task_id}/requirements")
+async def get_task_requirements(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Get all requirements implemented by a task.
+    
+    Returns a list of requirements (WorkItems with type='requirement') that are implemented
+    by the task via implements relationships.
+    
+    Args:
+    - task_id: Task UUID (WorkItem with type='task')
+    """
+    # Check read permission
+    if not has_permission(current_user.role, Permission.READ_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to read task requirements"
+        )
+    
+    try:
+        requirements = await graph_service.get_task_requirements(str(task_id))
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="READ",
+            entity_type="Task",
+            entity_id=task_id,
+            details={
+                "action_type": "get_requirements",
+                "requirement_count": len(requirements)
+            }
+        )
+        
+        return {
+            "task_id": str(task_id),
+            "requirements": requirements,
+            "count": len(requirements)
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving task requirements: {str(e)}"
         )

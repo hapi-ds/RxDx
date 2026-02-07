@@ -81,12 +81,12 @@ This task list implements the backend schedule API with dual-methodology project
 - No versioning/signing complexity like WorkItems
 
 ### Task 1.5: Create LINKED_TO_DEPARTMENT Relationship
-- [ ] Create LINKED_TO_DEPARTMENT edge label in Apache AGE
-- [ ] Add relationship creation in graph service
-- [ ] Add endpoint: POST /api/v1/workpackages/{id}/link-department/{dept_id}
-- [ ] Add endpoint: DELETE /api/v1/workpackages/{id}/link-department/{dept_id}
-- [ ] Add endpoint: GET /api/v1/workpackages/{id}/department
-- [ ] Write unit tests for department linking
+- [x] Create LINKED_TO_DEPARTMENT edge label in Apache AGE
+- [x] Add relationship creation in graph service
+- [x] Add endpoint: POST /api/v1/workpackages/{id}/link-department/{dept_id}
+- [x] Add endpoint: DELETE /api/v1/workpackages/{id}/link-department/{dept_id}
+- [x] Add endpoint: GET /api/v1/workpackages/{id}/department
+- [x] Write unit tests for department linking
 - [ ] Write property test: Workpackage can link to at most one Department
 
 **Details:**
@@ -96,12 +96,12 @@ This task list implements the backend schedule API with dual-methodology project
 - Purpose: Department-based resource allocation
 
 ### Task 1.6: Update ALLOCATED_TO Relationship
-- [ ] Add "lead" boolean property to ALLOCATED_TO relationship
-- [ ] Update relationship to support Project OR Task targets
-- [ ] Update graph service to handle dual target types
-- [ ] Update resource allocation endpoints
-- [ ] Write migration script: Add lead=false to existing allocations
-- [ ] Write unit tests for lead flag functionality
+- [x] Add "lead" boolean property to ALLOCATED_TO relationship
+- [x] Update relationship to support Project OR Task targets
+- [x] Update graph service to handle dual target types
+- [x] Update resource allocation endpoints
+- [x] Write migration script: Add lead=false to existing allocations
+- [-] Write unit tests for lead flag functionality
 - [ ] Write property test: lead is always boolean
 - [ ] Write property test: Resource allocated to Project XOR Task
 

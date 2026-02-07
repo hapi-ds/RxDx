@@ -74,6 +74,30 @@ class WorkItemService:
                 properties["due_date"] = due_date_attr.isoformat()
             else:
                 properties["due_date"] = None
+        
+        # Task-specific properties (for type='task')
+        if hasattr(workitem_data, 'skills_needed'):
+            skills = getattr(workitem_data, 'skills_needed', None)
+            if skills is not None:
+                # Store as JSON array in graph database
+                properties["skills_needed"] = skills
+        if hasattr(workitem_data, 'workpackage_id'):
+            wp_id = getattr(workitem_data, 'workpackage_id', None)
+            if wp_id is not None:
+                properties["workpackage_id"] = str(wp_id)
+        if hasattr(workitem_data, 'story_points'):
+            properties["story_points"] = workitem_data.story_points
+        if hasattr(workitem_data, 'done'):
+            properties["done"] = workitem_data.done
+        if hasattr(workitem_data, 'start_date'):
+            start_date_attr = getattr(workitem_data, 'start_date', None)
+            if start_date_attr is not None:
+                properties["start_date"] = start_date_attr.isoformat()
+        if hasattr(workitem_data, 'end_date'):
+            end_date_attr = getattr(workitem_data, 'end_date', None)
+            if end_date_attr is not None:
+                properties["end_date"] = end_date_attr.isoformat()
+        
         if hasattr(workitem_data, 'test_type'):
             properties["test_type"] = workitem_data.test_type
         if hasattr(workitem_data, 'test_steps'):
@@ -254,6 +278,21 @@ class WorkItemService:
             due_date_value = getattr(updates, 'due_date')
             if due_date_value is not None:
                 update_data["due_date"] = due_date_value.isoformat()
+        
+        # Task-specific updates
+        if hasattr(updates, 'skills_needed') and updates.skills_needed is not None:
+            update_data["skills_needed"] = updates.skills_needed
+        if hasattr(updates, 'workpackage_id') and updates.workpackage_id is not None:
+            update_data["workpackage_id"] = str(updates.workpackage_id)
+        if hasattr(updates, 'story_points') and updates.story_points is not None:
+            update_data["story_points"] = updates.story_points
+        if hasattr(updates, 'done') and updates.done is not None:
+            update_data["done"] = updates.done
+        if hasattr(updates, 'start_date') and updates.start_date is not None:
+            update_data["start_date"] = updates.start_date.isoformat()
+        if hasattr(updates, 'end_date') and updates.end_date is not None:
+            update_data["end_date"] = updates.end_date.isoformat()
+        
         if hasattr(updates, 'test_type') and updates.test_type is not None:
             update_data["test_type"] = updates.test_type
         if hasattr(updates, 'test_steps') and updates.test_steps is not None:

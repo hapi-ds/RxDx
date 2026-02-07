@@ -12,6 +12,7 @@ from app.api.v1 import (
     graph,
     health,
     llm,
+    milestones,
     requirements,
     risks,
     schedule,
@@ -65,6 +66,9 @@ api_router.include_router(risks.router, prefix="/risks", tags=["risks"])
 
 # Include LLM routes
 api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
+
+# Include milestone routes
+api_router.include_router(milestones.router, tags=["milestones"])
 
 # Include schedule routes
 api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"])

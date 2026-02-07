@@ -423,6 +423,78 @@ class TaskBase(WorkItemBase):
     estimated_hours: float | None = Field(None, ge=0, description="Estimated hours to complete")
     actual_hours: float | None = Field(None, ge=0, description="Actual hours spent")
     due_date: datetime | None = Field(None, description="Due date for the task")
+    
+    # Task-specific properties for scheduling and resource matching
+    skills_needed: list[str] | None = Field(None, description="Skills required for this task (for resource matching)")
+    workpackage_id: UUID | None = Field(None, description="ID of the workpackage this task belongs to (for quick lookup)")
+    story_points: int | None = Field(None, ge=0, le=100, description="Story points for agile estimation")
+    done: bool = Field(default=False, description="Whether the task is completed")
+    start_date: datetime | None = Field(None, description="Scheduled start date")
+    end_date: datetime | None = Field(None, description="Scheduled end date")
+    
+    @field_validator("skills_needed")
+    @classmethod
+    def validate_skills_needed(cls, v: list[str] | None) -> list[str] | None:
+        """Validate skills_needed is always an array of non-empty strings"""
+        if v is None:
+            return v
+        
+        if not isinstance(v, list):
+            raise ValueError("skills_needed must be an array")
+        
+        # Filter out empty strings and validate
+        valid_skills = []
+        for skill in v:
+            if not isinstance(skill, str):
+                raise ValueError("All skills must be strings")
+            
+            skill_clean = skill.strip()
+            if not skill_clean:
+                raise ValueError("Skills cannot be empty strings")
+            
+            if len(skill_clean) > 100:
+                raise ValueError("Skill name cannot exceed 100 characters")
+            
+            valid_skills.append(skill_clean)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_skills = []
+        for skill in valid_skills:
+            skill_lower = skill.lower()
+            if skill_lower not in seen:
+                seen.add(skill_lower)
+                unique_skills.append(skill)
+        
+        return unique_skills if unique_skills else None
+    
+    @field_validator("story_points")
+    @classmethod
+    def validate_story_points(cls, v: int | None) -> int | None:
+        """Validate story points are reasonable"""
+        if v is None:
+            return v
+        
+        if v < 0:
+            raise ValueError("Story points cannot be negative")
+        
+        if v > 100:
+            raise ValueError("Story points cannot exceed 100 (consider breaking down the task)")
+        
+        return v
+    
+    @field_validator("start_date", "end_date")
+    @classmethod
+    def validate_dates(cls, v: datetime | None) -> datetime | None:
+        """Validate dates are reasonable"""
+        if v is None:
+            return v
+        
+        # Ensure timezone-aware datetime
+        if v.tzinfo is None:
+            raise ValueError("Dates must be timezone-aware")
+        
+        return v
 
 
 class TaskCreate(TaskBase):
@@ -442,6 +514,14 @@ class TaskUpdate(BaseModel):
     estimated_hours: float | None = Field(None, ge=0)
     actual_hours: float | None = Field(None, ge=0)
     due_date: datetime | None = None
+    
+    # Task-specific properties
+    skills_needed: list[str] | None = None
+    workpackage_id: UUID | None = None
+    story_points: int | None = Field(None, ge=0, le=100)
+    done: bool | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
     @field_validator("status")
     @classmethod
@@ -461,6 +541,42 @@ class TaskUpdate(BaseModel):
         if not v.strip():
             raise ValueError("Title cannot be empty or only whitespace")
         return v.strip()
+    
+    @field_validator("skills_needed")
+    @classmethod
+    def validate_skills_needed(cls, v: list[str] | None) -> list[str] | None:
+        """Validate skills_needed if provided"""
+        if v is None:
+            return v
+        
+        if not isinstance(v, list):
+            raise ValueError("skills_needed must be an array")
+        
+        # Filter out empty strings and validate
+        valid_skills = []
+        for skill in v:
+            if not isinstance(skill, str):
+                raise ValueError("All skills must be strings")
+            
+            skill_clean = skill.strip()
+            if not skill_clean:
+                raise ValueError("Skills cannot be empty strings")
+            
+            if len(skill_clean) > 100:
+                raise ValueError("Skill name cannot exceed 100 characters")
+            
+            valid_skills.append(skill_clean)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_skills = []
+        for skill in valid_skills:
+            skill_lower = skill.lower()
+            if skill_lower not in seen:
+                seen.add(skill_lower)
+                unique_skills.append(skill)
+        
+        return unique_skills if unique_skills else None
 
 
 class TaskResponse(TaskBase):

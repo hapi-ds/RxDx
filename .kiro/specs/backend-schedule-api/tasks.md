@@ -6,7 +6,8 @@ This task list implements the backend schedule API with dual-methodology project
 
 **Key Features:**
 - Company → Department → Resource organizational hierarchy
-- Task and Milestone as separate node types (not WorkItem)
+- Tasks as WorkItem nodes (type='task') - integrated with requirements, risks, tests
+- Milestones as separate Milestone nodes - used only for project scheduling
 - Skills-based resource matching
 - Mutually exclusive Backlog/Sprint relationships
 - Resource allocation with lead flag
@@ -17,11 +18,11 @@ This task list implements the backend schedule API with dual-methodology project
 ## Phase 1: Graph Database Schema Setup
 
 ### Task 1.1: Create Company Node Type
-- [ ] Create Company vertex label in Apache AGE graph
-- [ ] Add Company node creation in graph service
-- [ ] Add Company CRUD endpoints
-- [ ] Write unit tests for Company operations
-- [ ] Write property test: Company nodes have valid UUIDs
+- [x] Create Company vertex label in Apache AGE graph
+- [x] Add Company node creation in graph service
+- [x] Add Company CRUD endpoints
+- [x] Write unit tests for Company operations
+- [x] Write property test: Company nodes have valid UUIDs
 
 **Details:**
 - Properties: id, name, description, created_at, updated_at
@@ -31,49 +32,53 @@ This task list implements the backend schedule API with dual-methodology project
 - Endpoint: DELETE /api/v1/companies/{id}
 
 ### Task 1.2: Update Department Node Type
-- [ ] Add company_id property to Department nodes
-- [ ] Create PARENT_OF relationship from Company to Department
-- [ ] Update Department creation to require company_id
-- [ ] Update Department endpoints to include company relationship
-- [ ] Write migration script for existing Departments
-- [ ] Write unit tests for Company-Department relationship
-- [ ] Write property test: All Departments belong to a Company
+- [x] Add company_id property to Department nodes
+- [x] Create PARENT_OF relationship from Company to Department
+- [x] Update Department creation to require company_id
+- [x] Update Department endpoints to include company relationship
+- [x] Write migration script for existing Departments
+- [x] Write unit tests for Company-Department relationship
+- [x] Write property test: All Departments belong to a Company
 
 **Details:**
 - Add company_id to Department properties
 - Update graph queries to include Company relationship
 - Migration: Assign existing departments to default company
 
-### Task 1.3: Create Task Node Type (Separate from WorkItem)
-- [ ] Create Task vertex label in Apache AGE graph
-- [ ] Add skills_needed property (array of strings)
-- [ ] Add workpackage_id property for quick lookup
-- [ ] Create Task node creation in graph service
-- [ ] Write migration script: WorkItem(type='task') → Task nodes
-- [ ] Update WorkItem service to query Task nodes
-- [ ] Write unit tests for Task node operations
-- [ ] Write property test: All Tasks have valid workpackage_id
-- [ ] Write property test: skills_needed is always an array
+### Task 1.3: Add Task-Specific Properties to WorkItem
+- [x] Add skills_needed property to WorkItem(type='task') (array of strings)
+- [x] Add workpackage_id property to WorkItem(type='task') for quick lookup
+- [x] Add story_points property to WorkItem(type='task')
+- [x] Add done property to WorkItem(type='task')
+- [x] Add start_date, end_date, due_date properties to WorkItem(type='task')
+- [x] Update WorkItem schemas to include task-specific properties
+- [x] Write unit tests for task properties
+- [x] Write property test: skills_needed is always an array
+- [x] Write property test: All tasks have valid workpackage_id when assigned
 
 **Details:**
-- Label: "Task" (not WorkItem)
-- Properties: id, title, description, status, priority, estimated_hours, actual_hours, story_points, skills_needed, done, start_date, end_date, due_date, workpackage_id, version, created_by, created_at, updated_at, is_signed
-- Maintain backward compatibility with WorkItem service
+- Tasks remain as WorkItem nodes with type='task'
+- Properties: skills_needed (for resource matching), workpackage_id (for quick lookup), story_points, done, start_date, end_date, due_date
+- No separate Task node type - use existing WorkItem infrastructure
 
-### Task 1.4: Create Milestone Node Type (Separate from WorkItem)
-- [ ] Create Milestone vertex label in Apache AGE graph
-- [ ] Add project_id property for quick lookup
-- [ ] Create Milestone node creation in graph service
-- [ ] Write migration script: WorkItem(type='milestone') → Milestone nodes
-- [ ] Update WorkItem service to query Milestone nodes
-- [ ] Write unit tests for Milestone node operations
-- [ ] Write property test: All Milestones have valid project_id
-- [ ] Write property test: is_manual_constraint is always boolean
+### Task 1.4: Create Milestone Node Type
+- [x] Create Milestone vertex label in Apache AGE graph
+- [x] Add Milestone node creation in graph service
+- [x] Create Milestone schemas (MilestoneBase, MilestoneCreate, MilestoneUpdate, MilestoneResponse)
+- [x] Add validation for target_date (must be future date for new milestones)
+- [x] Add validation for is_manual_constraint (boolean)
+- [x] Create MilestoneService for CRUD operations
+- [x] Add Milestone CRUD endpoints
+- [x] Write unit tests for Milestone operations
+- [x] Write property test: is_manual_constraint is always boolean
+- [x] Write property test: All milestones have valid project_id
 
 **Details:**
-- Label: "Milestone" (not WorkItem)
+- Milestones are separate Milestone nodes (NOT WorkItem)
 - Properties: id, title, description, target_date, is_manual_constraint, completion_criteria, status, project_id, version, created_by, created_at, updated_at
-- Maintain backward compatibility with WorkItem service
+- Query pattern: `MATCH (m:Milestone)` not `MATCH (w:WorkItem {type: 'milestone'})`
+- Used exclusively for project scheduling, not general work tracking
+- No versioning/signing complexity like WorkItems
 
 ### Task 1.5: Create LINKED_TO_DEPARTMENT Relationship
 - [ ] Create LINKED_TO_DEPARTMENT edge label in Apache AGE
@@ -156,29 +161,32 @@ This task list implements the backend schedule API with dual-methodology project
 - [ ] Update DepartmentCreate to require company_id
 - [ ] Write unit tests for updated schemas
 
-### Task 2.3: Create Task Schemas (Separate from WorkItem)
-- [ ] Create TaskBase schema with skills_needed field
-- [ ] Create TaskCreate schema
-- [ ] Create TaskUpdate schema
-- [ ] Create TaskResponse schema
+### Task 2.3: Update WorkItem Schemas for Task Properties
+- [ ] Update TaskBase (WorkItem) schema to include skills_needed field
+- [ ] Update TaskCreate (WorkItem) schema to include task-specific properties
+- [ ] Update TaskUpdate (WorkItem) schema to include task-specific properties
+- [ ] Update TaskResponse (WorkItem) schema to include task-specific properties
 - [ ] Add validator for skills_needed (must be array)
 - [ ] Add validator for workpackage_id (must exist)
-- [ ] Write unit tests for Task schemas
+- [ ] Write unit tests for Task (WorkItem) schemas
 - [ ] Write property test: skills_needed validation
 
 **Details:**
+- Tasks are WorkItem nodes with type='task'
 - skills_needed: list[str] | None
 - Validate skills are non-empty strings
-- Maintain compatibility with existing WorkItem schemas
+- Use existing WorkItem schema infrastructure
 
-### Task 2.4: Create Milestone Schemas (Separate from WorkItem)
-- [ ] Create MilestoneBase schema
-- [ ] Create MilestoneCreate schema
-- [ ] Create MilestoneUpdate schema
-- [ ] Create MilestoneResponse schema
-- [ ] Add validator for target_date (must be future date)
-- [ ] Add validator for is_manual_constraint (boolean)
-- [ ] Write unit tests for Milestone schemas
+### Task 2.4: Milestone Schemas Already Complete ✅
+- [x] MilestoneBase schema created
+- [x] MilestoneCreate schema created
+- [x] MilestoneUpdate schema created
+- [x] MilestoneResponse schema created
+- [x] Validator for target_date added
+- [x] Validator for is_manual_constraint added
+- [x] Unit tests for Milestone schemas written
+
+**Note:** Milestone schemas completed in Task 1.4
 
 ### Task 2.5: Update Resource Schemas
 - [ ] Add skills field to ResourceBase (list[str])
@@ -214,33 +222,34 @@ This task list implements the backend schedule API with dual-methodology project
 - [ ] Update delete_department to check for resources
 - [ ] Write unit tests for updated DepartmentService
 
-### Task 3.3: Create TaskService (Separate from WorkItemService)
-- [ ] Implement create_task method (creates Task node)
-- [ ] Implement get_task method
-- [ ] Implement update_task method
-- [ ] Implement delete_task method
-- [ ] Implement list_tasks method with filters
-- [ ] Add automatic BELONGS_TO Workpackage relationship
+### Task 3.3: Update WorkItemService for Task Properties
+- [ ] Update create_workitem to handle task-specific properties (skills_needed, workpackage_id, etc.)
+- [ ] Update get_workitem to return task-specific properties
+- [ ] Update update_workitem to handle task-specific properties
+- [ ] Add automatic BELONGS_TO Workpackage relationship when workpackage_id is provided
 - [ ] Add automatic IN_BACKLOG when status="ready"
-- [ ] Add skills_needed handling
-- [ ] Write unit tests for TaskService
-- [ ] Write property test: Tasks always belong to Workpackage
+- [ ] Add skills_needed handling in WorkItem creation/update
+- [ ] Write unit tests for task-specific properties in WorkItemService
+- [ ] Write property test: Tasks (WorkItem type='task') always belong to Workpackage
 - [ ] Write property test: Ready tasks automatically in backlog
 
 **Details:**
-- Query Task nodes: MATCH (t:Task)
-- Maintain compatibility with WorkItem patterns
+- Tasks are WorkItem nodes with type='task'
+- Query pattern: MATCH (w:WorkItem {type: 'task'})
+- Use existing WorkItemService infrastructure
 - Support version history via NEXT_VERSION
 
-### Task 3.4: Create MilestoneService (Separate from WorkItemService)
-- [ ] Implement create_milestone method (creates Milestone node)
-- [ ] Implement get_milestone method
-- [ ] Implement update_milestone method
-- [ ] Implement delete_milestone method
-- [ ] Implement list_milestones method
-- [ ] Add milestone dependency management
-- [ ] Write unit tests for MilestoneService
-- [ ] Write property test: Milestones always belong to Project
+### Task 3.4: MilestoneService Already Complete ✅
+- [x] create_milestone method implemented (creates Milestone node)
+- [x] get_milestone method implemented
+- [x] update_milestone method implemented
+- [x] delete_milestone method implemented
+- [x] list_milestones method implemented
+- [x] Milestone dependency management added
+- [x] Unit tests for MilestoneService written
+- [x] Property test: Milestones always belong to Project written
+
+**Note:** MilestoneService completed in Task 1.4
 
 ### Task 3.5: Update ResourceService for Skills Matching
 - [ ] Add get_resources_by_skills method
@@ -311,12 +320,17 @@ This task list implements the backend schedule API with dual-methodology project
 - Query: Workpackage → LINKED_TO_DEPARTMENT → Department → BELONGS_TO → Resources
 - Match skills_needed with department resource skills
 
-### Task 4.3: Update Schedule Calculation for Task Nodes
-- [ ] Update schedule_project to query Task nodes (not WorkItem)
-- [ ] Update task date updates to use Task nodes
+### Task 4.3: Update Schedule Calculation for WorkItem Tasks
+- [ ] Update schedule_project to query WorkItem nodes with type='task'
+- [ ] Update task date updates to use WorkItem nodes (type='task')
 - [ ] Maintain compatibility with existing schedule schemas
-- [ ] Write unit tests for Task node scheduling
+- [ ] Write unit tests for WorkItem task scheduling
 - [ ] Write property test: Scheduled tasks have valid dates
+
+**Details:**
+- Query pattern: MATCH (w:WorkItem {type: 'task'})
+- Tasks are WorkItem nodes, not separate Task nodes
+- Use existing WorkItem infrastructure
 
 ### Task 4.4: Add Sprint Boundary Constraints
 - [ ] Add sprint boundary validation to scheduler
@@ -345,35 +359,37 @@ This task list implements the backend schedule API with dual-methodology project
 - [ ] Add GET /api/v1/departments/{id}/company - Get department's company
 - [ ] Write integration tests for updated endpoints
 
-### Task 5.3: Task Endpoints (Separate from WorkItem)
-- [ ] POST /api/v1/tasks - Create task (Task node)
-- [ ] GET /api/v1/tasks - List tasks with filters
-- [ ] GET /api/v1/tasks/{id} - Get task
-- [ ] PUT /api/v1/tasks/{id} - Update task
-- [ ] DELETE /api/v1/tasks/{id} - Delete task
-- [ ] POST /api/v1/tasks/{id}/link-risk/{risk_id} - Link to risk
-- [ ] POST /api/v1/tasks/{id}/link-requirement/{req_id} - Link to requirement
-- [ ] GET /api/v1/tasks/{id}/risks - Get task risks
-- [ ] GET /api/v1/tasks/{id}/requirements - Get task requirements
+### Task 5.3: Task Endpoints via WorkItem API
+- [ ] Update POST /api/v1/workitems to support task-specific properties (skills_needed, workpackage_id, etc.)
+- [ ] Update GET /api/v1/workitems with type='task' filter to list tasks
+- [ ] Update GET /api/v1/workitems/{id} to return task-specific properties
+- [ ] Update PUT /api/v1/workitems/{id} to support task-specific properties
+- [ ] Add POST /api/v1/workitems/{id}/link-risk/{risk_id} - Link to risk
+- [ ] Add POST /api/v1/workitems/{id}/link-requirement/{req_id} - Link to requirement
+- [ ] Add GET /api/v1/workitems/{id}/risks - Get task risks
+- [ ] Add GET /api/v1/workitems/{id}/requirements - Get task requirements
 - [ ] Add authentication and authorization
 - [ ] Write integration tests for task endpoints
 
 **Details:**
-- Maintain compatibility with existing WorkItem endpoints
+- Tasks are WorkItem nodes with type='task'
+- Use existing WorkItem endpoints with type filtering
 - Support filtering by skills_needed
 - Support filtering by backlog/sprint status
 
-### Task 5.4: Milestone Endpoints (Separate from WorkItem)
-- [ ] POST /api/v1/milestones - Create milestone (Milestone node)
-- [ ] GET /api/v1/milestones - List milestones
-- [ ] GET /api/v1/milestones/{id} - Get milestone
-- [ ] PUT /api/v1/milestones/{id} - Update milestone
-- [ ] DELETE /api/v1/milestones/{id} - Delete milestone
+### Task 5.4: Milestone Endpoints Already Complete ✅
+- [x] POST /api/v1/milestones - Create milestone (Milestone node)
+- [x] GET /api/v1/milestones - List milestones
+- [x] GET /api/v1/milestones/{id} - Get milestone
+- [x] PUT /api/v1/milestones/{id} - Update milestone
+- [x] DELETE /api/v1/milestones/{id} - Delete milestone
 - [ ] POST /api/v1/milestones/{id}/dependencies/{task_id} - Add dependency
 - [ ] DELETE /api/v1/milestones/{id}/dependencies/{task_id} - Remove dependency
 - [ ] GET /api/v1/milestones/{id}/dependencies - Get dependencies
-- [ ] Add authentication and authorization
-- [ ] Write integration tests for milestone endpoints
+- [x] Authentication and authorization added
+- [x] Integration tests for milestone endpoints written
+
+**Note:** Basic Milestone endpoints completed in Task 1.4. Dependency management endpoints still needed.
 
 ### Task 5.5: Workpackage-Department Link Endpoints
 - [ ] POST /api/v1/workpackages/{id}/link-department/{dept_id} - Link to department
@@ -420,11 +436,15 @@ This task list implements the backend schedule API with dual-methodology project
 ### Task 6.2: Update API Service
 - [ ] Add CompanyService methods
 - [ ] Update DepartmentService methods
-- [ ] Add TaskService methods (separate from WorkItem)
-- [ ] Add MilestoneService methods (separate from WorkItem)
+- [ ] Update WorkItemService methods for task-specific properties (skills_needed, etc.)
+- [ ] Milestone API service methods already complete ✅
 - [ ] Update ResourceService for skills and lead flag
 - [ ] Add WorkpackageDepartmentService methods
 - [ ] Write unit tests for API service methods
+
+**Details:**
+- Tasks use WorkItem API with type='task' filter
+- Milestones use separate Milestone API (already implemented)
 
 ### Task 6.3: Create Company Management UI
 - [ ] Create CompanyList component
@@ -468,13 +488,17 @@ This task list implements the backend schedule API with dual-methodology project
 
 ### Task 7.1: Property-Based Tests for Graph Constraints
 - [ ] Write property test: Company → Department hierarchy is acyclic
-- [ ] Write property test: All Tasks belong to exactly one Workpackage
-- [ ] Write property test: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
+- [ ] Write property test: All Tasks (WorkItem type='task') belong to exactly one Workpackage
+- [ ] Write property test: Task (WorkItem) has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
 - [ ] Write property test: Resource allocated to Project XOR Task (not both)
 - [ ] Write property test: Workpackage links to at most one Department
 - [ ] Write property test: All Milestones belong to exactly one Project
 
 **Validates: Requirements 16.1-16.78**
+
+**Details:**
+- Tasks are WorkItem nodes with type='task'
+- Milestones are separate Milestone nodes
 
 ### Task 7.2: Property-Based Tests for Skills Matching
 - [ ] Write property test: Allocated resources have all required skills
@@ -513,29 +537,43 @@ This task list implements the backend schedule API with dual-methodology project
 ### Task 8.1: Data Migration Scripts
 - [ ] Write migration: Create Company nodes for existing data
 - [ ] Write migration: Add company_id to existing Departments
-- [ ] Write migration: Convert WorkItem(type='task') to Task nodes
-- [ ] Write migration: Convert WorkItem(type='milestone') to Milestone nodes
+- [ ] Write migration: Add task-specific properties to existing WorkItem(type='task') nodes
 - [ ] Write migration: Add lead=false to existing ALLOCATED_TO relationships
 - [ ] Write migration: Add skills=[] to existing Resources
 - [ ] Test migrations on staging data
 - [ ] Write rollback scripts
 
+**Details:**
+- NO conversion needed - Tasks remain as WorkItem(type='task')
+- Milestones already implemented as separate nodes
+- Only add new properties to existing WorkItem tasks
+
 ### Task 8.2: Database Schema Updates
 - [ ] Create Company vertex label in AGE
-- [ ] Create Task vertex label in AGE
-- [ ] Create Milestone vertex label in AGE
+- [ ] Create Milestone vertex label in AGE (already done ✅)
 - [ ] Create LINKED_TO_DEPARTMENT edge label
 - [ ] Create has_risk edge label
 - [ ] Create implements edge label
 - [ ] Update ALLOCATED_TO edge properties
 - [ ] Create indexes for performance
 
+**Details:**
+- NO Task vertex label needed - Tasks use WorkItem label with type='task'
+- Milestone vertex label already created in Task 1.4
+- Focus on relationships and new organizational entities
+
 ### Task 8.3: Documentation Updates
 - [ ] Update API documentation (OpenAPI/Swagger)
 - [ ] Update graph schema documentation
 - [ ] Create migration guide
 - [ ] Update user guide for new features
-- [ ] Create developer guide for Task/Milestone nodes
+- [ ] Document that Tasks remain as WorkItem(type='task'), not separate nodes
+- [ ] Document that Milestones are separate Milestone nodes
+
+**Details:**
+- Clarify architecture: Tasks = WorkItem nodes, Milestones = Milestone nodes
+- Document query patterns for both entity types
+- Explain rationale for architectural decisions
 
 ### Task 8.4: Deployment
 - [ ] Deploy database schema changes

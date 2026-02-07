@@ -128,7 +128,109 @@ class MockGraphService:
 
     async def execute_query(self, query, params=None):
         # Mock query results based on query content
-        if "MATCH (ts:WorkItem)" in query and "test_spec" in query:
+        if "MATCH (m:Milestone)" in query:
+            # Handle Milestone queries
+            milestones = [item for item in self.workitems.values()
+                         if item.get('label') == 'Milestone']
+            
+            # Apply filters from WHERE clause or inline in MATCH
+            # Check for inline id filter in MATCH clause: MATCH (m:Milestone {id: 'xxx'})
+            if "{id: '" in query:
+                import re
+                id_match = re.search(r"\{id: '([^']+)'\}", query)
+                if id_match:
+                    milestone_id = id_match.group(1)
+                    milestones = [m for m in milestones 
+                                if m.get('id') == milestone_id or 
+                                   m.get('properties', {}).get('id') == milestone_id]
+            
+            if "WHERE" in query:
+                # Extract project_id filter
+                if "m.project_id = '" in query:
+                    import re
+                    project_match = re.search(r"m\.project_id = '([^']+)'", query)
+                    if project_match:
+                        project_id = project_match.group(1)
+                        milestones = [m for m in milestones 
+                                    if m.get('project_id') == project_id or 
+                                       m.get('properties', {}).get('project_id') == project_id]
+                
+                # Extract status filter
+                if "m.status = '" in query:
+                    import re
+                    status_match = re.search(r"m\.status = '([^']+)'", query)
+                    if status_match:
+                        status = status_match.group(1)
+                        milestones = [m for m in milestones 
+                                    if m.get('status') == status or 
+                                       m.get('properties', {}).get('status') == status]
+                
+                # Extract id filter
+                if "m.id = '" in query:
+                    import re
+                    id_match = re.search(r"m\.id = '([^']+)'", query)
+                    if id_match:
+                        milestone_id = id_match.group(1)
+                        milestones = [m for m in milestones 
+                                    if m.get('id') == milestone_id or 
+                                       m.get('properties', {}).get('id') == milestone_id]
+            
+            # Handle DELETE queries
+            if "DETACH DELETE m" in query:
+                # Extract id from query
+                import re
+                id_match = re.search(r"m\.id = '([^']+)'", query)
+                if id_match:
+                    milestone_id = id_match.group(1)
+                    if milestone_id in self.workitems:
+                        del self.workitems[milestone_id]
+                return []
+            
+            # Handle UPDATE queries
+            if "SET" in query:
+                # Extract id and update fields
+                import re
+                id_match = re.search(r"m\.id = '([^']+)'", query)
+                if id_match and milestones:
+                    milestone_id = id_match.group(1)
+                    if milestone_id in self.workitems:
+                        # Parse SET clause
+                        set_match = re.search(r"SET (.+?) RETURN", query)
+                        if set_match:
+                            set_clause = set_match.group(1)
+                            # Simple parsing of SET clause
+                            updates = {}
+                            for assignment in set_clause.split(','):
+                                assignment = assignment.strip()
+                                if '=' in assignment:
+                                    key_part, value_part = assignment.split('=', 1)
+                                    key = key_part.strip().replace('m.', '')
+                                    value = value_part.strip().strip("'")
+                                    
+                                    # Handle boolean values
+                                    if value.lower() == 'true':
+                                        value = True
+                                    elif value.lower() == 'false':
+                                        value = False
+                                    
+                                    updates[key] = value
+                            
+                            # Update the milestone
+                            self.workitems[milestone_id].update(updates)
+                            if 'properties' in self.workitems[milestone_id]:
+                                self.workitems[milestone_id]['properties'].update(updates)
+                            
+                            milestones = [self.workitems[milestone_id]]
+            
+            # Return milestones in expected format - just the properties dict
+            results = []
+            for m in milestones:
+                if 'properties' in m:
+                    results.append(m['properties'])
+                else:
+                    results.append(m)
+            return results
+        elif "MATCH (ts:WorkItem)" in query and "test_spec" in query:
             # Return test specs
             test_specs = [item for item in self.workitems.values()
                          if item.get('workitem_type') == 'test_spec']
@@ -185,11 +287,13 @@ class MockGraphService:
         """Create a node in the graph database."""
 
         node_id = properties.get('id', str(uuid4()))
+        # Store node with both top-level properties and nested properties
+        # to match AGE behavior
         node = {
             "id": node_id,
             "label": label,
-            "properties": properties,
-            **properties
+            "properties": properties.copy(),
+            **properties  # Also store at top level for easier access
         }
         self.workitems[node_id] = node
         return node
@@ -239,6 +343,12 @@ class MockGraphService:
         """Get risk failure chains."""
         # Return empty list for mock - chains would be populated by actual graph queries
         return []
+
+
+@pytest.fixture
+def mock_graph_service():
+    """Create a mock graph service for testing"""
+    return MockGraphService()
 
 
 @pytest_asyncio.fixture(scope="function")

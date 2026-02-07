@@ -31,14 +31,14 @@ The system is intended as an entry point for SPEC Driven Development. Open sourc
 
 The original idea was driven by the desire to be able to implement everything in mind maps: requirement management, project management, risk management. There are already approaches for everything, but I haven't seen any that are truly unified (and the way I imagine them).
 
-The second wish was to be able to use this system in VR as well—with the goal of being able to work really well remotely and in a distributed manner. The vision is to be able to discuss and plan requirements, results, and projects in virtual rooms using an immersive graph representation (based on some sci-fi films) of the “minds” (nodes). 
+The second wish was to be able to use this system in VR as well — with the goal of being able to work really well remotely and in a distributed manner. The vision is to be able to discuss and plan requirements, results, and projects in virtual rooms using an immersive graph representation (based on some sci-fi films) of the “minds” (nodes). 
 
 With the use of AI and coding agents, and seeing how well they write specifications, it became clear that this is a must-have in RxDx (formulating requirements was sometimes the most difficult part for my employees). However, in small chunks that can be further developed (refined), are understandable and therefore implementable, and can be supplemented with risks and tasks for implementation.
 
 Further requests: Project progress should not be laboriously recorded in meetings—I think Task-Juggler's approach of recording this using an email system is very good. I think this approach, alongside a time tracking app for cell phones and a ticket system—which can be used as alternatives—is a good addition.
 The same goes for the option of work in an agile manner—I have actually always implemented this in my projects—I broke down the next steps for my employees until they were able to implement the challenge at hand, and in this way we achieved the goals we had set. However, I only realized how powerful and systematizable (with a definition of ready and done) this approach is when I implemented projects in an agile manner using requirements management software.
 
-Ultimately, other requests arose, such as: let's create an automated LIMS so that important records relating to defined acceptance criteria are immediately available in a database for further evaluation (complete traceability from requirements to work instructions with acceptance criteria and data collected in production) – or – let's use the recorded data to generate invoices straight away ...
+Ultimately, requests such as the following arose: let's create an automated LIMS so that important records relating to defined acceptance criteria are immediately available in a database for further evaluation (complete traceability from requirements to work instructions with acceptance criteria and data collected in production) - or - use the recorded data to create invoices immediately - or - work items should be able to be commented on and signed, just like documents - or - the email system could also be expanded so that, for example, meeting minutes can be integrated immediately as a project knowledge base and assigned to to-do lists - and so on ...
 
 # Current status
 

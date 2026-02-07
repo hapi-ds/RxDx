@@ -299,6 +299,13 @@ Additionally, this specification extends the existing project management entitie
 
 **User Story:** As a system architect, I want Projects, Phases, Workpackages, Resources, Departments, Company, Milestones, Sprints, and Backlogs to be stored as graph nodes, so that we can leverage graph relationships for project organization, resource allocation, work hierarchy, agile planning, and advanced querying capabilities.
 
+**CRITICAL ARCHITECTURAL CLARIFICATION:**
+- **Tasks remain as WorkItem nodes** (type='task') - NOT separate Task nodes
+- **Milestones are separate Milestone nodes** - NOT WorkItem nodes
+- This decision is documented in `.kiro/specs/backend-schedule-api/ARCHITECTURE_CLARIFICATION.md`
+- Tasks integrate with requirements, risks, tests, documents (WorkItem ecosystem)
+- Milestones are used ONLY for project scheduling (separate concern)
+
 #### Acceptance Criteria
 
 **Organizational Structure:**
@@ -319,14 +326,14 @@ Additionally, this specification extends the existing project management entitie
 11. THE System SHALL create a BELONGS_TO relationship from Phase nodes to Project nodes
 12. THE System SHALL create a BELONGS_TO relationship from Workpackage nodes to Phase nodes
 
-**Task and Milestone Nodes (Separate from WorkItem):**
+**Task and Milestone Nodes:**
 
-13. WHEN a Task is created, THE System SHALL create a Task node (NOT WorkItem) in the graph database with properties (id, title, description, status, priority, estimated_hours, actual_hours, story_points, skills_needed, done, start_date, end_date, workpackage_id, version, created_by, created_at, updated_at, is_signed)
+13. WHEN a Task (WorkItem type='task') is created, THE System SHALL store it as a WorkItem node in the graph database with properties (id, type='task', title, description, status, priority, estimated_hours, actual_hours, story_points, skills_needed, done, start_date, end_date, due_date, workpackage_id, version, created_by, created_at, updated_at, is_signed)
 14. WHEN a Milestone is created, THE System SHALL create a Milestone node (NOT WorkItem) in the graph database with properties (id, title, description, target_date, is_manual_constraint, completion_criteria, status, project_id, version, created_by, created_at, updated_at)
-15. THE System SHALL support Task node label "Task" (not WorkItem with type="task")
-16. THE System SHALL support Milestone node label "Milestone" (not WorkItem with type="milestone")
-17. THE System SHALL maintain backward compatibility by allowing WorkItem service to query Task nodes using MATCH (t:Task)
-18. THE System SHALL maintain backward compatibility by allowing WorkItem service to query Milestone nodes using MATCH (m:Milestone)
+15. THE System SHALL use WorkItem node label for Tasks with type='task' property
+16. THE System SHALL use Milestone node label for Milestones (separate from WorkItem)
+17. THE System SHALL query Tasks using: MATCH (w:WorkItem {type: 'task'})
+18. THE System SHALL query Milestones using: MATCH (m:Milestone)
 
 **Skills-Based Resource Matching:**
 
@@ -337,15 +344,15 @@ Additionally, this specification extends the existing project management entitie
 
 **Classic Hierarchy Relationships:**
 
-23. THE System SHALL create a BELONGS_TO relationship from Task nodes to Workpackage nodes (mandatory - all tasks must belong to a workpackage)
-24. THE System SHALL create a DEPENDS_ON relationship from Task nodes to other Task nodes (task dependencies)
-25. THE System SHALL create a DEPENDS_ON relationship from Milestone nodes to Task nodes (milestone depends on task completion)
-26. THE System SHALL create a BLOCKS relationship from Task nodes to Milestone nodes (task blocks milestone)
+23. THE System SHALL create a BELONGS_TO relationship from Task (WorkItem type='task') nodes to Workpackage nodes (mandatory - all tasks must belong to a workpackage)
+24. THE System SHALL create a DEPENDS_ON relationship from Task (WorkItem) nodes to other Task (WorkItem) nodes (task dependencies)
+25. THE System SHALL create a DEPENDS_ON relationship from Milestone nodes to Task (WorkItem) nodes (milestone depends on task completion)
+26. THE System SHALL create a BLOCKS relationship from Task (WorkItem) nodes to Milestone nodes (task blocks milestone)
 
 **Resource Allocation Patterns:**
 
 27. THE System SHALL create an ALLOCATED_TO relationship from Resource nodes to Project nodes with properties (allocation_percentage, lead, start_date, end_date)
-28. THE System SHALL create an ALLOCATED_TO relationship from Resource nodes to Task nodes with properties (allocation_percentage, lead, start_date, end_date)
+28. THE System SHALL create an ALLOCATED_TO relationship from Resource nodes to Task (WorkItem type='task') nodes with properties (allocation_percentage, lead, start_date, end_date)
 29. THE System SHALL support "lead" boolean property on ALLOCATED_TO relationships (true = primary/lead, false = supporting)
 30. WHEN a Resource is allocated with lead=true, THE System SHALL prioritize that resource as the primary owner
 31. WHEN a Resource is allocated with lead=false, THE System SHALL treat that resource as supporting/collaborating
@@ -367,8 +374,8 @@ Additionally, this specification extends the existing project management entitie
 
 **Backlog and Sprint Relationships (MUTUALLY EXCLUSIVE):**
 
-41. WHEN a Task status changes to "ready", THE System SHALL automatically create an IN_BACKLOG relationship from Task to Backlog
-42. THE System SHALL create an ASSIGNED_TO_SPRINT relationship from Task nodes to Sprint nodes (manual assignment by user)
+41. WHEN a Task (WorkItem type='task') status changes to "ready", THE System SHALL automatically create an IN_BACKLOG relationship from Task to Backlog
+42. THE System SHALL create an ASSIGNED_TO_SPRINT relationship from Task (WorkItem) nodes to Sprint nodes (manual assignment by user)
 43. THE System SHALL enforce mutual exclusivity: A Task can have IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
 44. WHEN a Task is assigned to a Sprint, THE System SHALL remove the IN_BACKLOG relationship
 45. WHEN a Task is removed from a Sprint, THE System SHALL create an IN_BACKLOG relationship (task returns to backlog)
@@ -376,9 +383,9 @@ Additionally, this specification extends the existing project management entitie
 
 **Additional Task Relationships:**
 
-47. THE System SHALL create a has_risk relationship from Task nodes to Risk (WorkItem) nodes
-48. THE System SHALL create an implements relationship from Task nodes to Requirement (WorkItem) nodes
-49. THE System SHALL support multiple concurrent relationships on Task nodes (BELONGS_TO, has_risk, implements, DEPENDS_ON, etc.)
+47. THE System SHALL create a has_risk relationship from Task (WorkItem type='task') nodes to Risk (WorkItem) nodes
+48. THE System SHALL create an implements relationship from Task (WorkItem type='task') nodes to Requirement (WorkItem) nodes
+49. THE System SHALL support multiple concurrent relationships on Task (WorkItem) nodes (BELONGS_TO, has_risk, implements, DEPENDS_ON, etc.)
 50. THE System SHALL allow Tasks to have many domain relationships while maintaining only ONE of IN_BACKLOG or ASSIGNED_TO_SPRINT
 
 **Milestone Scheduling Modes:**
@@ -399,13 +406,13 @@ Additionally, this specification extends the existing project management entitie
 
 59. THE System SHALL support querying all WorkItems for a Project through graph traversal
 60. THE System SHALL support querying all Resources in a Department through graph traversal
-61. THE System SHALL support querying all Tasks in a Workpackage through graph traversal
-62. THE System SHALL support querying all Tasks in a Backlog through graph traversal (ordered by priority)
-63. THE System SHALL support querying all Tasks in a Sprint through graph traversal
+61. THE System SHALL support querying all Tasks (WorkItem type='task') in a Workpackage through graph traversal
+62. THE System SHALL support querying all Tasks (WorkItem type='task') in a Backlog through graph traversal (ordered by priority)
+63. THE System SHALL support querying all Tasks (WorkItem type='task') in a Sprint through graph traversal
 64. THE System SHALL support querying all Milestones for a Project through graph traversal
 65. THE System SHALL support querying the complete project hierarchy (Project → Phase → Workpackage → Task) through graph traversal
 66. THE System SHALL support querying all Projects a Resource is allocated to through graph traversal
-67. THE System SHALL support querying all Tasks that depend on a Milestone through graph traversal
+67. THE System SHALL support querying all Tasks (WorkItem) that depend on a Milestone through graph traversal
 68. THE System SHALL support querying all Sprints for a Project through graph traversal (ordered by start_date)
 69. THE System SHALL support querying all Departments under a Company through graph traversal
 
@@ -414,28 +421,12 @@ Additionally, this specification extends the existing project management entitie
 70. WHEN a Company is deleted, THE System SHALL cascade delete all related Department nodes and relationships
 71. WHEN a Project is deleted, THE System SHALL cascade delete all related Phase, Workpackage, Sprint, Backlog, and Milestone nodes and relationships
 72. WHEN a Phase is deleted, THE System SHALL cascade delete all related Workpackage nodes and relationships
-73. WHEN a Workpackage is deleted, THE System SHALL remove BELONGS_TO relationships but NOT delete the Task nodes
+73. WHEN a Workpackage is deleted, THE System SHALL remove BELONGS_TO relationships but NOT delete the Task (WorkItem) nodes
 74. WHEN a Sprint is deleted, THE System SHALL remove ASSIGNED_TO_SPRINT relationships and move tasks back to Backlog (create IN_BACKLOG relationships)
-75. WHEN a Backlog is deleted, THE System SHALL remove IN_BACKLOG relationships but NOT delete the Task nodes
+75. WHEN a Backlog is deleted, THE System SHALL remove IN_BACKLOG relationships but NOT delete the Task (WorkItem) nodes
 76. WHEN a Milestone is deleted, THE System SHALL validate no active task dependencies exist before deletion
 77. WHEN a Resource is deleted, THE System SHALL validate no active task assignments exist before deletion
-78. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletionph traversal
-42. THE System SHALL support querying all Milestones for a Project through graph traversal
-43. THE System SHALL support querying the complete project hierarchy (Project → Phase → Workpackage → Task) through graph traversal
-44. THE System SHALL support querying all Projects a Resource is allocated to through graph traversal
-45. THE System SHALL support querying all Tasks that depend on a Milestone through graph traversal
-46. THE System SHALL support querying all Sprints for a Project through graph traversal (ordered by start_date)
-
-**Cascade Deletion Rules:**
-
-47. WHEN a Project is deleted, THE System SHALL cascade delete all related Phase, Workpackage, Sprint, Backlog, and Milestone nodes and relationships
-48. WHEN a Phase is deleted, THE System SHALL cascade delete all related Workpackage nodes and relationships
-49. WHEN a Workpackage is deleted, THE System SHALL remove BELONGS_TO relationships but NOT delete the Task nodes
-50. WHEN a Sprint is deleted, THE System SHALL remove ASSIGNED_TO_SPRINT relationships and move tasks back to Backlog
-51. WHEN a Backlog is deleted, THE System SHALL remove IN_BACKLOG relationships but NOT delete the Task nodes
-52. WHEN a Milestone is deleted, THE System SHALL validate no active task dependencies exist before deletion
-53. WHEN a Resource is deleted, THE System SHALL validate no active task assignments exist before deletion
-54. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletion
+78. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletion
 
 ### Requirement 17: Project Management API
 

@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import extract_user_id_from_token
+from app.db import get_graph_service
 from app.db.session import get_db
 from app.models.user import User
 from app.services.auth_service import AuthService

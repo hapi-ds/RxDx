@@ -5,6 +5,8 @@ from fastapi import APIRouter
 from app.api.v1 import (
     audit,
     auth,
+    companies,
+    departments,
     documents,
     email,
     graph,
@@ -27,6 +29,12 @@ api_router.include_router(health.router, tags=["health"])
 
 # Include authentication routes
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
+
+# Include company routes
+api_router.include_router(companies.router, tags=["companies"])
+
+# Include department routes
+api_router.include_router(departments.router, prefix="/departments", tags=["departments"])
 
 # Include audit routes
 api_router.include_router(audit.router, tags=["audit"])

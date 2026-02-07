@@ -395,8 +395,10 @@ class ResourceService:
 
             # Get updated allocation
             allocations = await self.graph_service.get_resource_allocations(str(resource_id))
+            target_id_str = str(target_id)
             for alloc in allocations:
-                if alloc["target_id"] == str(target_id):
+                # Compare as strings to handle UUID format variations
+                if str(alloc["target_id"]) == target_id_str:
                     return ResourceAllocationResponse(
                         allocation_percentage=alloc["allocation_percentage"],
                         lead=alloc["lead"],

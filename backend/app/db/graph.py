@@ -1116,12 +1116,18 @@ class GraphService:
             # Determine target type
             target_type = 'Project' if 'Project' in target_labels else 'Task' if 'WorkItem' in target_labels else 'Unknown'
             
+            # Get target_id - ensure it exists
+            target_id = target_props.get('id')
+            if not target_id:
+                # Skip allocations without valid target_id
+                continue
+            
             allocations.append({
                 'allocation_percentage': rel_props.get('allocation_percentage'),
                 'lead': rel_props.get('lead', False),
                 'start_date': rel_props.get('start_date'),
                 'end_date': rel_props.get('end_date'),
-                'target_id': target_props.get('id'),
+                'target_id': target_id,
                 'target_type': target_type,
                 'target_name': target_props.get('name') or target_props.get('title'),
             })
@@ -1143,31 +1149,26 @@ class GraphService:
         """
         query = f"""
         MATCH (r:Resource)-[rel:ALLOCATED_TO {{lead: true}}]->(p:Project {{id: '{project_id}'}})
-        RETURN {{r: r, rel: rel}} as result
+        RETURN r as result
         """
         results = await self.execute_query(query)
         
         resources = []
         for result in results:
-            resource_data = result.get('r', {})
-            rel_data = result.get('rel', {})
-            
-            if 'properties' in resource_data:
-                resource_props = resource_data['properties']
+            # Result is the resource node directly
+            if 'properties' in result:
+                resource_props = result['properties']
             else:
-                resource_props = resource_data
+                resource_props = result
             
-            if 'properties' in rel_data:
-                rel_props = rel_data['properties']
-            else:
-                rel_props = rel_data
+            # Parse skills if it's a JSON string
+            if 'skills' in resource_props and isinstance(resource_props['skills'], str):
+                try:
+                    resource_props['skills'] = json.loads(resource_props['skills'])
+                except (json.JSONDecodeError, TypeError):
+                    resource_props['skills'] = []
             
-            resources.append({
-                **resource_props,
-                'allocation_percentage': rel_props.get('allocation_percentage'),
-                'start_date': rel_props.get('start_date'),
-                'end_date': rel_props.get('end_date'),
-            })
+            resources.append(resource_props)
         
         return resources
 
@@ -1186,31 +1187,26 @@ class GraphService:
         """
         query = f"""
         MATCH (r:Resource)-[rel:ALLOCATED_TO {{lead: true}}]->(t:WorkItem {{id: '{task_id}', type: 'task'}})
-        RETURN {{r: r, rel: rel}} as result
+        RETURN r as result
         """
         results = await self.execute_query(query)
         
         resources = []
         for result in results:
-            resource_data = result.get('r', {})
-            rel_data = result.get('rel', {})
-            
-            if 'properties' in resource_data:
-                resource_props = resource_data['properties']
+            # Result is the resource node directly
+            if 'properties' in result:
+                resource_props = result['properties']
             else:
-                resource_props = resource_data
+                resource_props = result
             
-            if 'properties' in rel_data:
-                rel_props = rel_data['properties']
-            else:
-                rel_props = rel_data
+            # Parse skills if it's a JSON string
+            if 'skills' in resource_props and isinstance(resource_props['skills'], str):
+                try:
+                    resource_props['skills'] = json.loads(resource_props['skills'])
+                except (json.JSONDecodeError, TypeError):
+                    resource_props['skills'] = []
             
-            resources.append({
-                **resource_props,
-                'allocation_percentage': rel_props.get('allocation_percentage'),
-                'start_date': rel_props.get('start_date'),
-                'end_date': rel_props.get('end_date'),
-            })
+            resources.append(resource_props)
         
         return resources
 

@@ -1,5 +1,6 @@
 """Pytest configuration and fixtures"""
 
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -101,14 +102,15 @@ class MockGraphService:
             return True
         return False
 
-    async def create_relationship(self, **kwargs):
+    async def create_relationship(self, from_id=None, to_id=None, rel_type=None, **kwargs):
         # Track relationships for existence checks
         if not hasattr(self, 'relationships'):
             self.relationships = []
         
-        from_id = kwargs.get('from_id')
-        to_id = kwargs.get('to_id')
-        rel_type = kwargs.get('rel_type')
+        # Support both positional and keyword arguments
+        from_id = from_id or kwargs.get('from_id')
+        to_id = to_id or kwargs.get('to_id')
+        rel_type = rel_type or kwargs.get('rel_type')
         properties = kwargs.get('properties', {})
         
         rel = {
@@ -343,6 +345,158 @@ class MockGraphService:
         """Get risk failure chains."""
         # Return empty list for mock - chains would be populated by actual graph queries
         return []
+
+    async def link_workpackage_to_department(
+        self,
+        workpackage_id: str,
+        department_id: str
+    ) -> dict[str, Any]:
+        """
+        Create LINKED_TO_DEPARTMENT relationship from Workpackage to Department.
+        A workpackage can only be linked to one department at a time.
+        """
+        # Verify workpackage exists
+        if workpackage_id not in self.workitems:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+        
+        # Verify department exists
+        if department_id not in self.workitems:
+            raise ValueError(f"Department {department_id} not found")
+        
+        # Initialize relationships tracking if not exists
+        if not hasattr(self, 'relationships'):
+            self.relationships = []
+        
+        # Check if workpackage is already linked to a department
+        existing_link = None
+        for rel in self.relationships:
+            if (rel.get('from_id') == workpackage_id and 
+                rel.get('type') == 'LINKED_TO_DEPARTMENT'):
+                existing_link = rel
+                break
+        
+        if existing_link:
+            existing_dept_id = existing_link.get('to_id')
+            if existing_dept_id != department_id:
+                raise ValueError(
+                    f"Workpackage {workpackage_id} is already linked to department {existing_dept_id}. "
+                    "Remove the existing link first."
+                )
+            # Already linked to this department
+            return {"workpackage_id": workpackage_id, "department_id": department_id}
+        
+        # Create the relationship
+        rel = {
+            'from_id': workpackage_id,
+            'to_id': department_id,
+            'type': 'LINKED_TO_DEPARTMENT',
+        }
+        self.relationships.append(rel)
+        return {"workpackage_id": workpackage_id, "department_id": department_id, "start_id": workpackage_id}
+
+    async def unlink_workpackage_from_department(
+        self,
+        workpackage_id: str,
+        department_id: str | None = None
+    ) -> bool:
+        """
+        Remove LINKED_TO_DEPARTMENT relationship from Workpackage to Department.
+        """
+        # Verify workpackage exists
+        if workpackage_id not in self.workitems:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+        
+        # Initialize relationships tracking if not exists
+        if not hasattr(self, 'relationships'):
+            self.relationships = []
+        
+        # Find and remove the relationship
+        removed = False
+        for i, rel in enumerate(self.relationships):
+            if (rel.get('from_id') == workpackage_id and 
+                rel.get('type') == 'LINKED_TO_DEPARTMENT'):
+                if department_id is None or rel.get('to_id') == department_id:
+                    self.relationships.pop(i)
+                    removed = True
+                    break
+        
+        return removed
+
+    async def get_workpackage_department(
+        self,
+        workpackage_id: str
+    ) -> dict[str, Any] | None:
+        """
+        Get the department linked to a workpackage.
+        """
+        # Verify workpackage exists
+        if workpackage_id not in self.workitems:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+        
+        # Initialize relationships tracking if not exists
+        if not hasattr(self, 'relationships'):
+            self.relationships = []
+        
+        # Find the linked department
+        for rel in self.relationships:
+            if (rel.get('from_id') == workpackage_id and 
+                rel.get('type') == 'LINKED_TO_DEPARTMENT'):
+                department_id = rel.get('to_id')
+                if department_id in self.workitems:
+                    dept = self.workitems[department_id]
+                    # Return properties if available, otherwise the whole node
+                    if 'properties' in dept:
+                        return dept['properties']
+                    return dept
+        
+        return None
+
+    async def get_department_resources_for_workpackage(
+        self,
+        workpackage_id: str,
+        skills_filter: list[str] | None = None
+    ) -> list[dict[str, Any]]:
+        """
+        Get resources from the department linked to a workpackage.
+        """
+        # Get linked department
+        department = await self.get_workpackage_department(workpackage_id)
+        if not department:
+            return []
+        
+        department_id = department.get('id')
+        
+        # Initialize relationships tracking if not exists
+        if not hasattr(self, 'relationships'):
+            self.relationships = []
+        
+        # Find resources that belong to this department
+        resources = []
+        for rel in self.relationships:
+            if (rel.get('to_id') == department_id and 
+                rel.get('type') == 'BELONGS_TO'):
+                resource_id = rel.get('from_id')
+                if resource_id in self.workitems:
+                    resource = self.workitems[resource_id]
+                    
+                    # Apply skills filter if provided
+                    if skills_filter:
+                        import json
+                        resource_skills = resource.get('skills', '[]')
+                        if isinstance(resource_skills, str):
+                            resource_skills = json.loads(resource_skills)
+                        
+                        # Check if any of the filter skills match
+                        if not any(skill in resource_skills for skill in skills_filter):
+                            continue
+                    
+                    # Return properties if available, otherwise the whole node
+                    if 'properties' in resource:
+                        resources.append(resource['properties'])
+                    else:
+                        resources.append(resource)
+        
+        return resources
 
 
 @pytest.fixture

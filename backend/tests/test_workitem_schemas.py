@@ -661,3 +661,257 @@ class TestComprehensiveWorkItemValidation:
                 }
                 if schema_name in expected_types:
                     assert schema_instance.type == expected_types[schema_name]
+
+
+class TestTaskSchemaTaskSpecificProperties:
+    """Test Task schema with task-specific properties (skills_needed, workpackage_id, story_points, done, dates)"""
+
+    def test_task_with_skills_needed(self):
+        """Test TaskCreate with skills_needed"""
+        from datetime import UTC
+        
+        data = {
+            "title": "Implement user authentication",
+            "description": "Add JWT-based authentication",
+            "status": "draft",
+            "skills_needed": ["Python", "FastAPI", "JWT", "Security"],
+            "workpackage_id": str(uuid4()),
+            "story_points": 5,
+            "done": False,
+        }
+        task = TaskCreate(**data)
+        
+        assert task.skills_needed == ["Python", "FastAPI", "JWT", "Security"]
+        assert task.workpackage_id is not None
+        assert task.story_points == 5
+        assert task.done is False
+
+    def test_task_skills_needed_validation(self):
+        """Test skills_needed validation"""
+        # Empty skills should be filtered out
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "skills_needed": ["Python", "", "FastAPI", "   "],
+        }
+        
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(**data)
+        assert "Skills cannot be empty strings" in str(exc_info.value)
+
+    def test_task_skills_needed_duplicates_removed(self):
+        """Test that duplicate skills are removed"""
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "skills_needed": ["Python", "python", "PYTHON", "FastAPI"],
+        }
+        task = TaskCreate(**data)
+        
+        # Should keep only unique skills (case-insensitive)
+        assert len(task.skills_needed) == 2
+        assert "Python" in task.skills_needed
+        assert "FastAPI" in task.skills_needed
+
+    def test_task_skills_needed_too_long(self):
+        """Test that skill names exceeding max length are rejected"""
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "skills_needed": ["A" * 101],  # Exceeds 100 char limit
+        }
+        
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(**data)
+        assert "Skill name cannot exceed 100 characters" in str(exc_info.value)
+
+    def test_task_skills_needed_must_be_array(self):
+        """Test that skills_needed must be an array"""
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "skills_needed": "Python",  # String instead of array
+        }
+        
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(**data)
+        # Pydantic will catch this as type error
+
+    def test_task_story_points_validation(self):
+        """Test story_points validation"""
+        # Valid story points
+        for points in [0, 1, 5, 13, 21, 50, 100]:
+            data = {
+                "title": "Test Task Title",
+                "status": "draft",
+                "story_points": points,
+            }
+            task = TaskCreate(**data)
+            assert task.story_points == points
+
+        # Negative story points should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(
+                title="Test Task Title",
+                status="draft",
+                story_points=-1,
+            )
+        assert "greater than or equal to 0" in str(exc_info.value)
+
+        # Story points > 100 should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(
+                title="Test Task Title",
+                status="draft",
+                story_points=101,
+            )
+        assert "less than or equal to 100" in str(exc_info.value)
+
+    def test_task_with_dates(self):
+        """Test TaskCreate with start_date and end_date"""
+        from datetime import UTC
+        
+        now = datetime.now(UTC)
+        
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "start_date": now,
+            "end_date": now,
+            "due_date": now,
+        }
+        task = TaskCreate(**data)
+        
+        assert task.start_date == now
+        assert task.end_date == now
+        assert task.due_date == now
+
+    def test_task_dates_must_be_timezone_aware(self):
+        """Test that dates must be timezone-aware"""
+        from datetime import datetime as dt
+        
+        naive_datetime = dt(2024, 1, 1, 12, 0, 0)  # No timezone
+        
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "start_date": naive_datetime,
+        }
+        
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(**data)
+        assert "Dates must be timezone-aware" in str(exc_info.value)
+
+    def test_task_done_flag(self):
+        """Test done boolean flag"""
+        # Default should be False
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+        }
+        task = TaskCreate(**data)
+        assert task.done is False
+
+        # Can set to True
+        data["done"] = True
+        task = TaskCreate(**data)
+        assert task.done is True
+
+    def test_task_workpackage_id(self):
+        """Test workpackage_id field"""
+        workpackage_id = uuid4()
+        
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "workpackage_id": workpackage_id,
+        }
+        task = TaskCreate(**data)
+        
+        assert task.workpackage_id == workpackage_id
+
+    def test_task_update_with_task_properties(self):
+        """Test TaskUpdate with task-specific properties"""
+        from datetime import UTC
+        
+        now = datetime.now(UTC)
+        workpackage_id = uuid4()
+        
+        data = {
+            "title": "Updated Task Title",
+            "skills_needed": ["Python", "FastAPI"],
+            "workpackage_id": workpackage_id,
+            "story_points": 8,
+            "done": True,
+            "start_date": now,
+            "end_date": now,
+        }
+        task_update = TaskUpdate(**data)
+        
+        assert task_update.title == "Updated Task Title"
+        assert task_update.skills_needed == ["Python", "FastAPI"]
+        assert task_update.workpackage_id == workpackage_id
+        assert task_update.story_points == 8
+        assert task_update.done is True
+        assert task_update.start_date == now
+        assert task_update.end_date == now
+
+    def test_task_response_with_task_properties(self):
+        """Test TaskResponse includes task-specific properties"""
+        from datetime import UTC
+        
+        now = datetime.now(UTC)
+        task_id = uuid4()
+        user_id = uuid4()
+        workpackage_id = uuid4()
+        
+        data = {
+            "id": task_id,
+            "type": "task",
+            "title": "Test Task Title",
+            "description": "Test description",
+            "status": "active",
+            "priority": 3,
+            "assigned_to": user_id,
+            "estimated_hours": 8.0,
+            "actual_hours": 4.0,
+            "due_date": now,
+            "skills_needed": ["Python", "FastAPI"],
+            "workpackage_id": workpackage_id,
+            "story_points": 5,
+            "done": False,
+            "start_date": now,
+            "end_date": now,
+            "version": "1.0",
+            "created_by": user_id,
+            "created_at": now,
+            "updated_at": now,
+            "is_signed": False,
+        }
+        task_response = TaskResponse(**data)
+        
+        assert task_response.id == task_id
+        assert task_response.skills_needed == ["Python", "FastAPI"]
+        assert task_response.workpackage_id == workpackage_id
+        assert task_response.story_points == 5
+        assert task_response.done is False
+        assert task_response.start_date == now
+        assert task_response.end_date == now
+
+    def test_task_minimal_with_defaults(self):
+        """Test TaskCreate with minimal fields uses defaults"""
+        data = {
+            "title": "Minimal Task Title",
+            "status": "draft",
+        }
+        task = TaskCreate(**data)
+        
+        assert task.title == "Minimal Task Title"
+        assert task.status == "draft"
+        assert task.skills_needed is None
+        assert task.workpackage_id is None
+        assert task.story_points is None
+        assert task.done is False  # Default value
+        assert task.start_date is None
+        assert task.end_date is None
+        assert task.due_date is None

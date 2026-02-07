@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.schemas.company import CompanyResponse
+
 
 class DepartmentBase(BaseModel):
     """Base schema for Department"""
@@ -63,5 +65,8 @@ class DepartmentResponse(DepartmentBase):
 
     id: UUID
     created_at: datetime
+    company: CompanyResponse | None = Field(
+        None, description="Company this department belongs to"
+    )
 
     model_config = {"from_attributes": True}

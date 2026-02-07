@@ -87,7 +87,7 @@ This task list implements the backend schedule API with dual-methodology project
 - [x] Add endpoint: DELETE /api/v1/workpackages/{id}/link-department/{dept_id}
 - [x] Add endpoint: GET /api/v1/workpackages/{id}/department
 - [x] Write unit tests for department linking
-- [ ] Write property test: Workpackage can link to at most one Department
+- [x] Write property test: Workpackage can link to at most one Department
 
 **Details:**
 - From: Workpackage
@@ -101,9 +101,9 @@ This task list implements the backend schedule API with dual-methodology project
 - [x] Update graph service to handle dual target types
 - [x] Update resource allocation endpoints
 - [x] Write migration script: Add lead=false to existing allocations
-- [-] Write unit tests for lead flag functionality
-- [ ] Write property test: lead is always boolean
-- [ ] Write property test: Resource allocated to Project XOR Task
+- [x] Write unit tests for lead flag functionality
+- [x] Write property test: lead is always boolean
+- [x] Write property test: Resource allocated to Project XOR Task
 
 **Details:**
 - Properties: allocation_percentage, lead, start_date, end_date
@@ -111,14 +111,14 @@ This task list implements the backend schedule API with dual-methodology project
 - lead=false: Supporting/collaborating resource
 
 ### Task 1.7: Update Backlog/Sprint Relationships (Mutual Exclusivity)
-- [ ] Add constraint validation: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
-- [ ] Update sprint assignment to remove IN_BACKLOG relationship
-- [ ] Update backlog addition to remove ASSIGNED_TO_SPRINT relationship
-- [ ] Add endpoint: POST /api/v1/tasks/{id}/move-to-backlog
-- [ ] Add endpoint: POST /api/v1/tasks/{id}/move-to-sprint/{sprint_id}
-- [ ] Write unit tests for mutual exclusivity
-- [ ] Write property test: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
-- [ ] Write property test: Moving to sprint removes backlog relationship
+- [x] Add constraint validation: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
+- [x] Update sprint assignment to remove IN_BACKLOG relationship
+- [x] Update backlog addition to remove ASSIGNED_TO_SPRINT relationship
+- [x] Add endpoint: POST /api/v1/tasks/{id}/move-to-backlog
+- [x] Add endpoint: POST /api/v1/tasks/{id}/move-to-sprint/{sprint_id}
+- [x] Write unit tests for mutual exclusivity
+- [x] Write property test: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
+- [x] Write property test: Moving to sprint removes backlog relationship
 
 **Details:**
 - Enforce: A task can be IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
@@ -126,17 +126,17 @@ This task list implements the backend schedule API with dual-methodology project
 - When removed from sprint → create IN_BACKLOG (if status="ready")
 
 ### Task 1.8: Create Additional Task Relationships
-- [ ] Create has_risk edge label in Apache AGE
-- [ ] Create implements edge label in Apache AGE
-- [ ] Add has_risk relationship creation in graph service
-- [ ] Add implements relationship creation in graph service
-- [ ] Add endpoint: POST /api/v1/tasks/{id}/link-risk/{risk_id}
-- [ ] Add endpoint: POST /api/v1/tasks/{id}/link-requirement/{req_id}
-- [ ] Add endpoint: GET /api/v1/tasks/{id}/risks
-- [ ] Add endpoint: GET /api/v1/tasks/{id}/requirements
-- [ ] Write unit tests for task relationships
-- [ ] Write property test: Task can have multiple has_risk relationships
-- [ ] Write property test: Task can have multiple implements relationships
+- [x] Create has_risk edge label in Apache AGE
+- [x] Create implements edge label in Apache AGE
+- [x] Add has_risk relationship creation in graph service
+- [x] Add implements relationship creation in graph service
+- [x] Add endpoint: POST /api/v1/tasks/{id}/link-risk/{risk_id}
+- [x] Add endpoint: POST /api/v1/tasks/{id}/link-requirement/{req_id}
+- [x] Add endpoint: GET /api/v1/tasks/{id}/risks
+- [x] Add endpoint: GET /api/v1/tasks/{id}/requirements
+- [x] Write unit tests for task relationships
+- [x] Write property test: Task can have multiple has_risk relationships
+- [x] Write property test: Task can have multiple implements relationships
 
 **Details:**
 - has_risk: Task → Risk (WorkItem)
@@ -148,28 +148,28 @@ This task list implements the backend schedule API with dual-methodology project
 ## Phase 2: Pydantic Schemas
 
 ### Task 2.1: Create Company Schemas
-- [ ] Create CompanyBase schema
-- [ ] Create CompanyCreate schema
-- [ ] Create CompanyUpdate schema
-- [ ] Create CompanyResponse schema
-- [ ] Add validation for company name (min 1, max 200 chars)
-- [ ] Write unit tests for schema validation
+- [x] Create CompanyBase schema
+- [x] Create CompanyCreate schema
+- [x] Create CompanyUpdate schema
+- [x] Create CompanyResponse schema
+- [x] Add validation for company name (min 1, max 200 chars)
+- [x] Write unit tests for schema validation
 
 ### Task 2.2: Update Department Schemas
-- [ ] Add company_id to DepartmentBase
-- [ ] Add company relationship to DepartmentResponse
-- [ ] Update DepartmentCreate to require company_id
-- [ ] Write unit tests for updated schemas
+- [x] Add company_id to DepartmentBase
+- [x] Add company relationship to DepartmentResponse
+- [x] Update DepartmentCreate to require company_id
+- [x] Write unit tests for updated schemas
 
 ### Task 2.3: Update WorkItem Schemas for Task Properties
-- [ ] Update TaskBase (WorkItem) schema to include skills_needed field
-- [ ] Update TaskCreate (WorkItem) schema to include task-specific properties
-- [ ] Update TaskUpdate (WorkItem) schema to include task-specific properties
-- [ ] Update TaskResponse (WorkItem) schema to include task-specific properties
-- [ ] Add validator for skills_needed (must be array)
-- [ ] Add validator for workpackage_id (must exist)
-- [ ] Write unit tests for Task (WorkItem) schemas
-- [ ] Write property test: skills_needed validation
+- [x] Update TaskBase (WorkItem) schema to include skills_needed field
+- [x] Update TaskCreate (WorkItem) schema to include task-specific properties
+- [x] Update TaskUpdate (WorkItem) schema to include task-specific properties
+- [x] Update TaskResponse (WorkItem) schema to include task-specific properties
+- [x] Add validator for skills_needed (must be array)
+- [x] Add validator for workpackage_id (must exist)
+- [x] Write unit tests for Task (WorkItem) schemas
+- [x] Write property test: skills_needed validation
 
 **Details:**
 - Tasks are WorkItem nodes with type='task'
@@ -189,17 +189,17 @@ This task list implements the backend schedule API with dual-methodology project
 **Note:** Milestone schemas completed in Task 1.4
 
 ### Task 2.5: Update Resource Schemas
-- [ ] Add skills field to ResourceBase (list[str])
-- [ ] Add lead field to ResourceAllocation schema
-- [ ] Update ResourceResponse to include skills
-- [ ] Add validator for skills (non-empty strings)
-- [ ] Write unit tests for updated schemas
+- [x] Add skills field to ResourceBase (list[str])
+- [x] Add lead field to ResourceAllocation schema
+- [x] Update ResourceResponse to include skills
+- [x] Add validator for skills (non-empty strings)
+- [x] Write unit tests for updated schemas
 
 ### Task 2.6: Create Workpackage-Department Link Schemas
-- [ ] Create WorkpackageDepartmentLink schema
-- [ ] Create WorkpackageDepartmentLinkResponse schema
-- [ ] Add validation for department_id existence
-- [ ] Write unit tests for link schemas
+- [x] Create WorkpackageDepartmentLink schema
+- [x] Create WorkpackageDepartmentLinkResponse schema
+- [x] Add validation for department_id existence
+- [x] Write unit tests for link schemas
 
 ---
 

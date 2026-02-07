@@ -206,32 +206,32 @@ This task list implements the backend schedule API with dual-methodology project
 ## Phase 3: Service Layer
 
 ### Task 3.1: Create CompanyService
-- [ ] Implement create_company method
-- [ ] Implement get_company method
-- [ ] Implement update_company method
-- [ ] Implement delete_company method (cascade to departments)
-- [ ] Implement list_companies method
-- [ ] Add error handling for company operations
-- [ ] Write unit tests for CompanyService
-- [ ] Write property test: Company deletion cascades to departments
+- [x] Implement create_company method
+- [x] Implement get_company method
+- [x] Implement update_company method
+- [x] Implement delete_company method (cascade to departments)
+- [x] Implement list_companies method
+- [x] Add error handling for company operations
+- [x] Write unit tests for CompanyService
+- [x] Write property test: Company deletion cascades to departments
 
 ### Task 3.2: Update DepartmentService
-- [ ] Update create_department to create PARENT_OF from Company
-- [ ] Update get_department to include company relationship
-- [ ] Add get_departments_by_company method
-- [ ] Update delete_department to check for resources
-- [ ] Write unit tests for updated DepartmentService
+- [x] Update create_department to create PARENT_OF from Company
+- [x] Update get_department to include company relationship
+- [x] Add get_departments_by_company method
+- [x] Update delete_department to check for resources
+- [x] Write unit tests for updated DepartmentService
 
 ### Task 3.3: Update WorkItemService for Task Properties
-- [ ] Update create_workitem to handle task-specific properties (skills_needed, workpackage_id, etc.)
-- [ ] Update get_workitem to return task-specific properties
-- [ ] Update update_workitem to handle task-specific properties
-- [ ] Add automatic BELONGS_TO Workpackage relationship when workpackage_id is provided
-- [ ] Add automatic IN_BACKLOG when status="ready"
-- [ ] Add skills_needed handling in WorkItem creation/update
-- [ ] Write unit tests for task-specific properties in WorkItemService
-- [ ] Write property test: Tasks (WorkItem type='task') always belong to Workpackage
-- [ ] Write property test: Ready tasks automatically in backlog
+- [x] Update create_workitem to handle task-specific properties (skills_needed, workpackage_id, etc.)
+- [x] Update get_workitem to return task-specific properties
+- [x] Update update_workitem to handle task-specific properties
+- [x] Add automatic BELONGS_TO Workpackage relationship when workpackage_id is provided
+- [x] Add automatic IN_BACKLOG when status="ready"
+- [x] Add skills_needed handling in WorkItem creation/update
+- [x] Write unit tests for task-specific properties in WorkItemService
+- [x] Write property test: Tasks (WorkItem type='task') always belong to Workpackage
+- [x] Write property test: Ready tasks automatically in backlog
 
 **Details:**
 - Tasks are WorkItem nodes with type='task'
@@ -252,14 +252,14 @@ This task list implements the backend schedule API with dual-methodology project
 **Note:** MilestoneService completed in Task 1.4
 
 ### Task 3.5: Update ResourceService for Skills Matching
-- [ ] Add get_resources_by_skills method
-- [ ] Add match_resources_to_task method (skill-based)
-- [ ] Update allocate_resource to support lead flag
-- [ ] Update allocate_resource to support Project OR Task
-- [ ] Add get_lead_resources method
-- [ ] Write unit tests for skill matching
-- [ ] Write property test: Skill matching returns resources with all required skills
-- [ ] Write property test: Lead resources prioritized in allocation
+- [x] Add get_resources_by_skills method
+- [x] Add match_resources_to_task method (skill-based)
+- [x] Update allocate_resource to support lead flag
+- [x] Update allocate_resource to support Project OR Task
+- [x] Add get_lead_resources method
+- [x] Write unit tests for skill matching
+- [x] Write property test: Skill matching returns resources with all required skills
+- [x] Write property test: Lead resources prioritized in allocation
 
 **Details:**
 - Match task.skills_needed with resource.skills
@@ -267,28 +267,28 @@ This task list implements the backend schedule API with dual-methodology project
 - Support both project-level and task-level allocation
 
 ### Task 3.6: Create WorkpackageDepartmentService
-- [ ] Implement link_workpackage_to_department method
-- [ ] Implement unlink_workpackage_from_department method
-- [ ] Implement get_workpackage_department method
-- [ ] Implement get_department_resources_for_workpackage method
-- [ ] Write unit tests for linking service
-- [ ] Write property test: Workpackage links to at most one department
+- [x] Implement link_workpackage_to_department method
+- [x] Implement unlink_workpackage_from_department method
+- [x] Implement get_workpackage_department method
+- [x] Implement get_department_resources_for_workpackage method
+- [x] Write unit tests for linking service
+- [x] Write property test: Workpackage links to at most one department
 
 ### Task 3.7: Update BacklogService for Mutual Exclusivity
-- [ ] Update add_task_to_backlog to check for sprint assignment
-- [ ] Update add_task_to_backlog to remove ASSIGNED_TO_SPRINT if exists
-- [ ] Add validation: Cannot add task to backlog if in sprint
+- [x] Update add_task_to_backlog to check for sprint assignment
+- [x] Update add_task_to_backlog to remove ASSIGNED_TO_SPRINT if exists
+- [x] Add validation: Cannot add task to backlog if in sprint
 - [ ] Write unit tests for mutual exclusivity
-- [ ] Write property test: Adding to backlog removes sprint assignment
+- [x] Write property test: Adding to backlog removes sprint assignment
 
 ### Task 3.8: Update SprintService for Mutual Exclusivity
-- [ ] Update assign_task_to_sprint to remove IN_BACKLOG
-- [ ] Update remove_task_from_sprint to create IN_BACKLOG (if ready)
-- [ ] Update complete_sprint to handle incomplete tasks (return to backlog)
-- [ ] Add validation: Cannot assign task to sprint if in backlog
+- [x] Update assign_task_to_sprint to remove IN_BACKLOG
+- [x] Update remove_task_from_sprint to create IN_BACKLOG (if ready)
+- [x] Update complete_sprint to handle incomplete tasks (return to backlog)
+- [x] Add validation: Cannot assign task to sprint if in backlog
 - [ ] Write unit tests for mutual exclusivity
-- [ ] Write property test: Assigning to sprint removes backlog relationship
-- [ ] Write property test: Sprint completion returns incomplete tasks to backlog
+- [x] Write property test: Assigning to sprint removes backlog relationship
+- [x] Write property test: Sprint completion returns incomplete tasks to backlog
 
 ---
 

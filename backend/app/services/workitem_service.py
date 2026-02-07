@@ -156,6 +156,57 @@ class WorkItemService:
             ]}
         )
 
+        # For tasks (type='task'), create BELONGS_TO relationship to Workpackage if workpackage_id is provided
+        if workitem_data.type == "task" and hasattr(workitem_data, 'workpackage_id'):
+            wp_id = getattr(workitem_data, 'workpackage_id', None)
+            if wp_id is not None:
+                try:
+                    await self.graph_service.create_relationship(
+                        from_id=workitem_id,
+                        to_id=str(wp_id),
+                        rel_type="BELONGS_TO"
+                    )
+                except Exception as e:
+                    # Log error but don't fail the creation
+                    print(f"Warning: Failed to create BELONGS_TO relationship for task {workitem_id}: {e}")
+
+        # For tasks with status="ready", automatically add to backlog (create IN_BACKLOG relationship)
+        if workitem_data.type == "task" and workitem_data.status == "ready":
+            try:
+                # Find the project's backlog
+                # First, get the workpackage to find the project
+                if hasattr(workitem_data, 'workpackage_id'):
+                    wp_id = getattr(workitem_data, 'workpackage_id', None)
+                    if wp_id is not None:
+                        # Query to find project through workpackage -> phase -> project
+                        project_query = f"""
+                        MATCH (wp:Workpackage {{id: '{str(wp_id)}'}})-[:BELONGS_TO]->(p:Phase)-[:BELONGS_TO]->(proj:Project)
+                        RETURN proj.id as project_id
+                        """
+                        project_results = await self.graph_service.execute_query(project_query)
+                        
+                        if project_results and len(project_results) > 0:
+                            project_id = project_results[0].get('project_id')
+                            
+                            # Find or create backlog for this project
+                            backlog_query = f"""
+                            MATCH (b:Backlog {{project_id: '{project_id}'}})
+                            RETURN b.id as backlog_id
+                            """
+                            backlog_results = await self.graph_service.execute_query(backlog_query)
+                            
+                            if backlog_results and len(backlog_results) > 0:
+                                backlog_id = backlog_results[0].get('backlog_id')
+                                
+                                # Create IN_BACKLOG relationship
+                                await self.graph_service.add_task_to_backlog(
+                                    task_id=workitem_id,
+                                    backlog_id=backlog_id
+                                )
+            except Exception as e:
+                # Log error but don't fail the creation
+                print(f"Warning: Failed to add task {workitem_id} to backlog: {e}")
+
         # Return the created WorkItem
         return WorkItemResponse(
             id=UUID(workitem_id),
@@ -334,6 +385,69 @@ class WorkItemService:
 
             if severity and occurrence and detection:
                 update_data["rpn"] = severity * occurrence * detection
+
+        # Handle task-specific relationship updates
+        if current_workitem.get("type") == "task":
+            # If workpackage_id changed, update BELONGS_TO relationship
+            if hasattr(updates, 'workpackage_id') and updates.workpackage_id is not None:
+                old_wp_id = current_workitem.get('workpackage_id')
+                new_wp_id = str(updates.workpackage_id)
+                
+                if old_wp_id != new_wp_id:
+                    try:
+                        # Remove old BELONGS_TO relationship
+                        if old_wp_id:
+                            remove_query = f"""
+                            MATCH (t:WorkItem {{id: '{str(workitem_id)}'}})-[r:BELONGS_TO]->(wp:Workpackage {{id: '{old_wp_id}'}})
+                            DELETE r
+                            """
+                            await self.graph_service.execute_query(remove_query)
+                        
+                        # Create new BELONGS_TO relationship
+                        await self.graph_service.create_relationship(
+                            from_id=str(workitem_id),
+                            to_id=new_wp_id,
+                            rel_type="BELONGS_TO"
+                        )
+                    except Exception as e:
+                        print(f"Warning: Failed to update BELONGS_TO relationship for task {workitem_id}: {e}")
+            
+            # If status changed to "ready", add to backlog
+            old_status = current_workitem.get('status')
+            new_status = updates.status if updates.status is not None else old_status
+            
+            if old_status != "ready" and new_status == "ready":
+                try:
+                    # Find the project's backlog
+                    wp_id = update_data.get('workpackage_id') or current_workitem.get('workpackage_id')
+                    if wp_id:
+                        # Query to find project through workpackage -> phase -> project
+                        project_query = f"""
+                        MATCH (wp:Workpackage {{id: '{wp_id}'}})-[:BELONGS_TO]->(p:Phase)-[:BELONGS_TO]->(proj:Project)
+                        RETURN proj.id as project_id
+                        """
+                        project_results = await self.graph_service.execute_query(project_query)
+                        
+                        if project_results and len(project_results) > 0:
+                            project_id = project_results[0].get('project_id')
+                            
+                            # Find backlog for this project
+                            backlog_query = f"""
+                            MATCH (b:Backlog {{project_id: '{project_id}'}})
+                            RETURN b.id as backlog_id
+                            """
+                            backlog_results = await self.graph_service.execute_query(backlog_query)
+                            
+                            if backlog_results and len(backlog_results) > 0:
+                                backlog_id = backlog_results[0].get('backlog_id')
+                                
+                                # Create IN_BACKLOG relationship
+                                await self.graph_service.add_task_to_backlog(
+                                    task_id=str(workitem_id),
+                                    backlog_id=backlog_id
+                                )
+                except Exception as e:
+                    print(f"Warning: Failed to add task {workitem_id} to backlog: {e}")
 
         # Use VersionService to create new version if available
         if self.version_service:

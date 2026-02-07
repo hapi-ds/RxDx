@@ -533,6 +533,159 @@ class ResourceService:
             logger.error(f"Failed to get lead resources for task: {e}")
             return []
 
+    async def get_resources_by_skills(
+        self, required_skills: list[str], limit: int = 100
+    ) -> list[ResourceResponse]:
+        """
+        Get resources that have all the required skills
+
+        Args:
+            required_skills: List of required skills
+            limit: Maximum number of resources to return
+
+        Returns:
+            List of resources with matching skills
+        """
+        try:
+            # Query resources that have all required skills
+            # Using array containment check in Cypher
+            skills_filter = ", ".join([f"'{skill}'" for skill in required_skills])
+            query = f"""
+            MATCH (r:Resource)
+            WHERE r.skills IS NOT NULL
+            AND all(skill IN [{skills_filter}] WHERE skill IN r.skills)
+            AND r.availability = 'available'
+            RETURN r
+            ORDER BY r.name
+            LIMIT {limit}
+            """
+            results = await self.graph_service.execute_query(query)
+
+            resources = []
+            for result in results:
+                res_data = result
+                if "properties" in res_data:
+                    res_data = res_data["properties"]
+
+                resources.append(
+                    ResourceResponse(
+                        id=UUID(res_data["id"]),
+                        name=res_data["name"],
+                        type=res_data["type"],
+                        capacity=res_data["capacity"],
+                        department_id=UUID(res_data["department_id"]),
+                        skills=res_data.get("skills"),
+                        availability=res_data.get("availability", "available"),
+                        created_at=datetime.fromisoformat(res_data["created_at"]),
+                    )
+                )
+
+            return resources
+        except Exception as e:
+            logger.error(f"Failed to get resources by skills: {e}")
+            return []
+
+    async def match_resources_to_task(
+        self, task_id: UUID, limit: int = 10
+    ) -> list[dict]:
+        """
+        Match resources to a task based on skills_needed
+
+        Args:
+            task_id: Task UUID
+            limit: Maximum number of resources to return
+
+        Returns:
+            List of resources with match score, sorted by best match
+            Each dict contains: resource (ResourceResponse), match_score (float), matching_skills (list[str])
+        """
+        try:
+            # Get task skills_needed
+            task_query = f"""
+            MATCH (t:WorkItem {{id: '{str(task_id)}', type: 'task'}})
+            RETURN t.skills_needed as skills_needed, t.workpackage_id as workpackage_id
+            """
+            task_results = await self.graph_service.execute_query(task_query)
+
+            if not task_results or not task_results[0].get('skills_needed'):
+                # No skills required, return empty list
+                return []
+
+            required_skills = task_results[0]['skills_needed']
+            workpackage_id = task_results[0].get('workpackage_id')
+
+            # Get available resources with skills
+            resources_query = """
+            MATCH (r:Resource)
+            WHERE r.skills IS NOT NULL
+            AND r.availability = 'available'
+            RETURN r
+            """
+            resource_results = await self.graph_service.execute_query(resources_query)
+
+            # Calculate match scores
+            matches = []
+            for result in resource_results:
+                res_data = result
+                if "properties" in res_data:
+                    res_data = res_data["properties"]
+
+                resource_skills = res_data.get("skills", [])
+                if not resource_skills:
+                    continue
+
+                # Calculate match score (percentage of required skills that resource has)
+                matching_skills = [skill for skill in required_skills if skill in resource_skills]
+                match_score = len(matching_skills) / len(required_skills) if required_skills else 0
+
+                # Bonus for resources in the same department as workpackage
+                department_bonus = 0
+                if workpackage_id:
+                    # Check if workpackage is linked to resource's department
+                    dept_query = f"""
+                    MATCH (wp:Workpackage {{id: '{workpackage_id}'}})-[:LINKED_TO_DEPARTMENT]->(d:Department {{id: '{res_data["department_id"]}'}})
+                    RETURN count(d) as count
+                    """
+                    dept_results = await self.graph_service.execute_query(dept_query)
+                    if dept_results and dept_results[0].get('count', 0) > 0:
+                        department_bonus = 0.1  # 10% bonus for same department
+
+                # Bonus for lead resources
+                lead_bonus = 0
+                lead_query = f"""
+                MATCH (r:Resource {{id: '{res_data["id"]}'}})-[a:ALLOCATED_TO {{lead: true}}]->()
+                RETURN count(a) as count
+                """
+                lead_results = await self.graph_service.execute_query(lead_query)
+                if lead_results and lead_results[0].get('count', 0) > 0:
+                    lead_bonus = 0.05  # 5% bonus for lead experience
+
+                final_score = match_score + department_bonus + lead_bonus
+
+                if match_score > 0:  # Only include resources with at least one matching skill
+                    matches.append({
+                        "resource": ResourceResponse(
+                            id=UUID(res_data["id"]),
+                            name=res_data["name"],
+                            type=res_data["type"],
+                            capacity=res_data["capacity"],
+                            department_id=UUID(res_data["department_id"]),
+                            skills=res_data.get("skills"),
+                            availability=res_data.get("availability", "available"),
+                            created_at=datetime.fromisoformat(res_data["created_at"]),
+                        ),
+                        "match_score": final_score,
+                        "matching_skills": matching_skills,
+                    })
+
+            # Sort by match score (descending) and return top matches
+            matches.sort(key=lambda x: x["match_score"], reverse=True)
+            return matches[:limit]
+
+        except Exception as e:
+            logger.error(f"Failed to match resources to task: {e}")
+            return []
+
 
 async def get_resource_service(
     graph_service: GraphService,

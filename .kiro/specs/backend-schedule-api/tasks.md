@@ -62,17 +62,17 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 **Requirements: 16.19-16.35, 8.1-8.10**
 
 ### Task 1.4: Milestone Dependency Management
-- [ ] Add POST /api/v1/milestones/{id}/dependencies/{task_id} endpoint
-- [ ] Add DELETE /api/v1/milestones/{id}/dependencies/{task_id} endpoint
-- [ ] Add GET /api/v1/milestones/{id}/dependencies endpoint
-- [ ] Implement add_dependency method in MilestoneService
-- [ ] Implement remove_dependency method in MilestoneService
-- [ ] Implement get_dependencies method in MilestoneService
-- [ ] Create DEPENDS_ON relationship from Milestone to Task
-- [ ] Create BLOCKS relationship from Task to Milestone (inverse)
-- [ ] Add dependency cycle detection
-- [ ] Write unit tests for dependency management
-- [ ] Write property test: No dependency cycles
+- [x] Add POST /api/v1/milestones/{id}/dependencies/{task_id} endpoint
+- [x] Add DELETE /api/v1/milestones/{id}/dependencies/{task_id} endpoint
+- [x] Add GET /api/v1/milestones/{id}/dependencies endpoint
+- [x] Implement add_dependency method in MilestoneService
+- [x] Implement remove_dependency method in MilestoneService
+- [x] Implement get_dependencies method in MilestoneService
+- [x] Create DEPENDS_ON relationship from Milestone to Task
+- [x] Create BLOCKS relationship from Task to Milestone (inverse)
+- [x] Add dependency cycle detection
+- [x] Write unit tests for dependency management
+- [x] Write property test: No dependency cycles
 
 **Requirements: 16.25-16.26, 23.8-23.10**
 
@@ -83,8 +83,8 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 - [ ] Calculate milestone dates from dependent task completion (automatic mode)
 - [ ] Update schedule response to include milestone dates
 - [ ] Write unit tests for both milestone modes
-- [ ]* Write property test: Manual milestone constraints are respected
-- [ ]* Write property test: Automatic milestone dates calculated correctly
+- [ ] Write property test: Manual milestone constraints are respected
+- [ ] Write property test: Automatic milestone dates calculated correctly
 
 **Requirements: 1.8-1.9, 16.51-16.53**
 

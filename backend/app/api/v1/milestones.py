@@ -234,3 +234,137 @@ async def list_milestones(
     )
 
     return milestones
+
+
+@router.post(
+    "/{milestone_id}/dependencies/{task_id}",
+    status_code=status.HTTP_201_CREATED,
+    summary="Add task dependency to milestone",
+    description="Create DEPENDS_ON relationship from milestone to task and BLOCKS relationship from task to milestone"
+)
+async def add_milestone_dependency(
+    milestone_id: UUID,
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: MilestoneService = Depends(get_milestone_service)
+) -> dict:
+    """
+    Add a task dependency to a milestone.
+
+    Args:
+        milestone_id: Milestone UUID
+        task_id: Task UUID (WorkItem with type='task')
+        current_user: Authenticated user
+        service: Milestone service
+
+    Returns:
+        Success message
+
+    Raises:
+        HTTPException: 404 if milestone or task not found
+        HTTPException: 400 if dependency would create a cycle
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        await service.add_dependency(milestone_id, task_id)
+        logger.info(
+            f"User {current_user.id} added dependency: "
+            f"milestone {milestone_id} depends on task {task_id}"
+        )
+        return {
+            "message": "Dependency added successfully",
+            "milestone_id": str(milestone_id),
+            "task_id": str(task_id)
+        }
+    except ValueError as e:
+        logger.error(f"Failed to add milestone dependency: {e}")
+        if "not found" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e)
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(e)
+            )
+    except Exception as e:
+        logger.exception(f"Error adding milestone dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add milestone dependency"
+        )
+
+
+@router.delete(
+    "/{milestone_id}/dependencies/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove task dependency from milestone",
+    description="Remove DEPENDS_ON and BLOCKS relationships between milestone and task"
+)
+async def remove_milestone_dependency(
+    milestone_id: UUID,
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: MilestoneService = Depends(get_milestone_service)
+) -> None:
+    """
+    Remove a task dependency from a milestone.
+
+    Args:
+        milestone_id: Milestone UUID
+        task_id: Task UUID
+        current_user: Authenticated user
+        service: Milestone service
+
+    Raises:
+        HTTPException: 404 if dependency not found
+        HTTPException: 401 if not authenticated
+    """
+    removed = await service.remove_dependency(milestone_id, task_id)
+
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Dependency between milestone {milestone_id} and task {task_id} not found"
+        )
+
+    logger.info(
+        f"User {current_user.id} removed dependency: "
+        f"milestone {milestone_id} no longer depends on task {task_id}"
+    )
+
+
+@router.get(
+    "/{milestone_id}/dependencies",
+    response_model=list[dict],
+    summary="Get milestone dependencies",
+    description="Get all tasks that this milestone depends on"
+)
+async def get_milestone_dependencies(
+    milestone_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: MilestoneService = Depends(get_milestone_service)
+) -> list[dict]:
+    """
+    Get all task dependencies for a milestone.
+
+    Args:
+        milestone_id: Milestone UUID
+        current_user: Authenticated user
+        service: Milestone service
+
+    Returns:
+        List of tasks that the milestone depends on
+
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    dependencies = await service.get_dependencies(milestone_id)
+
+    logger.info(
+        f"User {current_user.id} retrieved {len(dependencies)} dependencies "
+        f"for milestone {milestone_id}"
+    )
+
+    return dependencies

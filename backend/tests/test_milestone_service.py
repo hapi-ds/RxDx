@@ -2,6 +2,7 @@
 
 import pytest
 from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from app.models.user import User
@@ -360,3 +361,203 @@ async def test_list_milestones_ordered_by_target_date(milestone_service, mock_us
     assert project_milestones[0].title == "First Milestone"
     assert project_milestones[1].title == "Second Milestone"
     assert project_milestones[2].title == "Third Milestone"
+
+
+@pytest.mark.asyncio
+async def test_add_dependency(milestone_service, mock_user):
+    """Test adding a task dependency to a milestone"""
+    milestone_id = uuid4()
+    task_id = uuid4()
+    
+    # Mock milestone exists
+    milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+        # get_milestone query
+        [{
+            'id': str(milestone_id),
+            'title': 'Test Milestone',
+            'target_date': '2024-12-31T00:00:00+00:00',
+            'is_manual_constraint': True,
+            'status': 'draft',
+            'project_id': str(uuid4()),
+            'version': '1.0',
+            'created_by': str(mock_user.id),
+            'created_at': '2024-01-01T00:00:00+00:00',
+            'updated_at': '2024-01-01T00:00:00+00:00',
+        }],
+        # Task exists query
+        [{'id': str(task_id), 'type': 'task', 'title': 'Test Task'}],
+        # Cycle check query 1
+        [{'cycle_count': 0}],
+        # Cycle check query 2
+        [{'cycle_count': 0}],
+        # Create DEPENDS_ON relationship
+        [{'r': {}}],
+        # Create BLOCKS relationship
+        [{'r': {}}],
+    ])
+    
+    result = await milestone_service.add_dependency(milestone_id, task_id)
+    
+    assert result is True
+    assert milestone_service.graph_service.execute_query.call_count == 6
+
+
+@pytest.mark.asyncio
+async def test_add_dependency_milestone_not_found(milestone_service):
+    """Test adding dependency when milestone doesn't exist"""
+    milestone_id = uuid4()
+    task_id = uuid4()
+    
+    # Mock milestone not found
+    milestone_service.graph_service.execute_query = AsyncMock(return_value=[])
+    
+    with pytest.raises(ValueError, match="Milestone .* not found"):
+        await milestone_service.add_dependency(milestone_id, task_id)
+
+
+@pytest.mark.asyncio
+async def test_add_dependency_task_not_found(milestone_service, mock_user):
+    """Test adding dependency when task doesn't exist"""
+    milestone_id = uuid4()
+    task_id = uuid4()
+    
+    # Mock milestone exists but task doesn't
+    milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+        # get_milestone query
+        [{
+            'id': str(milestone_id),
+            'title': 'Test Milestone',
+            'target_date': '2024-12-31T00:00:00+00:00',
+            'is_manual_constraint': True,
+            'status': 'draft',
+            'project_id': str(uuid4()),
+            'version': '1.0',
+            'created_by': str(mock_user.id),
+            'created_at': '2024-01-01T00:00:00+00:00',
+            'updated_at': '2024-01-01T00:00:00+00:00',
+        }],
+        # Task not found
+        [],
+    ])
+    
+    with pytest.raises(ValueError, match="Task .* not found"):
+        await milestone_service.add_dependency(milestone_id, task_id)
+
+
+@pytest.mark.asyncio
+async def test_add_dependency_creates_cycle(milestone_service, mock_user):
+    """Test adding dependency that would create a cycle"""
+    milestone_id = uuid4()
+    task_id = uuid4()
+    
+    # Mock milestone exists, task exists, but cycle detected
+    milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+        # get_milestone query
+        [{
+            'id': str(milestone_id),
+            'title': 'Test Milestone',
+            'target_date': '2024-12-31T00:00:00+00:00',
+            'is_manual_constraint': True,
+            'status': 'draft',
+            'project_id': str(uuid4()),
+            'version': '1.0',
+            'created_by': str(mock_user.id),
+            'created_at': '2024-01-01T00:00:00+00:00',
+            'updated_at': '2024-01-01T00:00:00+00:00',
+        }],
+        # Task exists query
+        [{'id': str(task_id), 'type': 'task', 'title': 'Test Task'}],
+        # Cycle check query 1 - cycle detected
+        [{'cycle_count': 1}],
+    ])
+    
+    with pytest.raises(ValueError, match="would create a cycle"):
+        await milestone_service.add_dependency(milestone_id, task_id)
+
+
+@pytest.mark.asyncio
+async def test_remove_dependency(milestone_service):
+    """Test removing a task dependency from a milestone"""
+    milestone_id = uuid4()
+    task_id = uuid4()
+    
+    # Mock successful deletion
+    milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+        # Remove DEPENDS_ON
+        [{'deleted_count': 1}],
+        # Remove BLOCKS
+        [{'deleted_count': 1}],
+    ])
+    
+    result = await milestone_service.remove_dependency(milestone_id, task_id)
+    
+    assert result is True
+    assert milestone_service.graph_service.execute_query.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_remove_dependency_not_found(milestone_service):
+    """Test removing dependency that doesn't exist"""
+    milestone_id = uuid4()
+    task_id = uuid4()
+    
+    # Mock no relationships found
+    milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+        # Remove DEPENDS_ON - not found
+        [{'deleted_count': 0}],
+        # Remove BLOCKS - not found
+        [{'deleted_count': 0}],
+    ])
+    
+    result = await milestone_service.remove_dependency(milestone_id, task_id)
+    
+    assert result is False
+
+
+@pytest.mark.asyncio
+async def test_get_dependencies(milestone_service):
+    """Test getting all dependencies for a milestone"""
+    milestone_id = uuid4()
+    task1_id = uuid4()
+    task2_id = uuid4()
+    
+    # Mock dependencies
+    milestone_service.graph_service.execute_query = AsyncMock(return_value=[
+        {
+            'id': str(task1_id),
+            'title': 'Task 1',
+            'status': 'active',
+            'estimated_hours': 10.0,
+            'start_date': '2024-01-01T00:00:00+00:00',
+            'end_date': '2024-01-05T00:00:00+00:00',
+        },
+        {
+            'id': str(task2_id),
+            'title': 'Task 2',
+            'status': 'ready',
+            'estimated_hours': 5.0,
+            'start_date': '2024-01-06T00:00:00+00:00',
+            'end_date': '2024-01-08T00:00:00+00:00',
+        },
+    ])
+    
+    dependencies = await milestone_service.get_dependencies(milestone_id)
+    
+    assert len(dependencies) == 2
+    assert dependencies[0]['id'] == str(task1_id)
+    assert dependencies[0]['title'] == 'Task 1'
+    assert dependencies[1]['id'] == str(task2_id)
+    assert dependencies[1]['title'] == 'Task 2'
+
+
+@pytest.mark.asyncio
+async def test_get_dependencies_empty(milestone_service):
+    """Test getting dependencies when milestone has none"""
+    milestone_id = uuid4()
+    
+    # Mock no dependencies
+    milestone_service.graph_service.execute_query = AsyncMock(return_value=[])
+    
+    dependencies = await milestone_service.get_dependencies(milestone_id)
+    
+    assert len(dependencies) == 0

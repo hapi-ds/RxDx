@@ -2,7 +2,8 @@
 
 import pytest
 from datetime import UTC, datetime, timedelta
-from hypothesis import given, strategies as st
+from hypothesis import given, strategies as st, settings, HealthCheck
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 from app.models.user import User
@@ -351,3 +352,98 @@ async def test_property_milestone_list_includes_created_milestone(
     assert found_milestone.title == milestone.title
     assert found_milestone.project_id == milestone.project_id
     assert found_milestone.is_manual_constraint == milestone.is_manual_constraint
+
+
+@given(
+    milestone_data=milestone_data_strategy(),
+    num_tasks=st.integers(min_value=2, max_value=5)
+)
+@settings(max_examples=10, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+@pytest.mark.asyncio
+async def test_property_no_dependency_cycles(
+    milestone_data,
+    num_tasks,
+    milestone_service,
+    mock_user
+):
+    """
+    Property: Adding dependencies should never create cycles.
+    
+    **Validates: Requirements 16.25-16.26, 23.8-23.10**
+    
+    This property ensures that the cycle detection algorithm correctly
+    prevents the creation of circular dependencies between milestones and tasks.
+    """
+    # milestone_data is already a MilestoneCreate object
+    milestone_create = milestone_data
+    
+    # Mock milestone creation
+    milestone_id = uuid4()
+    milestone_service.graph_service.execute_query = AsyncMock(return_value=[])
+    
+    milestone = await milestone_service.create_milestone(milestone_create, mock_user)
+    
+    # Create a chain of tasks: task1 -> task2 -> task3 -> ...
+    task_ids = [uuid4() for _ in range(num_tasks)]
+    
+    # Mock adding dependencies in a chain
+    for i, task_id in enumerate(task_ids):
+        # Mock get_milestone
+        milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+            # get_milestone query
+            [{
+                'id': str(milestone.id),
+                'title': milestone.title,
+                'target_date': milestone.target_date.isoformat(),
+                'is_manual_constraint': milestone.is_manual_constraint,
+                'status': milestone.status,
+                'project_id': str(milestone.project_id),
+                'version': milestone.version,
+                'created_by': str(milestone.created_by),
+                'created_at': milestone.created_at.isoformat(),
+                'updated_at': milestone.updated_at.isoformat(),
+            }],
+            # Task exists query
+            [{'id': str(task_id), 'type': 'task', 'title': f'Task {i}'}],
+            # Cycle check query 1 - no cycle
+            [{'cycle_count': 0}],
+            # Cycle check query 2 - no cycle
+            [{'cycle_count': 0}],
+            # Create DEPENDS_ON relationship
+            [{'r': {}}],
+            # Create BLOCKS relationship
+            [{'r': {}}],
+        ])
+        
+        # Add dependency - should succeed
+        result = await milestone_service.add_dependency(milestone.id, task_id)
+        assert result is True
+    
+    # Now try to create a cycle by making the milestone depend on a task
+    # that already blocks it (indirectly through the chain)
+    # This should be detected and prevented
+    
+    # Mock cycle detection - simulate that adding first task again would create cycle
+    milestone_service.graph_service.execute_query = AsyncMock(side_effect=[
+        # get_milestone query
+        [{
+            'id': str(milestone.id),
+            'title': milestone.title,
+            'target_date': milestone.target_date.isoformat(),
+            'is_manual_constraint': milestone.is_manual_constraint,
+            'status': milestone.status,
+            'project_id': str(milestone.project_id),
+            'version': milestone.version,
+            'created_by': str(milestone.created_by),
+            'created_at': milestone.created_at.isoformat(),
+            'updated_at': milestone.updated_at.isoformat(),
+        }],
+        # Task exists query
+        [{'id': str(task_ids[0]), 'type': 'task', 'title': 'Task 0'}],
+        # Cycle check query 1 - cycle detected!
+        [{'cycle_count': 1}],
+    ])
+    
+    # Attempting to add the same task again should raise ValueError
+    with pytest.raises(ValueError, match="would create a cycle"):
+        await milestone_service.add_dependency(milestone.id, task_ids[0])

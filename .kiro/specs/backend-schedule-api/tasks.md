@@ -26,15 +26,15 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 
 ### Task 1.1: Critical Path Calculation Algorithm
 - [x] Implement calculate_critical_path function using longest path algorithm
-- [ ] Build dependency graph (adjacency list) from task dependencies
-- [ ] Implement topological sort with longest path calculation
-- [ ] Track predecessor nodes for path reconstruction
-- [ ] Backtrack from end task to find critical path
-- [ ] Return list of task IDs on critical path
-- [ ] Add cycle detection for invalid dependency graphs
-- [ ] Write unit tests for critical path calculation
-- [ ] Write property test: Critical path duration >= any other path duration
-- [ ] Write property test: Critical path is always a valid path through dependency graph
+- [x] Build dependency graph (adjacency list) from task dependencies
+- [x] Implement topological sort with longest path calculation
+- [x] Track predecessor nodes for path reconstruction
+- [x] Backtrack from end task to find critical path
+- [x] Return list of task IDs on critical path
+- [x] Add cycle detection for invalid dependency graphs
+- [x] Write unit tests for critical path calculation
+- [x] Write property test: Critical path duration >= any other path duration
+- [x] Write property test: Critical path is always a valid path through dependency graph
 
 **Requirements: 1.3, 1.16-1.17, 2.4**
 

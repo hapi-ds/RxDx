@@ -1,618 +1,529 @@
-# Implementation Tasks: Backend Schedule API
+# Implementation Tasks: Backend Schedule API (Schedule-Specific Features)
 
 ## Overview
 
-This task list implements the backend schedule API with dual-methodology project management (classic + agile), graph database integration using Apache AGE, and skill-based resource allocation.
+This task list focuses ONLY on schedule-specific features that are NOT yet implemented. The following are already complete:
+- ✅ SchedulerService with OR-Tools constraint programming
+- ✅ MilestoneService with CRUD operations
+- ✅ Schedule API endpoints (calculate, get, update)
+- ✅ Milestone API endpoints (CRUD)
+- ✅ Company, Department, Resource, Workpackage services
+- ✅ SchedulePage frontend (basic list view)
 
-**Key Features:**
-- Company → Department → Resource organizational hierarchy
-- Tasks as WorkItem nodes (type='task') - integrated with requirements, risks, tests
-- Milestones as separate Milestone nodes - used only for project scheduling
-- Skills-based resource matching
-- Mutually exclusive Backlog/Sprint relationships
-- Resource allocation with lead flag
-- Department-based resource allocation
-
----
-
-## Phase 1: Graph Database Schema Setup
-
-### Task 1.1: Create Company Node Type
-- [x] Create Company vertex label in Apache AGE graph
-- [x] Add Company node creation in graph service
-- [x] Add Company CRUD endpoints
-- [x] Write unit tests for Company operations
-- [x] Write property test: Company nodes have valid UUIDs
-
-**Details:**
-- Properties: id, name, description, created_at, updated_at
-- Endpoint: POST /api/v1/companies
-- Endpoint: GET /api/v1/companies/{id}
-- Endpoint: PUT /api/v1/companies/{id}
-- Endpoint: DELETE /api/v1/companies/{id}
-
-### Task 1.2: Update Department Node Type
-- [x] Add company_id property to Department nodes
-- [x] Create PARENT_OF relationship from Company to Department
-- [x] Update Department creation to require company_id
-- [x] Update Department endpoints to include company relationship
-- [x] Write migration script for existing Departments
-- [x] Write unit tests for Company-Department relationship
-- [x] Write property test: All Departments belong to a Company
-
-**Details:**
-- Add company_id to Department properties
-- Update graph queries to include Company relationship
-- Migration: Assign existing departments to default company
-
-### Task 1.3: Add Task-Specific Properties to WorkItem
-- [x] Add skills_needed property to WorkItem(type='task') (array of strings)
-- [x] Add workpackage_id property to WorkItem(type='task') for quick lookup
-- [x] Add story_points property to WorkItem(type='task')
-- [x] Add done property to WorkItem(type='task')
-- [x] Add start_date, end_date, due_date properties to WorkItem(type='task')
-- [x] Update WorkItem schemas to include task-specific properties
-- [x] Write unit tests for task properties
-- [x] Write property test: skills_needed is always an array
-- [x] Write property test: All tasks have valid workpackage_id when assigned
-
-**Details:**
-- Tasks remain as WorkItem nodes with type='task'
-- Properties: skills_needed (for resource matching), workpackage_id (for quick lookup), story_points, done, start_date, end_date, due_date
-- No separate Task node type - use existing WorkItem infrastructure
-
-### Task 1.4: Create Milestone Node Type
-- [x] Create Milestone vertex label in Apache AGE graph
-- [x] Add Milestone node creation in graph service
-- [x] Create Milestone schemas (MilestoneBase, MilestoneCreate, MilestoneUpdate, MilestoneResponse)
-- [x] Add validation for target_date (must be future date for new milestones)
-- [x] Add validation for is_manual_constraint (boolean)
-- [x] Create MilestoneService for CRUD operations
-- [x] Add Milestone CRUD endpoints
-- [x] Write unit tests for Milestone operations
-- [x] Write property test: is_manual_constraint is always boolean
-- [x] Write property test: All milestones have valid project_id
-
-**Details:**
-- Milestones are separate Milestone nodes (NOT WorkItem)
-- Properties: id, title, description, target_date, is_manual_constraint, completion_criteria, status, project_id, version, created_by, created_at, updated_at
-- Query pattern: `MATCH (m:Milestone)` not `MATCH (w:WorkItem {type: 'milestone'})`
-- Used exclusively for project scheduling, not general work tracking
-- No versioning/signing complexity like WorkItems
-
-### Task 1.5: Create LINKED_TO_DEPARTMENT Relationship
-- [x] Create LINKED_TO_DEPARTMENT edge label in Apache AGE
-- [x] Add relationship creation in graph service
-- [x] Add endpoint: POST /api/v1/workpackages/{id}/link-department/{dept_id}
-- [x] Add endpoint: DELETE /api/v1/workpackages/{id}/link-department/{dept_id}
-- [x] Add endpoint: GET /api/v1/workpackages/{id}/department
-- [x] Write unit tests for department linking
-- [x] Write property test: Workpackage can link to at most one Department
-
-**Details:**
-- From: Workpackage
-- To: Department
-- Properties: None
-- Purpose: Department-based resource allocation
-
-### Task 1.6: Update ALLOCATED_TO Relationship
-- [x] Add "lead" boolean property to ALLOCATED_TO relationship
-- [x] Update relationship to support Project OR Task targets
-- [x] Update graph service to handle dual target types
-- [x] Update resource allocation endpoints
-- [x] Write migration script: Add lead=false to existing allocations
-- [x] Write unit tests for lead flag functionality
-- [x] Write property test: lead is always boolean
-- [x] Write property test: Resource allocated to Project XOR Task
-
-**Details:**
-- Properties: allocation_percentage, lead, start_date, end_date
-- lead=true: Primary/responsible resource
-- lead=false: Supporting/collaborating resource
-
-### Task 1.7: Update Backlog/Sprint Relationships (Mutual Exclusivity)
-- [x] Add constraint validation: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
-- [x] Update sprint assignment to remove IN_BACKLOG relationship
-- [x] Update backlog addition to remove ASSIGNED_TO_SPRINT relationship
-- [x] Add endpoint: POST /api/v1/tasks/{id}/move-to-backlog
-- [x] Add endpoint: POST /api/v1/tasks/{id}/move-to-sprint/{sprint_id}
-- [x] Write unit tests for mutual exclusivity
-- [x] Write property test: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
-- [x] Write property test: Moving to sprint removes backlog relationship
-
-**Details:**
-- Enforce: A task can be IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
-- When assigned to sprint → remove IN_BACKLOG
-- When removed from sprint → create IN_BACKLOG (if status="ready")
-
-### Task 1.8: Create Additional Task Relationships
-- [x] Create has_risk edge label in Apache AGE
-- [x] Create implements edge label in Apache AGE
-- [x] Add has_risk relationship creation in graph service
-- [x] Add implements relationship creation in graph service
-- [x] Add endpoint: POST /api/v1/tasks/{id}/link-risk/{risk_id}
-- [x] Add endpoint: POST /api/v1/tasks/{id}/link-requirement/{req_id}
-- [x] Add endpoint: GET /api/v1/tasks/{id}/risks
-- [x] Add endpoint: GET /api/v1/tasks/{id}/requirements
-- [x] Write unit tests for task relationships
-- [x] Write property test: Task can have multiple has_risk relationships
-- [x] Write property test: Task can have multiple implements relationships
-
-**Details:**
-- has_risk: Task → Risk (WorkItem)
-- implements: Task → Requirement (WorkItem)
-- Tasks can have many domain relationships
+**Remaining Schedule-Specific Features:**
+- Critical path calculation
+- Sprint management (service + API + UI)
+- Backlog management (service + API + UI)
+- Skills-based resource allocation
+- Velocity tracking and burndown charts
+- Gantt chart visualization
+- Kanban board schedule integration
+- Milestone dependency management
 
 ---
 
-## Phase 2: Pydantic Schemas
+## Phase 1: Critical Path and Schedule Enhancements
 
-### Task 2.1: Create Company Schemas
-- [x] Create CompanyBase schema
-- [x] Create CompanyCreate schema
-- [x] Create CompanyUpdate schema
-- [x] Create CompanyResponse schema
-- [x] Add validation for company name (min 1, max 200 chars)
-- [x] Write unit tests for schema validation
+### Task 1.1: Critical Path Calculation Algorithm
+- [x] Implement calculate_critical_path function using longest path algorithm
+- [ ] Build dependency graph (adjacency list) from task dependencies
+- [ ] Implement topological sort with longest path calculation
+- [ ] Track predecessor nodes for path reconstruction
+- [ ] Backtrack from end task to find critical path
+- [ ] Return list of task IDs on critical path
+- [ ] Add cycle detection for invalid dependency graphs
+- [ ] Write unit tests for critical path calculation
+- [ ] Write property test: Critical path duration >= any other path duration
+- [ ] Write property test: Critical path is always a valid path through dependency graph
 
-### Task 2.2: Update Department Schemas
-- [x] Add company_id to DepartmentBase
-- [x] Add company relationship to DepartmentResponse
-- [x] Update DepartmentCreate to require company_id
-- [x] Write unit tests for updated schemas
+**Requirements: 1.3, 1.16-1.17, 2.4**
 
-### Task 2.3: Update WorkItem Schemas for Task Properties
-- [x] Update TaskBase (WorkItem) schema to include skills_needed field
-- [x] Update TaskCreate (WorkItem) schema to include task-specific properties
-- [x] Update TaskUpdate (WorkItem) schema to include task-specific properties
-- [x] Update TaskResponse (WorkItem) schema to include task-specific properties
-- [x] Add validator for skills_needed (must be array)
-- [x] Add validator for workpackage_id (must exist)
-- [x] Write unit tests for Task (WorkItem) schemas
-- [x] Write property test: skills_needed validation
+### Task 1.2: Integrate Critical Path into SchedulerService
+- [ ] Update SchedulerService.schedule_project to calculate critical path
+- [ ] Mark critical path tasks with is_critical flag in schedule response
+- [ ] Store critical path task IDs in schedule metadata
+- [ ] Update ScheduleResponse schema to include critical_path field
+- [ ] Update schedule storage to persist critical path
+- [ ] Write unit tests for critical path integration
+- [ ]* Write property test: All critical path tasks exist in schedule
 
-**Details:**
-- Tasks are WorkItem nodes with type='task'
-- skills_needed: list[str] | None
-- Validate skills are non-empty strings
-- Use existing WorkItem schema infrastructure
+**Requirements: 1.3, 1.16-1.17**
 
-### Task 2.4: Milestone Schemas Already Complete ✅
-- [x] MilestoneBase schema created
-- [x] MilestoneCreate schema created
-- [x] MilestoneUpdate schema created
-- [x] MilestoneResponse schema created
-- [x] Validator for target_date added
-- [x] Validator for is_manual_constraint added
-- [x] Unit tests for Milestone schemas written
+### Task 1.3: Skills-Based Resource Allocation
+- [ ] Add skills_needed property to task schemas (already in WorkItem, verify in schedule schemas)
+- [ ] Implement skill matching algorithm (set intersection) in SchedulerService
+- [ ] Update get_matching_resources_for_task to prioritize skill matches
+- [ ] Prioritize lead resources (lead=true) in allocation
+- [ ] Update schedule calculation to use skill-based matching
+- [ ] Write unit tests for skill matching
+- [ ]* Write property test: Allocated resources have required skills
+- [ ]* Write property test: Lead resources allocated before non-lead
 
-**Note:** Milestone schemas completed in Task 1.4
+**Requirements: 16.19-16.35, 8.1-8.10**
 
-### Task 2.5: Update Resource Schemas
-- [x] Add skills field to ResourceBase (list[str])
-- [x] Add lead field to ResourceAllocation schema
-- [x] Update ResourceResponse to include skills
-- [x] Add validator for skills (non-empty strings)
-- [x] Write unit tests for updated schemas
+### Task 1.4: Milestone Dependency Management
+- [ ] Add POST /api/v1/milestones/{id}/dependencies/{task_id} endpoint
+- [ ] Add DELETE /api/v1/milestones/{id}/dependencies/{task_id} endpoint
+- [ ] Add GET /api/v1/milestones/{id}/dependencies endpoint
+- [ ] Implement add_dependency method in MilestoneService
+- [ ] Implement remove_dependency method in MilestoneService
+- [ ] Implement get_dependencies method in MilestoneService
+- [ ] Create DEPENDS_ON relationship from Milestone to Task
+- [ ] Create BLOCKS relationship from Task to Milestone (inverse)
+- [ ] Add dependency cycle detection
+- [ ] Write unit tests for dependency management
+- [ ]* Write property test: No dependency cycles
 
-### Task 2.6: Create Workpackage-Department Link Schemas
-- [x] Create WorkpackageDepartmentLink schema
-- [x] Create WorkpackageDepartmentLinkResponse schema
-- [x] Add validation for department_id existence
-- [x] Write unit tests for link schemas
+**Requirements: 16.25-16.26, 23.8-23.10**
 
----
+### Task 1.5: Milestone Scheduling Modes
+- [ ] Update SchedulerService to handle milestone constraints (manual mode)
+- [ ] Implement milestone date calculation (automatic mode)
+- [ ] Add milestone constraints to OR-Tools solver (manual mode)
+- [ ] Calculate milestone dates from dependent task completion (automatic mode)
+- [ ] Update schedule response to include milestone dates
+- [ ] Write unit tests for both milestone modes
+- [ ]* Write property test: Manual milestone constraints are respected
+- [ ]* Write property test: Automatic milestone dates calculated correctly
 
-## Phase 3: Service Layer
-
-### Task 3.1: Create CompanyService
-- [x] Implement create_company method
-- [x] Implement get_company method
-- [x] Implement update_company method
-- [x] Implement delete_company method (cascade to departments)
-- [x] Implement list_companies method
-- [x] Add error handling for company operations
-- [x] Write unit tests for CompanyService
-- [x] Write property test: Company deletion cascades to departments
-
-### Task 3.2: Update DepartmentService
-- [x] Update create_department to create PARENT_OF from Company
-- [x] Update get_department to include company relationship
-- [x] Add get_departments_by_company method
-- [x] Update delete_department to check for resources
-- [x] Write unit tests for updated DepartmentService
-
-### Task 3.3: Update WorkItemService for Task Properties
-- [x] Update create_workitem to handle task-specific properties (skills_needed, workpackage_id, etc.)
-- [x] Update get_workitem to return task-specific properties
-- [x] Update update_workitem to handle task-specific properties
-- [x] Add automatic BELONGS_TO Workpackage relationship when workpackage_id is provided
-- [x] Add automatic IN_BACKLOG when status="ready"
-- [x] Add skills_needed handling in WorkItem creation/update
-- [x] Write unit tests for task-specific properties in WorkItemService
-- [x] Write property test: Tasks (WorkItem type='task') always belong to Workpackage
-- [x] Write property test: Ready tasks automatically in backlog
-
-**Details:**
-- Tasks are WorkItem nodes with type='task'
-- Query pattern: MATCH (w:WorkItem {type: 'task'})
-- Use existing WorkItemService infrastructure
-- Support version history via NEXT_VERSION
-
-### Task 3.4: MilestoneService Already Complete ✅
-- [x] create_milestone method implemented (creates Milestone node)
-- [x] get_milestone method implemented
-- [x] update_milestone method implemented
-- [x] delete_milestone method implemented
-- [x] list_milestones method implemented
-- [x] Milestone dependency management added
-- [x] Unit tests for MilestoneService written
-- [x] Property test: Milestones always belong to Project written
-
-**Note:** MilestoneService completed in Task 1.4
-
-### Task 3.5: Update ResourceService for Skills Matching
-- [x] Add get_resources_by_skills method
-- [x] Add match_resources_to_task method (skill-based)
-- [x] Update allocate_resource to support lead flag
-- [x] Update allocate_resource to support Project OR Task
-- [x] Add get_lead_resources method
-- [x] Write unit tests for skill matching
-- [x] Write property test: Skill matching returns resources with all required skills
-- [x] Write property test: Lead resources prioritized in allocation
-
-**Details:**
-- Match task.skills_needed with resource.skills
-- Prioritize resources with lead=true
-- Support both project-level and task-level allocation
-
-### Task 3.6: Create WorkpackageDepartmentService
-- [x] Implement link_workpackage_to_department method
-- [x] Implement unlink_workpackage_from_department method
-- [x] Implement get_workpackage_department method
-- [x] Implement get_department_resources_for_workpackage method
-- [x] Write unit tests for linking service
-- [x] Write property test: Workpackage links to at most one department
-
-### Task 3.7: Update BacklogService for Mutual Exclusivity
-- [x] Update add_task_to_backlog to check for sprint assignment
-- [x] Update add_task_to_backlog to remove ASSIGNED_TO_SPRINT if exists
-- [x] Add validation: Cannot add task to backlog if in sprint
-- [x] Write unit tests for mutual exclusivity
-- [x] Write property test: Adding to backlog removes sprint assignment
-
-### Task 3.8: Update SprintService for Mutual Exclusivity
-- [x] Update assign_task_to_sprint to remove IN_BACKLOG
-- [x] Update remove_task_from_sprint to create IN_BACKLOG (if ready)
-- [x] Update complete_sprint to handle incomplete tasks (return to backlog)
-- [x] Add validation: Cannot assign task to sprint if in backlog
-- [x] Write unit tests for mutual exclusivity
-- [x] Write property test: Assigning to sprint removes backlog relationship
-- [x] Write property test: Sprint completion returns incomplete tasks to backlog
+**Requirements: 1.8-1.9, 16.51-16.53**
 
 ---
 
-## Phase 4: Schedule Service Integration
+## Phase 2: Sprint Management
 
-### Task 4.1: Update SchedulerService for Skills-Based Allocation
-- [x] Add skill matching to resource allocation algorithm
-- [x] Prioritize resources with matching skills
-- [x] Prioritize lead resources in allocation
-- [x] Add get_matching_resources_for_task method
-- [x] Update schedule calculation to use skill-based matching
-- [x] Write unit tests for skill-based allocation
-- [x] Write property test: Allocated resources have required skills
-- [x] Write property test: Lead resources allocated before non-lead
+### Task 2.1: Sprint Graph Nodes and Relationships
+- [ ] Create Sprint vertex label in AGE (if not exists)
+- [ ] Create ASSIGNED_TO_SPRINT edge label
+- [ ] Verify Sprint node properties (id, name, goal, start_date, end_date, capacity_hours, capacity_story_points, actual_velocity_hours, actual_velocity_story_points, status, project_id, created_at)
+- [ ] Verify Sprint statuses: planning, active, completed, cancelled
+- [ ] Write unit tests for Sprint node creation
 
-**Details:**
-- Match task.skills_needed with resource.skills
-- Use set intersection for skill matching
-- Prioritize: lead=true, then skill match quality, then capacity
+**Requirements: 16.36-16.40**
 
-### Task 4.2: Add Department-Based Resource Allocation
-- [x] Add get_department_resources method to scheduler
-- [x] Update resource allocation to check LINKED_TO_DEPARTMENT
-- [x] Prioritize department resources for workpackage tasks
-- [x] Write unit tests for department-based allocation
-- [x] Write property test: Department resources allocated to linked workpackages
+### Task 2.2: Sprint Pydantic Schemas
+- [ ] Create SprintCreate schema with name, goal, start_date, end_date
+- [ ] Create SprintResponse schema with capacity and velocity fields
+- [ ] Create SprintUpdate schema for status changes
+- [ ] Create SprintVelocity schema for metrics
+- [ ] Add field validator for sprint dates (end_date > start_date)
+- [ ] Add field validator for sprint duration (max 30 days)
+- [ ] Write unit tests for sprint schemas
 
-**Details:**
-- Query: Workpackage → LINKED_TO_DEPARTMENT → Department → BELONGS_TO → Resources
-- Match skills_needed with department resource skills
+**Requirements: 16.36-16.40, 22.1-22.23**
 
-### Task 4.3: Update Schedule Calculation for WorkItem Tasks
-- [x] Update schedule_project to query WorkItem nodes with type='task'
-- [x] Update task date updates to use WorkItem nodes (type='task')
-- [x] Maintain compatibility with existing schedule schemas
-- [x] Write unit tests for WorkItem task scheduling
-- [x] Write property test: Scheduled tasks have valid dates
+### Task 2.3: SprintService Implementation
+- [ ] Create SprintService class
+- [ ] Implement create_sprint method
+- [ ] Implement calculate_sprint_capacity method (from allocated resources)
+- [ ] Implement assign_task_to_sprint method (removes IN_BACKLOG)
+- [ ] Implement remove_task_from_sprint method (creates IN_BACKLOG)
+- [ ] Implement start_sprint method (status change to active)
+- [ ] Implement complete_sprint method (calculate velocity)
+- [ ] Implement calculate_sprint_velocity method
+- [ ] Implement get_team_average_velocity method (last N sprints)
+- [ ] Add validation: Only one active sprint per project
+- [ ] Add validation: Sprint capacity not exceeded
+- [ ] Write unit tests for SprintService
+- [ ]* Write property test: Assigning to sprint removes backlog relationship
+- [ ]* Write property test: Sprint completion returns incomplete tasks to backlog
+- [ ]* Write property test: Sprint capacity is always non-negative
 
-**Details:**
-- Query pattern: MATCH (w:WorkItem {type: 'task'})
-- Tasks are WorkItem nodes, not separate Task nodes
-- Use existing WorkItem infrastructure
+**Requirements: 16.36-16.40, 16.54-16.58, 22.1-22.23**
 
-### Task 4.4: Add Sprint Boundary Constraints
-- [x] Add sprint boundary validation to scheduler
-- [x] Enforce: Tasks in sprint must fit within sprint dates
-- [x] Add conflict detection for sprint capacity exceeded
-- [x] Write unit tests for sprint constraints
-- [x] Write property test: Sprint tasks scheduled within sprint boundaries
-
----
-
-## Phase 5: API Endpoints
-
-### Task 5.1: Company Endpoints
-- [x] POST /api/v1/companies - Create company
-- [x] GET /api/v1/companies - List companies
-- [x] GET /api/v1/companies/{id} - Get company
-- [x] PUT /api/v1/companies/{id} - Update company
-- [x] DELETE /api/v1/companies/{id} - Delete company (cascade)
-- [x] GET /api/v1/companies/{id}/departments - Get company departments
-- [x] Add authentication and authorization
-- [x] Write integration tests for company endpoints
-
-### Task 5.2: Update Department Endpoints
-- [ ] Update POST /api/v1/departments to require company_id
-- [ ] Update GET /api/v1/departments/{id} to include company
-- [ ] Add GET /api/v1/departments/{id}/company - Get department's company
-- [ ] Write integration tests for updated endpoints
-
-### Task 5.3: Task Endpoints via WorkItem API
-- [ ] Update POST /api/v1/workitems to support task-specific properties (skills_needed, workpackage_id, etc.)
-- [ ] Update GET /api/v1/workitems with type='task' filter to list tasks
-- [ ] Update GET /api/v1/workitems/{id} to return task-specific properties
-- [ ] Update PUT /api/v1/workitems/{id} to support task-specific properties
-- [ ] Add POST /api/v1/workitems/{id}/link-risk/{risk_id} - Link to risk
-- [ ] Add POST /api/v1/workitems/{id}/link-requirement/{req_id} - Link to requirement
-- [ ] Add GET /api/v1/workitems/{id}/risks - Get task risks
-- [ ] Add GET /api/v1/workitems/{id}/requirements - Get task requirements
+### Task 2.4: Sprint API Endpoints
+- [ ] POST /api/v1/projects/{project_id}/sprints - Create sprint
+- [ ] GET /api/v1/projects/{project_id}/sprints - List sprints
+- [ ] GET /api/v1/sprints/{id} - Get sprint details
+- [ ] PATCH /api/v1/sprints/{id} - Update sprint
+- [ ] DELETE /api/v1/sprints/{id} - Delete sprint (moves tasks to backlog)
+- [ ] GET /api/v1/sprints/{id}/tasks - Get sprint tasks
+- [ ] POST /api/v1/sprints/{id}/tasks/{task_id} - Assign task to sprint
+- [ ] DELETE /api/v1/sprints/{id}/tasks/{task_id} - Remove task from sprint
+- [ ] POST /api/v1/sprints/{id}/start - Start sprint (status = active)
+- [ ] POST /api/v1/sprints/{id}/complete - Complete sprint (calculate velocity)
+- [ ] GET /api/v1/sprints/{id}/velocity - Get sprint velocity
+- [ ] GET /api/v1/sprints/{id}/statistics - Get sprint metrics
+- [ ] Add validation: Only one active sprint per project
 - [ ] Add authentication and authorization
-- [ ] Write integration tests for task endpoints
+- [ ] Write integration tests for sprint endpoints
 
-**Details:**
-- Tasks are WorkItem nodes with type='task'
-- Use existing WorkItem endpoints with type filtering
-- Support filtering by skills_needed
-- Support filtering by backlog/sprint status
-
-### Task 5.4: Milestone Endpoints Already Complete ✅
-- [x] POST /api/v1/milestones - Create milestone (Milestone node)
-- [x] GET /api/v1/milestones - List milestones
-- [x] GET /api/v1/milestones/{id} - Get milestone
-- [x] PUT /api/v1/milestones/{id} - Update milestone
-- [x] DELETE /api/v1/milestones/{id} - Delete milestone
-- [ ] POST /api/v1/milestones/{id}/dependencies/{task_id} - Add dependency
-- [ ] DELETE /api/v1/milestones/{id}/dependencies/{task_id} - Remove dependency
-- [ ] GET /api/v1/milestones/{id}/dependencies - Get dependencies
-- [x] Authentication and authorization added
-- [x] Integration tests for milestone endpoints written
-
-**Note:** Basic Milestone endpoints completed in Task 1.4. Dependency management endpoints still needed.
-
-### Task 5.5: Workpackage-Department Link Endpoints
-- [ ] POST /api/v1/workpackages/{id}/link-department/{dept_id} - Link to department
-- [ ] DELETE /api/v1/workpackages/{id}/link-department - Unlink department
-- [ ] GET /api/v1/workpackages/{id}/department - Get linked department
-- [ ] GET /api/v1/workpackages/{id}/available-resources - Get department resources
-- [ ] Write integration tests for linking endpoints
-
-### Task 5.6: Update Resource Allocation Endpoints
-- [ ] Update POST /api/v1/resources/{id}/allocate to support lead flag
-- [ ] Update POST /api/v1/resources/{id}/allocate to support Project OR Task
-- [ ] Add GET /api/v1/resources/match-skills - Match resources by skills
-- [ ] Add GET /api/v1/tasks/{id}/recommended-resources - Get skill-matched resources
-- [ ] Add GET /api/v1/projects/{id}/lead-resources - Get lead resources
-- [ ] Write integration tests for allocation endpoints
-
-### Task 5.7: Update Backlog Endpoints for Mutual Exclusivity
-- [ ] Update POST /api/v1/backlogs/{id}/tasks/{task_id} to remove sprint assignment
-- [ ] Add validation: Cannot add task already in sprint
-- [ ] Add GET /api/v1/tasks/{id}/backlog-status - Check if in backlog
-- [ ] Write integration tests for backlog mutual exclusivity
-
-### Task 5.8: Update Sprint Endpoints for Mutual Exclusivity
-- [ ] Update POST /api/v1/sprints/{id}/tasks/{task_id} to remove backlog relationship
-- [ ] Update DELETE /api/v1/sprints/{id}/tasks/{task_id} to return to backlog
-- [ ] Update POST /api/v1/sprints/{id}/complete to handle incomplete tasks
-- [ ] Add validation: Cannot assign task already in backlog
-- [ ] Add GET /api/v1/tasks/{id}/sprint-status - Check if in sprint
-- [ ] Write integration tests for sprint mutual exclusivity
+**Requirements: 22.1-22.23**
 
 ---
 
-## Phase 6: Frontend Integration
+## Phase 3: Backlog Management
 
-### Task 6.1: Update TypeScript Interfaces
-- [ ] Add Company interface
-- [ ] Update Department interface with company_id
-- [ ] Update Task interface with skills_needed
-- [ ] Update Milestone interface (separate from WorkItem)
-- [ ] Add ResourceAllocation interface with lead flag
-- [ ] Add WorkpackageDepartmentLink interface
-- [ ] Write type tests for new interfaces
+### Task 3.1: Backlog Graph Nodes and Relationships
+- [ ] Create Backlog vertex label in AGE (if not exists)
+- [ ] Create IN_BACKLOG edge label
+- [ ] Verify Backlog node properties (id, name, description, project_id, created_at)
+- [ ] Verify IN_BACKLOG relationship properties (added_at, priority_order)
+- [ ] Write unit tests for Backlog node creation
 
-### Task 6.2: Update API Service
-- [ ] Add CompanyService methods
-- [ ] Update DepartmentService methods
-- [ ] Update WorkItemService methods for task-specific properties (skills_needed, etc.)
-- [ ] Milestone API service methods already complete ✅
-- [ ] Update ResourceService for skills and lead flag
-- [ ] Add WorkpackageDepartmentService methods
-- [ ] Write unit tests for API service methods
+**Requirements: 16.36-16.40**
 
-**Details:**
-- Tasks use WorkItem API with type='task' filter
-- Milestones use separate Milestone API (already implemented)
+### Task 3.2: Backlog Pydantic Schemas
+- [ ] Create BacklogCreate schema
+- [ ] Create BacklogResponse schema with task_count
+- [ ] Create BacklogTaskResponse schema with priority_order
+- [ ] Write unit tests for backlog schemas
 
-### Task 6.3: Create Company Management UI
-- [ ] Create CompanyList component
-- [ ] Create CompanyForm component
-- [ ] Create CompanyDetail component
-- [ ] Add company CRUD operations
-- [ ] Add company-department hierarchy view
-- [ ] Write component tests
+**Requirements: 21.1-21.16**
 
-### Task 6.4: Update Task Form for Skills
-- [ ] Add skills_needed multi-select field
-- [ ] Add skill autocomplete/suggestions
-- [ ] Add recommended resources display (skill-matched)
-- [ ] Update task creation to include skills
-- [ ] Write component tests
+### Task 3.3: BacklogService Implementation
+- [ ] Create BacklogService class
+- [ ] Implement create_backlog method
+- [ ] Implement get_backlog method
+- [ ] Implement add_task_to_backlog method (manual and automatic)
+- [ ] Implement remove_task_from_backlog method
+- [ ] Implement get_backlog_tasks method (ordered by priority)
+- [ ] Implement reorder_backlog_tasks method
+- [ ] Add validation: Cannot add task if in sprint
+- [ ] Add automatic removal of IN_BACKLOG when assigned to sprint
+- [ ] Write unit tests for BacklogService
+- [ ]* Write property test: Adding to backlog removes sprint assignment
+- [ ]* Write property test: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
 
-### Task 6.5: Update Resource Allocation UI
-- [ ] Add lead checkbox to resource allocation form
-- [ ] Add skill matching indicator
-- [ ] Add lead resource badge/indicator
-- [ ] Update resource allocation to support Project OR Task
-- [ ] Write component tests
+**Requirements: 16.41-16.50, 21.1-21.16**
 
-### Task 6.6: Update Workpackage UI for Department Linking
-- [ ] Add department selection to workpackage form
-- [ ] Add department resources display
-- [ ] Add link/unlink department actions
-- [ ] Write component tests
+### Task 3.4: Automatic Backlog Population
+- [ ] Update WorkItemService to trigger backlog population on status="ready"
+- [ ] Implement automatic IN_BACKLOG creation when task status changes to "ready"
+- [ ] Add project backlog lookup/creation logic
+- [ ] Write unit tests for automatic population
+- [ ]* Write property test: Ready tasks automatically in backlog
 
-### Task 6.7: Update Backlog/Sprint UI for Mutual Exclusivity
-- [ ] Add visual indicator: Task in backlog vs. sprint
-- [ ] Disable sprint assignment for tasks in backlog
-- [ ] Disable backlog addition for tasks in sprint
-- [ ] Add "Move to Sprint" action (removes from backlog)
-- [ ] Add "Return to Backlog" action (removes from sprint)
-- [ ] Write component tests
+**Requirements: 10.3, 16.41, 21.5**
 
----
+### Task 3.5: Backlog API Endpoints
+- [ ] POST /api/v1/projects/{project_id}/backlogs - Create backlog
+- [ ] GET /api/v1/projects/{project_id}/backlogs - List backlogs
+- [ ] GET /api/v1/backlogs/{id} - Get backlog details
+- [ ] PATCH /api/v1/backlogs/{id} - Update backlog
+- [ ] DELETE /api/v1/backlogs/{id} - Delete backlog (removes relationships)
+- [ ] GET /api/v1/backlogs/{id}/tasks - Get backlog tasks (ordered by priority)
+- [ ] POST /api/v1/backlogs/{id}/tasks/{task_id} - Add task to backlog (manual)
+- [ ] DELETE /api/v1/backlogs/{id}/tasks/{task_id} - Remove task from backlog
+- [ ] POST /api/v1/backlogs/{id}/reorder - Reorder backlog tasks
+- [ ] GET /api/v1/tasks/{id}/backlog-status - Check if in backlog
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for backlog endpoints
 
-## Phase 7: Testing
-
-### Task 7.1: Property-Based Tests for Graph Constraints
-- [ ] Write property test: Company → Department hierarchy is acyclic
-- [ ] Write property test: All Tasks (WorkItem type='task') belong to exactly one Workpackage
-- [ ] Write property test: Task (WorkItem) has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
-- [ ] Write property test: Resource allocated to Project XOR Task (not both)
-- [ ] Write property test: Workpackage links to at most one Department
-- [ ] Write property test: All Milestones belong to exactly one Project
-
-**Validates: Requirements 16.1-16.78**
-
-**Details:**
-- Tasks are WorkItem nodes with type='task'
-- Milestones are separate Milestone nodes
-
-### Task 7.2: Property-Based Tests for Skills Matching
-- [ ] Write property test: Allocated resources have all required skills
-- [ ] Write property test: Lead resources prioritized in allocation
-- [ ] Write property test: Department resources match workpackage tasks
-- [ ] Write property test: Skill matching returns non-empty set when matches exist
-
-**Validates: Requirements 16.19-16.22, 16.27-16.35**
-
-### Task 7.3: Property-Based Tests for Mutual Exclusivity
-- [ ] Write property test: Adding to backlog removes sprint assignment
-- [ ] Write property test: Assigning to sprint removes backlog relationship
-- [ ] Write property test: Sprint completion returns incomplete tasks to backlog
-- [ ] Write property test: Task status="ready" creates IN_BACKLOG if not in sprint
-
-**Validates: Requirements 16.41-16.46, 21.7-21.16, 22.10-22.23**
-
-### Task 7.4: Integration Tests for Complete Workflows
-- [ ] Test: Create company → department → resource → project workflow
-- [ ] Test: Create task → assign skills → match resources → allocate
-- [ ] Test: Create task → ready status → backlog → sprint → complete
-- [ ] Test: Link workpackage to department → allocate department resources
-- [ ] Test: Create milestone → add dependencies → schedule with constraints
-- [ ] Test: Sprint incomplete → tasks return to backlog
-
-### Task 7.5: Performance Tests
-- [ ] Test: Schedule calculation with 1000 tasks and skill matching
-- [ ] Test: Resource matching query performance (1000 resources)
-- [ ] Test: Graph traversal performance (deep hierarchy)
-- [ ] Test: Concurrent schedule calculations
+**Requirements: 21.1-21.16**
 
 ---
 
-## Phase 8: Migration and Deployment
+## Phase 4: Velocity and Burndown
 
-### Task 8.1: Data Migration Scripts
-- [ ] Write migration: Create Company nodes for existing data
-- [ ] Write migration: Add company_id to existing Departments
-- [ ] Write migration: Add task-specific properties to existing WorkItem(type='task') nodes
-- [ ] Write migration: Add lead=false to existing ALLOCATED_TO relationships
-- [ ] Write migration: Add skills=[] to existing Resources
-- [ ] Test migrations on staging data
-- [ ] Write rollback scripts
+### Task 4.1: Velocity Calculation
+- [ ] Implement calculate_sprint_velocity in SprintService (if not done in 2.3)
+- [ ] Calculate velocity in both story_points and hours
+- [ ] Implement get_team_average_velocity (last N sprints)
+- [ ] Store velocity values in Sprint node on completion
+- [ ] Write unit tests for velocity calculation
+- [ ]* Write property test: Velocity is always non-negative
 
-**Details:**
-- NO conversion needed - Tasks remain as WorkItem(type='task')
-- Milestones already implemented as separate nodes
-- Only add new properties to existing WorkItem tasks
+**Requirements: 16.54-16.58, 24.1-24.14**
 
-### Task 8.2: Database Schema Updates
-- [ ] Create Company vertex label in AGE
-- [ ] Create Milestone vertex label in AGE (already done ✅)
-- [ ] Create LINKED_TO_DEPARTMENT edge label
-- [ ] Create has_risk edge label
-- [ ] Create implements edge label
-- [ ] Update ALLOCATED_TO edge properties
-- [ ] Create indexes for performance
+### Task 4.2: Burndown Chart Calculation
+- [ ] Implement calculate_burndown method in SprintService
+- [ ] Generate ideal burndown line (linear decrease)
+- [ ] Calculate actual burndown from task completion history
+- [ ] Query task completion timestamps from WorkItem updates
+- [ ] Return burndown data points (date, ideal_remaining, actual_remaining)
+- [ ] Write unit tests for burndown calculation
+- [ ]* Write property test: Burndown remaining work decreases over time
 
-**Details:**
-- NO Task vertex label needed - Tasks use WorkItem label with type='task'
-- Milestone vertex label already created in Task 1.4
-- Focus on relationships and new organizational entities
+**Requirements: 16.54-16.58, 24.1-24.14**
 
-### Task 8.3: Documentation Updates
-- [ ] Update API documentation (OpenAPI/Swagger)
-- [ ] Update graph schema documentation
-- [ ] Create migration guide
-- [ ] Update user guide for new features
-- [ ] Document that Tasks remain as WorkItem(type='task'), not separate nodes
-- [ ] Document that Milestones are separate Milestone nodes
+### Task 4.3: Burndown API Endpoint
+- [ ] GET /api/v1/sprints/{id}/burndown - Get burndown chart data
+- [ ] Return BurndownPoint schema (date, ideal_remaining_hours, actual_remaining_hours, ideal_remaining_points, actual_remaining_points)
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for burndown endpoint
 
-**Details:**
-- Clarify architecture: Tasks = WorkItem nodes, Milestones = Milestone nodes
-- Document query patterns for both entity types
-- Explain rationale for architectural decisions
+**Requirements: 24.6-24.9**
 
-### Task 8.4: Deployment
-- [ ] Deploy database schema changes
-- [ ] Run data migrations
-- [ ] Deploy backend services
-- [ ] Deploy frontend updates
-- [ ] Verify health checks
-- [ ] Monitor for errors
+### Task 4.4: Velocity API Endpoints
+- [ ] GET /api/v1/projects/{project_id}/velocity - Get average velocity
+- [ ] GET /api/v1/projects/{project_id}/velocity/history - Get velocity history
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for velocity endpoints
+
+**Requirements: 24.1-24.5**
+
+---
+
+## Phase 5: Frontend - Gantt Chart
+
+### Task 5.1: Gantt Chart Component
+- [ ] Create GanttChart component in frontend/src/components/schedule/
+- [ ] Install gantt chart library (e.g., react-gantt-chart or custom with D3)
+- [ ] Display tasks as horizontal bars with start/end dates
+- [ ] Highlight critical path tasks (different color)
+- [ ] Display task dependencies with arrows
+- [ ] Add milestone markers (diamond shapes) at target dates
+- [ ] Show sprint boundaries as vertical lines with labels
+- [ ] Display resource assignments on tasks
+- [ ] Add zoom and pan controls
+- [ ] Add tooltip on hover (task details)
+- [ ] Write component tests
+
+**Requirements: 3.1-3.13**
+
+### Task 5.2: Gantt Chart Data API
+- [ ] GET /api/v1/schedule/{project_id}/gantt - Get Gantt chart data
+- [ ] Return formatted data for Gantt visualization
+- [ ] Include critical path task IDs
+- [ ] Include milestone data with dependencies
+- [ ] Include sprint boundaries
+- [ ] Include resource assignments
+- [ ] Add authentication and authorization
+- [ ] Write integration tests
+
+**Requirements: 3.1-3.13**
+
+### Task 5.3: Integrate Gantt Chart into SchedulePage
+- [ ] Update SchedulePage to render GanttChart component in 'gantt' view mode
+- [ ] Fetch gantt data from API
+- [ ] Handle loading and error states
+- [ ] Add "View Gantt Chart" button (already exists, needs implementation)
+- [ ] Write integration tests
+
+**Requirements: 3.1-3.13**
+
+---
+
+## Phase 6: Frontend - Sprint Management UI
+
+### Task 6.1: Sprint TypeScript Interfaces
+- [ ] Add Sprint interface in frontend/src/services/types.ts
+- [ ] Add SprintCreate interface
+- [ ] Add SprintVelocity interface
+- [ ] Add BurndownPoint interface
+- [ ] Write type tests
+
+**Requirements: 22.1-22.23**
+
+### Task 6.2: Sprint API Service
+- [ ] Create sprintService in frontend/src/services/sprintService.ts
+- [ ] Implement createSprint method
+- [ ] Implement getSprints method
+- [ ] Implement getSprint method
+- [ ] Implement updateSprint method
+- [ ] Implement deleteSprint method
+- [ ] Implement assignTaskToSprint method
+- [ ] Implement removeTaskFromSprint method
+- [ ] Implement startSprint method
+- [ ] Implement completeSprint method
+- [ ] Implement getSprintVelocity method
+- [ ] Implement getSprintBurndown method
+- [ ] Write unit tests
+
+**Requirements: 22.1-22.23**
+
+### Task 6.3: Sprint Management Components
+- [ ] Create SprintList component
+- [ ] Create SprintForm component (create/edit)
+- [ ] Create SprintDetail component (with capacity and velocity)
+- [ ] Create SprintBurndown component (chart)
+- [ ] Add task assignment to sprint (from backlog)
+- [ ] Add sprint start/complete actions
+- [ ] Display velocity metrics and trends
+- [ ] Write component tests
+
+**Requirements: 22.1-22.23, 24.1-24.14**
+
+### Task 6.4: Sprint Page
+- [ ] Create SprintPage component
+- [ ] Add sprint list view
+- [ ] Add sprint detail view
+- [ ] Add sprint creation form
+- [ ] Add burndown chart view
+- [ ] Add velocity history view
+- [ ] Write component tests
+
+**Requirements: 22.1-22.23, 24.1-24.14**
+
+---
+
+## Phase 7: Frontend - Backlog Management UI
+
+### Task 7.1: Backlog TypeScript Interfaces
+- [ ] Add Backlog interface in frontend/src/services/types.ts
+- [ ] Add BacklogCreate interface
+- [ ] Add BacklogTask interface with priority_order
+- [ ] Write type tests
+
+**Requirements: 21.1-21.16**
+
+### Task 7.2: Backlog API Service
+- [ ] Create backlogService in frontend/src/services/backlogService.ts
+- [ ] Implement createBacklog method
+- [ ] Implement getBacklogs method
+- [ ] Implement getBacklog method
+- [ ] Implement updateBacklog method
+- [ ] Implement deleteBacklog method
+- [ ] Implement getBacklogTasks method
+- [ ] Implement addTaskToBacklog method
+- [ ] Implement removeTaskFromBacklog method
+- [ ] Implement reorderBacklogTasks method
+- [ ] Write unit tests
+
+**Requirements: 21.1-21.16**
+
+### Task 7.3: Backlog Management Components
+- [ ] Create BacklogList component
+- [ ] Create BacklogDetail component (with tasks)
+- [ ] Add task reordering (drag-and-drop)
+- [ ] Add task filtering and search
+- [ ] Display total estimated effort
+- [ ] Add "Move to Sprint" action
+- [ ] Write component tests
+
+**Requirements: 21.1-21.16**
+
+### Task 7.4: Backlog Page
+- [ ] Create BacklogPage component
+- [ ] Add backlog list view
+- [ ] Add backlog detail view with tasks
+- [ ] Add task reordering UI
+- [ ] Add sprint assignment UI
+- [ ] Write component tests
+
+**Requirements: 21.1-21.16**
+
+---
+
+## Phase 8: Kanban Board Schedule Integration
+
+### Task 8.1: Update Kanban Board for Schedule Features
+- [ ] Update KanbanPage to support sprint filtering
+- [ ] Add sprint assignment via drag-and-drop
+- [ ] Add backlog indicator on task cards
+- [ ] Display task metadata (assignee, sprint, estimated hours, backlog status)
+- [ ] Do NOT display schedule dates (read-only from schedule)
+- [ ] Add "Move to Sprint" action
+- [ ] Add "Return to Backlog" action
+- [ ] Write component tests
+
+**Requirements: 10.1-10.16**
+
+### Task 8.2: Kanban API Enhancements
+- [ ] GET /api/v1/kanban/tasks - Get tasks for Kanban (with filtering)
+- [ ] POST /api/v1/kanban/tasks/{task_id}/assign-sprint - Assign to sprint via Kanban
+- [ ] Support filtering by sprint, resource, workpackage, backlog status
+- [ ] Add authentication and authorization
+- [ ] Write integration tests
+
+**Requirements: 10.1-10.16**
+
+---
+
+## Phase 9: Testing and Documentation
+
+### Task 9.1: Property-Based Tests
+- [ ]* Property: Critical path is always the longest path
+- [ ]* Property: Critical path duration >= any other path duration
+- [ ]* Property: Tasks with status="ready" are in backlog
+- [ ]* Property: Task has IN_BACKLOG XOR ASSIGNED_TO_SPRINT XOR neither
+- [ ]* Property: Assigning to sprint removes backlog relationship
+- [ ]* Property: Sprint capacity is always non-negative
+- [ ]* Property: Velocity is always non-negative
+- [ ]* Property: Manual milestone constraints are respected
+- [ ]* Property: Allocated resources have required skills
+- [ ]* Property: Lead resources prioritized in allocation
+- [ ]* Property: Burndown remaining work decreases over time
+
+**Requirements: All requirements (comprehensive validation)**
+
+### Task 9.2: Integration Tests
+- [ ] Test: Create sprint → assign tasks → start → complete workflow
+- [ ] Test: Task ready → backlog → sprint → complete workflow
+- [ ] Test: Milestone-driven scheduling (manual and automatic modes)
+- [ ] Test: Critical path calculation with complex dependencies
+- [ ] Test: Skills-based resource allocation
+- [ ] Test: Sprint capacity calculation
+- [ ] Test: Velocity tracking across multiple sprints
+- [ ] Test: Burndown chart data generation
+
+**Requirements: All workflow-related requirements**
+
+### Task 9.3: Performance Tests
+- [ ] Test: Schedule calculation with critical path (1000 tasks < 30 seconds)
+- [ ] Test: Critical path calculation (1000 tasks < 2 seconds)
+- [ ] Test: Sprint capacity calculation (< 200ms)
+- [ ] Test: Burndown calculation (< 500ms)
+- [ ] Test: Concurrent schedule calculations (10 simultaneous)
+
+**Requirements: 13.1-13.8**
+
+### Task 9.4: API Documentation
+- [ ] Document critical path calculation endpoint
+- [ ] Document sprint management endpoints
+- [ ] Document backlog management endpoints
+- [ ] Document velocity and burndown endpoints
+- [ ] Document Gantt chart data endpoint
+- [ ] Add request/response examples
+- [ ] Update OpenAPI/Swagger documentation
+
+**Requirements: All API-related requirements**
+
+### Task 9.5: User Guide
+- [ ] Write guide for sprint planning workflow
+- [ ] Write guide for backlog management
+- [ ] Write guide for Gantt chart usage
+- [ ] Write guide for velocity tracking
+- [ ] Write guide for critical path interpretation
+- [ ] Add screenshots and examples
+
+**Requirements: All user-facing requirements**
 
 ---
 
 ## Summary
 
-**Total Tasks**: 8 phases, 48 main tasks, ~200 sub-tasks
+**Total Tasks**: 9 phases, 60+ main tasks, 200+ sub-tasks
 
 **Estimated Effort**: 
-- Phase 1 (Graph Schema): 2-3 weeks
-- Phase 2 (Schemas): 1 week
-- Phase 3 (Services): 2-3 weeks
-- Phase 4 (Scheduler): 1-2 weeks
-- Phase 5 (API): 2 weeks
-- Phase 6 (Frontend): 2-3 weeks
-- Phase 7 (Testing): 2 weeks
-- Phase 8 (Migration): 1 week
+- Phase 1 (Critical Path & Enhancements): 2-3 weeks
+- Phase 2 (Sprint Management): 2-3 weeks
+- Phase 3 (Backlog Management): 1-2 weeks
+- Phase 4 (Velocity & Burndown): 1-2 weeks
+- Phase 5 (Gantt Chart): 2 weeks
+- Phase 6 (Sprint UI): 2 weeks
+- Phase 7 (Backlog UI): 1-2 weeks
+- Phase 8 (Kanban Integration): 1 week
+- Phase 9 (Testing & Docs): 2 weeks
 
-**Total**: 13-17 weeks
+**Total**: 14-20 weeks (3.5-5 months)
 
 **Critical Path**:
-1. Graph schema setup (Phase 1)
-2. Service layer (Phase 3)
-3. Scheduler integration (Phase 4)
-4. API endpoints (Phase 5)
-5. Frontend integration (Phase 6)
+1. Critical path calculation (Phase 1)
+2. Sprint management backend (Phase 2)
+3. Backlog management backend (Phase 3)
+4. Sprint/Backlog UI (Phases 6-7)
+5. Gantt chart (Phase 5)
+6. Testing (Phase 9)
 
 **Dependencies**:
-- Phase 2 depends on Phase 1
-- Phase 3 depends on Phase 1, 2
-- Phase 4 depends on Phase 3
-- Phase 5 depends on Phase 3, 4
-- Phase 6 depends on Phase 5
-- Phase 7 can run in parallel with Phases 4-6
-- Phase 8 depends on all previous phases
+- Phase 2 depends on Phase 1 (skills-based allocation)
+- Phase 3 depends on Phase 2 (sprint/backlog mutual exclusivity)
+- Phase 4 depends on Phase 2 (sprint completion for velocity)
+- Phase 5 depends on Phase 1 (critical path for Gantt)
+- Phase 6 depends on Phase 2 (sprint backend)
+- Phase 7 depends on Phase 3 (backlog backend)
+- Phase 8 depends on Phases 2, 3 (sprint/backlog integration)
+- Phase 9 can run in parallel with Phases 5-8
+
+**Already Complete (Not in this list)**:
+- ✅ SchedulerService with OR-Tools
+- ✅ MilestoneService CRUD
+- ✅ Schedule API endpoints
+- ✅ Milestone API endpoints
+- ✅ Company, Department, Resource, Workpackage services
+- ✅ SchedulePage basic list view
+- ✅ Graph database setup with AGE
+- ✅ Authentication and authorization
+- ✅ Audit logging

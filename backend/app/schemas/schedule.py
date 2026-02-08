@@ -151,6 +151,9 @@ class ScheduledTask(BaseModel):
     assigned_resources: list[str] = Field(
         default_factory=list, description="Assigned resource IDs"
     )
+    is_critical: bool = Field(
+        default=False, description="Whether this task is on the critical path"
+    )
 
 
 class ScheduleConstraints(BaseModel):
@@ -224,6 +227,9 @@ class ScheduleResponse(BaseModel):
     )
     project_start_date: datetime | None = Field(None, description="Project start date")
     project_end_date: datetime | None = Field(None, description="Project end date")
+    critical_path: list[str] = Field(
+        default_factory=list, description="Task IDs on the critical path"
+    )
     conflicts: list[ScheduleConflict] = Field(
         default_factory=list, description="Identified conflicts"
     )
@@ -260,6 +266,9 @@ class ProjectSchedule(BaseModel):
     project_duration_hours: int = Field(..., description="Total project duration")
     project_start_date: datetime = Field(..., description="Project start date")
     project_end_date: datetime = Field(..., description="Project end date")
+    critical_path: list[str] = Field(
+        default_factory=list, description="Task IDs on the critical path"
+    )
     created_at: datetime = Field(..., description="When the schedule was created")
     updated_at: datetime = Field(..., description="When the schedule was last updated")
     version: int = Field(default=1, description="Schedule version")

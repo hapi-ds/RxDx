@@ -248,6 +248,28 @@ class SchedulerService:
                 project_duration, project_start_date, constraints
             )
 
+            # Calculate critical path
+            critical_path = []
+            try:
+                from app.services.critical_path import calculate_critical_path
+                
+                critical_path = calculate_critical_path(tasks, schedule)
+                
+                # Mark critical path tasks in schedule
+                critical_path_set = set(critical_path)
+                for scheduled_task in schedule:
+                    scheduled_task.is_critical = scheduled_task.task_id in critical_path_set
+                
+                logger.info(
+                    f"Critical path calculated for project {project_id}: "
+                    f"{len(critical_path)} tasks"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to calculate critical path for project {project_id}: {e}"
+                )
+                # Continue without critical path - it's not a fatal error
+
             response = ScheduleResponse(
                 status="success" if status == cp_model.OPTIMAL else "feasible",
                 project_id=project_id,
@@ -255,6 +277,7 @@ class SchedulerService:
                 project_duration_hours=project_duration,
                 project_start_date=project_start_date,
                 project_end_date=project_end_date,
+                critical_path=critical_path,
                 message="Optimal schedule found"
                 if status == cp_model.OPTIMAL
                 else "Feasible schedule found",
@@ -1116,6 +1139,7 @@ class SchedulerService:
             project_duration_hours=response.project_duration_hours or 0,
             project_start_date=response.project_start_date or datetime.now(UTC),
             project_end_date=response.project_end_date or datetime.now(UTC),
+            critical_path=response.critical_path,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
             version=1,

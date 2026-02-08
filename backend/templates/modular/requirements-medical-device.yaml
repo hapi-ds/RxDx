@@ -1,0 +1,616 @@
+metadata:
+  name: requirements-medical-device
+  version: 1.0.0
+  description: Requirements, tasks, tests, and risks for Medical Device Software v2.0
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+# ============================================================================
+# Users (empty - references users from users-acme.yaml)
+# ============================================================================
+users: []
+
+# ============================================================================
+# Workitems
+# ============================================================================
+workitems:
+  requirements:
+    - id: req-auth
+      title: User Authentication System
+      description: Secure user authentication with role-based access control and multi-factor authentication support
+      status: active
+      priority: 5
+      acceptance_criteria: |
+        - Users can log in with email and password
+        - System supports role-based access control
+        - Failed login attempts are tracked and logged
+        - Account lockout after 5 failed attempts
+      business_value: Essential for system security and regulatory compliance
+      source: security
+      created_by: user-pm1
+
+    - id: req-device-control
+      title: Device Control Interface
+      description: Interface for controlling medical device parameters within regulatory limits
+      status: active
+      priority: 5
+      acceptance_criteria: |
+        - Users can view current device parameters
+        - Users can modify parameters within safe limits
+        - System validates all parameter changes
+        - Changes are logged in audit trail
+      business_value: Core functionality for device operation
+      source: product
+      created_by: user-pm1
+
+    - id: req-safety-monitoring
+      title: Safety Monitoring System
+      description: Real-time monitoring of device safety parameters with alarm system
+      status: active
+      priority: 5
+      acceptance_criteria: |
+        - System monitors all safety-critical parameters
+        - Alarms trigger when parameters exceed limits
+        - Alarm history is maintained
+        - Critical alarms cannot be silenced
+      business_value: Patient safety and regulatory compliance
+      source: safety
+      created_by: user-pm1
+
+    - id: req-audit-trail
+      title: Audit Trail Logging
+      description: Comprehensive audit trail for all user actions and system events
+      status: active
+      priority: 4
+      acceptance_criteria: |
+        - All user actions are logged with timestamp
+        - System events are logged
+        - Audit logs are immutable
+        - Logs include user identity and action details
+      business_value: Required for regulatory compliance (FDA 21 CFR Part 11)
+      source: regulation
+      created_by: user-pm1
+
+    - id: req-data-logging
+      title: Data Logging and Reporting
+      description: Comprehensive data logging with reporting and export capabilities
+      status: active
+      priority: 4
+      acceptance_criteria: |
+        - System logs all device data at configurable intervals
+        - Users can generate reports from logged data
+        - Data can be exported in standard formats
+        - Historical data is retained per regulatory requirements
+      business_value: Clinical data analysis and regulatory compliance
+      source: product
+      created_by: user-pm1
+
+    - id: req-user-management
+      title: User Management System
+      description: Administrative interface for managing user accounts and permissions
+      status: active
+      priority: 3
+      acceptance_criteria: |
+        - Administrators can create and manage user accounts
+        - Role assignments can be modified
+        - User activity can be monitored
+        - Inactive accounts can be disabled
+      business_value: System administration and access control
+      source: security
+      created_by: user-pm1
+
+  tasks:
+    # Sprint 1 Tasks
+    - id: task-auth-backend
+      title: Implement Authentication Backend
+      description: Develop JWT-based authentication service with role-based access control
+      status: completed
+      priority: 5
+      estimated_hours: 20
+      actual_hours: 18
+      assigned_to: user-dev1
+      created_by: user-pm1
+
+    - id: task-auth-frontend
+      title: Implement Authentication UI
+      description: Create login page and user session management
+      status: completed
+      priority: 5
+      estimated_hours: 16
+      actual_hours: 15
+      assigned_to: user-dev2
+      created_by: user-pm1
+
+    - id: task-database-setup
+      title: Setup Database Infrastructure
+      description: Configure PostgreSQL and Neo4j databases
+      status: completed
+      priority: 5
+      estimated_hours: 12
+      actual_hours: 10
+      assigned_to: user-dev3
+      created_by: user-pm1
+
+    # Sprint 2 Tasks
+    - id: task-device-api
+      title: Develop Device Control API
+      description: Create REST API for device parameter control
+      status: completed
+      priority: 5
+      estimated_hours: 24
+      actual_hours: 26
+      assigned_to: user-dev1
+      created_by: user-pm1
+
+    - id: task-device-ui
+      title: Create Device Control UI
+      description: Build user interface for device control and monitoring
+      status: completed
+      priority: 5
+      estimated_hours: 20
+      actual_hours: 22
+      assigned_to: user-dev2
+      created_by: user-pm1
+
+    - id: task-parameter-validation
+      title: Implement Parameter Validation
+      description: Create validation logic for device parameters
+      status: completed
+      priority: 5
+      estimated_hours: 16
+      actual_hours: 14
+      assigned_to: user-dev4
+      created_by: user-pm1
+
+    # Sprint 3 Tasks
+    - id: task-safety-monitoring
+      title: Implement Safety Monitoring Service
+      description: Create real-time safety parameter monitoring
+      status: active
+      priority: 5
+      estimated_hours: 24
+      actual_hours: 12
+      assigned_to: user-dev1
+      created_by: user-pm1
+
+    - id: task-alarm-system
+      title: Develop Alarm System
+      description: Implement alarm triggering and management
+      status: active
+      priority: 5
+      estimated_hours: 20
+      actual_hours: 8
+      assigned_to: user-dev3
+      created_by: user-pm1
+
+    - id: task-alarm-ui
+      title: Create Alarm UI
+      description: Build user interface for alarm display and management
+      status: active
+      priority: 5
+      estimated_hours: 16
+      actual_hours: 6
+      assigned_to: user-dev2
+      created_by: user-pm1
+
+    # Sprint 4 Tasks (Planned)
+    - id: task-data-logging
+      title: Implement Data Logging Service
+      description: Create service for logging device data
+      status: draft
+      priority: 4
+      estimated_hours: 20
+      assigned_to: user-dev4
+      created_by: user-pm1
+
+    - id: task-reporting
+      title: Develop Reporting Module
+      description: Create reporting and data export functionality
+      status: draft
+      priority: 4
+      estimated_hours: 24
+      assigned_to: user-dev1
+      created_by: user-pm1
+
+    # Sprint 5 Tasks (Planned)
+    - id: task-audit-service
+      title: Implement Audit Logging Service
+      description: Create audit logging with immutable storage
+      status: draft
+      priority: 4
+      estimated_hours: 18
+      assigned_to: user-dev3
+      created_by: user-pm1
+
+    - id: task-user-management
+      title: Develop User Management Interface
+      description: Create admin interface for user management
+      status: draft
+      priority: 3
+      estimated_hours: 16
+      assigned_to: user-dev2
+      created_by: user-pm1
+
+    # Backlog Tasks
+    - id: task-performance-optimization
+      title: Performance Optimization
+      description: Optimize system performance and response times
+      status: draft
+      priority: 3
+      estimated_hours: 20
+      assigned_to: user-dev1
+      created_by: user-pm1
+
+    - id: task-documentation
+      title: Technical Documentation
+      description: Create comprehensive technical documentation
+      status: draft
+      priority: 3
+      estimated_hours: 40
+      assigned_to: user-dev5
+      created_by: user-pm1
+
+  tests:
+    - id: test-auth-login
+      title: Test User Login
+      description: Verify successful user authentication
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. Navigate to login page
+        2. Enter valid credentials
+        3. Click login button
+        4. Verify redirect to dashboard
+      expected_result: User is authenticated and redirected to dashboard with valid session
+      test_status: passed
+      assigned_to: user-qa1
+      created_by: user-pm1
+
+    - id: test-auth-invalid
+      title: Test Invalid Login
+      description: Verify system rejects invalid credentials
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. Navigate to login page
+        2. Enter invalid credentials
+        3. Click login button
+        4. Verify error message
+      expected_result: Login is rejected with appropriate error message
+      test_status: passed
+      assigned_to: user-qa1
+      created_by: user-pm1
+
+    - id: test-device-control
+      title: Test Device Parameter Control
+      description: Verify device parameter changes
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. Log in as authorized user
+        2. Navigate to device control
+        3. Change parameter within limits
+        4. Verify parameter change
+        5. Check audit log entry
+      expected_result: Parameter is changed, confirmed, and logged
+      test_status: passed
+      assigned_to: user-qa2
+      created_by: user-pm1
+
+    - id: test-safety-alarm
+      title: Test Safety Alarm Triggering
+      description: Verify alarm triggers when safety limits exceeded
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. Set device parameter near limit
+        2. Gradually increase parameter
+        3. Verify alarm triggers at limit
+        4. Check alarm is logged
+      expected_result: Alarm triggers at correct threshold and is logged
+      test_status: not_run
+      assigned_to: user-qa2
+      created_by: user-pm1
+
+    - id: test-data-logging
+      title: Test Data Logging
+      description: Verify data is logged correctly
+      status: draft
+      priority: 4
+      test_type: integration
+      test_steps: |
+        1. Configure logging interval
+        2. Start device operation
+        3. Wait for multiple logging cycles
+        4. Verify data is logged
+        5. Check data integrity
+      expected_result: Data is logged at correct intervals with accurate values
+      test_status: not_run
+      assigned_to: user-qa3
+      created_by: user-pm1
+
+  risks:
+    - id: risk-security
+      title: Security Vulnerability Risk
+      description: Potential security vulnerabilities in authentication and access control
+      status: active
+      priority: 5
+      severity: 8
+      occurrence: 3
+      detection: 4
+      mitigation_actions: |
+        - Regular security audits
+        - Penetration testing
+        - Code security reviews
+        - Security training for developers
+      risk_owner: user-pm1
+      created_by: user-pm1
+
+    - id: risk-regulatory
+      title: Regulatory Compliance Risk
+      description: Risk of non-compliance with FDA and medical device regulations
+      status: active
+      priority: 5
+      severity: 9
+      occurrence: 2
+      detection: 3
+      mitigation_actions: |
+        - Comprehensive validation testing
+        - Regular compliance reviews
+        - Documentation audits
+        - Regulatory consultant engagement
+      risk_owner: user-pm1
+      created_by: user-pm1
+
+    - id: risk-safety
+      title: Patient Safety Risk
+      description: Risk of device malfunction affecting patient safety
+      status: active
+      priority: 5
+      severity: 10
+      occurrence: 1
+      detection: 2
+      mitigation_actions: |
+        - Extensive safety testing
+        - Redundant safety systems
+        - Fail-safe mechanisms
+        - Clinical validation
+      risk_owner: user-pm1
+      created_by: user-pm1
+
+    - id: risk-performance
+      title: Performance Degradation Risk
+      description: Risk of system performance issues under load
+      status: active
+      priority: 3
+      severity: 5
+      occurrence: 4
+      detection: 5
+      mitigation_actions: |
+        - Performance testing
+        - Load testing
+        - Code optimization
+        - Infrastructure scaling
+      risk_owner: user-pm1
+      created_by: user-pm1
+
+# ============================================================================
+# Relationships
+# ============================================================================
+relationships:
+  # Requirement to Task relationships
+  - from_id: req-auth
+    to_id: task-auth-backend
+    type: PARENT_OF
+
+  - from_id: req-auth
+    to_id: task-auth-frontend
+    type: PARENT_OF
+
+  - from_id: req-device-control
+    to_id: task-device-api
+    type: PARENT_OF
+
+  - from_id: req-device-control
+    to_id: task-device-ui
+    type: PARENT_OF
+
+  - from_id: req-device-control
+    to_id: task-parameter-validation
+    type: PARENT_OF
+
+  - from_id: req-safety-monitoring
+    to_id: task-safety-monitoring
+    type: PARENT_OF
+
+  - from_id: req-safety-monitoring
+    to_id: task-alarm-system
+    type: PARENT_OF
+
+  - from_id: req-safety-monitoring
+    to_id: task-alarm-ui
+    type: PARENT_OF
+
+  - from_id: req-data-logging
+    to_id: task-data-logging
+    type: PARENT_OF
+
+  - from_id: req-data-logging
+    to_id: task-reporting
+    type: PARENT_OF
+
+  - from_id: req-audit-trail
+    to_id: task-audit-service
+    type: PARENT_OF
+
+  - from_id: req-user-management
+    to_id: task-user-management
+    type: PARENT_OF
+
+  # Task to Test relationships
+  - from_id: task-auth-backend
+    to_id: test-auth-login
+    type: TESTED_BY
+
+  - from_id: task-auth-backend
+    to_id: test-auth-invalid
+    type: TESTED_BY
+
+  - from_id: task-device-api
+    to_id: test-device-control
+    type: TESTED_BY
+
+  - from_id: task-alarm-system
+    to_id: test-safety-alarm
+    type: TESTED_BY
+
+  - from_id: task-data-logging
+    to_id: test-data-logging
+    type: TESTED_BY
+
+  # Task to Sprint relationships (Sprint 1)
+  - from_id: task-auth-backend
+    to_id: sprint-1
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-auth-frontend
+    to_id: sprint-1
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-database-setup
+    to_id: sprint-1
+    type: ASSIGNED_TO_SPRINT
+
+  # Task to Sprint relationships (Sprint 2)
+  - from_id: task-device-api
+    to_id: sprint-2
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-device-ui
+    to_id: sprint-2
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-parameter-validation
+    to_id: sprint-2
+    type: ASSIGNED_TO_SPRINT
+
+  # Task to Sprint relationships (Sprint 3)
+  - from_id: task-safety-monitoring
+    to_id: sprint-3
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-alarm-system
+    to_id: sprint-3
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-alarm-ui
+    to_id: sprint-3
+    type: ASSIGNED_TO_SPRINT
+
+  # Task to Sprint relationships (Sprint 4)
+  - from_id: task-data-logging
+    to_id: sprint-4
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-reporting
+    to_id: sprint-4
+    type: ASSIGNED_TO_SPRINT
+
+  # Task to Sprint relationships (Sprint 5)
+  - from_id: task-audit-service
+    to_id: sprint-5
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-user-management
+    to_id: sprint-5
+    type: ASSIGNED_TO_SPRINT
+
+  # Task to Backlog relationships
+  - from_id: task-performance-optimization
+    to_id: backlog-technical
+    type: IN_BACKLOG
+
+  - from_id: task-documentation
+    to_id: backlog-product
+    type: IN_BACKLOG
+
+  # Workpackage to Department relationships
+  - from_id: wp-core-implementation
+    to_id: dept-engineering
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-safety-implementation
+    to_id: dept-engineering
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-ui-implementation
+    to_id: dept-engineering
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-system-testing
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-regulatory-testing
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  # Resource to Workpackage allocation relationships
+  - from_id: resource-dev1
+    to_id: wp-core-implementation
+    type: ALLOCATED_TO
+    allocation_percentage: 80.0
+    lead: true
+
+  - from_id: resource-dev2
+    to_id: wp-ui-implementation
+    type: ALLOCATED_TO
+    allocation_percentage: 90.0
+    lead: true
+
+  - from_id: resource-dev3
+    to_id: wp-safety-implementation
+    type: ALLOCATED_TO
+    allocation_percentage: 75.0
+    lead: true
+
+  - from_id: resource-dev4
+    to_id: wp-core-implementation
+    type: ALLOCATED_TO
+    allocation_percentage: 60.0
+    lead: false
+
+  - from_id: resource-qa1
+    to_id: wp-system-testing
+    type: ALLOCATED_TO
+    allocation_percentage: 100.0
+    lead: true
+
+  - from_id: resource-qa2
+    to_id: wp-regulatory-testing
+    type: ALLOCATED_TO
+    allocation_percentage: 100.0
+    lead: true
+
+  # Risk relationships
+  - from_id: risk-security
+    to_id: req-auth
+    type: MITIGATES
+
+  - from_id: risk-regulatory
+    to_id: req-audit-trail
+    type: MITIGATES
+
+  - from_id: risk-safety
+    to_id: req-safety-monitoring
+    type: MITIGATES
+
+  - from_id: risk-performance
+    to_id: task-performance-optimization
+    type: MITIGATES

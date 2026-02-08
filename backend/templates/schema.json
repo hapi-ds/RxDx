@@ -397,9 +397,366 @@
         }
       }
     },
+    "companies": {
+      "type": "array",
+      "description": "List of companies to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local company identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Company name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "Company description",
+            "maxLength": 2000
+          }
+        }
+      }
+    },
+    "departments": {
+      "type": "array",
+      "description": "List of departments to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "company_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local department identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Department name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "Department description",
+            "maxLength": 2000
+          },
+          "manager_user_id": {
+            "type": "string",
+            "description": "Template-local user ID of the department manager",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "company_id": {
+            "type": "string",
+            "description": "Template-local company ID this department belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "description": "List of resources to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "type", "department_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local resource identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Resource name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "type": {
+            "type": "string",
+            "description": "Resource type",
+            "enum": ["person", "machine", "equipment", "facility", "other"]
+          },
+          "capacity": {
+            "type": "number",
+            "description": "Resource capacity (e.g., hours per week, units available)",
+            "minimum": 0
+          },
+          "department_id": {
+            "type": "string",
+            "description": "Template-local department ID this resource belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "skills": {
+            "type": "array",
+            "description": "List of skills or capabilities",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "availability": {
+            "type": "string",
+            "description": "Resource availability status",
+            "enum": ["available", "unavailable", "limited"],
+            "default": "available"
+          }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "description": "List of projects to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local project identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "status": {
+            "type": "string",
+            "description": "Project status",
+            "enum": ["planning", "active", "on_hold", "completed", "cancelled"],
+            "default": "planning"
+          }
+        }
+      }
+    },
+    "sprints": {
+      "type": "array",
+      "description": "List of sprints to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "start_date", "end_date", "project_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local sprint identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Sprint name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "goal": {
+            "type": "string",
+            "description": "Sprint goal or objective",
+            "maxLength": 1000
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Sprint start date and time",
+            "format": "date-time"
+          },
+          "end_date": {
+            "type": "string",
+            "description": "Sprint end date and time (must be after start_date)",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "description": "Sprint status",
+            "enum": ["planning", "active", "completed", "cancelled"],
+            "default": "planning"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Template-local project ID this sprint belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "capacity_hours": {
+            "type": "number",
+            "description": "Sprint capacity in hours",
+            "minimum": 0
+          },
+          "capacity_story_points": {
+            "type": "number",
+            "description": "Sprint capacity in story points",
+            "minimum": 0
+          },
+          "actual_velocity_hours": {
+            "type": "number",
+            "description": "Actual velocity achieved in hours",
+            "minimum": 0
+          },
+          "actual_velocity_story_points": {
+            "type": "number",
+            "description": "Actual velocity achieved in story points",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "description": "List of project phases to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "order", "project_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local phase identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Phase name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "order": {
+            "type": "integer",
+            "description": "Phase order in the project sequence",
+            "minimum": 1
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Template-local project ID this phase belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "workpackages": {
+      "type": "array",
+      "description": "List of workpackages to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "order", "phase_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local workpackage identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Workpackage name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "order": {
+            "type": "integer",
+            "description": "Workpackage order within the phase",
+            "minimum": 1
+          },
+          "phase_id": {
+            "type": "string",
+            "description": "Template-local phase ID this workpackage belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "backlogs": {
+      "type": "array",
+      "description": "List of backlogs to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "project_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local backlog identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Backlog name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Template-local project ID this backlog belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    },
+    "milestones": {
+      "type": "array",
+      "description": "List of milestones to create in the graph database",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "due_date", "project_id"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Template-local milestone identifier",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "name": {
+            "type": "string",
+            "description": "Milestone name",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "due_date": {
+            "type": "string",
+            "description": "Milestone due date and time",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "description": "Milestone status",
+            "enum": ["pending", "in_progress", "completed", "cancelled"],
+            "default": "pending"
+          },
+          "project_id": {
+            "type": "string",
+            "description": "Template-local project ID this milestone belongs to",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      }
+    },
     "relationships": {
       "type": "array",
-      "description": "Relationships between workitems in the graph database",
+      "description": "Relationships between entities in the graph database",
       "items": {
         "type": "object",
         "required": ["from_id", "to_id", "type"],
@@ -407,20 +764,41 @@
         "properties": {
           "from_id": {
             "type": "string",
-            "description": "Template-local ID of the source workitem",
+            "description": "Template-local ID of the source entity",
             "minLength": 1,
             "maxLength": 100
           },
           "to_id": {
             "type": "string",
-            "description": "Template-local ID of the target workitem",
+            "description": "Template-local ID of the target entity",
             "minLength": 1,
             "maxLength": 100
           },
           "type": {
             "type": "string",
             "description": "Type of relationship",
-            "enum": ["IMPLEMENTS", "TESTED_BY", "MITIGATES", "DEPENDS_ON"]
+            "enum": [
+              "IMPLEMENTS",
+              "TESTED_BY",
+              "MITIGATES",
+              "DEPENDS_ON",
+              "ASSIGNED_TO_SPRINT",
+              "IN_BACKLOG",
+              "LINKED_TO_DEPARTMENT",
+              "ALLOCATED_TO",
+              "PARENT_OF",
+              "BELONGS_TO"
+            ]
+          },
+          "allocation_percentage": {
+            "type": "number",
+            "description": "Allocation percentage for ALLOCATED_TO relationships (0-100)",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "lead": {
+            "type": "boolean",
+            "description": "Whether this is a lead allocation for ALLOCATED_TO relationships"
           }
         }
       }

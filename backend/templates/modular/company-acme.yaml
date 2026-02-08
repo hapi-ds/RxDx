@@ -1,0 +1,175 @@
+metadata:
+  name: company-acme
+  version: 1.0.0
+  description: Acme Corporation organizational structure with departments and resources
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+# ============================================================================
+# Users (minimal set for organizational structure)
+# ============================================================================
+users:
+  - id: user-ceo
+    email: ceo@acme.example.com
+    full_name: Alice CEO
+    role: admin
+    is_active: true
+
+  - id: user-eng-mgr
+    email: eng-mgr@acme.example.com
+    full_name: Bob Engineering Manager
+    role: project_manager
+    is_active: true
+
+  - id: user-qa-mgr
+    email: qa-mgr@acme.example.com
+    full_name: Carol QA Manager
+    role: project_manager
+    is_active: true
+
+  - id: user-dev1
+    email: dev1@acme.example.com
+    full_name: David Developer
+    role: user
+    is_active: true
+
+  - id: user-dev2
+    email: dev2@acme.example.com
+    full_name: Emma Developer
+    role: user
+    is_active: true
+
+  - id: user-dev3
+    email: dev3@acme.example.com
+    full_name: Frank Developer
+    role: user
+    is_active: true
+
+  - id: user-qa1
+    email: qa1@acme.example.com
+    full_name: Grace QA Engineer
+    role: user
+    is_active: true
+
+  - id: user-qa2
+    email: qa2@acme.example.com
+    full_name: Henry QA Engineer
+    role: user
+    is_active: true
+
+# ============================================================================
+# Company Structure
+# ============================================================================
+companies:
+  - id: company-acme
+    name: Acme Corporation
+    description: Leading medical device manufacturer specializing in innovative healthcare solutions
+
+# ============================================================================
+# Departments
+# ============================================================================
+departments:
+  - id: dept-engineering
+    name: Engineering Department
+    description: Software and hardware engineering for medical devices
+    company_id: company-acme
+    manager_user_id: user-eng-mgr
+
+  - id: dept-qa
+    name: Quality Assurance Department
+    description: Quality control, testing, and regulatory compliance
+    company_id: company-acme
+    manager_user_id: user-qa-mgr
+
+  - id: dept-research
+    name: Research & Development
+    description: Innovation and new product development
+    company_id: company-acme
+    manager_user_id: user-ceo
+
+# ============================================================================
+# Resources
+# ============================================================================
+resources:
+  # Engineering Resources
+  - id: resource-dev1
+    name: David Developer
+    type: human
+    availability: full_time
+    cost_per_hour: 85.0
+    department_id: dept-engineering
+    user_id: user-dev1
+
+  - id: resource-dev2
+    name: Emma Developer
+    type: human
+    availability: full_time
+    cost_per_hour: 80.0
+    department_id: dept-engineering
+    user_id: user-dev2
+
+  - id: resource-dev3
+    name: Frank Developer
+    type: human
+    availability: part_time
+    cost_per_hour: 75.0
+    department_id: dept-engineering
+    user_id: user-dev3
+
+  # QA Resources
+  - id: resource-qa1
+    name: Grace QA Engineer
+    type: human
+    availability: full_time
+    cost_per_hour: 70.0
+    department_id: dept-qa
+    user_id: user-qa1
+
+  - id: resource-qa2
+    name: Henry QA Engineer
+    type: human
+    availability: full_time
+    cost_per_hour: 70.0
+    department_id: dept-qa
+    user_id: user-qa2
+
+  # Equipment Resources
+  - id: resource-dev-server
+    name: Development Server Cluster
+    type: equipment
+    availability: available
+    cost_per_hour: 15.0
+    department_id: dept-engineering
+    description: High-performance development and build servers
+
+  - id: resource-test-lab
+    name: Testing Laboratory Equipment
+    type: equipment
+    availability: available
+    cost_per_hour: 25.0
+    department_id: dept-qa
+    description: Medical device testing and validation equipment
+
+  - id: resource-ci-cd
+    name: CI/CD Infrastructure
+    type: equipment
+    availability: available
+    cost_per_hour: 10.0
+    department_id: dept-engineering
+    description: Continuous integration and deployment infrastructure
+
+# ============================================================================
+# Workitems (empty - to be defined in other templates)
+# ============================================================================
+workitems:
+  requirements: []
+  tasks: []
+  tests: []
+  risks: []
+
+# ============================================================================
+# Relationships (empty - to be defined in other templates)
+# ============================================================================
+relationships: []

@@ -1,0 +1,459 @@
+metadata:
+  name: gantt-chart-demo-full
+  version: 1.0.0
+  description: Comprehensive demo template with all entity types for Gantt chart visualization
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+# ============================================================================
+# Users
+# ============================================================================
+users:
+  - id: user-admin
+    email: admin@acme.example.com
+    full_name: Alice Administrator
+    role: admin
+    is_active: true
+
+  - id: user-pm
+    email: pm@acme.example.com
+    full_name: Bob Project Manager
+    role: project_manager
+    is_active: true
+
+  - id: user-dev1
+    email: dev1@acme.example.com
+    full_name: Charlie Developer
+    role: user
+    is_active: true
+
+  - id: user-dev2
+    email: dev2@acme.example.com
+    full_name: Diana Developer
+    role: user
+    is_active: true
+
+  - id: user-qa
+    email: qa@acme.example.com
+    full_name: Eve QA Engineer
+    role: user
+    is_active: true
+
+  - id: user-dept-mgr
+    email: dept-mgr@acme.example.com
+    full_name: Frank Department Manager
+    role: project_manager
+    is_active: true
+
+# ============================================================================
+# Organizational Structure
+# ============================================================================
+companies:
+  - id: company-acme
+    name: Acme Corporation
+    description: Leading medical device manufacturer
+
+departments:
+  - id: dept-engineering
+    name: Engineering Department
+    description: Software and hardware engineering
+    company_id: company-acme
+    manager_user_id: user-dept-mgr
+
+  - id: dept-qa
+    name: Quality Assurance Department
+    description: Quality control and testing
+    company_id: company-acme
+    manager_user_id: user-dept-mgr
+
+resources:
+  - id: resource-dev1
+    name: Charlie Developer
+    type: human
+    availability: full_time
+    cost_per_hour: 75.0
+    department_id: dept-engineering
+    user_id: user-dev1
+
+  - id: resource-dev2
+    name: Diana Developer
+    type: human
+    availability: full_time
+    cost_per_hour: 75.0
+    department_id: dept-engineering
+    user_id: user-dev2
+
+  - id: resource-qa
+    name: Eve QA Engineer
+    type: human
+    availability: full_time
+    cost_per_hour: 65.0
+    department_id: dept-qa
+    user_id: user-qa
+
+  - id: resource-server
+    name: Development Server
+    type: equipment
+    availability: available
+    cost_per_hour: 10.0
+    department_id: dept-engineering
+
+# ============================================================================
+# Project Management Structure
+# ============================================================================
+projects:
+  - id: project-medical-device
+    name: Medical Device Software v2.0
+    description: Next generation medical device control software
+    status: active
+    start_date: 2024-01-01T00:00:00Z
+    end_date: 2024-12-31T23:59:59Z
+    owner_id: user-pm
+
+sprints:
+  - id: sprint-1
+    name: Sprint 1 - Foundation
+    description: Core infrastructure and authentication
+    start_date: 2024-01-01T00:00:00Z
+    end_date: 2024-01-14T23:59:59Z
+    status: completed
+    goal: Establish project foundation and authentication system
+    project_id: project-medical-device
+
+  - id: sprint-2
+    name: Sprint 2 - Core Features
+    description: Implement core device control features
+    start_date: 2024-01-15T00:00:00Z
+    end_date: 2024-01-28T23:59:59Z
+    status: active
+    goal: Deliver core device control functionality
+    project_id: project-medical-device
+
+  - id: sprint-3
+    name: Sprint 3 - Testing & QA
+    description: Comprehensive testing and quality assurance
+    start_date: 2024-01-29T00:00:00Z
+    end_date: 2024-02-11T23:59:59Z
+    status: planned
+    goal: Ensure quality and regulatory compliance
+    project_id: project-medical-device
+
+phases:
+  - id: phase-planning
+    name: Planning Phase
+    description: Project planning and requirements gathering
+    order: 1
+    project_id: project-medical-device
+
+  - id: phase-development
+    name: Development Phase
+    description: Software development and implementation
+    order: 2
+    project_id: project-medical-device
+
+  - id: phase-validation
+    name: Validation Phase
+    description: Testing and validation for regulatory compliance
+    order: 3
+    project_id: project-medical-device
+
+workpackages:
+  - id: wp-requirements
+    name: Requirements Analysis
+    description: Gather and document system requirements
+    order: 1
+    phase_id: phase-planning
+
+  - id: wp-design
+    name: System Design
+    description: Create system architecture and design documents
+    order: 2
+    phase_id: phase-planning
+
+  - id: wp-implementation
+    name: Core Implementation
+    description: Implement core system functionality
+    order: 1
+    phase_id: phase-development
+
+  - id: wp-integration
+    name: System Integration
+    description: Integrate all system components
+    order: 2
+    phase_id: phase-development
+
+  - id: wp-testing
+    name: System Testing
+    description: Comprehensive system testing
+    order: 1
+    phase_id: phase-validation
+
+backlogs:
+  - id: backlog-product
+    name: Product Backlog
+    description: Main product backlog for all features
+    project_id: project-medical-device
+
+  - id: backlog-technical
+    name: Technical Debt Backlog
+    description: Technical debt and infrastructure improvements
+    project_id: project-medical-device
+
+milestones:
+  - id: milestone-alpha
+    name: Alpha Release
+    description: First internal alpha release
+    due_date: 2024-03-31T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+  - id: milestone-beta
+    name: Beta Release
+    description: Beta release for external testing
+    due_date: 2024-06-30T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+  - id: milestone-release
+    name: Production Release
+    description: Final production release
+    due_date: 2024-12-31T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+# ============================================================================
+# Workitems
+# ============================================================================
+workitems:
+  requirements:
+    - id: req-auth
+      title: User Authentication System
+      description: Secure user authentication with role-based access control
+      status: active
+      priority: 5
+      acceptance_criteria: Users can securely log in with email and password
+      business_value: Essential for system security and compliance
+      source: security
+      created_by: user-pm
+
+    - id: req-device-control
+      title: Device Control Interface
+      description: Interface for controlling medical device parameters
+      status: active
+      priority: 5
+      acceptance_criteria: Users can safely control device parameters within regulatory limits
+      business_value: Core functionality for device operation
+      source: product
+      created_by: user-pm
+
+    - id: req-audit-trail
+      title: Audit Trail Logging
+      description: Comprehensive audit trail for all user actions
+      status: active
+      priority: 4
+      acceptance_criteria: All user actions are logged with timestamp and user identity
+      business_value: Required for regulatory compliance
+      source: regulation
+      created_by: user-pm
+
+  tasks:
+    - id: task-auth-backend
+      title: Implement Authentication Backend
+      description: Develop JWT-based authentication service
+      status: completed
+      priority: 5
+      estimated_hours: 16
+      actual_hours: 14
+      assigned_to: user-dev1
+      created_by: user-pm
+
+    - id: task-auth-frontend
+      title: Implement Authentication UI
+      description: Create login and user management UI
+      status: completed
+      priority: 5
+      estimated_hours: 12
+      actual_hours: 13
+      assigned_to: user-dev2
+      created_by: user-pm
+
+    - id: task-device-api
+      title: Develop Device Control API
+      description: Create REST API for device control
+      status: active
+      priority: 5
+      estimated_hours: 24
+      actual_hours: 10
+      assigned_to: user-dev1
+      created_by: user-pm
+
+    - id: task-device-ui
+      title: Create Device Control UI
+      description: Build user interface for device control
+      status: active
+      priority: 5
+      estimated_hours: 20
+      actual_hours: 8
+      assigned_to: user-dev2
+      created_by: user-pm
+
+    - id: task-audit-service
+      title: Implement Audit Logging Service
+      description: Create audit logging with immutable storage
+      status: draft
+      priority: 4
+      estimated_hours: 16
+      assigned_to: user-dev1
+      created_by: user-pm
+
+  tests:
+    - id: test-auth-login
+      title: Test User Login
+      description: Verify successful user authentication
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. Navigate to login page
+        2. Enter valid credentials
+        3. Click login button
+      expected_result: User is authenticated and redirected to dashboard
+      test_status: passed
+      assigned_to: user-qa
+      created_by: user-pm
+
+    - id: test-device-control
+      title: Test Device Parameter Control
+      description: Verify device parameter changes
+      status: active
+      priority: 5
+      test_type: integration
+      test_steps: |
+        1. Log in as authorized user
+        2. Navigate to device control
+        3. Change parameter within limits
+        4. Verify parameter change
+      expected_result: Parameter is changed and confirmed
+      test_status: not_run
+      assigned_to: user-qa
+      created_by: user-pm
+
+  risks:
+    - id: risk-security
+      title: Security Vulnerability Risk
+      description: Potential security vulnerabilities in authentication
+      status: active
+      priority: 5
+      severity: 8
+      occurrence: 3
+      detection: 4
+      mitigation_actions: Regular security audits and penetration testing
+      risk_owner: user-pm
+      created_by: user-pm
+
+    - id: risk-regulatory
+      title: Regulatory Compliance Risk
+      description: Risk of non-compliance with medical device regulations
+      status: active
+      priority: 5
+      severity: 9
+      occurrence: 2
+      detection: 3
+      mitigation_actions: Comprehensive validation and documentation
+      risk_owner: user-pm
+      created_by: user-pm
+
+# ============================================================================
+# Relationships
+# ============================================================================
+relationships:
+  # Requirement to Task relationships
+  - from_id: req-auth
+    to_id: task-auth-backend
+    type: PARENT_OF
+
+  - from_id: req-auth
+    to_id: task-auth-frontend
+    type: PARENT_OF
+
+  - from_id: req-device-control
+    to_id: task-device-api
+    type: PARENT_OF
+
+  - from_id: req-device-control
+    to_id: task-device-ui
+    type: PARENT_OF
+
+  - from_id: req-audit-trail
+    to_id: task-audit-service
+    type: PARENT_OF
+
+  # Task to Test relationships
+  - from_id: task-auth-backend
+    to_id: test-auth-login
+    type: TESTED_BY
+
+  - from_id: task-device-api
+    to_id: test-device-control
+    type: TESTED_BY
+
+  # Task to Sprint relationships
+  - from_id: task-auth-backend
+    to_id: sprint-1
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-auth-frontend
+    to_id: sprint-1
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-device-api
+    to_id: sprint-2
+    type: ASSIGNED_TO_SPRINT
+
+  - from_id: task-device-ui
+    to_id: sprint-2
+    type: ASSIGNED_TO_SPRINT
+
+  # Task to Backlog relationships
+  - from_id: task-audit-service
+    to_id: backlog-product
+    type: IN_BACKLOG
+
+  # Workpackage to Department relationships
+  - from_id: wp-implementation
+    to_id: dept-engineering
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-testing
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  # Resource to Workpackage allocation relationships
+  - from_id: resource-dev1
+    to_id: wp-implementation
+    type: ALLOCATED_TO
+    allocation_percentage: 80.0
+    lead: true
+
+  - from_id: resource-dev2
+    to_id: wp-implementation
+    type: ALLOCATED_TO
+    allocation_percentage: 60.0
+    lead: false
+
+  - from_id: resource-qa
+    to_id: wp-testing
+    type: ALLOCATED_TO
+    allocation_percentage: 100.0
+    lead: true
+
+  # Risk relationships
+  - from_id: risk-security
+    to_id: req-auth
+    type: MITIGATES
+
+  - from_id: risk-regulatory
+    to_id: req-audit-trail
+    type: MITIGATES

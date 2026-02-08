@@ -1,0 +1,293 @@
+metadata:
+  name: project-medical-device
+  version: 1.0.0
+  description: Medical Device Software v2.0 project structure with sprints, phases, workpackages, backlogs, and milestones
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+# ============================================================================
+# Users (references to users from users-acme.yaml using deterministic UUIDs)
+# ============================================================================
+users: []
+
+# ============================================================================
+# Projects
+# ============================================================================
+projects:
+  - id: project-medical-device
+    name: Medical Device Software v2.0
+    description: Next generation medical device control software with enhanced safety features and regulatory compliance
+    status: active
+    start_date: 2024-01-01T00:00:00Z
+    end_date: 2024-12-31T23:59:59Z
+    owner_id: user-pm1
+
+# ============================================================================
+# Sprints
+# ============================================================================
+sprints:
+  - id: sprint-1
+    name: Sprint 1 - Foundation
+    description: Core infrastructure, authentication, and project setup
+    start_date: 2024-01-01T00:00:00Z
+    end_date: 2024-01-14T23:59:59Z
+    status: completed
+    goal: Establish project foundation with authentication and basic infrastructure
+    project_id: project-medical-device
+
+  - id: sprint-2
+    name: Sprint 2 - Core Features
+    description: Implement core device control features
+    start_date: 2024-01-15T00:00:00Z
+    end_date: 2024-01-28T23:59:59Z
+    status: completed
+    goal: Deliver core device control functionality
+    project_id: project-medical-device
+
+  - id: sprint-3
+    name: Sprint 3 - Safety Features
+    description: Implement safety monitoring and alarm systems
+    start_date: 2024-01-29T00:00:00Z
+    end_date: 2024-02-11T23:59:59Z
+    status: active
+    goal: Ensure device safety with comprehensive monitoring
+    project_id: project-medical-device
+
+  - id: sprint-4
+    name: Sprint 4 - Data Management
+    description: Implement data logging and reporting features
+    start_date: 2024-02-12T00:00:00Z
+    end_date: 2024-02-25T23:59:59Z
+    status: planned
+    goal: Enable comprehensive data management and reporting
+    project_id: project-medical-device
+
+  - id: sprint-5
+    name: Sprint 5 - Testing & QA
+    description: Comprehensive testing and quality assurance
+    start_date: 2024-02-26T00:00:00Z
+    end_date: 2024-03-10T23:59:59Z
+    status: planned
+    goal: Ensure quality and regulatory compliance
+    project_id: project-medical-device
+
+# ============================================================================
+# Phases
+# ============================================================================
+phases:
+  - id: phase-planning
+    name: Planning Phase
+    description: Project planning, requirements gathering, and risk analysis
+    order: 1
+    project_id: project-medical-device
+
+  - id: phase-design
+    name: Design Phase
+    description: System architecture, detailed design, and design verification
+    order: 2
+    project_id: project-medical-device
+
+  - id: phase-development
+    name: Development Phase
+    description: Software development, unit testing, and code reviews
+    order: 3
+    project_id: project-medical-device
+
+  - id: phase-integration
+    name: Integration Phase
+    description: System integration, integration testing, and interface verification
+    order: 4
+    project_id: project-medical-device
+
+  - id: phase-validation
+    name: Validation Phase
+    description: System validation, regulatory testing, and documentation
+    order: 5
+    project_id: project-medical-device
+
+  - id: phase-release
+    name: Release Phase
+    description: Final release preparation, deployment, and post-release support
+    order: 6
+    project_id: project-medical-device
+
+# ============================================================================
+# Workpackages
+# ============================================================================
+workpackages:
+  # Planning Phase Workpackages
+  - id: wp-requirements
+    name: Requirements Analysis
+    description: Gather and document system requirements
+    order: 1
+    phase_id: phase-planning
+
+  - id: wp-risk-analysis
+    name: Risk Analysis
+    description: Identify and analyze project risks
+    order: 2
+    phase_id: phase-planning
+
+  # Design Phase Workpackages
+  - id: wp-architecture
+    name: System Architecture
+    description: Define system architecture and components
+    order: 1
+    phase_id: phase-design
+
+  - id: wp-detailed-design
+    name: Detailed Design
+    description: Create detailed design specifications
+    order: 2
+    phase_id: phase-design
+
+  - id: wp-design-review
+    name: Design Review
+    description: Conduct design review and verification
+    order: 3
+    phase_id: phase-design
+
+  # Development Phase Workpackages
+  - id: wp-core-implementation
+    name: Core Implementation
+    description: Implement core system functionality
+    order: 1
+    phase_id: phase-development
+
+  - id: wp-safety-implementation
+    name: Safety Features Implementation
+    description: Implement safety monitoring and alarms
+    order: 2
+    phase_id: phase-development
+
+  - id: wp-ui-implementation
+    name: User Interface Implementation
+    description: Develop user interface components
+    order: 3
+    phase_id: phase-development
+
+  # Integration Phase Workpackages
+  - id: wp-system-integration
+    name: System Integration
+    description: Integrate all system components
+    order: 1
+    phase_id: phase-integration
+
+  - id: wp-integration-testing
+    name: Integration Testing
+    description: Perform integration testing
+    order: 2
+    phase_id: phase-integration
+
+  # Validation Phase Workpackages
+  - id: wp-system-testing
+    name: System Testing
+    description: Comprehensive system testing
+    order: 1
+    phase_id: phase-validation
+
+  - id: wp-regulatory-testing
+    name: Regulatory Testing
+    description: Testing for regulatory compliance
+    order: 2
+    phase_id: phase-validation
+
+  - id: wp-documentation
+    name: Documentation
+    description: Create and review all documentation
+    order: 3
+    phase_id: phase-validation
+
+  # Release Phase Workpackages
+  - id: wp-release-prep
+    name: Release Preparation
+    description: Prepare for production release
+    order: 1
+    phase_id: phase-release
+
+  - id: wp-deployment
+    name: Deployment
+    description: Deploy to production environment
+    order: 2
+    phase_id: phase-release
+
+# ============================================================================
+# Backlogs
+# ============================================================================
+backlogs:
+  - id: backlog-product
+    name: Product Backlog
+    description: Main product backlog for all features and enhancements
+    project_id: project-medical-device
+
+  - id: backlog-technical
+    name: Technical Debt Backlog
+    description: Technical debt, refactoring, and infrastructure improvements
+    project_id: project-medical-device
+
+  - id: backlog-bugs
+    name: Bug Backlog
+    description: Known bugs and defects to be addressed
+    project_id: project-medical-device
+
+# ============================================================================
+# Milestones
+# ============================================================================
+milestones:
+  - id: milestone-requirements
+    name: Requirements Complete
+    description: All requirements documented and approved
+    due_date: 2024-02-15T23:59:59Z
+    status: completed
+    project_id: project-medical-device
+
+  - id: milestone-design
+    name: Design Complete
+    description: System design completed and reviewed
+    due_date: 2024-03-31T23:59:59Z
+    status: at_risk
+    project_id: project-medical-device
+
+  - id: milestone-alpha
+    name: Alpha Release
+    description: First internal alpha release for testing
+    due_date: 2024-05-31T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+  - id: milestone-beta
+    name: Beta Release
+    description: Beta release for external testing and validation
+    due_date: 2024-08-31T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+  - id: milestone-validation
+    name: Validation Complete
+    description: All validation testing completed
+    due_date: 2024-10-31T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+  - id: milestone-release
+    name: Production Release
+    description: Final production release
+    due_date: 2024-12-31T23:59:59Z
+    status: pending
+    project_id: project-medical-device
+
+# ============================================================================
+# Workitems (empty - to be defined in requirements template)
+# ============================================================================
+workitems:
+  requirements: []
+  tasks: []
+  tests: []
+  risks: []
+
+# ============================================================================
+# Relationships (empty - to be defined in requirements template)
+# ============================================================================
+relationships: []

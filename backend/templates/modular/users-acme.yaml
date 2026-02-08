@@ -1,0 +1,147 @@
+metadata:
+  name: users-acme
+  version: 1.0.0
+  description: User accounts for Acme Corporation
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+# ============================================================================
+# Users
+# ============================================================================
+users:
+  # Executive Team
+  - id: user-ceo
+    email: ceo@acme.example.com
+    full_name: Alice CEO
+    role: admin
+    is_active: true
+
+  # Management Team
+  - id: user-eng-mgr
+    email: eng-mgr@acme.example.com
+    full_name: Bob Engineering Manager
+    role: project_manager
+    is_active: true
+
+  - id: user-qa-mgr
+    email: qa-mgr@acme.example.com
+    full_name: Carol QA Manager
+    role: project_manager
+    is_active: true
+
+  - id: user-pm1
+    email: pm1@acme.example.com
+    full_name: Diana Project Manager
+    role: project_manager
+    is_active: true
+
+  - id: user-pm2
+    email: pm2@acme.example.com
+    full_name: Eric Project Manager
+    role: project_manager
+    is_active: true
+
+  # Engineering Team
+  - id: user-dev1
+    email: dev1@acme.example.com
+    full_name: David Developer
+    role: user
+    is_active: true
+
+  - id: user-dev2
+    email: dev2@acme.example.com
+    full_name: Emma Developer
+    role: user
+    is_active: true
+
+  - id: user-dev3
+    email: dev3@acme.example.com
+    full_name: Frank Developer
+    role: user
+    is_active: true
+
+  - id: user-dev4
+    email: dev4@acme.example.com
+    full_name: Iris Developer
+    role: user
+    is_active: true
+
+  - id: user-dev5
+    email: dev5@acme.example.com
+    full_name: Jack Developer
+    role: user
+    is_active: true
+
+  # QA Team
+  - id: user-qa1
+    email: qa1@acme.example.com
+    full_name: Grace QA Engineer
+    role: user
+    is_active: true
+
+  - id: user-qa2
+    email: qa2@acme.example.com
+    full_name: Henry QA Engineer
+    role: user
+    is_active: true
+
+  - id: user-qa3
+    email: qa3@acme.example.com
+    full_name: Karen QA Engineer
+    role: user
+    is_active: true
+
+  # Validation Team
+  - id: user-validator1
+    email: validator1@acme.example.com
+    full_name: Laura Validator
+    role: validator
+    is_active: true
+
+  - id: user-validator2
+    email: validator2@acme.example.com
+    full_name: Mike Validator
+    role: validator
+    is_active: true
+
+  # Audit Team
+  - id: user-auditor1
+    email: auditor1@acme.example.com
+    full_name: Nancy Auditor
+    role: auditor
+    is_active: true
+
+  - id: user-auditor2
+    email: auditor2@acme.example.com
+    full_name: Oscar Auditor
+    role: auditor
+    is_active: true
+
+  # Inactive Users (for testing)
+  - id: user-inactive1
+    email: inactive1@acme.example.com
+    full_name: Peter Inactive
+    role: user
+    is_active: false
+
+  - id: user-inactive2
+    email: inactive2@acme.example.com
+    full_name: Quinn Inactive
+    role: user
+    is_active: false
+
+# ============================================================================
+# Workitems (empty - to be defined in other templates)
+# ============================================================================
+workitems:
+  requirements: []
+  tasks: []
+  tests: []
+  risks: []
+
+# ============================================================================
+# Relationships (empty - to be defined in other templates)
+# ============================================================================
+relationships: []

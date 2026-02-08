@@ -13,6 +13,7 @@ from app.api.deps import get_current_user
 from app.core.security import Permission, require_permission
 from app.models.user import User
 from app.schemas.schedule import (
+    GanttChartData,
     ProjectSchedule,
     ScheduleRequest,
     ScheduleResponse,
@@ -173,3 +174,54 @@ async def update_schedule(
         )
 
     return result
+
+
+
+# ============================================================================
+# Gantt Chart Data Endpoint (Requirement 3)
+# ============================================================================
+
+@router.get("/{project_id}/gantt", response_model=GanttChartData)
+@require_permission(Permission.READ_WORKITEM)
+async def get_gantt_chart_data(
+    project_id: UUID,
+    scheduler_service: SchedulerService = Depends(get_scheduler_service),
+    current_user: User = Depends(get_current_user),
+) -> GanttChartData:
+    """
+    Get Gantt chart visualization data for a project.
+
+    This endpoint returns formatted data for Gantt chart visualization including:
+    - Scheduled tasks with start/end dates
+    - Task dependencies with relationship types
+    - Critical path task IDs
+    - Milestones with target dates and dependencies
+    - Sprint boundaries with dates
+    - Resource assignments for each task
+    - Project completion percentage
+
+    **Requirements**: 3.1-3.13
+
+    - **project_id**: Project UUID
+
+    Returns:
+    - **tasks**: List of scheduled tasks with dates and resource assignments
+    - **dependencies**: Task dependencies with types (finish-to-start, etc.)
+    - **critical_path**: List of task IDs on the critical path
+    - **milestones**: Milestones with target dates and dependent tasks
+    - **sprints**: Sprint boundaries with start/end dates
+    - **project_start_date**: Overall project start date
+    - **project_end_date**: Overall project end date
+    - **completion_percentage**: Percentage of completed tasks
+
+    Raises 404 if no schedule exists for the project.
+    """
+    gantt_data = await scheduler_service.get_gantt_chart_data(project_id)
+
+    if not gantt_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No schedule found for project {project_id}"
+        )
+
+    return gantt_data

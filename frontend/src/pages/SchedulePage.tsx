@@ -6,12 +6,15 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button, ConfirmModal } from '../components/common';
+import { GanttChart } from '../components/schedule/GanttChart';
+import type { Milestone, Sprint } from '../components/schedule/GanttChart';
 import {
   scheduleService,
   type Task,
   type ScheduleFilters,
   type ScheduleStatistics,
   type ScheduleResult,
+  type ScheduledTask,
 } from '../services';
 
 type ViewMode = 'list' | 'detail' | 'create' | 'edit' | 'gantt' | 'calculate';
@@ -30,6 +33,15 @@ export function SchedulePage(): React.ReactElement {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Gantt chart data
+  const [ganttTasks, setGanttTasks] = useState<ScheduledTask[]>([]);
+  const [ganttDependencies, setGanttDependencies] = useState<any[]>([]);
+  const [ganttCriticalPath, setGanttCriticalPath] = useState<string[]>([]);
+  const [ganttMilestones, setGanttMilestones] = useState<Milestone[]>([]);
+  const [ganttSprints, setGanttSprints] = useState<Sprint[]>([]);
+  const [isLoadingGantt, setIsLoadingGantt] = useState(false);
+  const [ganttError, setGanttError] = useState<string | null>(null);
 
   // Filters
   const [filters, setFilters] = useState<ScheduleFilters>({
@@ -169,8 +181,27 @@ export function SchedulePage(): React.ReactElement {
     setFilters(prev => ({ ...prev, page }));
   }, []);
 
-  const handleViewGantt = useCallback(() => {
+  const handleViewGantt = useCallback(async () => {
     setViewMode('gantt');
+    setIsLoadingGantt(true);
+    setGanttError(null);
+    
+    try {
+      // Using a default project ID for now
+      const ganttData = await scheduleService.getGanttChartData('default-project');
+      
+      setGanttTasks(ganttData.tasks);
+      setGanttDependencies(ganttData.dependencies);
+      setGanttCriticalPath(ganttData.critical_path);
+      setGanttMilestones(ganttData.milestones);
+      setGanttSprints(ganttData.sprints);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load Gantt chart data';
+      setGanttError(errorMessage);
+      console.error('Error loading Gantt chart data:', err);
+    } finally {
+      setIsLoadingGantt(false);
+    }
   }, []);
 
   const getStatusColor = (status: Task['status']): string => {
@@ -568,13 +599,54 @@ export function SchedulePage(): React.ReactElement {
         {viewMode === 'gantt' && (
           <div className="gantt-container">
             <h2 className="gantt-title">Gantt Chart</h2>
-            <div className="coming-soon-message">
-              <p>Gantt chart visualization coming soon...</p>
-              <p className="hint">
-                This will display an interactive Gantt chart showing task timelines,
-                dependencies, and critical path analysis.
-              </p>
-            </div>
+            
+            {isLoadingGantt && (
+              <div className="loading-state" role="status" aria-live="polite">
+                <span className="sr-only">Loading Gantt chart, please wait...</span>
+                <p>Loading Gantt chart...</p>
+              </div>
+            )}
+
+            {ganttError && (
+              <div className="error-state" role="alert">
+                <div className="error-icon" aria-hidden="true">⚠️</div>
+                <div className="error-content">
+                  <p className="error-message">{ganttError}</p>
+                  <Button variant="secondary" onClick={handleViewGantt}>
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!isLoadingGantt && !ganttError && ganttTasks.length === 0 && (
+              <div className="empty-state">
+                <p>No schedule data available</p>
+                <p className="hint">
+                  Calculate a schedule first to view the Gantt chart.
+                </p>
+                <Button variant="primary" onClick={handleBackToList}>
+                  Back to List
+                </Button>
+              </div>
+            )}
+
+            {!isLoadingGantt && !ganttError && ganttTasks.length > 0 && (
+              <GanttChart
+                tasks={ganttTasks}
+                dependencies={ganttDependencies}
+                criticalPath={ganttCriticalPath}
+                milestones={ganttMilestones}
+                sprints={ganttSprints}
+                showCriticalPath={true}
+                showDependencies={true}
+                showMilestones={true}
+                showSprints={true}
+                showResourceAssignments={true}
+                showToday={true}
+                height={600}
+              />
+            )}
           </div>
         )}
 

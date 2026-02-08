@@ -1456,6 +1456,145 @@ class SchedulerService:
 
         return milestone_dates
 
+    async def get_gantt_chart_data(self, project_id: UUID):
+        """
+        Get Gantt chart visualization data for a project.
+
+        This method retrieves and formats all data needed for Gantt chart visualization:
+        - Scheduled tasks with dates and resource assignments
+        - Task dependencies with relationship types
+        - Critical path task IDs
+        - Milestones with target dates and dependencies
+        - Sprint boundaries with dates
+        - Project completion percentage
+
+        Args:
+            project_id: Project identifier
+
+        Returns:
+            GanttChartData with all visualization data, or None if no schedule exists
+        """
+        from app.db.graph import get_graph_service
+        from app.schemas.schedule import (
+            GanttChartData,
+            GanttMilestone,
+            GanttSprint,
+            GanttTaskDependency,
+        )
+
+        # Get the stored schedule
+        schedule = await self.get_schedule(project_id)
+        if not schedule:
+            return None
+
+        graph_service = await get_graph_service()
+
+        # Get task dependencies from graph
+        dependencies_query = f"""
+        MATCH (t1:Task)-[d:DEPENDS_ON]->(t2:Task)
+        WHERE t1.workpackage_id IN (
+            SELECT wp.id FROM (
+                MATCH (wp:Workpackage)-[:BELONGS_TO*]->(p:Project {{id: '{str(project_id)}'}})
+                RETURN wp.id
+            ) AS wp
+        )
+        RETURN t1.id AS from_task_id, t2.id AS to_task_id, d.dependency_type AS type
+        """
+
+        dependencies = []
+        try:
+            dep_results = await graph_service.execute_query(dependencies_query)
+            for row in dep_results:
+                # Convert dependency type format
+                dep_type = row.get("type", "finish_to_start")
+                if dep_type == "finish_to_start":
+                    dep_type = "finish-to-start"
+                elif dep_type == "start_to_start":
+                    dep_type = "start-to-start"
+                elif dep_type == "finish_to_finish":
+                    dep_type = "finish-to-finish"
+
+                dependencies.append(
+                    GanttTaskDependency(
+                        from_task_id=row["from_task_id"],
+                        to_task_id=row["to_task_id"],
+                        type=dep_type,
+                    )
+                )
+        except Exception as e:
+            logger.warning(f"Failed to fetch task dependencies: {e}")
+
+        # Get milestones from graph
+        milestones_query = f"""
+        MATCH (m:Milestone {{project_id: '{str(project_id)}'}})
+        OPTIONAL MATCH (m)-[:DEPENDS_ON]->(t:Task)
+        RETURN m.id AS id, m.title AS title, m.target_date AS target_date,
+               m.status AS status, collect(t.id) AS dependent_task_ids
+        """
+
+        milestones = []
+        try:
+            milestone_results = await graph_service.execute_query(milestones_query)
+            for row in milestone_results:
+                milestones.append(
+                    GanttMilestone(
+                        id=row["id"],
+                        title=row["title"],
+                        target_date=row["target_date"],
+                        status=row.get("status", "active"),
+                        dependent_task_ids=[
+                            tid for tid in row.get("dependent_task_ids", []) if tid
+                        ],
+                    )
+                )
+        except Exception as e:
+            logger.warning(f"Failed to fetch milestones: {e}")
+
+        # Get sprints from graph
+        sprints_query = f"""
+        MATCH (s:Sprint {{project_id: '{str(project_id)}'}})
+        RETURN s.id AS id, s.name AS name, s.start_date AS start_date,
+               s.end_date AS end_date, s.status AS status
+        ORDER BY s.start_date
+        """
+
+        sprints = []
+        try:
+            sprint_results = await graph_service.execute_query(sprints_query)
+            for row in sprint_results:
+                sprints.append(
+                    GanttSprint(
+                        id=row["id"],
+                        name=row["name"],
+                        start_date=row["start_date"],
+                        end_date=row["end_date"],
+                        status=row.get("status", "planning"),
+                    )
+                )
+        except Exception as e:
+            logger.warning(f"Failed to fetch sprints: {e}")
+
+        # Calculate completion percentage
+        completed_tasks = sum(
+            1 for task in schedule.schedule if task.task_id.endswith("_completed")
+        )
+        total_tasks = len(schedule.schedule)
+        completion_percentage = (
+            (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0.0
+        )
+
+        return GanttChartData(
+            project_id=project_id,
+            tasks=schedule.schedule,
+            dependencies=dependencies,
+            critical_path=schedule.critical_path,
+            milestones=milestones,
+            sprints=sprints,
+            project_start_date=schedule.project_start_date,
+            project_end_date=schedule.project_end_date,
+            completion_percentage=completion_percentage,
+        )
+
 
 # Singleton instance
 _scheduler_service: SchedulerService | None = None

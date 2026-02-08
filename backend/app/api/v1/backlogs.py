@@ -5,14 +5,15 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.v1.auth import get_current_user
+from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.db.graph import GraphService, get_graph_service
 from app.models.user import User
 from app.schemas.backlog import (
     BacklogCreate,
     BacklogResponse,
-    BacklogUpdate,
     BacklogTaskResponse,
+    BacklogUpdate,
 )
 from app.services.backlog_service import BacklogService
 
@@ -35,6 +36,7 @@ def get_backlog_service(
     summary="Create a new backlog",
     description="Create a new backlog for a project"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def create_backlog(
     backlog_data: BacklogCreate,
     current_user: User = Depends(get_current_user),
@@ -82,6 +84,7 @@ async def create_backlog(
     summary="List backlogs",
     description="List backlogs with optional filter for project"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def list_backlogs(
     project_id: UUID | None = Query(None, description="Filter by project ID"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
@@ -126,6 +129,7 @@ async def list_backlogs(
     summary="Get a backlog by ID",
     description="Retrieve a backlog by its UUID"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_backlog(
     backlog_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -163,6 +167,7 @@ async def get_backlog(
     summary="Update a backlog",
     description="Update backlog details such as name or description"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def update_backlog(
     backlog_id: UUID,
     updates: BacklogUpdate,
@@ -217,6 +222,7 @@ async def update_backlog(
     summary="Delete a backlog",
     description="Delete a backlog (removes IN_BACKLOG relationships but keeps tasks)"
 )
+@require_permission(Permission.DELETE_WORKITEM)
 async def delete_backlog(
     backlog_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -258,6 +264,7 @@ async def delete_backlog(
     summary="Get backlog tasks",
     description="Get all tasks in a backlog, ordered by priority"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_backlog_tasks(
     backlog_id: UUID,
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
@@ -312,6 +319,7 @@ async def get_backlog_tasks(
     summary="Add task to backlog",
     description="Manually add a task to the backlog"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def add_task_to_backlog(
     backlog_id: UUID,
     task_id: UUID,
@@ -367,6 +375,7 @@ async def add_task_to_backlog(
     summary="Remove task from backlog",
     description="Remove a task from the backlog"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def remove_task_from_backlog(
     backlog_id: UUID,
     task_id: UUID,
@@ -412,6 +421,7 @@ async def remove_task_from_backlog(
     summary="Reorder backlog tasks",
     description="Reorder tasks in the backlog by updating priority_order"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def reorder_backlog_tasks(
     backlog_id: UUID,
     task_priorities: dict[str, int],
@@ -479,6 +489,7 @@ async def reorder_backlog_tasks(
     summary="Check if task is in backlog",
     description="Check if a task is in any backlog"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_task_backlog_status(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -536,6 +547,7 @@ project_router = APIRouter(prefix="/projects/{project_id}/backlogs", tags=["back
     summary="Create a backlog for a project",
     description="Create a new backlog for a specific project"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def create_project_backlog(
     project_id: UUID,
     backlog_data: BacklogCreate,
@@ -574,6 +586,7 @@ async def create_project_backlog(
     summary="List backlogs for a project",
     description="List all backlogs for a specific project"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def list_project_backlogs(
     project_id: UUID,
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),

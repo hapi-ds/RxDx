@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -2380,6 +2380,7 @@ dependencies = [
     { name = "aioimaplib" },
     { name = "aiosmtplib" },
     { name = "asyncpg" },
+    { name = "cffi" },
     { name = "cryptography" },
     { name = "docxtpl" },
     { name = "email-validator" },
@@ -2396,6 +2397,7 @@ dependencies = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "python-docx" },
+    { name = "python-dotenv" },
     { name = "python-jose", extra = ["cryptography"] },
     { name = "python-multipart" },
     { name = "pyyaml" },
@@ -2431,6 +2433,7 @@ requires-dist = [
     { name = "aiosmtplib", specifier = ">=3.0.1" },
     { name = "asyncpg", specifier = ">=0.29.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.1.1" },
+    { name = "cffi", specifier = ">=2.0.0" },
     { name = "cryptography", specifier = ">=42.0.0" },
     { name = "docxtpl", specifier = ">=0.16.7" },
     { name = "email-validator", specifier = ">=2.1.0" },
@@ -2453,6 +2456,7 @@ requires-dist = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-docx", specifier = ">=1.1.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3.0" },
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "pyyaml", specifier = ">=6.0.3" },

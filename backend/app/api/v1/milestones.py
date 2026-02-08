@@ -5,7 +5,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.v1.auth import get_current_user
+from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.db.graph import GraphService, get_graph_service
 from app.models.user import User
 from app.schemas.milestone import MilestoneCreate, MilestoneResponse, MilestoneUpdate
@@ -30,6 +31,7 @@ def get_milestone_service(
     summary="Create a new milestone",
     description="Create a new milestone for a project with target date and completion criteria"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def create_milestone(
     milestone_data: MilestoneCreate,
     current_user: User = Depends(get_current_user),
@@ -77,6 +79,7 @@ async def create_milestone(
     summary="Get a milestone by ID",
     description="Retrieve a milestone by its UUID"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_milestone(
     milestone_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -114,6 +117,7 @@ async def get_milestone(
     summary="Update a milestone",
     description="Update milestone properties"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def update_milestone(
     milestone_id: UUID,
     updates: MilestoneUpdate,
@@ -170,6 +174,7 @@ async def update_milestone(
     summary="Delete a milestone",
     description="Delete a milestone and its relationships"
 )
+@require_permission(Permission.DELETE_WORKITEM)
 async def delete_milestone(
     milestone_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -204,9 +209,10 @@ async def delete_milestone(
     summary="List milestones",
     description="List milestones with optional filters"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def list_milestones(
     project_id: UUID | None = None,
-    status: str | None = None,
+    milestone_status: str | None = None,
     limit: int = 100,
     current_user: User = Depends(get_current_user),
     service: MilestoneService = Depends(get_milestone_service)
@@ -216,7 +222,7 @@ async def list_milestones(
 
     Args:
         project_id: Optional project ID filter
-        status: Optional status filter
+        milestone_status: Optional status filter
         limit: Maximum number of results (default 100)
         current_user: Authenticated user
         service: Milestone service
@@ -229,7 +235,7 @@ async def list_milestones(
     """
     milestones = await service.list_milestones(
         project_id=project_id,
-        status=status,
+        status=milestone_status,
         limit=limit
     )
 
@@ -242,6 +248,7 @@ async def list_milestones(
     summary="Add task dependency to milestone",
     description="Create DEPENDS_ON relationship from milestone to task and BLOCKS relationship from task to milestone"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def add_milestone_dependency(
     milestone_id: UUID,
     task_id: UUID,
@@ -302,6 +309,7 @@ async def add_milestone_dependency(
     summary="Remove task dependency from milestone",
     description="Remove DEPENDS_ON and BLOCKS relationships between milestone and task"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def remove_milestone_dependency(
     milestone_id: UUID,
     task_id: UUID,
@@ -341,6 +349,7 @@ async def remove_milestone_dependency(
     summary="Get milestone dependencies",
     description="Get all tasks that this milestone depends on"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_milestone_dependencies(
     milestone_id: UUID,
     current_user: User = Depends(get_current_user),

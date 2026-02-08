@@ -294,3 +294,63 @@ class ProjectSchedule(BaseModel):
     manual_adjustments: dict[str, Any] = Field(
         default_factory=dict, description="Applied manual adjustments"
     )
+
+
+class GanttTaskDependency(BaseModel):
+    """Schema for task dependency in Gantt chart"""
+
+    from_task_id: str = Field(..., description="Source task ID")
+    to_task_id: str = Field(..., description="Target task ID")
+    type: Literal[
+        "finish-to-start", "start-to-start", "finish-to-finish", "start-to-finish"
+    ] = Field(..., description="Dependency type")
+
+
+class GanttMilestone(BaseModel):
+    """Schema for milestone in Gantt chart"""
+
+    id: str = Field(..., description="Milestone ID")
+    title: str = Field(..., description="Milestone title")
+    target_date: datetime = Field(..., description="Milestone target date")
+    status: Literal["draft", "active", "completed"] = Field(
+        ..., description="Milestone status"
+    )
+    dependent_task_ids: list[str] = Field(
+        default_factory=list, description="Task IDs this milestone depends on"
+    )
+
+
+class GanttSprint(BaseModel):
+    """Schema for sprint in Gantt chart"""
+
+    id: str = Field(..., description="Sprint ID")
+    name: str = Field(..., description="Sprint name")
+    start_date: datetime = Field(..., description="Sprint start date")
+    end_date: datetime = Field(..., description="Sprint end date")
+    status: Literal["planning", "active", "completed"] = Field(
+        ..., description="Sprint status"
+    )
+
+
+class GanttChartData(BaseModel):
+    """Schema for Gantt chart visualization data"""
+
+    project_id: UUID = Field(..., description="Project identifier")
+    tasks: list[ScheduledTask] = Field(..., description="Scheduled tasks")
+    dependencies: list[GanttTaskDependency] = Field(
+        default_factory=list, description="Task dependencies"
+    )
+    critical_path: list[str] = Field(
+        default_factory=list, description="Task IDs on critical path"
+    )
+    milestones: list[GanttMilestone] = Field(
+        default_factory=list, description="Project milestones"
+    )
+    sprints: list[GanttSprint] = Field(
+        default_factory=list, description="Project sprints"
+    )
+    project_start_date: datetime = Field(..., description="Project start date")
+    project_end_date: datetime = Field(..., description="Project end date")
+    completion_percentage: float = Field(
+        ..., ge=0, le=100, description="Project completion percentage"
+    )

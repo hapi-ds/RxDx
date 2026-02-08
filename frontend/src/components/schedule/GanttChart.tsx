@@ -20,10 +20,16 @@ export interface GanttChartProps {
   tasks: ScheduledTask[];
   dependencies?: TaskDependency[];
   criticalPath?: string[];
+  milestones?: Milestone[];
+  sprints?: Sprint[];
   onTaskClick?: (taskId: string) => void;
   onTaskHover?: (taskId: string | null) => void;
+  onMilestoneClick?: (milestoneId: string) => void;
   showCriticalPath?: boolean;
   showDependencies?: boolean;
+  showMilestones?: boolean;
+  showSprints?: boolean;
+  showResourceAssignments?: boolean;
   showToday?: boolean;
   height?: number;
   className?: string;
@@ -33,6 +39,22 @@ export interface TaskDependency {
   from_task_id: string;
   to_task_id: string;
   type: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish';
+}
+
+export interface Milestone {
+  id: string;
+  title: string;
+  target_date: string;
+  status: 'draft' | 'active' | 'completed';
+  dependent_task_ids?: string[];
+}
+
+export interface Sprint {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: 'planning' | 'active' | 'completed';
 }
 
 interface LayoutTask extends ScheduledTask {
@@ -54,10 +76,16 @@ export function GanttChart({
   tasks,
   dependencies = [],
   criticalPath = [],
+  milestones = [],
+  sprints = [],
   onTaskClick,
   onTaskHover,
+  onMilestoneClick,
   showCriticalPath = true,
   showDependencies = true,
+  showMilestones = true,
+  showSprints = true,
+  showResourceAssignments = true,
   showToday = true,
   height = 600,
   className = '',
@@ -68,6 +96,7 @@ export function GanttChart({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
+  const [hoveredMilestone, setHoveredMilestone] = useState<string | null>(null);
 
   // Layout configuration
   const config = {
@@ -85,7 +114,7 @@ export function GanttChart({
 
   // Calculate time scale
   const timeScale = useMemo((): TimeScale => {
-    if (tasks.length === 0) {
+    if (tasks.length === 0 && milestones.length === 0 && sprints.length === 0) {
       const today = new Date();
       return {
         startDate: today,
@@ -95,10 +124,34 @@ export function GanttChart({
       };
     }
 
-    const dates = tasks.flatMap(task => [
-      new Date(task.start_date),
-      new Date(task.end_date),
-    ]);
+    const dates: Date[] = [];
+    
+    // Add task dates
+    tasks.forEach(task => {
+      dates.push(new Date(task.start_date));
+      dates.push(new Date(task.end_date));
+    });
+    
+    // Add milestone dates
+    milestones.forEach(milestone => {
+      dates.push(new Date(milestone.target_date));
+    });
+    
+    // Add sprint dates
+    sprints.forEach(sprint => {
+      dates.push(new Date(sprint.start_date));
+      dates.push(new Date(sprint.end_date));
+    });
+
+    if (dates.length === 0) {
+      const today = new Date();
+      return {
+        startDate: today,
+        endDate: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000),
+        totalDays: 30,
+        pixelsPerDay: config.minPixelsPerDay,
+      };
+    }
 
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
@@ -123,7 +176,7 @@ export function GanttChart({
       totalDays,
       pixelsPerDay,
     };
-  }, [tasks, zoom]);
+  }, [tasks, milestones, sprints, zoom]);
 
   // Calculate task layout
   const layoutTasks = useMemo((): LayoutTask[] => {
@@ -293,6 +346,54 @@ export function GanttChart({
       .filter((p): p is NonNullable<typeof p> => p !== null);
   }, [dependencies, layoutTasks, showDependencies]);
 
+  // Calculate milestone positions
+  const layoutMilestones = useMemo(() => {
+    if (!showMilestones || milestones.length === 0) return [];
+
+    return milestones.map(milestone => {
+      const targetDate = new Date(milestone.target_date);
+      const daysSinceStart = Math.floor(
+        (targetDate.getTime() - timeScale.startDate.getTime()) / (24 * 60 * 60 * 1000)
+      );
+      const x = config.leftMargin + daysSinceStart * timeScale.pixelsPerDay;
+      
+      // Position milestone at top of chart
+      const y = config.topMargin - 20;
+
+      return {
+        ...milestone,
+        x,
+        y,
+      };
+    });
+  }, [milestones, timeScale, showMilestones]);
+
+  // Calculate sprint boundaries
+  const sprintBoundaries = useMemo(() => {
+    if (!showSprints || sprints.length === 0) return [];
+
+    return sprints.map(sprint => {
+      const startDate = new Date(sprint.start_date);
+      const endDate = new Date(sprint.end_date);
+      
+      const startDays = Math.floor(
+        (startDate.getTime() - timeScale.startDate.getTime()) / (24 * 60 * 60 * 1000)
+      );
+      const endDays = Math.floor(
+        (endDate.getTime() - timeScale.startDate.getTime()) / (24 * 60 * 60 * 1000)
+      );
+      
+      const x1 = config.leftMargin + startDays * timeScale.pixelsPerDay;
+      const x2 = config.leftMargin + endDays * timeScale.pixelsPerDay;
+
+      return {
+        ...sprint,
+        x1,
+        x2,
+      };
+    });
+  }, [sprints, timeScale, showSprints]);
+
   // Handle zoom
   const handleZoom = (delta: number) => {
     setZoom(prevZoom => {
@@ -358,6 +459,11 @@ export function GanttChart({
     const color = task.isCritical && showCriticalPath ? '#dc2626' : '#3b82f6';
     const opacity = isHovered ? 1 : 0.9;
 
+    // Get resource assignments if available
+    const resources = showResourceAssignments && task.assigned_resources
+      ? task.assigned_resources.slice(0, 3) // Show max 3 resources
+      : [];
+
     return (
       <g
         key={task.task_id}
@@ -383,7 +489,7 @@ export function GanttChart({
         {/* Task label */}
         <text
           x={task.x + 8}
-          y={task.y + config.taskHeight / 2}
+          y={task.y + config.taskHeight / 2 - (resources.length > 0 ? 6 : 0)}
           dominantBaseline="middle"
           fontSize="12"
           fontWeight="500"
@@ -392,6 +498,21 @@ export function GanttChart({
         >
           {task.task_title}
         </text>
+
+        {/* Resource assignments */}
+        {resources.length > 0 && (
+          <text
+            x={task.x + 8}
+            y={task.y + config.taskHeight / 2 + 10}
+            fontSize="10"
+            fill="white"
+            opacity="0.9"
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            👤 {resources.join(', ')}
+            {task.assigned_resources && task.assigned_resources.length > 3 && ` +${task.assigned_resources.length - 3}`}
+          </text>
+        )}
 
         {/* Critical path indicator */}
         {task.isCritical && showCriticalPath && (
@@ -408,9 +529,9 @@ export function GanttChart({
           <g className="task-tooltip">
             <rect
               x={task.x}
-              y={task.y - 60}
-              width="200"
-              height="50"
+              y={task.y - (resources.length > 0 ? 90 : 60)}
+              width="220"
+              height={resources.length > 0 ? 80 : 50}
               rx="4"
               fill="white"
               stroke="#e5e7eb"
@@ -419,7 +540,7 @@ export function GanttChart({
             />
             <text
               x={task.x + 8}
-              y={task.y - 42}
+              y={task.y - (resources.length > 0 ? 72 : 42)}
               fontSize="11"
               fontWeight="600"
               fill="#111827"
@@ -428,7 +549,7 @@ export function GanttChart({
             </text>
             <text
               x={task.x + 8}
-              y={task.y - 28}
+              y={task.y - (resources.length > 0 ? 58 : 28)}
               fontSize="10"
               fill="#6b7280"
             >
@@ -436,12 +557,33 @@ export function GanttChart({
             </text>
             <text
               x={task.x + 8}
-              y={task.y - 16}
+              y={task.y - (resources.length > 0 ? 44 : 16)}
               fontSize="10"
               fill="#6b7280"
             >
               End: {new Date(task.end_date).toLocaleDateString()}
             </text>
+            {resources.length > 0 && (
+              <>
+                <text
+                  x={task.x + 8}
+                  y={task.y - 30}
+                  fontSize="10"
+                  fill="#6b7280"
+                >
+                  Resources:
+                </text>
+                <text
+                  x={task.x + 8}
+                  y={task.y - 16}
+                  fontSize="10"
+                  fill="#374151"
+                  fontWeight="500"
+                >
+                  {task.assigned_resources?.join(', ')}
+                </text>
+              </>
+            )}
           </g>
         )}
       </g>
@@ -463,6 +605,177 @@ export function GanttChart({
           markerEnd="url(#arrowhead)"
           opacity={isHighlighted ? 1 : 0.6}
         />
+      </g>
+    );
+  };
+
+  // Render milestone marker (diamond shape)
+  const renderMilestone = (milestone: typeof layoutMilestones[0]) => {
+    const isHovered = hoveredMilestone === milestone.id;
+    const size = 12;
+    const color = milestone.status === 'completed' ? '#10b981' : '#8b5cf6';
+
+    // Diamond path: top, right, bottom, left
+    const diamondPath = `
+      M ${milestone.x} ${milestone.y - size}
+      L ${milestone.x + size} ${milestone.y}
+      L ${milestone.x} ${milestone.y + size}
+      L ${milestone.x - size} ${milestone.y}
+      Z
+    `;
+
+    return (
+      <g
+        key={`milestone-${milestone.id}`}
+        className="gantt-milestone"
+        onClick={() => onMilestoneClick?.(milestone.id)}
+        onMouseEnter={() => setHoveredMilestone(milestone.id)}
+        onMouseLeave={() => setHoveredMilestone(null)}
+        style={{ cursor: 'pointer' }}
+      >
+        {/* Milestone diamond */}
+        <path
+          d={diamondPath}
+          fill={color}
+          stroke={isHovered ? '#1e293b' : '#ffffff'}
+          strokeWidth={isHovered ? 2 : 1}
+          opacity={isHovered ? 1 : 0.9}
+        />
+
+        {/* Milestone label */}
+        <text
+          x={milestone.x}
+          y={milestone.y - size - 8}
+          textAnchor="middle"
+          fontSize="11"
+          fontWeight="600"
+          fill="#374151"
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
+        >
+          {milestone.title}
+        </text>
+
+        {/* Vertical line from milestone to chart */}
+        <line
+          x1={milestone.x}
+          y1={milestone.y + size}
+          x2={milestone.x}
+          y2={config.topMargin + dimensions.chartHeight}
+          stroke={color}
+          strokeWidth="1"
+          strokeDasharray="4 4"
+          opacity="0.4"
+        />
+
+        {/* Hover tooltip */}
+        {isHovered && (
+          <g className="milestone-tooltip">
+            <rect
+              x={milestone.x - 100}
+              y={milestone.y + size + 10}
+              width="200"
+              height="50"
+              rx="4"
+              fill="white"
+              stroke="#e5e7eb"
+              strokeWidth="1"
+              filter="url(#shadow)"
+            />
+            <text
+              x={milestone.x}
+              y={milestone.y + size + 28}
+              textAnchor="middle"
+              fontSize="11"
+              fontWeight="600"
+              fill="#111827"
+            >
+              {milestone.title}
+            </text>
+            <text
+              x={milestone.x}
+              y={milestone.y + size + 42}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#6b7280"
+            >
+              Target: {new Date(milestone.target_date).toLocaleDateString()}
+            </text>
+            <text
+              x={milestone.x}
+              y={milestone.y + size + 56}
+              textAnchor="middle"
+              fontSize="10"
+              fill="#6b7280"
+            >
+              Status: {milestone.status}
+            </text>
+          </g>
+        )}
+      </g>
+    );
+  };
+
+  // Render sprint boundary
+  const renderSprintBoundary = (sprint: typeof sprintBoundaries[0]) => {
+    const color = sprint.status === 'active' ? '#3b82f6' : '#9ca3af';
+    const width = sprint.x2 - sprint.x1;
+
+    return (
+      <g key={`sprint-${sprint.id}`} className="gantt-sprint">
+        {/* Sprint background */}
+        <rect
+          x={sprint.x1}
+          y={config.topMargin}
+          width={width}
+          height={dimensions.chartHeight}
+          fill={color}
+          opacity="0.05"
+        />
+
+        {/* Sprint start line */}
+        <line
+          x1={sprint.x1}
+          y1={config.topMargin}
+          x2={sprint.x1}
+          y2={config.topMargin + dimensions.chartHeight}
+          stroke={color}
+          strokeWidth="2"
+          strokeDasharray="6 3"
+        />
+
+        {/* Sprint end line */}
+        <line
+          x1={sprint.x2}
+          y1={config.topMargin}
+          x2={sprint.x2}
+          y2={config.topMargin + dimensions.chartHeight}
+          stroke={color}
+          strokeWidth="2"
+          strokeDasharray="6 3"
+        />
+
+        {/* Sprint label at top */}
+        <text
+          x={sprint.x1 + width / 2}
+          y={config.topMargin - 30}
+          textAnchor="middle"
+          fontSize="12"
+          fontWeight="600"
+          fill={color}
+        >
+          {sprint.name}
+        </text>
+
+        {/* Sprint dates */}
+        <text
+          x={sprint.x1 + width / 2}
+          y={config.topMargin - 15}
+          textAnchor="middle"
+          fontSize="10"
+          fill="#6b7280"
+        >
+          {new Date(sprint.start_date).toLocaleDateString()} - {new Date(sprint.end_date).toLocaleDateString()}
+        </text>
       </g>
     );
   };
@@ -517,24 +830,40 @@ export function GanttChart({
         </div>
       </div>
 
-      {showCriticalPath && criticalPath.length > 0 && (
+      {(showCriticalPath && criticalPath.length > 0) || showMilestones || showSprints ? (
         <div className="legend">
-          <div className="legend-item">
-            <div className="legend-color normal" />
-            <span className="legend-label">Normal Task</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-color critical" />
-            <span className="legend-label">Critical Path</span>
-          </div>
+          {showCriticalPath && criticalPath.length > 0 && (
+            <>
+              <div className="legend-item">
+                <div className="legend-color normal" />
+                <span className="legend-label">Normal Task</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-color critical" />
+                <span className="legend-label">Critical Path</span>
+              </div>
+            </>
+          )}
           {showDependencies && (
             <div className="legend-item">
               <div className="legend-symbol">→</div>
               <span className="legend-label">Dependency</span>
             </div>
           )}
+          {showMilestones && milestones.length > 0 && (
+            <div className="legend-item">
+              <div className="legend-symbol milestone">◆</div>
+              <span className="legend-label">Milestone</span>
+            </div>
+          )}
+          {showSprints && sprints.length > 0 && (
+            <div className="legend-item">
+              <div className="legend-symbol sprint">⫽</div>
+              <span className="legend-label">Sprint Boundary</span>
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
 
       <div
         className="gantt-container"
@@ -630,11 +959,17 @@ export function GanttChart({
             </g>
           )}
 
+          {/* Sprint boundaries */}
+          {sprintBoundaries.map(sprint => renderSprintBoundary(sprint))}
+
           {/* Dependencies */}
           {dependencyPaths.map((dep, index) => renderDependency(dep, index))}
 
           {/* Tasks */}
           {layoutTasks.map(task => renderTask(task))}
+
+          {/* Milestones */}
+          {layoutMilestones.map(milestone => renderMilestone(milestone))}
         </svg>
       </div>
 
@@ -748,6 +1083,14 @@ const styles = `
     color: #94a3b8;
   }
 
+  .legend-symbol.milestone {
+    color: #8b5cf6;
+  }
+
+  .legend-symbol.sprint {
+    color: #3b82f6;
+  }
+
   .legend-label {
     font-size: 0.875rem;
     color: #374151;
@@ -781,6 +1124,18 @@ const styles = `
 
   .gantt-dependency {
     transition: all 0.2s ease;
+  }
+
+  .gantt-milestone {
+    transition: all 0.2s ease;
+  }
+
+  .gantt-milestone:hover path {
+    filter: brightness(1.1);
+  }
+
+  .gantt-sprint {
+    pointer-events: none;
   }
 
   .gantt-footer {

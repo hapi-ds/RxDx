@@ -5,15 +5,16 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-from app.api.v1.auth import get_current_user
+from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.db.graph import GraphService, get_graph_service
 from app.models.user import User
 from app.schemas.sprint import (
+    BurndownPoint,
     SprintCreate,
     SprintResponse,
     SprintUpdate,
     SprintVelocity,
-    BurndownPoint
 )
 from app.services.sprint_service import SprintService
 
@@ -36,6 +37,7 @@ def get_sprint_service(
     summary="Create a new sprint",
     description="Create a new sprint for a project with start/end dates and capacity"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def create_sprint(
     sprint_data: SprintCreate,
     current_user: User = Depends(get_current_user),
@@ -83,9 +85,10 @@ async def create_sprint(
     summary="List sprints",
     description="List sprints with optional filters for project and status"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def list_sprints(
     project_id: UUID | None = Query(None, description="Filter by project ID"),
-    status: str | None = Query(None, description="Filter by status (planning, active, completed, cancelled)"),
+    sprint_status: str | None = Query(None, description="Filter by status (planning, active, completed, cancelled)", alias="status"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     current_user: User = Depends(get_current_user),
     service: SprintService = Depends(get_sprint_service)
@@ -95,7 +98,7 @@ async def list_sprints(
 
     Args:
         project_id: Optional project ID filter
-        status: Optional status filter
+        sprint_status: Optional status filter
         limit: Maximum number of results
         current_user: Authenticated user
         service: Sprint service
@@ -109,7 +112,7 @@ async def list_sprints(
     try:
         sprints = await service.list_sprints(
             project_id=project_id,
-            status=status,
+            status=sprint_status,
             limit=limit
         )
         return sprints
@@ -127,6 +130,7 @@ async def list_sprints(
     summary="Get a sprint by ID",
     description="Retrieve a sprint by its UUID"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_sprint(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -164,6 +168,7 @@ async def get_sprint(
     summary="Update a sprint",
     description="Update sprint details such as name, dates, capacity, or status"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def update_sprint(
     sprint_id: UUID,
     updates: SprintUpdate,
@@ -218,6 +223,7 @@ async def update_sprint(
     summary="Delete a sprint",
     description="Delete a sprint and move all tasks back to backlog"
 )
+@require_permission(Permission.DELETE_WORKITEM)
 async def delete_sprint(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -259,6 +265,7 @@ async def delete_sprint(
     summary="Get sprint tasks",
     description="Get all tasks assigned to a sprint"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_sprint_tasks(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -318,6 +325,7 @@ async def get_sprint_tasks(
     summary="Assign task to sprint",
     description="Assign a task to a sprint (removes from backlog)"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def assign_task_to_sprint(
     sprint_id: UUID,
     task_id: UUID,
@@ -363,6 +371,7 @@ async def assign_task_to_sprint(
     summary="Remove task from sprint",
     description="Remove a task from a sprint (returns to backlog)"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def remove_task_from_sprint(
     sprint_id: UUID,
     task_id: UUID,
@@ -418,6 +427,7 @@ async def remove_task_from_sprint(
     summary="Start a sprint",
     description="Start a sprint by changing its status to active"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def start_sprint(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -470,6 +480,7 @@ async def start_sprint(
     summary="Complete a sprint",
     description="Complete a sprint and calculate velocity"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def complete_sprint(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -519,6 +530,7 @@ async def complete_sprint(
     summary="Get sprint velocity",
     description="Get velocity metrics for a sprint"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_sprint_velocity(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -573,6 +585,7 @@ async def get_sprint_velocity(
     summary="Get sprint burndown chart data",
     description="Get daily burndown data for a sprint including ideal and actual remaining work"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_sprint_burndown(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -617,6 +630,7 @@ async def get_sprint_burndown(
     summary="Get sprint statistics",
     description="Get comprehensive statistics for a sprint"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_sprint_statistics(
     sprint_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -649,7 +663,7 @@ async def get_sprint_statistics(
         # Query sprint statistics
         stats_query = f"""
         MATCH (t:WorkItem {{type: 'task'}})-[:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
-        RETURN 
+        RETURN
             count(t) as total_tasks,
             count(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
             count(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
@@ -722,6 +736,7 @@ project_router = APIRouter(prefix="/projects/{project_id}/sprints", tags=["sprin
     summary="Create a sprint for a project",
     description="Create a new sprint for a specific project"
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def create_project_sprint(
     project_id: UUID,
     sprint_data: SprintCreate,
@@ -760,9 +775,10 @@ async def create_project_sprint(
     summary="List sprints for a project",
     description="List all sprints for a specific project"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def list_project_sprints(
     project_id: UUID,
-    status: str | None = Query(None, description="Filter by status"),
+    sprint_status: str | None = Query(None, description="Filter by status", alias="status"),
     limit: int = Query(100, ge=1, le=1000, description="Maximum number of results"),
     current_user: User = Depends(get_current_user),
     service: SprintService = Depends(get_sprint_service)
@@ -772,7 +788,7 @@ async def list_project_sprints(
 
     Args:
         project_id: Project UUID
-        status: Optional status filter
+        sprint_status: Optional status filter
         limit: Maximum number of results
         current_user: Authenticated user
         service: Sprint service
@@ -783,7 +799,7 @@ async def list_project_sprints(
     Raises:
         HTTPException: 401 if not authenticated
     """
-    return await list_sprints(project_id, status, limit, current_user, service)
+    return await list_sprints(project_id, sprint_status, limit, current_user, service)
 
 
 
@@ -793,6 +809,7 @@ async def list_project_sprints(
     summary="Get project average velocity",
     description="Get average velocity across recent sprints for a project"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_project_velocity(
     project_id: UUID,
     num_sprints: int = Query(3, ge=1, le=10, description="Number of recent sprints to average"),
@@ -840,6 +857,7 @@ async def get_project_velocity(
     summary="Get project velocity history",
     description="Get velocity history for all completed sprints in a project"
 )
+@require_permission(Permission.READ_WORKITEM)
 async def get_project_velocity_history(
     project_id: UUID,
     current_user: User = Depends(get_current_user),

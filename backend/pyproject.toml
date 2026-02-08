@@ -32,6 +32,8 @@ dependencies = [
     "jsonschema>=4.26.0",
     "pyyaml>=6.0.3",
     "structlog>=25.5.0",
+    "python-dotenv>=1.2.1",
+    "cffi>=2.0.0",
 ]
 
 [project.optional-dependencies]

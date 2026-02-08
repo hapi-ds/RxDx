@@ -806,6 +806,86 @@ class ScheduleService {
     );
     return response.data;
   }
+
+  /**
+   * Get Gantt chart visualization data for a project
+   * 
+   * @param projectId - UUID of the project
+   * 
+   * @returns Promise resolving to Gantt chart data including:
+   *   - tasks: Scheduled tasks with dates and resource assignments
+   *   - dependencies: Task dependencies with relationship types
+   *   - critical_path: Task IDs on the critical path
+   *   - milestones: Milestones with target dates and dependencies
+   *   - sprints: Sprint boundaries with dates
+   *   - project_start_date: Overall project start date
+   *   - project_end_date: Overall project end date
+   *   - completion_percentage: Percentage of completed tasks
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 404 error if no schedule exists for the project
+   * 
+   * @example
+   * const ganttData = await scheduleService.getGanttChartData(projectId);
+   */
+  async getGanttChartData(projectId: string): Promise<{
+    tasks: ScheduledTask[];
+    dependencies: Array<{
+      from_task_id: string;
+      to_task_id: string;
+      type: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish';
+    }>;
+    critical_path: string[];
+    milestones: Array<{
+      id: string;
+      title: string;
+      target_date: string;
+      status: 'draft' | 'active' | 'completed';
+      dependent_task_ids?: string[];
+    }>;
+    sprints: Array<{
+      id: string;
+      name: string;
+      start_date: string;
+      end_date: string;
+      status: 'planning' | 'active' | 'completed';
+    }>;
+    project_start_date: string;
+    project_end_date: string;
+    completion_percentage: number;
+  }> {
+    try {
+      const response = await apiClient.get<{
+        tasks: ScheduledTask[];
+        dependencies: Array<{
+          from_task_id: string;
+          to_task_id: string;
+          type: 'finish-to-start' | 'start-to-start' | 'finish-to-finish' | 'start-to-finish';
+        }>;
+        critical_path: string[];
+        milestones: Array<{
+          id: string;
+          title: string;
+          target_date: string;
+          status: 'draft' | 'active' | 'completed';
+          dependent_task_ids?: string[];
+        }>;
+        sprints: Array<{
+          id: string;
+          name: string;
+          start_date: string;
+          end_date: string;
+          status: 'planning' | 'active' | 'completed';
+        }>;
+        project_start_date: string;
+        project_end_date: string;
+        completion_percentage: number;
+      }>(`/api/v1/schedule/${projectId}/gantt`);
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'getGanttChartData', { projectId });
+    }
+  }
 }
 
 export const scheduleService = new ScheduleService();

@@ -77,14 +77,14 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 **Requirements: 16.25-16.26, 23.8-23.10**
 
 ### Task 1.5: Milestone Scheduling Modes
-- [ ] Update SchedulerService to handle milestone constraints (manual mode)
-- [ ] Implement milestone date calculation (automatic mode)
-- [ ] Add milestone constraints to OR-Tools solver (manual mode)
-- [ ] Calculate milestone dates from dependent task completion (automatic mode)
-- [ ] Update schedule response to include milestone dates
-- [ ] Write unit tests for both milestone modes
-- [ ] Write property test: Manual milestone constraints are respected
-- [ ] Write property test: Automatic milestone dates calculated correctly
+- [x] Update SchedulerService to handle milestone constraints (manual mode)
+- [x] Implement milestone date calculation (automatic mode)
+- [x] Add milestone constraints to OR-Tools solver (manual mode)
+- [x] Calculate milestone dates from dependent task completion (automatic mode)
+- [x] Update schedule response to include milestone dates
+- [x] Write unit tests for both milestone modes
+- [x] Write property test: Manual milestone constraints are respected
+- [x] Write property test: Automatic milestone dates calculated correctly
 
 **Requirements: 1.8-1.9, 16.51-16.53**
 

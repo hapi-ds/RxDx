@@ -12,6 +12,7 @@ from app.schemas.schedule import (
     ResourceCreate,
     ScheduleConflict,
     ScheduleConstraints,
+    ScheduledMilestone,
     ScheduledTask,
     ScheduleResponse,
     ScheduleTaskCreate,
@@ -162,6 +163,7 @@ class SchedulerService:
         resources: list[ResourceCreate],
         constraints: ScheduleConstraints,
         workpackage_id: str | None = None,
+        milestones: list[dict] | None = None,
     ) -> ScheduleResponse:
         """
         Schedule project tasks using constraint programming.
@@ -172,9 +174,10 @@ class SchedulerService:
             resources: List of available resources
             constraints: Project constraints
             workpackage_id: Optional workpackage ID for department-based resource allocation
+            milestones: Optional list of milestone dictionaries with id, title, target_date, is_manual_constraint
 
         Returns:
-            ScheduleResponse with scheduled tasks or conflicts
+            ScheduleResponse with scheduled tasks, milestones, or conflicts
         """
         if not tasks:
             return ScheduleResponse(
@@ -229,6 +232,19 @@ class SchedulerService:
                 message="Sprint boundary constraints cannot be satisfied",
             )
 
+        # Add milestone constraints (manual mode only)
+        if milestones:
+            milestone_conflicts = await self._add_milestone_constraints(
+                model, tasks, task_vars, constraints, milestones
+            )
+            if milestone_conflicts:
+                return ScheduleResponse(
+                    status="infeasible",
+                    project_id=project_id,
+                    conflicts=milestone_conflicts,
+                    message="Milestone constraints cannot be satisfied",
+                )
+
         # Set optimization objective: minimize project duration
         project_end = self._add_optimization_objective(model, tasks, task_vars, horizon)
 
@@ -258,7 +274,9 @@ class SchedulerService:
                 # Mark critical path tasks in schedule
                 critical_path_set = set(critical_path)
                 for scheduled_task in schedule:
-                    scheduled_task.is_critical = scheduled_task.task_id in critical_path_set
+                    scheduled_task.is_critical = (
+                        scheduled_task.task_id in critical_path_set
+                    )
 
                 logger.info(
                     f"Critical path calculated for project {project_id}: "
@@ -270,10 +288,64 @@ class SchedulerService:
                 )
                 # Continue without critical path - it's not a fatal error
 
+            # Calculate milestone dates
+            scheduled_milestones = []
+            if milestones:
+                try:
+                    # Get milestone dependencies
+                    milestone_dependencies = {}
+                    for milestone in milestones:
+                        milestone_id = str(milestone["id"])
+                        milestone_dependencies[
+                            milestone_id
+                        ] = await self._get_milestone_dependencies(UUID(milestone_id))
+
+                    # Calculate automatic milestone dates
+                    milestone_dates = self._calculate_automatic_milestone_dates(
+                        milestones, schedule, milestone_dependencies
+                    )
+
+                    # Create ScheduledMilestone objects
+                    for milestone in milestones:
+                        milestone_id = str(milestone["id"])
+                        is_manual = milestone.get("is_manual_constraint", False)
+
+                        # Use calculated date for automatic milestones, target_date for manual
+                        if is_manual:
+                            date = milestone["target_date"]
+                        else:
+                            date = milestone_dates.get(
+                                milestone_id, milestone.get("target_date")
+                            )
+
+                        scheduled_milestones.append(
+                            ScheduledMilestone(
+                                milestone_id=milestone_id,
+                                title=milestone.get(
+                                    "title", f"Milestone {milestone_id}"
+                                ),
+                                date=date,
+                                is_manual=is_manual,
+                                status=milestone.get("status", "active"),
+                            )
+                        )
+
+                    logger.info(
+                        f"Calculated dates for {len(scheduled_milestones)} milestones "
+                        f"(manual: {sum(1 for m in scheduled_milestones if m.is_manual)}, "
+                        f"automatic: {sum(1 for m in scheduled_milestones if not m.is_manual)})"
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Failed to calculate milestone dates for project {project_id}: {e}"
+                    )
+                    # Continue without milestones - it's not a fatal error
+
             response = ScheduleResponse(
                 status="success" if status == cp_model.OPTIMAL else "feasible",
                 project_id=project_id,
                 schedule=schedule,
+                milestones=scheduled_milestones,
                 project_duration_hours=project_duration,
                 project_start_date=project_start_date,
                 project_end_date=project_end_date,
@@ -593,7 +665,11 @@ class SchedulerService:
 
         for task in tasks:
             # Only apply sprint constraints if task is assigned to a sprint
-            if not task.sprint_id or not task.sprint_start_date or not task.sprint_end_date:
+            if (
+                not task.sprint_id
+                or not task.sprint_start_date
+                or not task.sprint_end_date
+            ):
                 continue
 
             task_var = task_vars[task.id]
@@ -686,8 +762,7 @@ class SchedulerService:
             start_date = self._hours_to_datetime(
                 start_hours, project_start, constraints
             )
-            end_date = self._hours_to_datetime(end_hours, project_start, constraints
-            )
+            end_date = self._hours_to_datetime(end_hours, project_start, constraints)
 
             # Use the task's estimated_hours as the duration
             # (not end_hours - start_hours, which is the same but more explicit)
@@ -1205,6 +1280,181 @@ class SchedulerService:
                 logger.error(
                     f"Failed to update WorkItem task {task.task_id} dates: {e}"
                 )
+
+    async def _get_milestone_dependencies(self, milestone_id: UUID) -> list[str]:
+        """
+        Get task IDs that block a milestone.
+
+        Args:
+            milestone_id: Milestone UUID
+
+        Returns:
+            List of task IDs that must complete before milestone
+        """
+        from app.db.graph import get_graph_service
+        from app.services.milestone_service import MilestoneService
+
+        graph_service = await get_graph_service()
+        milestone_service = MilestoneService(graph_service)
+
+        try:
+            dependencies = await milestone_service.get_dependencies(milestone_id)
+            return [str(dep["id"]) for dep in dependencies]
+        except Exception as e:
+            logger.error(f"Failed to get milestone dependencies: {e}")
+            return []
+
+    async def _add_milestone_constraints(
+        self,
+        model: cp_model.CpModel,
+        tasks: list[ScheduleTaskCreate],
+        task_vars: dict,
+        constraints: ScheduleConstraints,
+        milestones: list[dict],
+    ) -> list[ScheduleConflict]:
+        """
+        Add milestone constraints to the scheduling model (manual mode only).
+
+        For milestones with is_manual_constraint=true, adds deadline constraints
+        to all dependent tasks.
+
+        Args:
+            model: OR-Tools constraint programming model
+            tasks: List of tasks to schedule
+            task_vars: Task variable dictionary
+            constraints: Schedule constraints
+            milestones: List of milestone dictionaries with id, target_date, is_manual_constraint
+
+        Returns:
+            List of conflicts if any milestone constraints cannot be satisfied
+        """
+        conflicts = []
+
+        # Filter for manual constraint milestones only
+        manual_milestones = [
+            m for m in milestones if m.get("is_manual_constraint", False)
+        ]
+
+        if not manual_milestones:
+            return conflicts
+
+        logger.info(f"Adding {len(manual_milestones)} manual milestone constraints")
+
+        for milestone in manual_milestones:
+            milestone_id = milestone["id"]
+            target_date = milestone["target_date"]
+            milestone_title = milestone.get("title", f"Milestone {milestone_id}")
+
+            # Get tasks that block this milestone
+            blocking_task_ids = await self._get_milestone_dependencies(milestone_id)
+
+            if not blocking_task_ids:
+                logger.warning(f"Milestone '{milestone_title}' has no dependent tasks")
+                continue
+
+            # Convert target_date to hours from project start
+            project_start = constraints.project_start or datetime.now(UTC)
+            target_hours = self._datetime_to_hours(
+                target_date, project_start, constraints
+            )
+
+            # Add deadline constraint for each blocking task
+            for task_id in blocking_task_ids:
+                if task_id in task_vars:
+                    task_end = task_vars[task_id]["end"]
+
+                    # Task must finish before milestone target date
+                    model.Add(task_end <= target_hours)
+
+                    logger.debug(
+                        f"Added milestone constraint: Task {task_id} must finish "
+                        f"before {target_date} (milestone '{milestone_title}')"
+                    )
+                else:
+                    logger.warning(
+                        f"Task {task_id} referenced by milestone '{milestone_title}' "
+                        f"not found in schedule"
+                    )
+
+        return conflicts
+
+    def _calculate_automatic_milestone_dates(
+        self,
+        milestones: list[dict],
+        schedule: list[ScheduledTask],
+        milestone_dependencies: dict[str, list[str]],
+    ) -> dict[str, datetime]:
+        """
+        Calculate milestone dates from dependent task completion (automatic mode).
+
+        For milestones with is_manual_constraint=false, calculates the milestone date
+        as the maximum end_date of all dependent tasks.
+
+        Args:
+            milestones: List of milestone dictionaries
+            schedule: List of scheduled tasks
+            milestone_dependencies: Dict mapping milestone_id to list of task_ids
+
+        Returns:
+            Dictionary mapping milestone_id to calculated date
+        """
+        milestone_dates = {}
+
+        # Filter for automatic milestones only
+        auto_milestones = [
+            m for m in milestones if not m.get("is_manual_constraint", False)
+        ]
+
+        if not auto_milestones:
+            return milestone_dates
+
+        logger.info(
+            f"Calculating dates for {len(auto_milestones)} automatic milestones"
+        )
+
+        # Create task lookup by ID
+        task_lookup = {task.task_id: task for task in schedule}
+
+        for milestone in auto_milestones:
+            milestone_id = str(milestone["id"])
+            milestone_title = milestone.get("title", f"Milestone {milestone_id}")
+
+            # Get dependent task IDs
+            dependent_task_ids = milestone_dependencies.get(milestone_id, [])
+
+            if not dependent_task_ids:
+                # No dependencies, use target_date if available
+                if "target_date" in milestone:
+                    milestone_dates[milestone_id] = milestone["target_date"]
+                    logger.debug(
+                        f"Milestone '{milestone_title}' has no dependencies, "
+                        f"using target_date"
+                    )
+                continue
+
+            # Find the latest end date among dependent tasks
+            latest_end = None
+            for task_id in dependent_task_ids:
+                task = task_lookup.get(task_id)
+                if task:
+                    if latest_end is None or task.end_date > latest_end:
+                        latest_end = task.end_date
+
+            if latest_end:
+                milestone_dates[milestone_id] = latest_end
+                logger.debug(
+                    f"Calculated milestone '{milestone_title}' date: {latest_end} "
+                    f"(from {len(dependent_task_ids)} dependent tasks)"
+                )
+            elif "target_date" in milestone:
+                # Fallback to target_date if no tasks found
+                milestone_dates[milestone_id] = milestone["target_date"]
+                logger.warning(
+                    f"No scheduled tasks found for milestone '{milestone_title}', "
+                    f"using target_date"
+                )
+
+        return milestone_dates
 
 
 # Singleton instance

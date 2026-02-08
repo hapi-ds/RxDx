@@ -156,6 +156,19 @@ class ScheduledTask(BaseModel):
     )
 
 
+class ScheduledMilestone(BaseModel):
+    """Schema for a scheduled milestone result"""
+
+    milestone_id: str = Field(..., description="Milestone identifier")
+    title: str = Field(..., description="Milestone title")
+    date: datetime = Field(..., description="Milestone date (target or calculated)")
+    is_manual: bool = Field(
+        ...,
+        description="Whether this is a manual constraint (true) or calculated (false)",
+    )
+    status: str = Field(default="active", description="Milestone status")
+
+
 class ScheduleConstraints(BaseModel):
     """Schema for schedule constraints"""
 
@@ -222,6 +235,9 @@ class ScheduleResponse(BaseModel):
     schedule: list[ScheduledTask] = Field(
         default_factory=list, description="Scheduled tasks"
     )
+    milestones: list[ScheduledMilestone] = Field(
+        default_factory=list, description="Scheduled milestones with dates"
+    )
     project_duration_hours: int | None = Field(
         None, description="Total project duration in hours"
     )
@@ -259,6 +275,9 @@ class ProjectSchedule(BaseModel):
 
     project_id: UUID = Field(..., description="Project identifier")
     schedule: list[ScheduledTask] = Field(..., description="Scheduled tasks")
+    milestones: list[ScheduledMilestone] = Field(
+        default_factory=list, description="Scheduled milestones with dates"
+    )
     resources: list[ResourceResponse] = Field(
         default_factory=list, description="Resources used"
     )

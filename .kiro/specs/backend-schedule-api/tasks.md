@@ -155,60 +155,60 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 3: Backlog Management
 
 ### Task 3.1: Backlog Graph Nodes and Relationships
-- [ ] Create Backlog vertex label in AGE (if not exists)
-- [ ] Create IN_BACKLOG edge label
-- [ ] Verify Backlog node properties (id, name, description, project_id, created_at)
-- [ ] Verify IN_BACKLOG relationship properties (added_at, priority_order)
-- [ ] Write unit tests for Backlog node creation
+- [x] Create Backlog vertex label in AGE (if not exists)
+- [x] Create IN_BACKLOG edge label
+- [x] Verify Backlog node properties (id, name, description, project_id, created_at)
+- [x] Verify IN_BACKLOG relationship properties (added_at, priority_order)
+- [x] Write unit tests for Backlog node creation
 
 **Requirements: 16.36-16.40**
 
 ### Task 3.2: Backlog Pydantic Schemas
-- [ ] Create BacklogCreate schema
-- [ ] Create BacklogResponse schema with task_count
-- [ ] Create BacklogTaskResponse schema with priority_order
-- [ ] Write unit tests for backlog schemas
+- [x] Create BacklogCreate schema
+- [x] Create BacklogResponse schema with task_count
+- [x] Create BacklogTaskResponse schema with priority_order
+- [x] Write unit tests for backlog schemas
 
 **Requirements: 21.1-21.16**
 
 ### Task 3.3: BacklogService Implementation
-- [ ] Create BacklogService class
-- [ ] Implement create_backlog method
-- [ ] Implement get_backlog method
-- [ ] Implement add_task_to_backlog method (manual and automatic)
-- [ ] Implement remove_task_from_backlog method
-- [ ] Implement get_backlog_tasks method (ordered by priority)
-- [ ] Implement reorder_backlog_tasks method
-- [ ] Add validation: Cannot add task if in sprint
-- [ ] Add automatic removal of IN_BACKLOG when assigned to sprint
-- [ ] Write unit tests for BacklogService
-- [ ]* Write property test: Adding to backlog removes sprint assignment
-- [ ]* Write property test: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
+- [x] Create BacklogService class
+- [x] Implement create_backlog method
+- [x] Implement get_backlog method
+- [x] Implement add_task_to_backlog method (manual and automatic)
+- [x] Implement remove_task_from_backlog method
+- [x] Implement get_backlog_tasks method (ordered by priority)
+- [x] Implement reorder_backlog_tasks method
+- [x] Add validation: Cannot add task if in sprint
+- [x] Add automatic removal of IN_BACKLOG when assigned to sprint
+- [x] Write unit tests for BacklogService
+- [x] Write property test: Adding to backlog removes sprint assignment
+- [x] Write property test: Task cannot have both IN_BACKLOG and ASSIGNED_TO_SPRINT
 
 **Requirements: 16.41-16.50, 21.1-21.16**
 
 ### Task 3.4: Automatic Backlog Population
-- [ ] Update WorkItemService to trigger backlog population on status="ready"
-- [ ] Implement automatic IN_BACKLOG creation when task status changes to "ready"
-- [ ] Add project backlog lookup/creation logic
-- [ ] Write unit tests for automatic population
-- [ ]* Write property test: Ready tasks automatically in backlog
+- [x] Update WorkItemService to trigger backlog population on status="ready"
+- [x] Implement automatic IN_BACKLOG creation when task status changes to "ready"
+- [x] Add project backlog lookup/creation logic
+- [x] Write unit tests for automatic population
+- [x] Write property test: Ready tasks automatically in backlog
 
 **Requirements: 10.3, 16.41, 21.5**
 
 ### Task 3.5: Backlog API Endpoints
-- [ ] POST /api/v1/projects/{project_id}/backlogs - Create backlog
-- [ ] GET /api/v1/projects/{project_id}/backlogs - List backlogs
-- [ ] GET /api/v1/backlogs/{id} - Get backlog details
-- [ ] PATCH /api/v1/backlogs/{id} - Update backlog
-- [ ] DELETE /api/v1/backlogs/{id} - Delete backlog (removes relationships)
-- [ ] GET /api/v1/backlogs/{id}/tasks - Get backlog tasks (ordered by priority)
-- [ ] POST /api/v1/backlogs/{id}/tasks/{task_id} - Add task to backlog (manual)
-- [ ] DELETE /api/v1/backlogs/{id}/tasks/{task_id} - Remove task from backlog
-- [ ] POST /api/v1/backlogs/{id}/reorder - Reorder backlog tasks
-- [ ] GET /api/v1/tasks/{id}/backlog-status - Check if in backlog
-- [ ] Add authentication and authorization
-- [ ] Write integration tests for backlog endpoints
+- [x] POST /api/v1/projects/{project_id}/backlogs - Create backlog
+- [x] GET /api/v1/projects/{project_id}/backlogs - List backlogs
+- [x] GET /api/v1/backlogs/{id} - Get backlog details
+- [x] PATCH /api/v1/backlogs/{id} - Update backlog
+- [x] DELETE /api/v1/backlogs/{id} - Delete backlog (removes relationships)
+- [x] GET /api/v1/backlogs/{id}/tasks - Get backlog tasks (ordered by priority)
+- [x] POST /api/v1/backlogs/{id}/tasks/{task_id} - Add task to backlog (manual)
+- [x] DELETE /api/v1/backlogs/{id}/tasks/{task_id} - Remove task from backlog
+- [x] POST /api/v1/backlogs/{id}/reorder - Reorder backlog tasks
+- [x] GET /api/v1/tasks/{id}/backlog-status - Check if in backlog
+- [x] Add authentication and authorization
+- [x] Write integration tests for backlog endpoints
 
 **Requirements: 21.1-21.16**
 

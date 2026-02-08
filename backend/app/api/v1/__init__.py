@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.v1 import (
     audit,
     auth,
+    backlogs,
     companies,
     departments,
     documents,
@@ -82,6 +83,10 @@ api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"]
 # Include sprint routes
 api_router.include_router(sprints.router, tags=["sprints"])
 api_router.include_router(sprints.project_router, tags=["sprints", "projects"])
+
+# Include backlog routes
+api_router.include_router(backlogs.router, tags=["backlogs"])
+api_router.include_router(backlogs.project_router, tags=["backlogs", "projects"])
 
 # Include time entry routes
 api_router.include_router(time_entries.router, tags=["time-entries"])

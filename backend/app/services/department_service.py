@@ -87,7 +87,7 @@ class DepartmentService:
 
     async def get_department(self, department_id: UUID) -> DepartmentResponse | None:
         """
-        Get a Department by ID
+        Get a Department by ID with company information
 
         Args:
             department_id: Department UUID
@@ -96,16 +96,42 @@ class DepartmentService:
             Department if found, None otherwise
         """
         try:
-            query = f"MATCH (d:Department {{id: '{str(department_id)}'}}) RETURN d"
+            # Query department with company relationship
+            query = f"""
+            MATCH (d:Department {{id: '{str(department_id)}'}})
+            OPTIONAL MATCH (c:Company)-[:PARENT_OF]->(d)
+            RETURN d, c
+            """
             results = await self.graph_service.execute_query(query)
 
             if not results:
                 return None
 
+            result = results[0]
+
             # Extract department data from result
-            department_data = results[0]
+            department_data = result.get("d", result)
             if "properties" in department_data:
                 department_data = department_data["properties"]
+
+            # Extract company data if present
+            company_data = result.get("c")
+            company = None
+            if company_data:
+                if "properties" in company_data:
+                    company_data = company_data["properties"]
+
+                from app.schemas.company import CompanyResponse
+
+                company = CompanyResponse(
+                    id=UUID(company_data["id"]),
+                    name=company_data["name"],
+                    description=company_data.get("description"),
+                    created_at=datetime.fromisoformat(company_data["created_at"]),
+                    updated_at=datetime.fromisoformat(
+                        company_data.get("updated_at", company_data["created_at"])
+                    ),
+                )
 
             return DepartmentResponse(
                 id=UUID(department_data["id"]),
@@ -118,6 +144,7 @@ class DepartmentService:
                 ),
                 company_id=UUID(department_data["company_id"]),
                 created_at=datetime.fromisoformat(department_data["created_at"]),
+                company=company,
             )
         except Exception as e:
             logger.error(f"Failed to get department {department_id}: {e}")
@@ -249,7 +276,7 @@ class DepartmentService:
 
     async def list_departments(self, limit: int = 100) -> list[DepartmentResponse]:
         """
-        List all departments
+        List all departments with company information
 
         Args:
             limit: Maximum number of departments to return
@@ -260,7 +287,8 @@ class DepartmentService:
         try:
             query = f"""
             MATCH (d:Department)
-            RETURN d
+            OPTIONAL MATCH (c:Company)-[:PARENT_OF]->(d)
+            RETURN d, c
             ORDER BY d.name
             LIMIT {limit}
             """
@@ -268,9 +296,28 @@ class DepartmentService:
 
             departments = []
             for result in results:
-                department_data = result
+                department_data = result.get("d", result)
                 if "properties" in department_data:
                     department_data = department_data["properties"]
+
+                # Extract company data if present
+                company_data = result.get("c")
+                company = None
+                if company_data:
+                    if "properties" in company_data:
+                        company_data = company_data["properties"]
+
+                    from app.schemas.company import CompanyResponse
+
+                    company = CompanyResponse(
+                        id=UUID(company_data["id"]),
+                        name=company_data["name"],
+                        description=company_data.get("description"),
+                        created_at=datetime.fromisoformat(company_data["created_at"]),
+                        updated_at=datetime.fromisoformat(
+                            company_data.get("updated_at", company_data["created_at"])
+                        ),
+                    )
 
                 departments.append(
                     DepartmentResponse(
@@ -286,6 +333,7 @@ class DepartmentService:
                         created_at=datetime.fromisoformat(
                             department_data["created_at"]
                         ),
+                        company=company,
                     )
                 )
 
@@ -298,7 +346,7 @@ class DepartmentService:
         self, company_id: UUID, limit: int = 100
     ) -> list[DepartmentResponse]:
         """
-        Get all departments for a specific company
+        Get all departments for a specific company with company information
 
         Args:
             company_id: Company UUID
@@ -310,7 +358,7 @@ class DepartmentService:
         try:
             query = f"""
             MATCH (c:Company {{id: '{str(company_id)}'}})-[:PARENT_OF]->(d:Department)
-            RETURN d
+            RETURN d, c
             ORDER BY d.name
             LIMIT {limit}
             """
@@ -318,9 +366,28 @@ class DepartmentService:
 
             departments = []
             for result in results:
-                department_data = result
+                department_data = result.get("d", result)
                 if "properties" in department_data:
                     department_data = department_data["properties"]
+
+                # Extract company data
+                company_data = result.get("c")
+                company = None
+                if company_data:
+                    if "properties" in company_data:
+                        company_data = company_data["properties"]
+
+                    from app.schemas.company import CompanyResponse
+
+                    company = CompanyResponse(
+                        id=UUID(company_data["id"]),
+                        name=company_data["name"],
+                        description=company_data.get("description"),
+                        created_at=datetime.fromisoformat(company_data["created_at"]),
+                        updated_at=datetime.fromisoformat(
+                            company_data.get("updated_at", company_data["created_at"])
+                        ),
+                    )
 
                 departments.append(
                     DepartmentResponse(
@@ -336,6 +403,7 @@ class DepartmentService:
                         created_at=datetime.fromisoformat(
                             department_data["created_at"]
                         ),
+                        company=company,
                     )
                 )
 

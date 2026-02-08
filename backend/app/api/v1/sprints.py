@@ -549,11 +549,66 @@ async def get_sprint_velocity(
 
     return SprintVelocity(
         sprint_id=sprint_id,
-        velocity_hours=sprint.actual_velocity_hours,
-        velocity_story_points=sprint.actual_velocity_story_points,
+        sprint_name=sprint.name,
+        actual_velocity_hours=sprint.actual_velocity_hours,
+        actual_velocity_story_points=sprint.actual_velocity_story_points,
         capacity_hours=sprint.capacity_hours,
-        capacity_story_points=sprint.capacity_story_points
+        capacity_story_points=sprint.capacity_story_points,
+        completion_percentage_hours=(
+            (sprint.actual_velocity_hours / sprint.capacity_hours * 100)
+            if sprint.capacity_hours and sprint.capacity_hours > 0
+            else None
+        ),
+        completion_percentage_points=(
+            (sprint.actual_velocity_story_points / sprint.capacity_story_points * 100)
+            if sprint.capacity_story_points and sprint.capacity_story_points > 0
+            else None
+        )
     )
+
+
+@router.get(
+    "/{sprint_id}/burndown",
+    response_model=list[BurndownPoint],
+    summary="Get sprint burndown chart data",
+    description="Get daily burndown data for a sprint including ideal and actual remaining work"
+)
+async def get_sprint_burndown(
+    sprint_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: SprintService = Depends(get_sprint_service)
+) -> list[BurndownPoint]:
+    """
+    Get sprint burndown chart data.
+
+    Returns daily burndown data points showing:
+    - Ideal remaining work (linear decrease)
+    - Actual remaining work (based on task completion)
+    - Both in hours and story points
+
+    Args:
+        sprint_id: Sprint UUID
+        current_user: Authenticated user
+        service: Sprint service
+
+    Returns:
+        List of burndown data points, one per day of the sprint
+
+    Raises:
+        HTTPException: 404 if sprint not found
+        HTTPException: 401 if not authenticated
+    """
+    sprint = await service.get_sprint(sprint_id)
+
+    if not sprint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Sprint {sprint_id} not found"
+        )
+
+    burndown = await service.calculate_burndown(sprint_id)
+
+    return burndown
 
 
 @router.get(
@@ -729,3 +784,110 @@ async def list_project_sprints(
         HTTPException: 401 if not authenticated
     """
     return await list_sprints(project_id, status, limit, current_user, service)
+
+
+
+@project_router.get(
+    "/velocity",
+    response_model=dict,
+    summary="Get project average velocity",
+    description="Get average velocity across recent sprints for a project"
+)
+async def get_project_velocity(
+    project_id: UUID,
+    num_sprints: int = Query(3, ge=1, le=10, description="Number of recent sprints to average"),
+    current_user: User = Depends(get_current_user),
+    service: SprintService = Depends(get_sprint_service)
+) -> dict:
+    """
+    Get project average velocity.
+
+    Calculates average velocity from the last N completed sprints.
+    Useful for sprint planning and capacity estimation.
+
+    Args:
+        project_id: Project UUID
+        num_sprints: Number of recent sprints to average (default: 3)
+        current_user: Authenticated user
+        service: Sprint service
+
+    Returns:
+        Dictionary with average velocity metrics:
+        - project_id: Project UUID
+        - num_sprints_analyzed: Number of sprints included in calculation
+        - avg_velocity_hours: Average completed hours per sprint
+        - avg_velocity_story_points: Average completed story points per sprint
+
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    avg_hours, avg_points = await service.get_team_average_velocity(
+        project_id=project_id,
+        num_sprints=num_sprints
+    )
+
+    return {
+        "project_id": str(project_id),
+        "num_sprints_analyzed": num_sprints,
+        "avg_velocity_hours": avg_hours,
+        "avg_velocity_story_points": avg_points
+    }
+
+
+@project_router.get(
+    "/velocity/history",
+    response_model=list[dict],
+    summary="Get project velocity history",
+    description="Get velocity history for all completed sprints in a project"
+)
+async def get_project_velocity_history(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: SprintService = Depends(get_sprint_service)
+) -> list[dict]:
+    """
+    Get project velocity history.
+
+    Returns velocity data for all completed sprints in the project,
+    ordered by sprint end date (most recent first).
+
+    Args:
+        project_id: Project UUID
+        current_user: Authenticated user
+        service: Sprint service
+
+    Returns:
+        List of velocity records, each containing:
+        - sprint_id: Sprint UUID
+        - sprint_name: Sprint name
+        - start_date: Sprint start date
+        - end_date: Sprint end date
+        - velocity_hours: Completed hours in sprint
+        - velocity_story_points: Completed story points in sprint
+
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    # Get all completed sprints for the project
+    sprints = await service.list_sprints(
+        project_id=project_id,
+        status="completed",
+        limit=1000
+    )
+
+    # Build velocity history
+    history = []
+    for sprint in sprints:
+        history.append({
+            "sprint_id": str(sprint.id),
+            "sprint_name": sprint.name,
+            "start_date": sprint.start_date.isoformat(),
+            "end_date": sprint.end_date.isoformat(),
+            "velocity_hours": sprint.actual_velocity_hours,
+            "velocity_story_points": sprint.actual_velocity_story_points
+        })
+
+    # Sort by end date descending (most recent first)
+    history.sort(key=lambda x: x["end_date"], reverse=True)
+
+    return history

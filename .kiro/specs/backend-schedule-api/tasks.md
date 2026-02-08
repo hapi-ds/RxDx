@@ -217,39 +217,39 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 4: Velocity and Burndown
 
 ### Task 4.1: Velocity Calculation
-- [ ] Implement calculate_sprint_velocity in SprintService (if not done in 2.3)
-- [ ] Calculate velocity in both story_points and hours
-- [ ] Implement get_team_average_velocity (last N sprints)
-- [ ] Store velocity values in Sprint node on completion
-- [ ] Write unit tests for velocity calculation
-- [ ]* Write property test: Velocity is always non-negative
+- [x] Implement calculate_sprint_velocity in SprintService (if not done in 2.3)
+- [x] Calculate velocity in both story_points and hours
+- [x] Implement get_team_average_velocity (last N sprints)
+- [x] Store velocity values in Sprint node on completion
+- [x] Write unit tests for velocity calculation
+- [x] Write property test: Velocity is always non-negative
 
 **Requirements: 16.54-16.58, 24.1-24.14**
 
 ### Task 4.2: Burndown Chart Calculation
-- [ ] Implement calculate_burndown method in SprintService
-- [ ] Generate ideal burndown line (linear decrease)
-- [ ] Calculate actual burndown from task completion history
-- [ ] Query task completion timestamps from WorkItem updates
-- [ ] Return burndown data points (date, ideal_remaining, actual_remaining)
-- [ ] Write unit tests for burndown calculation
-- [ ]* Write property test: Burndown remaining work decreases over time
+- [x] Implement calculate_burndown method in SprintService
+- [x] Generate ideal burndown line (linear decrease)
+- [x] Calculate actual burndown from task completion history
+- [x] Query task completion timestamps from WorkItem updates
+- [x] Return burndown data points (date, ideal_remaining, actual_remaining)
+- [x] Write unit tests for burndown calculation
+- [x] Write property test: Burndown remaining work decreases over time
 
 **Requirements: 16.54-16.58, 24.1-24.14**
 
 ### Task 4.3: Burndown API Endpoint
-- [ ] GET /api/v1/sprints/{id}/burndown - Get burndown chart data
-- [ ] Return BurndownPoint schema (date, ideal_remaining_hours, actual_remaining_hours, ideal_remaining_points, actual_remaining_points)
+- [x] GET /api/v1/sprints/{id}/burndown - Get burndown chart data
+- [x] Return BurndownPoint schema (date, ideal_remaining_hours, actual_remaining_hours, ideal_remaining_points, actual_remaining_points)
 - [ ] Add authentication and authorization
-- [ ] Write integration tests for burndown endpoint
+- [x] Write integration tests for burndown endpoint
 
 **Requirements: 24.6-24.9**
 
 ### Task 4.4: Velocity API Endpoints
-- [ ] GET /api/v1/projects/{project_id}/velocity - Get average velocity
-- [ ] GET /api/v1/projects/{project_id}/velocity/history - Get velocity history
+- [x] GET /api/v1/projects/{project_id}/velocity - Get average velocity
+- [x] GET /api/v1/projects/{project_id}/velocity/history - Get velocity history
 - [ ] Add authentication and authorization
-- [ ] Write integration tests for velocity endpoints
+- [x] Write integration tests for velocity endpoints
 
 **Requirements: 24.1-24.5**
 

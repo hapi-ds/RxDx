@@ -743,3 +743,193 @@ class TestGetTeamAverageVelocity:
 
         assert avg_hours == 0.0
         assert avg_points == 0.0
+
+
+
+class TestCalculateBurndown:
+    """Tests for calculate_burndown method"""
+
+    @pytest.mark.asyncio
+    async def test_calculate_burndown_with_tasks(
+        self,
+        sprint_service,
+        mock_graph_service
+    ):
+        """Test burndown calculation with tasks"""
+        sprint_id = uuid4()
+        project_id = uuid4()
+        start_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=7)
+        
+        # Mock sprint data
+        sprint_data = {
+            "id": str(sprint_id),
+            "name": "Sprint 1",
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "status": "active",
+            "project_id": str(project_id),
+            "capacity_hours": 80.0,
+            "capacity_story_points": 20,
+            "actual_velocity_hours": 0.0,
+            "actual_velocity_story_points": 0,
+            "created_at": datetime.now(UTC).isoformat()
+        }
+        
+        # Mock tasks - some completed, some not
+        tasks = [
+            {
+                "id": str(uuid4()),
+                "estimated_hours": 8.0,
+                "story_points": 2,
+                "status": "completed",
+                "updated_at": (start_date + timedelta(days=2)).isoformat()
+            },
+            {
+                "id": str(uuid4()),
+                "estimated_hours": 16.0,
+                "story_points": 4,
+                "status": "active",
+                "updated_at": start_date.isoformat()
+            },
+            {
+                "id": str(uuid4()),
+                "estimated_hours": 12.0,
+                "story_points": 3,
+                "status": "completed",
+                "updated_at": (start_date + timedelta(days=5)).isoformat()
+            }
+        ]
+        
+        mock_graph_service.execute_query.side_effect = [
+            [sprint_data],  # get_sprint
+            tasks           # get tasks
+        ]
+        
+        burndown = await sprint_service.calculate_burndown(sprint_id)
+        
+        assert len(burndown) == 8  # 7 days + 1 (inclusive)
+        assert burndown[0].date == start_date
+        assert burndown[-1].date == end_date
+        
+        # Check ideal burndown is linear
+        assert burndown[0].ideal_remaining_hours == 36.0  # Total hours
+        assert burndown[-1].ideal_remaining_hours == 0.0
+        
+        # Check actual burndown reflects task completion
+        # Day 0: All tasks pending
+        assert burndown[0].actual_remaining_hours == 36.0
+        assert burndown[0].actual_remaining_points == 9
+        
+        # Day 2: First task completed (8 hours, 2 points)
+        # But we check day 3 since completion happens during day 2
+        assert burndown[3].actual_remaining_hours == 28.0  # 36 - 8
+        assert burndown[3].actual_remaining_points == 7  # 9 - 2
+
+    @pytest.mark.asyncio
+    async def test_calculate_burndown_no_tasks(
+        self,
+        sprint_service,
+        mock_graph_service
+    ):
+        """Test burndown calculation with no tasks"""
+        sprint_id = uuid4()
+        project_id = uuid4()
+        start_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=7)
+        
+        # Mock sprint data
+        sprint_data = {
+            "id": str(sprint_id),
+            "name": "Sprint 1",
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "status": "active",
+            "project_id": str(project_id),
+            "capacity_hours": 80.0,
+            "capacity_story_points": 20,
+            "actual_velocity_hours": 0.0,
+            "actual_velocity_story_points": 0,
+            "created_at": datetime.now(UTC).isoformat()
+        }
+        
+        mock_graph_service.execute_query.side_effect = [
+            [sprint_data],  # get_sprint
+            []              # no tasks
+        ]
+        
+        burndown = await sprint_service.calculate_burndown(sprint_id)
+        
+        assert len(burndown) == 0
+
+    @pytest.mark.asyncio
+    async def test_calculate_burndown_sprint_not_found(
+        self,
+        sprint_service,
+        mock_graph_service
+    ):
+        """Test burndown calculation when sprint doesn't exist"""
+        sprint_id = uuid4()
+        
+        mock_graph_service.execute_query.return_value = []
+        
+        burndown = await sprint_service.calculate_burndown(sprint_id)
+        
+        assert len(burndown) == 0
+
+    @pytest.mark.asyncio
+    async def test_calculate_burndown_all_tasks_completed(
+        self,
+        sprint_service,
+        mock_graph_service
+    ):
+        """Test burndown calculation when all tasks are completed"""
+        sprint_id = uuid4()
+        project_id = uuid4()
+        start_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=7)
+        
+        # Mock sprint data
+        sprint_data = {
+            "id": str(sprint_id),
+            "name": "Sprint 1",
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "status": "completed",
+            "project_id": str(project_id),
+            "capacity_hours": 80.0,
+            "capacity_story_points": 20,
+            "actual_velocity_hours": 24.0,
+            "actual_velocity_story_points": 6,
+            "created_at": datetime.now(UTC).isoformat()
+        }
+        
+        # Mock tasks - all completed
+        tasks = [
+            {
+                "id": str(uuid4()),
+                "estimated_hours": 8.0,
+                "story_points": 2,
+                "status": "completed",
+                "updated_at": (start_date + timedelta(days=2)).isoformat()
+            },
+            {
+                "id": str(uuid4()),
+                "estimated_hours": 16.0,
+                "story_points": 4,
+                "status": "completed",
+                "updated_at": (start_date + timedelta(days=4)).isoformat()
+            }
+        ]
+        
+        mock_graph_service.execute_query.side_effect = [
+            [sprint_data],  # get_sprint
+            tasks           # get tasks
+        ]
+        
+        burndown = await sprint_service.calculate_burndown(sprint_id)
+        
+        assert len(burndown) == 8
+        # Last day should have 0 remaining work
+        assert burndown[-1].actual_remaining_hours == 0.0
+        assert burndown[-1].actual_remaining_points == 0

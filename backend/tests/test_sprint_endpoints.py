@@ -861,3 +861,220 @@ class TestSprintEndpoints:
         assert update_response3.status_code == 400
         assert "already has an active sprint" in update_response3.json()["detail"]
 
+
+
+    @pytest.mark.asyncio
+    async def test_get_sprint_burndown(self, client: AsyncClient, test_admin):
+        """Test getting sprint burndown chart data"""
+        # Login as admin
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "AdminPassword123!"},
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # Create a project
+        project_id = str(uuid4())
+
+        # Create sprint
+        start_date = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = start_date + timedelta(days=7)
+
+        sprint_data = {
+            "name": "Burndown Test Sprint",
+            "goal": "Test burndown calculation",
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "status": "active",
+            "project_id": project_id
+        }
+
+        create_response = await client.post(
+            "/api/v1/sprints",
+            json=sprint_data,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert create_response.status_code == 201
+        sprint_id = create_response.json()["id"]
+
+        # Get burndown data
+        burndown_response = await client.get(
+            f"/api/v1/sprints/{sprint_id}/burndown",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert burndown_response.status_code == 200
+        burndown_data = burndown_response.json()
+
+        # Verify burndown data structure
+        assert isinstance(burndown_data, list)
+        
+        # If there are data points, verify structure
+        if len(burndown_data) > 0:
+            first_point = burndown_data[0]
+            assert "date" in first_point
+            assert "ideal_remaining_hours" in first_point
+            assert "actual_remaining_hours" in first_point
+            assert "ideal_remaining_points" in first_point
+            assert "actual_remaining_points" in first_point
+            
+            # Verify all values are non-negative
+            for point in burndown_data:
+                assert point["ideal_remaining_hours"] >= 0
+                assert point["actual_remaining_hours"] >= 0
+                assert point["ideal_remaining_points"] >= 0
+                assert point["actual_remaining_points"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_get_sprint_burndown_not_found(self, client: AsyncClient, test_admin):
+        """Test getting burndown for non-existent sprint"""
+        # Login as admin
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "AdminPassword123!"},
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # Try to get burndown for non-existent sprint
+        fake_sprint_id = str(uuid4())
+        response = await client.get(
+            f"/api/v1/sprints/{fake_sprint_id}/burndown",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    @pytest.mark.asyncio
+    async def test_get_sprint_burndown_unauthorized(self, client: AsyncClient):
+        """Test getting burndown without authentication"""
+        fake_sprint_id = str(uuid4())
+        response = await client.get(
+            f"/api/v1/sprints/{fake_sprint_id}/burndown"
+        )
+
+        assert response.status_code == 401
+
+
+    @pytest.mark.asyncio
+    async def test_get_project_velocity(self, client: AsyncClient, test_admin):
+        """Test getting project average velocity"""
+        # Login as admin
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "AdminPassword123!"},
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # Create a project
+        project_id = str(uuid4())
+
+        # Create and complete a few sprints with velocity
+        for i in range(3):
+            start_date = datetime.now(UTC) + timedelta(days=i*14)
+            end_date = start_date + timedelta(days=14)
+
+            sprint_data = {
+                "name": f"Sprint {i+1}",
+                "goal": f"Sprint {i+1} goal",
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "status": "completed",
+                "project_id": project_id
+            }
+
+            create_response = await client.post(
+                "/api/v1/sprints",
+                json=sprint_data,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert create_response.status_code == 201
+
+        # Get project velocity
+        velocity_response = await client.get(
+            f"/api/v1/projects/{project_id}/sprints/velocity",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert velocity_response.status_code == 200
+        velocity_data = velocity_response.json()
+
+        # Verify velocity data structure
+        assert "project_id" in velocity_data
+        assert "num_sprints_analyzed" in velocity_data
+        assert "avg_velocity_hours" in velocity_data
+        assert "avg_velocity_story_points" in velocity_data
+        assert velocity_data["project_id"] == project_id
+        assert velocity_data["num_sprints_analyzed"] == 3
+
+    @pytest.mark.asyncio
+    async def test_get_project_velocity_history(self, client: AsyncClient, test_admin):
+        """Test getting project velocity history"""
+        # Login as admin
+        login_response = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "admin@example.com", "password": "AdminPassword123!"},
+        )
+        assert login_response.status_code == 200
+        token = login_response.json()["access_token"]
+
+        # Create a project
+        project_id = str(uuid4())
+
+        # Create and complete a few sprints
+        sprint_ids = []
+        for i in range(3):
+            start_date = datetime.now(UTC) + timedelta(days=i*14)
+            end_date = start_date + timedelta(days=14)
+
+            sprint_data = {
+                "name": f"History Sprint {i+1}",
+                "goal": f"Sprint {i+1} goal",
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "status": "completed",
+                "project_id": project_id
+            }
+
+            create_response = await client.post(
+                "/api/v1/sprints",
+                json=sprint_data,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+            assert create_response.status_code == 201
+            sprint_ids.append(create_response.json()["id"])
+
+        # Get velocity history
+        history_response = await client.get(
+            f"/api/v1/projects/{project_id}/sprints/velocity/history",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert history_response.status_code == 200
+        history_data = history_response.json()
+
+        # Verify history data structure
+        assert isinstance(history_data, list)
+        assert len(history_data) == 3
+
+        # Verify each history entry
+        for entry in history_data:
+            assert "sprint_id" in entry
+            assert "sprint_name" in entry
+            assert "start_date" in entry
+            assert "end_date" in entry
+            assert "velocity_hours" in entry
+            assert "velocity_story_points" in entry
+
+    @pytest.mark.asyncio
+    async def test_get_project_velocity_unauthorized(self, client: AsyncClient):
+        """Test getting project velocity without authentication"""
+        fake_project_id = str(uuid4())
+        response = await client.get(
+            f"/api/v1/projects/{fake_project_id}/sprints/velocity"
+        )
+
+        assert response.status_code == 401

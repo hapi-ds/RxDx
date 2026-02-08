@@ -441,3 +441,122 @@ async def test_property_sprint_capacity_always_non_negative(
                 await graph_service.delete_node(str(sprint_id))
             except:
                 pass
+
+
+
+@pytest.mark.asyncio
+async def test_property_burndown_remaining_work_decreases(
+    graph_service,
+    test_project,
+    test_sprint
+):
+    """
+    Property: Burndown remaining work should never increase over time
+    
+    This property validates that the actual remaining work in a burndown chart
+    either stays the same or decreases as time progresses. Work should never
+    increase (tasks cannot become "uncompleted").
+    
+    **Validates: Requirements 24.1-24.14**
+    """
+    from app.services.sprint_service import SprintService
+    
+    sprint_service = SprintService(graph_service)
+    
+    # Create tasks with different completion dates
+    task_ids = []
+    for i in range(5):
+        task_id = uuid4()
+        task_ids.append(task_id)
+        
+        # Create task
+        await graph_service.create_node("WorkItem", {
+            "id": str(task_id),
+            "type": "task",
+            "title": f"Test Task {i}",
+            "status": "completed" if i < 3 else "active",
+            "estimated_hours": 8.0,
+            "story_points": 2,
+            "updated_at": (datetime.now(UTC) + timedelta(days=i)).isoformat(),
+            "created_at": datetime.now(UTC).isoformat()
+        })
+        
+        # Assign to sprint
+        await graph_service.execute_query(f"""
+            MATCH (t:WorkItem {{id: '{task_id}'}}), (s:Sprint {{id: '{test_sprint}'}})
+            CREATE (t)-[:ASSIGNED_TO_SPRINT]->(s)
+        """)
+    
+    try:
+        # Calculate burndown
+        burndown = await sprint_service.calculate_burndown(test_sprint)
+        
+        assert len(burndown) > 0, "Burndown should have data points"
+        
+        # PROPERTY VALIDATION: Actual remaining work should never increase
+        previous_hours = None
+        previous_points = None
+        
+        for i, point in enumerate(burndown):
+            current_hours = point.actual_remaining_hours
+            current_points = point.actual_remaining_points
+            
+            # Verify non-negative
+            assert current_hours >= 0.0, (
+                f"Property violated at day {i}: "
+                f"Actual remaining hours is negative: {current_hours}"
+            )
+            assert current_points >= 0, (
+                f"Property violated at day {i}: "
+                f"Actual remaining points is negative: {current_points}"
+            )
+            
+            # Verify monotonic decrease (or stay same)
+            if previous_hours is not None:
+                assert current_hours <= previous_hours, (
+                    f"Property violated at day {i}: "
+                    f"Actual remaining hours increased from {previous_hours} to {current_hours}. "
+                    f"Work should never increase in a burndown chart."
+                )
+            
+            if previous_points is not None:
+                assert current_points <= previous_points, (
+                    f"Property violated at day {i}: "
+                    f"Actual remaining points increased from {previous_points} to {current_points}. "
+                    f"Work should never increase in a burndown chart."
+                )
+            
+            previous_hours = current_hours
+            previous_points = current_points
+        
+        # PROPERTY VALIDATION: Ideal burndown should be linear (monotonic decrease)
+        for i in range(1, len(burndown)):
+            assert burndown[i].ideal_remaining_hours <= burndown[i-1].ideal_remaining_hours, (
+                f"Property violated at day {i}: "
+                f"Ideal burndown should decrease linearly"
+            )
+            assert burndown[i].ideal_remaining_points <= burndown[i-1].ideal_remaining_points, (
+                f"Property violated at day {i}: "
+                f"Ideal burndown should decrease linearly"
+            )
+        
+        # PROPERTY VALIDATION: First day should have maximum work
+        assert burndown[0].actual_remaining_hours >= burndown[-1].actual_remaining_hours, (
+            "Property violated: First day should have more or equal remaining work than last day"
+        )
+        
+        # PROPERTY VALIDATION: Ideal burndown should start at total and end at zero
+        assert burndown[-1].ideal_remaining_hours == 0.0, (
+            "Property violated: Ideal burndown should end at zero"
+        )
+        assert burndown[-1].ideal_remaining_points == 0, (
+            "Property violated: Ideal burndown should end at zero"
+        )
+        
+    finally:
+        # Cleanup tasks
+        for task_id in task_ids:
+            try:
+                await graph_service.delete_node(str(task_id))
+            except:
+                pass

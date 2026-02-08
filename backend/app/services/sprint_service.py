@@ -1,7 +1,7 @@
 """Service for Sprint operations"""
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from app.db.graph import GraphService
@@ -649,6 +649,96 @@ class SprintService:
             return (0.0, 0.0)
 
         return (total_hours / count, total_points / count)
+
+    async def calculate_burndown(
+        self,
+        sprint_id: UUID
+    ) -> list[BurndownPoint]:
+        """
+        Calculate burndown chart data for a sprint
+
+        Args:
+            sprint_id: Sprint UUID
+
+        Returns:
+            List of BurndownPoint objects with daily burndown data
+        """
+        # Get sprint details
+        sprint = await self.get_sprint(sprint_id)
+        if not sprint:
+            return []
+
+        # Get all tasks in the sprint
+        query = f"""
+        MATCH (t:WorkItem {{type: 'task'}})-[:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
+        RETURN t.id as id, 
+               t.estimated_hours as estimated_hours, 
+               t.story_points as story_points,
+               t.status as status,
+               t.updated_at as updated_at
+        """
+
+        tasks = await self.graph_service.execute_query(query)
+
+        if not tasks:
+            return []
+
+        # Calculate total initial work
+        total_hours = sum(float(t.get('estimated_hours', 0.0)) for t in tasks)
+        total_points = sum(int(t.get('story_points', 0)) for t in tasks)
+
+        # Calculate sprint duration in days
+        start_date = sprint.start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = sprint.end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        duration_days = (end_date - start_date).days + 1
+
+        # Generate burndown points for each day
+        burndown_points = []
+        
+        for day_offset in range(duration_days):
+            current_date = start_date + timedelta(days=day_offset)
+            
+            # Calculate ideal burndown (linear decrease)
+            progress_ratio = day_offset / max(duration_days - 1, 1)
+            ideal_remaining_hours = total_hours * (1 - progress_ratio)
+            ideal_remaining_points = total_points * (1 - progress_ratio)
+
+            # Calculate actual remaining work
+            # Count tasks that were NOT completed by this date
+            actual_remaining_hours = 0.0
+            actual_remaining_points = 0
+
+            for task in tasks:
+                task_status = task.get('status', 'draft')
+                task_updated_at = task.get('updated_at')
+
+                # If task is not completed, or was completed after current_date, count it
+                if task_status != 'completed':
+                    actual_remaining_hours += float(task.get('estimated_hours', 0.0))
+                    actual_remaining_points += int(task.get('story_points', 0))
+                elif task_updated_at:
+                    # Parse updated_at and check if completion was after current_date
+                    try:
+                        updated_date = datetime.fromisoformat(task_updated_at)
+                        if updated_date.date() > current_date.date():
+                            actual_remaining_hours += float(task.get('estimated_hours', 0.0))
+                            actual_remaining_points += int(task.get('story_points', 0))
+                    except (ValueError, TypeError):
+                        # If we can't parse the date, assume task is still pending
+                        actual_remaining_hours += float(task.get('estimated_hours', 0.0))
+                        actual_remaining_points += int(task.get('story_points', 0))
+
+            burndown_points.append(
+                BurndownPoint(
+                    date=current_date,
+                    ideal_remaining_hours=max(0.0, ideal_remaining_hours),
+                    actual_remaining_hours=max(0.0, actual_remaining_hours),
+                    ideal_remaining_points=max(0, int(ideal_remaining_points)),
+                    actual_remaining_points=max(0, actual_remaining_points)
+                )
+            )
+
+        return burndown_points
 
     def _graph_data_to_response(self, data: dict) -> SprintResponse | None:
         """

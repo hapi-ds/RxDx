@@ -252,14 +252,14 @@ class SchedulerService:
             critical_path = []
             try:
                 from app.services.critical_path import calculate_critical_path
-                
+
                 critical_path = calculate_critical_path(tasks, schedule)
-                
+
                 # Mark critical path tasks in schedule
                 critical_path_set = set(critical_path)
                 for scheduled_task in schedule:
                     scheduled_task.is_critical = scheduled_task.task_id in critical_path_set
-                
+
                 logger.info(
                     f"Critical path calculated for project {project_id}: "
                     f"{len(critical_path)} tasks"
@@ -376,161 +376,6 @@ class SchedulerService:
                     model.Add(successor_vars["end"] >= predecessor_vars["end"] + lag)
 
         return conflicts
-
-        async def _add_resource_constraints(
-            self,
-            model: cp_model.CpModel,
-            tasks: list[ScheduleTaskCreate],
-            resources: list[ResourceCreate],
-            task_vars: dict[str, dict[str, Any]],
-            workpackage_id: str | None = None,
-        ) -> list[ScheduleConflict]:
-            """
-            Add resource capacity constraints using cumulative constraints with skill-based matching.
-
-            Prioritizes resources with matching skills and lead status.
-            For workpackage tasks, prioritizes department resources via LINKED_TO_DEPARTMENT.
-
-            Args:
-                model: CP model
-                tasks: List of tasks to schedule
-                resources: Available resources
-                task_vars: Task variables
-                workpackage_id: Optional workpackage ID for department-based allocation
-
-            Returns:
-                List of conflicts
-            """
-            conflicts = []
-            resource_map = {r.id: r for r in resources}
-
-            # Get department resources if workpackage_id is provided
-            department_resources = []
-            if workpackage_id:
-                department_resources = await self.get_department_resources(
-                    workpackage_id
-                )
-                logger.info(
-                    f"Found {len(department_resources)} department resources for workpackage '{workpackage_id}'"
-                )
-
-            # For each task, match resources based on skills
-            for task in tasks:
-                if task.required_resources:
-                    # Check if specified resources exist and have matching skills
-                    for resource_id in task.required_resources:
-                        if resource_id not in resource_map:
-                            conflicts.append(
-                                ScheduleConflict(
-                                    conflict_type="missing_resource",
-                                    description=f"Task '{task.id}' requires non-existent resource '{resource_id}'",
-                                    affected_tasks=[task.id],
-                                    affected_resources=[resource_id],
-                                    suggestion=f"Add resource '{resource_id}' or remove it from task requirements",
-                                )
-                            )
-                        elif task.skills_needed:
-                            # Check if resource has required skills
-                            resource = resource_map[resource_id]
-                            resource_skills = (
-                                set(resource.skills) if resource.skills else set()
-                            )
-                            required_skills = set(task.skills_needed)
-                            missing_skills = required_skills - resource_skills
-
-                            if (
-                                missing_skills and resource.skills
-                            ):  # Only warn if resource has skills defined
-                                conflicts.append(
-                                    ScheduleConflict(
-                                        conflict_type="skill_mismatch",
-                                        description=f"Resource '{resource_id}' assigned to task '{task.id}' is missing skills: {', '.join(missing_skills)}",
-                                        affected_tasks=[task.id],
-                                        affected_resources=[resource_id],
-                                        suggestion=f"Assign a resource with skills: {', '.join(required_skills)}",
-                                    )
-                                )
-                elif task.skills_needed:
-                    # No resources specified - find matching resources
-                    # Prioritize department resources if available
-                    available_resources = resources
-                    if department_resources:
-                        # Merge department resources with general resources, prioritizing department
-                        dept_resource_ids = {r.id for r in department_resources}
-                        non_dept_resources = [
-                            r for r in resources if r.id not in dept_resource_ids
-                        ]
-                        available_resources = department_resources + non_dept_resources
-                        logger.info(
-                            f"Prioritizing {len(department_resources)} department resources for task '{task.id}'"
-                        )
-
-                    matching_resources = self.get_matching_resources_for_task(
-                        task, available_resources
-                    )
-
-                    if not matching_resources:
-                        conflicts.append(
-                            ScheduleConflict(
-                                conflict_type="no_matching_resources",
-                                description=f"Task '{task.id}' requires skills {task.skills_needed} but no resources have these skills",
-                                affected_tasks=[task.id],
-                                suggestion=f"Add resources with skills: {', '.join(task.skills_needed)}",
-                            )
-                        )
-                    else:
-                        # Auto-assign best matching resources (lead resources with best skill match)
-                        best_matches = [
-                            r for r, _ in matching_resources[:3]
-                        ]  # Top 3 matches
-                        task.required_resources = [r.id for r in best_matches]
-
-                        # Check if department resources were assigned
-                        if department_resources:
-                            dept_resource_ids = {r.id for r in department_resources}
-                            assigned_dept_resources = [
-                                r.id for r in best_matches if r.id in dept_resource_ids
-                            ]
-                            if assigned_dept_resources:
-                                logger.info(
-                                    f"Auto-assigned department resources to task '{task.id}': {assigned_dept_resources}"
-                                )
-                            else:
-                                logger.info(
-                                    f"Auto-assigned non-department resources to task '{task.id}': {[r.id for r in best_matches]}"
-                                )
-                        else:
-                            logger.info(
-                                f"Auto-assigned resources to task '{task.id}' based on skills: {[r.id for r in best_matches]}"
-                            )
-
-            # Add cumulative constraints for each resource
-            for resource in resources:
-                intervals = []
-                demands = []
-
-                for task in tasks:
-                    if resource.id in task.required_resources:
-                        task_var = task_vars[task.id]
-
-                        # Create interval variable for this task-resource combination
-                        interval = model.NewIntervalVar(
-                            task_var["start"],
-                            task_var["duration"],
-                            task_var["end"],
-                            f"interval_{task.id}_{resource.id}",
-                        )
-                        intervals.append(interval)
-
-                        # Get resource demand (default to 1)
-                        demand = task.resource_demand.get(resource.id, 1)
-                        demands.append(demand)
-
-                if intervals:
-                    # Add cumulative constraint: sum of demands at any time <= capacity
-                    model.AddCumulative(intervals, demands, resource.capacity)
-
-            return conflicts
 
     async def _add_resource_constraints(
         self,

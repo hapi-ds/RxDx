@@ -50,14 +50,14 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 **Requirements: 1.3, 1.16-1.17**
 
 ### Task 1.3: Skills-Based Resource Allocation
-- [ ] Add skills_needed property to task schemas (already in WorkItem, verify in schedule schemas)
-- [ ] Implement skill matching algorithm (set intersection) in SchedulerService
-- [ ] Update get_matching_resources_for_task to prioritize skill matches
-- [ ] Prioritize lead resources (lead=true) in allocation
-- [ ] Update schedule calculation to use skill-based matching
-- [ ] Write unit tests for skill matching
-- [ ]* Write property test: Allocated resources have required skills
-- [ ]* Write property test: Lead resources allocated before non-lead
+- [x] Add skills_needed property to task schemas (already in WorkItem, verify in schedule schemas)
+- [x] Implement skill matching algorithm (set intersection) in SchedulerService
+- [x] Update get_matching_resources_for_task to prioritize skill matches
+- [x] Prioritize lead resources (lead=true) in allocation
+- [x] Update schedule calculation to use skill-based matching
+- [x] Write unit tests for skill matching
+- [x] Write property test: Allocated resources have required skills
+- [x] Write property test: Lead resources allocated before non-lead
 
 **Requirements: 16.19-16.35, 8.1-8.10**
 
@@ -72,7 +72,7 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 - [ ] Create BLOCKS relationship from Task to Milestone (inverse)
 - [ ] Add dependency cycle detection
 - [ ] Write unit tests for dependency management
-- [ ]* Write property test: No dependency cycles
+- [ ] Write property test: No dependency cycles
 
 **Requirements: 16.25-16.26, 23.8-23.10**
 

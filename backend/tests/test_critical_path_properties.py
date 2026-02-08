@@ -424,3 +424,85 @@ class TestCriticalPathProperties:
                     f"Task '{successor}' depends on: {closure.get(successor, set())}"
                 )
 
+    @given(dag_data=dag_tasks_strategy(min_tasks=2, max_tasks=10))
+    @settings(max_examples=100, deadline=None)
+    def test_property_all_critical_path_tasks_exist_in_schedule(self, dag_data):
+        """
+        Property: All critical path tasks must exist in the schedule.
+        
+        The critical path is a subset of the scheduled tasks. Every task ID in the
+        critical path must correspond to a task in the schedule. This ensures that
+        the critical path calculation doesn't reference non-existent or unscheduled tasks.
+        
+        This property validates the integrity of the critical path calculation and
+        ensures that the schedule response is consistent - all critical path task IDs
+        can be looked up in the schedule.
+        
+        **Validates: Requirements 1.3, 1.16-1.17, 2.4**
+        
+        **Formal Property**:
+        ∀ project P with schedule S and critical_path CP,
+        ∀ task_id ∈ CP ⟹ ∃ task ∈ S where task.task_id = task_id
+        
+        In other words: critical_path ⊆ {task.task_id | task ∈ schedule}
+        """
+        tasks, durations = dag_data
+        
+        # Ensure we have at least 2 tasks
+        assume(len(tasks) >= 2)
+        
+        # Create scheduled tasks
+        scheduled_tasks = create_scheduled_tasks(tasks, durations)
+        
+        # Ensure all tasks were scheduled
+        assume(len(scheduled_tasks) == len(tasks))
+        
+        # Calculate critical path
+        critical_path = calculate_critical_path(tasks, scheduled_tasks)
+        
+        # Critical path should not be empty
+        assert len(critical_path) > 0, "Critical path should not be empty"
+        
+        # Build set of scheduled task IDs for efficient lookup
+        scheduled_task_ids = {task.task_id for task in scheduled_tasks}
+        
+        # Property: All critical path tasks must exist in the schedule
+        for task_id in critical_path:
+            assert task_id in scheduled_task_ids, (
+                f"Critical path contains task '{task_id}' which does not exist in the schedule. "
+                f"Critical path: {critical_path}. "
+                f"Scheduled task IDs: {sorted(scheduled_task_ids)}"
+            )
+        
+        # Additional validation: Verify critical path is a subset of scheduled tasks
+        critical_path_set = set(critical_path)
+        assert critical_path_set.issubset(scheduled_task_ids), (
+            f"Critical path is not a subset of scheduled tasks. "
+            f"Critical path tasks: {sorted(critical_path_set)}. "
+            f"Scheduled tasks: {sorted(scheduled_task_ids)}. "
+            f"Missing tasks: {sorted(critical_path_set - scheduled_task_ids)}"
+        )
+        
+        # Verify each critical path task has valid schedule data
+        scheduled_task_map = {task.task_id: task for task in scheduled_tasks}
+        for task_id in critical_path:
+            scheduled_task = scheduled_task_map[task_id]
+            
+            # Verify scheduled task has required fields
+            assert scheduled_task.task_id == task_id, (
+                f"Task ID mismatch: expected '{task_id}', got '{scheduled_task.task_id}'"
+            )
+            assert scheduled_task.start_date is not None, (
+                f"Critical path task '{task_id}' has no start_date in schedule"
+            )
+            assert scheduled_task.end_date is not None, (
+                f"Critical path task '{task_id}' has no end_date in schedule"
+            )
+            assert scheduled_task.duration_hours > 0, (
+                f"Critical path task '{task_id}' has invalid duration: {scheduled_task.duration_hours}"
+            )
+            assert scheduled_task.start_date < scheduled_task.end_date, (
+                f"Critical path task '{task_id}' has invalid date range: "
+                f"start={scheduled_task.start_date}, end={scheduled_task.end_date}"
+            )
+

@@ -39,13 +39,13 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 **Requirements: 1.3, 1.16-1.17, 2.4**
 
 ### Task 1.2: Integrate Critical Path into SchedulerService
-- [ ] Update SchedulerService.schedule_project to calculate critical path
-- [ ] Mark critical path tasks with is_critical flag in schedule response
-- [ ] Store critical path task IDs in schedule metadata
-- [ ] Update ScheduleResponse schema to include critical_path field
-- [ ] Update schedule storage to persist critical path
-- [ ] Write unit tests for critical path integration
-- [ ]* Write property test: All critical path tasks exist in schedule
+- [x] Update SchedulerService.schedule_project to calculate critical path
+- [x] Mark critical path tasks with is_critical flag in schedule response
+- [x] Store critical path task IDs in schedule metadata
+- [x] Update ScheduleResponse schema to include critical_path field
+- [x] Update schedule storage to persist critical path
+- [x] Write unit tests for critical path integration
+- [x] Write property test: All critical path tasks exist in schedule
 
 **Requirements: 1.3, 1.16-1.17**
 

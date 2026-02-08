@@ -108,6 +108,15 @@ async def initialize_graph_schema():
         "Document",
         "Entity",
         "User",
+        "Company",
+        "Department",
+        "Resource",
+        "Project",
+        "Phase",
+        "Workpackage",
+        "Milestone",
+        "Sprint",
+        "Backlog",
     ]
 
     relationship_types = [
@@ -122,6 +131,15 @@ async def initialize_graph_schema():
         "NEXT_VERSION",
         "CREATED_BY",
         "ASSIGNED_TO",
+        "PARENT_OF",
+        "BELONGS_TO",
+        "ALLOCATED_TO",
+        "LINKED_TO_DEPARTMENT",
+        "IN_BACKLOG",
+        "ASSIGNED_TO_SPRINT",
+        "has_risk",
+        "implements",
+        "BLOCKS",
     ]
 
     print(f"Supported node types: {', '.join(node_types)}")

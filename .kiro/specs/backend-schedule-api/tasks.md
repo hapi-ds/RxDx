@@ -93,60 +93,60 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 2: Sprint Management
 
 ### Task 2.1: Sprint Graph Nodes and Relationships
-- [ ] Create Sprint vertex label in AGE (if not exists)
-- [ ] Create ASSIGNED_TO_SPRINT edge label
-- [ ] Verify Sprint node properties (id, name, goal, start_date, end_date, capacity_hours, capacity_story_points, actual_velocity_hours, actual_velocity_story_points, status, project_id, created_at)
-- [ ] Verify Sprint statuses: planning, active, completed, cancelled
-- [ ] Write unit tests for Sprint node creation
+- [x] Create Sprint vertex label in AGE (if not exists)
+- [x] Create ASSIGNED_TO_SPRINT edge label
+- [x] Verify Sprint node properties (id, name, goal, start_date, end_date, capacity_hours, capacity_story_points, actual_velocity_hours, actual_velocity_story_points, status, project_id, created_at)
+- [x] Verify Sprint statuses: planning, active, completed, cancelled
+- [x] Write unit tests for Sprint node creation
 
 **Requirements: 16.36-16.40**
 
 ### Task 2.2: Sprint Pydantic Schemas
-- [ ] Create SprintCreate schema with name, goal, start_date, end_date
-- [ ] Create SprintResponse schema with capacity and velocity fields
-- [ ] Create SprintUpdate schema for status changes
-- [ ] Create SprintVelocity schema for metrics
-- [ ] Add field validator for sprint dates (end_date > start_date)
-- [ ] Add field validator for sprint duration (max 30 days)
-- [ ] Write unit tests for sprint schemas
+- [x] Create SprintCreate schema with name, goal, start_date, end_date
+- [x] Create SprintResponse schema with capacity and velocity fields
+- [x] Create SprintUpdate schema for status changes
+- [x] Create SprintVelocity schema for metrics
+- [x] Add field validator for sprint dates (end_date > start_date)
+- [x] Add field validator for sprint duration (max 30 days)
+- [x] Write unit tests for sprint schemas
 
 **Requirements: 16.36-16.40, 22.1-22.23**
 
 ### Task 2.3: SprintService Implementation
-- [ ] Create SprintService class
-- [ ] Implement create_sprint method
-- [ ] Implement calculate_sprint_capacity method (from allocated resources)
-- [ ] Implement assign_task_to_sprint method (removes IN_BACKLOG)
-- [ ] Implement remove_task_from_sprint method (creates IN_BACKLOG)
-- [ ] Implement start_sprint method (status change to active)
-- [ ] Implement complete_sprint method (calculate velocity)
-- [ ] Implement calculate_sprint_velocity method
-- [ ] Implement get_team_average_velocity method (last N sprints)
-- [ ] Add validation: Only one active sprint per project
-- [ ] Add validation: Sprint capacity not exceeded
-- [ ] Write unit tests for SprintService
-- [ ]* Write property test: Assigning to sprint removes backlog relationship
-- [ ]* Write property test: Sprint completion returns incomplete tasks to backlog
-- [ ]* Write property test: Sprint capacity is always non-negative
+- [x] Create SprintService class
+- [x] Implement create_sprint method
+- [x] Implement calculate_sprint_capacity method (from allocated resources)
+- [x] Implement assign_task_to_sprint method (removes IN_BACKLOG)
+- [x] Implement remove_task_from_sprint method (creates IN_BACKLOG)
+- [x] Implement start_sprint method (status change to active)
+- [x] Implement complete_sprint method (calculate velocity)
+- [x] Implement calculate_sprint_velocity method
+- [x] Implement get_team_average_velocity method (last N sprints)
+- [x] Add validation: Only one active sprint per project
+- [x] Add validation: Sprint capacity not exceeded
+- [x] Write unit tests for SprintService
+- [x] Write property test: Assigning to sprint removes backlog relationship
+- [x] Write property test: Sprint completion returns incomplete tasks to backlog
+- [x] Write property test: Sprint capacity is always non-negative
 
 **Requirements: 16.36-16.40, 16.54-16.58, 22.1-22.23**
 
 ### Task 2.4: Sprint API Endpoints
-- [ ] POST /api/v1/projects/{project_id}/sprints - Create sprint
-- [ ] GET /api/v1/projects/{project_id}/sprints - List sprints
-- [ ] GET /api/v1/sprints/{id} - Get sprint details
-- [ ] PATCH /api/v1/sprints/{id} - Update sprint
-- [ ] DELETE /api/v1/sprints/{id} - Delete sprint (moves tasks to backlog)
-- [ ] GET /api/v1/sprints/{id}/tasks - Get sprint tasks
-- [ ] POST /api/v1/sprints/{id}/tasks/{task_id} - Assign task to sprint
-- [ ] DELETE /api/v1/sprints/{id}/tasks/{task_id} - Remove task from sprint
-- [ ] POST /api/v1/sprints/{id}/start - Start sprint (status = active)
-- [ ] POST /api/v1/sprints/{id}/complete - Complete sprint (calculate velocity)
-- [ ] GET /api/v1/sprints/{id}/velocity - Get sprint velocity
-- [ ] GET /api/v1/sprints/{id}/statistics - Get sprint metrics
-- [ ] Add validation: Only one active sprint per project
-- [ ] Add authentication and authorization
-- [ ] Write integration tests for sprint endpoints
+- [x] POST /api/v1/projects/{project_id}/sprints - Create sprint
+- [x] GET /api/v1/projects/{project_id}/sprints - List sprints
+- [x] GET /api/v1/sprints/{id} - Get sprint details
+- [x] PATCH /api/v1/sprints/{id} - Update sprint
+- [x] DELETE /api/v1/sprints/{id} - Delete sprint (moves tasks to backlog)
+- [x] GET /api/v1/sprints/{id}/tasks - Get sprint tasks
+- [x] POST /api/v1/sprints/{id}/tasks/{task_id} - Assign task to sprint
+- [x] DELETE /api/v1/sprints/{id}/tasks/{task_id} - Remove task from sprint
+- [x] POST /api/v1/sprints/{id}/start - Start sprint (status = active)
+- [x] POST /api/v1/sprints/{id}/complete - Complete sprint (calculate velocity)
+- [x] GET /api/v1/sprints/{id}/velocity - Get sprint velocity
+- [x] GET /api/v1/sprints/{id}/statistics - Get sprint metrics
+- [x] Add validation: Only one active sprint per project
+- [x] Add authentication and authorization
+- [x] Write integration tests for sprint endpoints
 
 **Requirements: 22.1-22.23**
 

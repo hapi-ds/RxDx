@@ -18,6 +18,7 @@ from app.api.v1 import (
     risks,
     schedule,
     signatures,
+    sprints,
     templates,
     tests,
     time_entries,
@@ -77,6 +78,10 @@ api_router.include_router(milestones.router, tags=["milestones"])
 
 # Include schedule routes
 api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"])
+
+# Include sprint routes
+api_router.include_router(sprints.router, tags=["sprints"])
+api_router.include_router(sprints.project_router, tags=["sprints", "projects"])
 
 # Include time entry routes
 api_router.include_router(time_entries.router, tags=["time-entries"])

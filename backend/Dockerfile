@@ -27,7 +27,7 @@ RUN apt-get update && \
 
 # Create non-root user
 RUN useradd -m -u 1000 rxdx && \
-    mkdir -p /app && \
+    mkdir -p /app /app/logs && \
     chown -R rxdx:rxdx /app
 
 # Set working directory

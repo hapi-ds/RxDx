@@ -102,8 +102,9 @@ export function SchedulePage(): React.ReactElement {
     setIsCalculating(true);
     setError(null);
     try {
-      // Using a default project ID for now
-      const result = await scheduleService.calculateSchedule('default-project', {
+      // Using a default project UUID (nil UUID as placeholder)
+      // TODO: Get actual project ID from context/route params
+      const result = await scheduleService.calculateSchedule('00000000-0000-0000-0000-000000000000', {
         horizon_days: 365,
         working_hours_per_day: 8,
       });
@@ -187,8 +188,9 @@ export function SchedulePage(): React.ReactElement {
     setGanttError(null);
     
     try {
-      // Using a default project ID for now
-      const ganttData = await scheduleService.getGanttChartData('default-project');
+      // Using a default project UUID (nil UUID as placeholder)
+      // TODO: Get actual project ID from context/route params
+      const ganttData = await scheduleService.getGanttChartData('00000000-0000-0000-0000-000000000000');
       
       setGanttTasks(ganttData.tasks);
       setGanttDependencies(ganttData.dependencies);

@@ -18,11 +18,28 @@ import { apiClient } from './api';
 function handleApiError(error: unknown, methodName: string, context?: Record<string, unknown>): never {
   // Check if it's an axios error with response
   if (error && typeof error === 'object' && 'isAxiosError' in error && error.isAxiosError) {
-    const axiosError = error as { response?: { status?: number; data?: { detail?: string } }; message?: string };
+    const axiosError = error as { response?: { status?: number; data?: { detail?: string | unknown[] } }; message?: string };
     
     if (axiosError.response) {
       const status = axiosError.response.status;
       const detail = axiosError.response.data?.detail || axiosError.message || 'Unknown error';
+      
+      // For 422 validation errors, detail is an array of validation errors
+      if (status === 422 && Array.isArray(detail)) {
+        console.error(`${methodName} validation errors:`, {
+          status,
+          validationErrors: detail,
+          ...context,
+        });
+        
+        // Format validation errors for display
+        const errorMessages = detail.map((err: any) => {
+          const loc = err.loc ? err.loc.join(' -> ') : 'unknown';
+          return `${loc}: ${err.msg}`;
+        }).join('; ');
+        
+        throw new Error(`Validation failed: ${errorMessages}`);
+      }
       
       // Provide specific messages for different HTTP status codes
       let errorMessage: string;
@@ -629,17 +646,53 @@ class ScheduleService {
   /**
    * Calculate project schedule using constraint programming
    * 
-   * @deprecated Backend endpoint not yet implemented
-   * @throws Error indicating feature is not available
+   * @param projectId - UUID of the project to schedule
+   * @param constraints - Optional scheduling constraints
+   * 
+   * @returns Promise resolving to schedule result with status and scheduled tasks
+   * 
+   * @throws {Error} Network error if connection fails
+   * @throws {Error} 500 error if schedule calculation fails
+   * 
+   * @example
+   * const result = await scheduleService.calculateSchedule(projectId, {
+   *   horizon_days: 365,
+   *   working_hours_per_day: 8
+   * });
    */
   async calculateSchedule(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _projectId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _constraints?: ScheduleConstraints
+    projectId: string,
+    constraints?: ScheduleConstraints
   ): Promise<ScheduleResult> {
-    // TODO: Backend endpoint /schedule/calculate not yet implemented
-    throw new Error('Schedule calculation feature is coming soon. Backend endpoint not yet implemented.');
+    try {
+      // Fetch all tasks for the project
+      const tasksResponse = await this.getTasks({ size: 1000 });
+      const tasks = tasksResponse.items || [];
+
+      // Convert tasks to the format expected by the backend
+      const scheduleTasks = tasks.map(task => ({
+        id: task.id,
+        title: task.title,
+        estimated_hours: Math.max(1, Math.floor(task.estimated_hours || 8)), // Ensure integer >= 1
+        dependencies: [], // Dependencies will be fetched from graph database by backend
+        required_resources: [],
+        resource_demand: {}, // Empty dict - backend will handle resource allocation
+        priority: task.priority || 3,
+      }));
+
+      const response = await apiClient.post<ScheduleResult>('/api/v1/schedule/calculate', {
+        project_id: projectId,
+        tasks: scheduleTasks,
+        resources: [], // Resources will be fetched from graph database by backend
+        constraints: constraints || {
+          horizon_days: 365,
+          working_hours_per_day: 8,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      handleApiError(error, 'calculateSchedule', { projectId, constraints });
+    }
   }
 
   /**

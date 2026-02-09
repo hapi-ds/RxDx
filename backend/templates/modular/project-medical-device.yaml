@@ -20,9 +20,6 @@ projects:
     name: Medical Device Software v2.0
     description: Next generation medical device control software with enhanced safety features and regulatory compliance
     status: active
-    start_date: 2024-01-01T00:00:00Z
-    end_date: 2024-12-31T23:59:59Z
-    owner_id: user-pm1
 
 # ============================================================================
 # Sprints
@@ -60,7 +57,7 @@ sprints:
     description: Implement data logging and reporting features
     start_date: 2024-02-12T00:00:00Z
     end_date: 2024-02-25T23:59:59Z
-    status: planned
+    status: planning
     goal: Enable comprehensive data management and reporting
     project_id: project-medical-device
 
@@ -69,7 +66,7 @@ sprints:
     description: Comprehensive testing and quality assurance
     start_date: 2024-02-26T00:00:00Z
     end_date: 2024-03-10T23:59:59Z
-    status: planned
+    status: planning
     goal: Ensure quality and regulatory compliance
     project_id: project-medical-device
 
@@ -247,7 +244,7 @@ milestones:
     name: Design Complete
     description: System design completed and reviewed
     due_date: 2024-03-31T23:59:59Z
-    status: at_risk
+    status: in_progress
     project_id: project-medical-device
 
   - id: milestone-alpha

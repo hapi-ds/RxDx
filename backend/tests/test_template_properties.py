@@ -260,7 +260,7 @@ def risk_strategy(user_ids):
                 max_codepoint=122,
             ) | st.just(' '))
         ),
-        status=st.sampled_from(["draft", "active", "completed", "archived"]),
+        status=st.sampled_from(["draft", "identified", "assessed", "mitigated", "accepted", "closed", "archived"]),
         priority=st.integers(min_value=1, max_value=5),
         severity=st.integers(min_value=1, max_value=10),
         occurrence=st.integers(min_value=1, max_value=10),
@@ -338,25 +338,83 @@ def template_definition_strategy(draw):
         [r.id for r in risks]
     )
 
-    # Generate relationships only if we have at least 2 workitems
+    # Generate relationships only if we have workitems
+    # Create type-aware relationships that respect validation rules
+    relationships = []
     if len(workitem_ids) >= 2:
-        relationships = draw(st.lists(
-            st.builds(
-                TemplateRelationship,
-                from_id=st.sampled_from(workitem_ids),
-                to_id=st.sampled_from(workitem_ids),
-                type=st.sampled_from(list(RelationshipType)),
-            ),
-            min_size=0,
-            max_size=min(5, len(workitem_ids))
-        ))
-    else:
-        relationships = []
+        # Generate a few valid relationships based on available workitems
+        num_relationships = draw(st.integers(min_value=0, max_value=min(5, len(workitem_ids))))
+        
+        for _ in range(num_relationships):
+            # Choose a relationship type that makes sense for workitems only
+            # Exclude graph entity relationships since we don't generate those entities
+            workitem_rel_types = [
+                RelationshipType.IMPLEMENTS,
+                RelationshipType.TESTED_BY,
+                RelationshipType.MITIGATES,
+                RelationshipType.DEPENDS_ON,
+            ]
+            rel_type = draw(st.sampled_from(workitem_rel_types))
+            
+            # Select appropriate from/to IDs based on relationship type
+            if rel_type == RelationshipType.IMPLEMENTS:
+                # IMPLEMENTS: Task -> Requirement
+                if tasks and requirements:
+                    from_id = draw(st.sampled_from([t.id for t in tasks]))
+                    to_id = draw(st.sampled_from([r.id for r in requirements]))
+                    relationships.append(TemplateRelationship(
+                        from_id=from_id,
+                        to_id=to_id,
+                        type=rel_type
+                    ))
+            elif rel_type == RelationshipType.TESTED_BY:
+                # TESTED_BY: (Requirement | Task) -> Test
+                if tests and (requirements or tasks):
+                    source_ids = [r.id for r in requirements] + [t.id for t in tasks]
+                    from_id = draw(st.sampled_from(source_ids))
+                    to_id = draw(st.sampled_from([t.id for t in tests]))
+                    relationships.append(TemplateRelationship(
+                        from_id=from_id,
+                        to_id=to_id,
+                        type=rel_type
+                    ))
+            elif rel_type == RelationshipType.MITIGATES:
+                # MITIGATES: (Requirement | Task) -> Risk
+                if risks and (requirements or tasks):
+                    source_ids = [r.id for r in requirements] + [t.id for t in tasks]
+                    from_id = draw(st.sampled_from(source_ids))
+                    to_id = draw(st.sampled_from([r.id for r in risks]))
+                    relationships.append(TemplateRelationship(
+                        from_id=from_id,
+                        to_id=to_id,
+                        type=rel_type
+                    ))
+            else:
+                # For DEPENDS_ON, use any workitem IDs
+                from_id = draw(st.sampled_from(workitem_ids))
+                to_id = draw(st.sampled_from(workitem_ids))
+                # Avoid self-references
+                if from_id != to_id:
+                    relationships.append(TemplateRelationship(
+                        from_id=from_id,
+                        to_id=to_id,
+                        type=rel_type
+                    ))
+
 
     return TemplateDefinition(
         metadata=metadata,
         settings=settings,
         users=users,
+        companies=[],
+        departments=[],
+        resources=[],
+        projects=[],
+        sprints=[],
+        phases=[],
+        workpackages=[],
+        backlogs=[],
+        milestones=[],
         workitems=workitems,
         relationships=relationships,
     )

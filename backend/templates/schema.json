@@ -485,6 +485,11 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "description": {
+            "type": "string",
+            "description": "Resource description",
+            "maxLength": 2000
+          },
           "type": {
             "type": "string",
             "description": "Resource type",
@@ -538,6 +543,11 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "description": {
+            "type": "string",
+            "description": "Project description",
+            "maxLength": 2000
+          },
           "status": {
             "type": "string",
             "description": "Project status",
@@ -566,6 +576,11 @@
             "description": "Sprint name",
             "minLength": 1,
             "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "Sprint description",
+            "maxLength": 2000
           },
           "goal": {
             "type": "string",
@@ -637,6 +652,11 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "description": {
+            "type": "string",
+            "description": "Phase description",
+            "maxLength": 2000
+          },
           "order": {
             "type": "integer",
             "description": "Phase order in the project sequence",
@@ -670,6 +690,11 @@
             "description": "Workpackage name",
             "minLength": 1,
             "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "Workpackage description",
+            "maxLength": 2000
           },
           "order": {
             "type": "integer",
@@ -705,6 +730,11 @@
             "minLength": 1,
             "maxLength": 200
           },
+          "description": {
+            "type": "string",
+            "description": "Backlog description",
+            "maxLength": 2000
+          },
           "project_id": {
             "type": "string",
             "description": "Template-local project ID this backlog belongs to",
@@ -733,6 +763,11 @@
             "description": "Milestone name",
             "minLength": 1,
             "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "description": "Milestone description",
+            "maxLength": 2000
           },
           "due_date": {
             "type": "string",

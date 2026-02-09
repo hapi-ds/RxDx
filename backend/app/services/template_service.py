@@ -641,6 +641,7 @@ class TemplateService:
                 )
 
         return results, workitem_map
+
     async def _apply_companies(
         self,
         companies: list,
@@ -670,30 +671,38 @@ class TemplateService:
         for company in companies:
             try:
                 # Generate deterministic UUID
-                company_uuid = self._generate_deterministic_uuid(template_name, company.id)
+                company_uuid = self._generate_deterministic_uuid(
+                    template_name, company.id
+                )
                 company_uuid_str = str(company_uuid)
 
                 # Check if company already exists
                 existing = await self.graph_service.get_node(company_uuid_str)
                 if existing:
-                    logger.warning(f"Company '{company_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=company.id,
-                        type="company",
-                        status="skipped",
-                        message="Company already exists"
-                    ))
+                    logger.warning(
+                        f"Company '{company_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=company.id,
+                            type="company",
+                            status="skipped",
+                            message="Company already exists",
+                        )
+                    )
                     company_map[company.id] = company_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create company: {company.name}")
-                    results.append(EntityResult(
-                        id=company.id,
-                        type="company",
-                        status="created",
-                        message=f"[DRY RUN] Would create company '{company.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=company.id,
+                            type="company",
+                            status="created",
+                            message=f"[DRY RUN] Would create company '{company.name}'",
+                        )
+                    )
                     company_map[company.id] = company_uuid
                     continue
 
@@ -711,22 +720,26 @@ class TemplateService:
                 await self.graph_service.create_node("Company", properties)
 
                 logger.info(f"Created company: {company.name}")
-                results.append(EntityResult(
-                    id=company.id,
-                    type="company",
-                    status="created",
-                    message=f"Created company '{company.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=company.id,
+                        type="company",
+                        status="created",
+                        message=f"Created company '{company.name}'",
+                    )
+                )
                 company_map[company.id] = company_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create company '{company.id}': {e}")
-                results.append(EntityResult(
-                    id=company.id,
-                    type="company",
-                    status="failed",
-                    message=f"Failed to create company: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=company.id,
+                        type="company",
+                        status="failed",
+                        message=f"Failed to create company: {str(e)}",
+                    )
+                )
 
         return results, company_map
 
@@ -764,30 +777,38 @@ class TemplateService:
         for department in departments:
             try:
                 # Generate deterministic UUID
-                department_uuid = self._generate_deterministic_uuid(template_name, department.id)
+                department_uuid = self._generate_deterministic_uuid(
+                    template_name, department.id
+                )
                 department_uuid_str = str(department_uuid)
 
                 # Check if department already exists
                 existing = await self.graph_service.get_node(department_uuid_str)
                 if existing:
-                    logger.warning(f"Department '{department_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=department.id,
-                        type="department",
-                        status="skipped",
-                        message="Department already exists"
-                    ))
+                    logger.warning(
+                        f"Department '{department_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=department.id,
+                            type="department",
+                            status="skipped",
+                            message="Department already exists",
+                        )
+                    )
                     department_map[department.id] = department_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create department: {department.name}")
-                    results.append(EntityResult(
-                        id=department.id,
-                        type="department",
-                        status="created",
-                        message=f"[DRY RUN] Would create department '{department.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=department.id,
+                            type="department",
+                            status="created",
+                            message=f"[DRY RUN] Would create department '{department.name}'",
+                        )
+                    )
                     department_map[department.id] = department_uuid
                     continue
 
@@ -804,9 +825,13 @@ class TemplateService:
                 # Resolve manager_user_id if present
                 if department.manager_user_id:
                     if department.manager_user_id in user_map:
-                        properties["manager_user_id"] = str(user_map[department.manager_user_id])
+                        properties["manager_user_id"] = str(
+                            user_map[department.manager_user_id]
+                        )
                     else:
-                        logger.warning(f"Manager user '{department.manager_user_id}' not found in user_map")
+                        logger.warning(
+                            f"Manager user '{department.manager_user_id}' not found in user_map"
+                        )
 
                 # Create department node
                 await self.graph_service.create_node("Department", properties)
@@ -819,29 +844,37 @@ class TemplateService:
                             from_id=company_uuid_str,
                             to_id=department_uuid_str,
                             rel_type="PARENT_OF",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created PARENT_OF relationship from company '{department.company_id}' to department '{department.name}'")
+                        logger.info(
+                            f"Created PARENT_OF relationship from company '{department.company_id}' to department '{department.name}'"
+                        )
                     else:
-                        logger.warning(f"Company '{department.company_id}' not found in company_map")
+                        logger.warning(
+                            f"Company '{department.company_id}' not found in company_map"
+                        )
 
                 logger.info(f"Created department: {department.name}")
-                results.append(EntityResult(
-                    id=department.id,
-                    type="department",
-                    status="created",
-                    message=f"Created department '{department.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=department.id,
+                        type="department",
+                        status="created",
+                        message=f"Created department '{department.name}'",
+                    )
+                )
                 department_map[department.id] = department_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create department '{department.id}': {e}")
-                results.append(EntityResult(
-                    id=department.id,
-                    type="department",
-                    status="failed",
-                    message=f"Failed to create department: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=department.id,
+                        type="department",
+                        status="failed",
+                        message=f"Failed to create department: {str(e)}",
+                    )
+                )
 
         return results, department_map
 
@@ -879,30 +912,38 @@ class TemplateService:
         for resource in resources:
             try:
                 # Generate deterministic UUID
-                resource_uuid = self._generate_deterministic_uuid(template_name, resource.id)
+                resource_uuid = self._generate_deterministic_uuid(
+                    template_name, resource.id
+                )
                 resource_uuid_str = str(resource_uuid)
 
                 # Check if resource already exists
                 existing = await self.graph_service.get_node(resource_uuid_str)
                 if existing:
-                    logger.warning(f"Resource '{resource_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=resource.id,
-                        type="resource",
-                        status="skipped",
-                        message="Resource already exists"
-                    ))
+                    logger.warning(
+                        f"Resource '{resource_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=resource.id,
+                            type="resource",
+                            status="skipped",
+                            message="Resource already exists",
+                        )
+                    )
                     resource_map[resource.id] = resource_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create resource: {resource.name}")
-                    results.append(EntityResult(
-                        id=resource.id,
-                        type="resource",
-                        status="created",
-                        message=f"[DRY RUN] Would create resource '{resource.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=resource.id,
+                            type="resource",
+                            status="created",
+                            message=f"[DRY RUN] Would create resource '{resource.name}'",
+                        )
+                    )
                     resource_map[resource.id] = resource_uuid
                     continue
 
@@ -917,15 +958,10 @@ class TemplateService:
                 }
                 if resource.description:
                     properties["description"] = resource.description
-                if resource.cost_per_hour is not None:
-                    properties["cost_per_hour"] = resource.cost_per_hour
-
-                # Resolve user_id if present
-                if resource.user_id:
-                    if resource.user_id in user_map:
-                        properties["user_id"] = str(user_map[resource.user_id])
-                    else:
-                        logger.warning(f"User '{resource.user_id}' not found in user_map")
+                if resource.capacity is not None:
+                    properties["capacity"] = resource.capacity
+                if resource.skills:
+                    properties["skills"] = resource.skills
 
                 # Create resource node
                 await self.graph_service.create_node("Resource", properties)
@@ -933,34 +969,44 @@ class TemplateService:
                 # Create BELONGS_TO relationship from resource to department
                 if resource.department_id:
                     if resource.department_id in department_map:
-                        department_uuid_str = str(department_map[resource.department_id])
+                        department_uuid_str = str(
+                            department_map[resource.department_id]
+                        )
                         await self.graph_service.create_relationship(
                             from_id=resource_uuid_str,
                             to_id=department_uuid_str,
                             rel_type="BELONGS_TO",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created BELONGS_TO relationship from resource '{resource.name}' to department '{resource.department_id}'")
+                        logger.info(
+                            f"Created BELONGS_TO relationship from resource '{resource.name}' to department '{resource.department_id}'"
+                        )
                     else:
-                        logger.warning(f"Department '{resource.department_id}' not found in department_map")
+                        logger.warning(
+                            f"Department '{resource.department_id}' not found in department_map"
+                        )
 
                 logger.info(f"Created resource: {resource.name}")
-                results.append(EntityResult(
-                    id=resource.id,
-                    type="resource",
-                    status="created",
-                    message=f"Created resource '{resource.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=resource.id,
+                        type="resource",
+                        status="created",
+                        message=f"Created resource '{resource.name}'",
+                    )
+                )
                 resource_map[resource.id] = resource_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create resource '{resource.id}': {e}")
-                results.append(EntityResult(
-                    id=resource.id,
-                    type="resource",
-                    status="failed",
-                    message=f"Failed to create resource: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=resource.id,
+                        type="resource",
+                        status="failed",
+                        message=f"Failed to create resource: {str(e)}",
+                    )
+                )
 
         return results, resource_map
 
@@ -995,30 +1041,38 @@ class TemplateService:
         for project in projects:
             try:
                 # Generate deterministic UUID
-                project_uuid = self._generate_deterministic_uuid(template_name, project.id)
+                project_uuid = self._generate_deterministic_uuid(
+                    template_name, project.id
+                )
                 project_uuid_str = str(project_uuid)
 
                 # Check if project already exists
                 existing = await self.graph_service.get_node(project_uuid_str)
                 if existing:
-                    logger.warning(f"Project '{project_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=project.id,
-                        type="project",
-                        status="skipped",
-                        message="Project already exists"
-                    ))
+                    logger.warning(
+                        f"Project '{project_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=project.id,
+                            type="project",
+                            status="skipped",
+                            message="Project already exists",
+                        )
+                    )
                     project_map[project.id] = project_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create project: {project.name}")
-                    results.append(EntityResult(
-                        id=project.id,
-                        type="project",
-                        status="created",
-                        message=f"[DRY RUN] Would create project '{project.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=project.id,
+                            type="project",
+                            status="created",
+                            message=f"[DRY RUN] Would create project '{project.name}'",
+                        )
+                    )
                     project_map[project.id] = project_uuid
                     continue
 
@@ -1032,38 +1086,31 @@ class TemplateService:
                 }
                 if project.description:
                     properties["description"] = project.description
-                if project.start_date:
-                    properties["start_date"] = project.start_date.isoformat()
-                if project.end_date:
-                    properties["end_date"] = project.end_date.isoformat()
-
-                # Resolve owner_id if present
-                if project.owner_id:
-                    if project.owner_id in user_map:
-                        properties["owner_id"] = str(user_map[project.owner_id])
-                    else:
-                        logger.warning(f"Owner user '{project.owner_id}' not found in user_map")
 
                 # Create project node
                 await self.graph_service.create_node("Project", properties)
 
                 logger.info(f"Created project: {project.name}")
-                results.append(EntityResult(
-                    id=project.id,
-                    type="project",
-                    status="created",
-                    message=f"Created project '{project.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=project.id,
+                        type="project",
+                        status="created",
+                        message=f"Created project '{project.name}'",
+                    )
+                )
                 project_map[project.id] = project_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create project '{project.id}': {e}")
-                results.append(EntityResult(
-                    id=project.id,
-                    type="project",
-                    status="failed",
-                    message=f"Failed to create project: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=project.id,
+                        type="project",
+                        status="failed",
+                        message=f"Failed to create project: {str(e)}",
+                    )
+                )
 
         return results, project_map
 
@@ -1099,30 +1146,38 @@ class TemplateService:
         for sprint in sprints:
             try:
                 # Generate deterministic UUID
-                sprint_uuid = self._generate_deterministic_uuid(template_name, sprint.id)
+                sprint_uuid = self._generate_deterministic_uuid(
+                    template_name, sprint.id
+                )
                 sprint_uuid_str = str(sprint_uuid)
 
                 # Check if sprint already exists
                 existing = await self.graph_service.get_node(sprint_uuid_str)
                 if existing:
-                    logger.warning(f"Sprint '{sprint_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=sprint.id,
-                        type="sprint",
-                        status="skipped",
-                        message="Sprint already exists"
-                    ))
+                    logger.warning(
+                        f"Sprint '{sprint_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=sprint.id,
+                            type="sprint",
+                            status="skipped",
+                            message="Sprint already exists",
+                        )
+                    )
                     sprint_map[sprint.id] = sprint_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create sprint: {sprint.name}")
-                    results.append(EntityResult(
-                        id=sprint.id,
-                        type="sprint",
-                        status="created",
-                        message=f"[DRY RUN] Would create sprint '{sprint.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=sprint.id,
+                            type="sprint",
+                            status="created",
+                            message=f"[DRY RUN] Would create sprint '{sprint.name}'",
+                        )
+                    )
                     sprint_map[sprint.id] = sprint_uuid
                     continue
 
@@ -1140,6 +1195,16 @@ class TemplateService:
                     properties["description"] = sprint.description
                 if sprint.goal:
                     properties["goal"] = sprint.goal
+                if sprint.capacity_hours is not None:
+                    properties["capacity_hours"] = sprint.capacity_hours
+                if sprint.capacity_story_points is not None:
+                    properties["capacity_story_points"] = sprint.capacity_story_points
+                if sprint.actual_velocity_hours is not None:
+                    properties["actual_velocity_hours"] = sprint.actual_velocity_hours
+                if sprint.actual_velocity_story_points is not None:
+                    properties["actual_velocity_story_points"] = (
+                        sprint.actual_velocity_story_points
+                    )
 
                 # Create sprint node
                 await self.graph_service.create_node("Sprint", properties)
@@ -1152,29 +1217,37 @@ class TemplateService:
                             from_id=sprint_uuid_str,
                             to_id=project_uuid_str,
                             rel_type="BELONGS_TO",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created BELONGS_TO relationship from sprint '{sprint.name}' to project '{sprint.project_id}'")
+                        logger.info(
+                            f"Created BELONGS_TO relationship from sprint '{sprint.name}' to project '{sprint.project_id}'"
+                        )
                     else:
-                        logger.warning(f"Project '{sprint.project_id}' not found in project_map")
+                        logger.warning(
+                            f"Project '{sprint.project_id}' not found in project_map"
+                        )
 
                 logger.info(f"Created sprint: {sprint.name}")
-                results.append(EntityResult(
-                    id=sprint.id,
-                    type="sprint",
-                    status="created",
-                    message=f"Created sprint '{sprint.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=sprint.id,
+                        type="sprint",
+                        status="created",
+                        message=f"Created sprint '{sprint.name}'",
+                    )
+                )
                 sprint_map[sprint.id] = sprint_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create sprint '{sprint.id}': {e}")
-                results.append(EntityResult(
-                    id=sprint.id,
-                    type="sprint",
-                    status="failed",
-                    message=f"Failed to create sprint: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=sprint.id,
+                        type="sprint",
+                        status="failed",
+                        message=f"Failed to create sprint: {str(e)}",
+                    )
+                )
 
         return results, sprint_map
 
@@ -1217,23 +1290,27 @@ class TemplateService:
                 existing = await self.graph_service.get_node(phase_uuid_str)
                 if existing:
                     logger.warning(f"Phase '{phase_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=phase.id,
-                        type="phase",
-                        status="skipped",
-                        message="Phase already exists"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=phase.id,
+                            type="phase",
+                            status="skipped",
+                            message="Phase already exists",
+                        )
+                    )
                     phase_map[phase.id] = phase_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create phase: {phase.name}")
-                    results.append(EntityResult(
-                        id=phase.id,
-                        type="phase",
-                        status="created",
-                        message=f"[DRY RUN] Would create phase '{phase.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=phase.id,
+                            type="phase",
+                            status="created",
+                            message=f"[DRY RUN] Would create phase '{phase.name}'",
+                        )
+                    )
                     phase_map[phase.id] = phase_uuid
                     continue
 
@@ -1259,29 +1336,37 @@ class TemplateService:
                             from_id=phase_uuid_str,
                             to_id=project_uuid_str,
                             rel_type="BELONGS_TO",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created BELONGS_TO relationship from phase '{phase.name}' to project '{phase.project_id}'")
+                        logger.info(
+                            f"Created BELONGS_TO relationship from phase '{phase.name}' to project '{phase.project_id}'"
+                        )
                     else:
-                        logger.warning(f"Project '{phase.project_id}' not found in project_map")
+                        logger.warning(
+                            f"Project '{phase.project_id}' not found in project_map"
+                        )
 
                 logger.info(f"Created phase: {phase.name}")
-                results.append(EntityResult(
-                    id=phase.id,
-                    type="phase",
-                    status="created",
-                    message=f"Created phase '{phase.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=phase.id,
+                        type="phase",
+                        status="created",
+                        message=f"Created phase '{phase.name}'",
+                    )
+                )
                 phase_map[phase.id] = phase_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create phase '{phase.id}': {e}")
-                results.append(EntityResult(
-                    id=phase.id,
-                    type="phase",
-                    status="failed",
-                    message=f"Failed to create phase: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=phase.id,
+                        type="phase",
+                        status="failed",
+                        message=f"Failed to create phase: {str(e)}",
+                    )
+                )
 
         return results, phase_map
 
@@ -1317,30 +1402,40 @@ class TemplateService:
         for workpackage in workpackages:
             try:
                 # Generate deterministic UUID
-                workpackage_uuid = self._generate_deterministic_uuid(template_name, workpackage.id)
+                workpackage_uuid = self._generate_deterministic_uuid(
+                    template_name, workpackage.id
+                )
                 workpackage_uuid_str = str(workpackage_uuid)
 
                 # Check if workpackage already exists
                 existing = await self.graph_service.get_node(workpackage_uuid_str)
                 if existing:
-                    logger.warning(f"Workpackage '{workpackage_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=workpackage.id,
-                        type="workpackage",
-                        status="skipped",
-                        message="Workpackage already exists"
-                    ))
+                    logger.warning(
+                        f"Workpackage '{workpackage_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=workpackage.id,
+                            type="workpackage",
+                            status="skipped",
+                            message="Workpackage already exists",
+                        )
+                    )
                     workpackage_map[workpackage.id] = workpackage_uuid
                     continue
 
                 if dry_run:
-                    logger.info(f"[DRY RUN] Would create workpackage: {workpackage.name}")
-                    results.append(EntityResult(
-                        id=workpackage.id,
-                        type="workpackage",
-                        status="created",
-                        message=f"[DRY RUN] Would create workpackage '{workpackage.name}'"
-                    ))
+                    logger.info(
+                        f"[DRY RUN] Would create workpackage: {workpackage.name}"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=workpackage.id,
+                            type="workpackage",
+                            status="created",
+                            message=f"[DRY RUN] Would create workpackage '{workpackage.name}'",
+                        )
+                    )
                     workpackage_map[workpackage.id] = workpackage_uuid
                     continue
 
@@ -1366,29 +1461,37 @@ class TemplateService:
                             from_id=workpackage_uuid_str,
                             to_id=phase_uuid_str,
                             rel_type="BELONGS_TO",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created BELONGS_TO relationship from workpackage '{workpackage.name}' to phase '{workpackage.phase_id}'")
+                        logger.info(
+                            f"Created BELONGS_TO relationship from workpackage '{workpackage.name}' to phase '{workpackage.phase_id}'"
+                        )
                     else:
-                        logger.warning(f"Phase '{workpackage.phase_id}' not found in phase_map")
+                        logger.warning(
+                            f"Phase '{workpackage.phase_id}' not found in phase_map"
+                        )
 
                 logger.info(f"Created workpackage: {workpackage.name}")
-                results.append(EntityResult(
-                    id=workpackage.id,
-                    type="workpackage",
-                    status="created",
-                    message=f"Created workpackage '{workpackage.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=workpackage.id,
+                        type="workpackage",
+                        status="created",
+                        message=f"Created workpackage '{workpackage.name}'",
+                    )
+                )
                 workpackage_map[workpackage.id] = workpackage_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create workpackage '{workpackage.id}': {e}")
-                results.append(EntityResult(
-                    id=workpackage.id,
-                    type="workpackage",
-                    status="failed",
-                    message=f"Failed to create workpackage: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=workpackage.id,
+                        type="workpackage",
+                        status="failed",
+                        message=f"Failed to create workpackage: {str(e)}",
+                    )
+                )
 
         return results, workpackage_map
 
@@ -1424,30 +1527,38 @@ class TemplateService:
         for backlog in backlogs:
             try:
                 # Generate deterministic UUID
-                backlog_uuid = self._generate_deterministic_uuid(template_name, backlog.id)
+                backlog_uuid = self._generate_deterministic_uuid(
+                    template_name, backlog.id
+                )
                 backlog_uuid_str = str(backlog_uuid)
 
                 # Check if backlog already exists
                 existing = await self.graph_service.get_node(backlog_uuid_str)
                 if existing:
-                    logger.warning(f"Backlog '{backlog_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=backlog.id,
-                        type="backlog",
-                        status="skipped",
-                        message="Backlog already exists"
-                    ))
+                    logger.warning(
+                        f"Backlog '{backlog_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=backlog.id,
+                            type="backlog",
+                            status="skipped",
+                            message="Backlog already exists",
+                        )
+                    )
                     backlog_map[backlog.id] = backlog_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create backlog: {backlog.name}")
-                    results.append(EntityResult(
-                        id=backlog.id,
-                        type="backlog",
-                        status="created",
-                        message=f"[DRY RUN] Would create backlog '{backlog.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=backlog.id,
+                            type="backlog",
+                            status="created",
+                            message=f"[DRY RUN] Would create backlog '{backlog.name}'",
+                        )
+                    )
                     backlog_map[backlog.id] = backlog_uuid
                     continue
 
@@ -1472,29 +1583,37 @@ class TemplateService:
                             from_id=backlog_uuid_str,
                             to_id=project_uuid_str,
                             rel_type="BELONGS_TO",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created BELONGS_TO relationship from backlog '{backlog.name}' to project '{backlog.project_id}'")
+                        logger.info(
+                            f"Created BELONGS_TO relationship from backlog '{backlog.name}' to project '{backlog.project_id}'"
+                        )
                     else:
-                        logger.warning(f"Project '{backlog.project_id}' not found in project_map")
+                        logger.warning(
+                            f"Project '{backlog.project_id}' not found in project_map"
+                        )
 
                 logger.info(f"Created backlog: {backlog.name}")
-                results.append(EntityResult(
-                    id=backlog.id,
-                    type="backlog",
-                    status="created",
-                    message=f"Created backlog '{backlog.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=backlog.id,
+                        type="backlog",
+                        status="created",
+                        message=f"Created backlog '{backlog.name}'",
+                    )
+                )
                 backlog_map[backlog.id] = backlog_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create backlog '{backlog.id}': {e}")
-                results.append(EntityResult(
-                    id=backlog.id,
-                    type="backlog",
-                    status="failed",
-                    message=f"Failed to create backlog: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=backlog.id,
+                        type="backlog",
+                        status="failed",
+                        message=f"Failed to create backlog: {str(e)}",
+                    )
+                )
 
         return results, backlog_map
 
@@ -1530,30 +1649,38 @@ class TemplateService:
         for milestone in milestones:
             try:
                 # Generate deterministic UUID
-                milestone_uuid = self._generate_deterministic_uuid(template_name, milestone.id)
+                milestone_uuid = self._generate_deterministic_uuid(
+                    template_name, milestone.id
+                )
                 milestone_uuid_str = str(milestone_uuid)
 
                 # Check if milestone already exists
                 existing = await self.graph_service.get_node(milestone_uuid_str)
                 if existing:
-                    logger.warning(f"Milestone '{milestone_uuid_str}' already exists, skipping")
-                    results.append(EntityResult(
-                        id=milestone.id,
-                        type="milestone",
-                        status="skipped",
-                        message="Milestone already exists"
-                    ))
+                    logger.warning(
+                        f"Milestone '{milestone_uuid_str}' already exists, skipping"
+                    )
+                    results.append(
+                        EntityResult(
+                            id=milestone.id,
+                            type="milestone",
+                            status="skipped",
+                            message="Milestone already exists",
+                        )
+                    )
                     milestone_map[milestone.id] = milestone_uuid
                     continue
 
                 if dry_run:
                     logger.info(f"[DRY RUN] Would create milestone: {milestone.name}")
-                    results.append(EntityResult(
-                        id=milestone.id,
-                        type="milestone",
-                        status="created",
-                        message=f"[DRY RUN] Would create milestone '{milestone.name}'"
-                    ))
+                    results.append(
+                        EntityResult(
+                            id=milestone.id,
+                            type="milestone",
+                            status="created",
+                            message=f"[DRY RUN] Would create milestone '{milestone.name}'",
+                        )
+                    )
                     milestone_map[milestone.id] = milestone_uuid
                     continue
 
@@ -1580,29 +1707,37 @@ class TemplateService:
                             from_id=milestone_uuid_str,
                             to_id=project_uuid_str,
                             rel_type="BELONGS_TO",
-                            properties={"created_at": datetime.now(UTC).isoformat()}
+                            properties={"created_at": datetime.now(UTC).isoformat()},
                         )
-                        logger.info(f"Created BELONGS_TO relationship from milestone '{milestone.name}' to project '{milestone.project_id}'")
+                        logger.info(
+                            f"Created BELONGS_TO relationship from milestone '{milestone.name}' to project '{milestone.project_id}'"
+                        )
                     else:
-                        logger.warning(f"Project '{milestone.project_id}' not found in project_map")
+                        logger.warning(
+                            f"Project '{milestone.project_id}' not found in project_map"
+                        )
 
                 logger.info(f"Created milestone: {milestone.name}")
-                results.append(EntityResult(
-                    id=milestone.id,
-                    type="milestone",
-                    status="created",
-                    message=f"Created milestone '{milestone.name}'"
-                ))
+                results.append(
+                    EntityResult(
+                        id=milestone.id,
+                        type="milestone",
+                        status="created",
+                        message=f"Created milestone '{milestone.name}'",
+                    )
+                )
                 milestone_map[milestone.id] = milestone_uuid
 
             except Exception as e:
                 logger.error(f"Failed to create milestone '{milestone.id}': {e}")
-                results.append(EntityResult(
-                    id=milestone.id,
-                    type="milestone",
-                    status="failed",
-                    message=f"Failed to create milestone: {str(e)}"
-                ))
+                results.append(
+                    EntityResult(
+                        id=milestone.id,
+                        type="milestone",
+                        status="failed",
+                        message=f"Failed to create milestone: {str(e)}",
+                    )
+                )
 
         return results, milestone_map
 
@@ -1717,9 +1852,12 @@ class TemplateService:
 
                 # Add ALLOCATED_TO specific properties
                 if rel.type.value == "ALLOCATED_TO":
-                    if hasattr(rel, 'allocation_percentage') and rel.allocation_percentage is not None:
+                    if (
+                        hasattr(rel, "allocation_percentage")
+                        and rel.allocation_percentage is not None
+                    ):
                         properties["allocation_percentage"] = rel.allocation_percentage
-                    if hasattr(rel, 'lead') and rel.lead is not None:
+                    if hasattr(rel, "lead") and rel.lead is not None:
                         properties["lead"] = rel.lead
 
                 await self.graph_service.create_relationship(
@@ -1801,17 +1939,31 @@ class TemplateService:
                     entities=[],
                 )
 
-            # Validate the template
-            validation_result = await self.validate_template(name)
-            if not validation_result.valid:
+            # Validate the template (constraints only, references will be resolved during application)
+            # Only validate constraints, not references, since modular templates may reference
+            # entities from other templates that will be resolved during application
+            constraint_errors = self.validator.validate_constraints(template)
+            if constraint_errors:
+                # Create entity results for validation errors
+                error_entities = []
+                for error in constraint_errors[:10]:  # Limit to first 10 errors
+                    error_entities.append(
+                        EntityResult(
+                            id="validation",
+                            type="validation",
+                            status="failed",
+                            message=f"{error.path}: {error.message}",
+                        )
+                    )
+
                 return ApplicationResult(
                     success=False,
                     template_name=name,
                     dry_run=dry_run,
                     created_count=0,
                     skipped_count=0,
-                    failed_count=1,
-                    entities=[],
+                    failed_count=len(constraint_errors),
+                    entities=error_entities,
                 )
 
             logger.info(f"Applying template '{name}' (dry_run={dry_run})")
@@ -1832,7 +1984,7 @@ class TemplateService:
             department_map = {}
             resource_map = {}
 
-            if hasattr(template, 'companies') and template.companies:
+            if hasattr(template, "companies") and template.companies:
                 company_results, company_map = await self._apply_companies(
                     companies=template.companies,
                     template_name=name,
@@ -1840,7 +1992,7 @@ class TemplateService:
                 )
                 all_results.extend(company_results)
 
-            if hasattr(template, 'departments') and template.departments:
+            if hasattr(template, "departments") and template.departments:
                 department_results, department_map = await self._apply_departments(
                     departments=template.departments,
                     company_map=company_map,
@@ -1850,7 +2002,7 @@ class TemplateService:
                 )
                 all_results.extend(department_results)
 
-            if hasattr(template, 'resources') and template.resources:
+            if hasattr(template, "resources") and template.resources:
                 resource_results, resource_map = await self._apply_resources(
                     resources=template.resources,
                     department_map=department_map,
@@ -1868,7 +2020,7 @@ class TemplateService:
             backlog_map = {}
             milestone_map = {}
 
-            if hasattr(template, 'projects') and template.projects:
+            if hasattr(template, "projects") and template.projects:
                 project_results, project_map = await self._apply_projects(
                     projects=template.projects,
                     user_map=user_map,
@@ -1877,7 +2029,7 @@ class TemplateService:
                 )
                 all_results.extend(project_results)
 
-            if hasattr(template, 'sprints') and template.sprints:
+            if hasattr(template, "sprints") and template.sprints:
                 sprint_results, sprint_map = await self._apply_sprints(
                     sprints=template.sprints,
                     project_map=project_map,
@@ -1886,7 +2038,7 @@ class TemplateService:
                 )
                 all_results.extend(sprint_results)
 
-            if hasattr(template, 'phases') and template.phases:
+            if hasattr(template, "phases") and template.phases:
                 phase_results, phase_map = await self._apply_phases(
                     phases=template.phases,
                     project_map=project_map,
@@ -1895,7 +2047,7 @@ class TemplateService:
                 )
                 all_results.extend(phase_results)
 
-            if hasattr(template, 'workpackages') and template.workpackages:
+            if hasattr(template, "workpackages") and template.workpackages:
                 workpackage_results, workpackage_map = await self._apply_workpackages(
                     workpackages=template.workpackages,
                     phase_map=phase_map,
@@ -1904,7 +2056,7 @@ class TemplateService:
                 )
                 all_results.extend(workpackage_results)
 
-            if hasattr(template, 'backlogs') and template.backlogs:
+            if hasattr(template, "backlogs") and template.backlogs:
                 backlog_results, backlog_map = await self._apply_backlogs(
                     backlogs=template.backlogs,
                     project_map=project_map,
@@ -1913,7 +2065,7 @@ class TemplateService:
                 )
                 all_results.extend(backlog_results)
 
-            if hasattr(template, 'milestones') and template.milestones:
+            if hasattr(template, "milestones") and template.milestones:
                 milestone_results, milestone_map = await self._apply_milestones(
                     milestones=template.milestones,
                     project_map=project_map,
@@ -1946,6 +2098,51 @@ class TemplateService:
                 **milestone_map,
             }
 
+            # For modular templates: Query for referenced entities that aren't in current template
+            # This allows relationships to reference entities from previously applied templates
+            if template.relationships:
+                for rel in template.relationships:
+                    # Check if from_id is missing from all_entity_maps
+                    if rel.from_id not in all_entity_maps:
+                        # Try to find it in the database using deterministic UUID
+                        # We don't know which template created it, so we try common template names
+                        for template_prefix in [
+                            "modular/company-acme",
+                            "modular/project-medical-device",
+                            "company-acme",
+                            "project-medical-device",
+                        ]:
+                            try_uuid = self._generate_deterministic_uuid(
+                                template_prefix, rel.from_id
+                            )
+                            existing = await self.graph_service.get_node(str(try_uuid))
+                            if existing:
+                                all_entity_maps[rel.from_id] = try_uuid
+                                logger.debug(
+                                    f"Found existing entity '{rel.from_id}' from template '{template_prefix}'"
+                                )
+                                break
+
+                    # Check if to_id is missing from all_entity_maps
+                    if rel.to_id not in all_entity_maps:
+                        # Try to find it in the database using deterministic UUID
+                        for template_prefix in [
+                            "modular/company-acme",
+                            "modular/project-medical-device",
+                            "company-acme",
+                            "project-medical-device",
+                        ]:
+                            try_uuid = self._generate_deterministic_uuid(
+                                template_prefix, rel.to_id
+                            )
+                            existing = await self.graph_service.get_node(str(try_uuid))
+                            if existing:
+                                all_entity_maps[rel.to_id] = try_uuid
+                                logger.debug(
+                                    f"Found existing entity '{rel.to_id}' from template '{template_prefix}'"
+                                )
+                                break
+
             relationship_results = await self._apply_relationships(
                 relationships=template.relationships,
                 workitem_map=all_entity_maps,
@@ -1965,6 +2162,14 @@ class TemplateService:
                 f"Template '{name}' application complete: "
                 f"created={created_count}, skipped={skipped_count}, failed={failed_count}"
             )
+
+            # Commit the transaction if not a dry run
+            if not dry_run and success:
+                await self.db_session.commit()
+                logger.info("Database transaction committed")
+            elif not dry_run and not success:
+                await self.db_session.rollback()
+                logger.warning("Database transaction rolled back due to errors")
 
             return ApplicationResult(
                 success=success,

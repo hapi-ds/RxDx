@@ -388,7 +388,7 @@ class TemplateValidator:
                         )
                     )
 
-            # ALLOCATED_TO: Resource -> (Project or Task)
+            # ALLOCATED_TO: Resource -> (Project, Task, or Workpackage)
             elif rel_type == RelationshipType.ALLOCATED_TO:
                 if rel.from_id not in resource_ids:
                     errors.append(
@@ -398,12 +398,16 @@ class TemplateValidator:
                             value=rel.from_id,
                         )
                     )
-                # to_id can be either a project or a task
-                if rel.to_id not in project_ids and rel.to_id not in task_ids:
+                # to_id can be a project, task, or workpackage
+                if (
+                    rel.to_id not in project_ids
+                    and rel.to_id not in task_ids
+                    and rel.to_id not in workpackage_ids
+                ):
                     errors.append(
                         ValidationError(
                             path=f"relationships[{idx}].to_id",
-                            message=f"Project or Task reference '{rel.to_id}' not found in template projects or tasks",
+                            message=f"Project, Task, or Workpackage reference '{rel.to_id}' not found in template",
                             value=rel.to_id,
                         )
                     )

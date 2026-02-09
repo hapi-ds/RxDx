@@ -157,6 +157,9 @@ class TemplateResource(BaseModel):
         description="Template-local resource identifier",
     )
     name: str = Field(..., min_length=1, max_length=200, description="Resource name")
+    description: str | None = Field(
+        None, max_length=2000, description="Resource description"
+    )
     type: ResourceType = Field(
         ..., description="Resource type (person, machine, equipment, facility, other)"
     )
@@ -202,6 +205,9 @@ class TemplateProject(BaseModel):
         description="Template-local project identifier",
     )
     name: str = Field(..., min_length=1, max_length=200, description="Project name")
+    description: str | None = Field(
+        None, max_length=2000, description="Project description"
+    )
     status: ProjectStatus = Field(
         default=ProjectStatus.PLANNING, description="Project status"
     )
@@ -221,6 +227,9 @@ class TemplateSprint(BaseModel):
         description="Template-local sprint identifier",
     )
     name: str = Field(..., min_length=1, max_length=200, description="Sprint name")
+    description: str | None = Field(
+        None, max_length=2000, description="Sprint description"
+    )
     goal: str | None = Field(None, max_length=1000, description="Sprint goal")
     start_date: datetime = Field(..., description="Sprint start date")
     end_date: datetime = Field(..., description="Sprint end date")
@@ -267,6 +276,9 @@ class TemplatePhase(BaseModel):
         ..., min_length=1, max_length=100, description="Template-local phase identifier"
     )
     name: str = Field(..., min_length=1, max_length=200, description="Phase name")
+    description: str | None = Field(
+        None, max_length=2000, description="Phase description"
+    )
     order: int = Field(..., ge=1, description="Phase order (must be >= 1)")
     project_id: str = Field(
         ...,
@@ -291,6 +303,9 @@ class TemplateWorkpackage(BaseModel):
         description="Template-local workpackage identifier",
     )
     name: str = Field(..., min_length=1, max_length=200, description="Workpackage name")
+    description: str | None = Field(
+        None, max_length=2000, description="Workpackage description"
+    )
     order: int = Field(..., ge=1, description="Workpackage order (must be >= 1)")
     phase_id: str = Field(
         ...,
@@ -314,6 +329,9 @@ class TemplateBacklog(BaseModel):
         description="Template-local backlog identifier",
     )
     name: str = Field(..., min_length=1, max_length=200, description="Backlog name")
+    description: str | None = Field(
+        None, max_length=2000, description="Backlog description"
+    )
     project_id: str = Field(
         ...,
         min_length=1,
@@ -336,6 +354,9 @@ class TemplateMilestone(BaseModel):
         description="Template-local milestone identifier",
     )
     name: str = Field(..., min_length=1, max_length=200, description="Milestone name")
+    description: str | None = Field(
+        None, max_length=2000, description="Milestone description"
+    )
     due_date: datetime = Field(..., description="Milestone due date")
     status: MilestoneStatus = Field(
         default=MilestoneStatus.PENDING, description="Milestone status"

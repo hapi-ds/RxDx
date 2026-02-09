@@ -1,3 +1,14 @@
+# Quick Start
+- Start with docker compose up -d
+- Apply templates with
+  - docker compose exec backend uv run python scripts/seed_data.py --template TEMPLATE
+  - TEMPLATE: modular/company-acme
+  - TEMPLATE: modular/project-medical-device
+  - TEMPLATE: modular/requirements-medical-device
+  - TEMPLATE: modular/users-acme
+
+Keep this sequence - else linking to none existing resources can cause errors
+
 # RxDx Template System
 
 This directory contains YAML templates for seeding the RxDx system with users, organizational structures, projects, and workitems. Templates provide a declarative way to define complex project structures that can be applied idempotently to the database.

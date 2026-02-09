@@ -339,7 +339,7 @@ workitems:
     - id: risk-security
       title: Security Vulnerability Risk
       description: Potential security vulnerabilities in authentication and access control
-      status: active
+      status: assessed
       priority: 5
       severity: 8
       occurrence: 3
@@ -355,7 +355,7 @@ workitems:
     - id: risk-regulatory
       title: Regulatory Compliance Risk
       description: Risk of non-compliance with FDA and medical device regulations
-      status: active
+      status: assessed
       priority: 5
       severity: 9
       occurrence: 2
@@ -371,7 +371,7 @@ workitems:
     - id: risk-safety
       title: Patient Safety Risk
       description: Risk of device malfunction affecting patient safety
-      status: active
+      status: assessed
       priority: 5
       severity: 10
       occurrence: 1
@@ -387,7 +387,7 @@ workitems:
     - id: risk-performance
       title: Performance Degradation Risk
       description: Risk of system performance issues under load
-      status: active
+      status: assessed
       priority: 3
       severity: 5
       occurrence: 4
@@ -580,11 +580,7 @@ relationships:
     allocation_percentage: 75.0
     lead: true
 
-  - from_id: resource-dev4
-    to_id: wp-core-implementation
-    type: ALLOCATED_TO
-    allocation_percentage: 60.0
-    lead: false
+  # Note: resource-dev4 doesn't exist in company-acme template, removed this allocation
 
   - from_id: resource-qa1
     to_id: wp-system-testing

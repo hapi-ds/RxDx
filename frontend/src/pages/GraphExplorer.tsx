@@ -11,6 +11,8 @@ import React, { useCallback, useState, useEffect, useRef, Suspense } from 'react
 import { GraphView2D } from '../components/graph/GraphView2D';
 import { GraphExport, type ExportFormat } from '../components/graph/GraphExport';
 import { NodeEditor } from '../components/graph/NodeEditor';
+import { RelationshipEditor } from '../components/graph/RelationshipEditor';
+import { ConnectionMode } from '../components/graph/ConnectionMode';
 import { ViewModeToggle } from '../components/graph/ViewModeToggle';
 import { GraphEmptyState } from '../components/graph/GraphEmptyState';
 import { NodeTypeFilter } from '../components/common/NodeTypeFilter';
@@ -54,6 +56,10 @@ export function GraphExplorer(): React.ReactElement {
     depth,
     setDepth,
     selectedNode,
+    selectedRelationship,
+    updateRelationship,
+    deleteRelationship,
+    selectRelationship,
     clearError,
     searchNodes,
     clearSearch,
@@ -64,6 +70,15 @@ export function GraphExplorer(): React.ReactElement {
     viewMode,
     nodeTypeFilter,
     setNodeTypeFilters,
+    // Connection mode state and actions
+    isConnectionMode,
+    connectionSource,
+    connectionTarget,
+    toggleConnectionMode,
+    setConnectionSource,
+    setConnectionTarget,
+    createConnection,
+    isCreatingRelationship,
   } = useGraphStore();
 
   // Check if we have data to display
@@ -245,10 +260,39 @@ export function GraphExplorer(): React.ReactElement {
 
   // Handle connection made callback
   const handleConnectionMade = useCallback(
-    (sourceId: string, targetId: string, type: string) => {
-      console.log(`Relationship created: ${sourceId} -[${type}]-> ${targetId}`);
+    async (sourceId: string, targetId: string, type: string) => {
+      try {
+        await createConnection(sourceId, targetId, type);
+        console.log(`Relationship created: ${sourceId} -[${type}]-> ${targetId}`);
+      } catch (err) {
+        console.error('Failed to create relationship:', err);
+      }
     },
-    []
+    [createConnection]
+  );
+
+  // Handle connection mode toggle
+  const handleConnectionModeToggle = useCallback(() => {
+    toggleConnectionMode();
+  }, [toggleConnectionMode]);
+
+  // Handle node click in connection mode
+  const handleNodeClickInConnectionMode = useCallback(
+    (nodeId: string) => {
+      if (!isConnectionMode) return;
+
+      if (!connectionSource) {
+        // First node selection - set as source
+        setConnectionSource(nodeId);
+      } else if (connectionSource === nodeId) {
+        // Clicking the same node - deselect source
+        setConnectionSource(null);
+      } else {
+        // Second node selection - set as target
+        setConnectionTarget(nodeId);
+      }
+    },
+    [isConnectionMode, connectionSource, setConnectionSource, setConnectionTarget]
   );
 
   // Handle node editor close
@@ -260,6 +304,27 @@ export function GraphExplorer(): React.ReactElement {
   const handleNodeSave = useCallback((nodeId: string) => {
     console.log(`Node saved: ${nodeId}`);
   }, []);
+
+  // Handle relationship editor close
+  const handleRelationshipEditorClose = useCallback(() => {
+    selectRelationship(null);
+  }, [selectRelationship]);
+
+  // Handle relationship update
+  const handleRelationshipUpdate = useCallback(
+    async (relationshipId: string, type: string) => {
+      await updateRelationship(relationshipId, type);
+    },
+    [updateRelationship]
+  );
+
+  // Handle relationship delete
+  const handleRelationshipDelete = useCallback(
+    async (relationshipId: string) => {
+      await deleteRelationship(relationshipId);
+    },
+    [deleteRelationship]
+  );
 
   // Handle view mode change
   const handleViewModeChange = useCallback((mode: ViewMode) => {
@@ -417,6 +482,18 @@ export function GraphExplorer(): React.ReactElement {
         </div>
 
         <div className="toolbar-right">
+          {/* Connection Mode */}
+          <ConnectionMode
+            isActive={isConnectionMode}
+            onToggle={handleConnectionModeToggle}
+            onConnectionCreated={handleConnectionMade}
+            sourceNodeId={connectionSource}
+            targetNodeId={connectionTarget}
+            isCreating={isCreatingRelationship}
+            error={error}
+            onClearError={clearError}
+          />
+
           {/* View Mode Toggle */}
           <ViewModeToggle
             onViewModeChange={handleViewModeChange}
@@ -491,6 +568,10 @@ export function GraphExplorer(): React.ReactElement {
                 showBackground={true}
                 onConnectionMade={handleConnectionMade}
                 renderToolbarContent={renderExportButton}
+                isConnectionMode={isConnectionMode}
+                onNodeClickInConnectionMode={handleNodeClickInConnectionMode}
+                connectionSource={connectionSource}
+                connectionTarget={connectionTarget}
               />
             ) : (
               <Suspense fallback={
@@ -532,6 +613,16 @@ export function GraphExplorer(): React.ReactElement {
           <NodeEditor
             onClose={handleNodeEditorClose}
             onSave={handleNodeSave}
+          />
+        )}
+
+        {/* Relationship Editor Panel */}
+        {selectedRelationship && (
+          <RelationshipEditor
+            relationship={selectedRelationship}
+            onUpdate={handleRelationshipUpdate}
+            onDelete={handleRelationshipDelete}
+            onClose={handleRelationshipEditorClose}
           />
         )}
 

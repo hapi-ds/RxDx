@@ -400,6 +400,27 @@ class GraphService {
       ];
     }
   }
+
+  /**
+   * Update relationship type
+   * @param relationshipId - Relationship ID
+   * @param newType - New relationship type
+   * @returns Updated relationship
+   */
+  async updateRelationship(
+    relationshipId: string,
+    newType: string
+  ): Promise<GraphEdge> {
+    try {
+      const response = await apiClient.patch<GraphEdge>(
+        `${this.basePath}/relationships/${relationshipId}`,
+        { type: newType }
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
+    }
+  }
 }
 
 export const graphService = new GraphService();

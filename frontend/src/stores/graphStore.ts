@@ -135,6 +135,7 @@ export interface GraphState {
   nodes: Node<GraphNodeData>[];
   edges: Edge[];
   selectedNode: Node<GraphNodeData> | null;
+  selectedRelationship: GraphEdge | null;
   viewMode: ViewMode;
 
   // Search state
@@ -150,6 +151,11 @@ export interface GraphState {
 
   // Error state
   error: string | null;
+
+  // Connection mode state
+  isConnectionMode: boolean;
+  connectionSource: string | null;
+  connectionTarget: string | null;
 
   // Query parameters
   centerNodeId: string | null;
@@ -174,7 +180,9 @@ export interface GraphActions {
   // Core operations
   loadGraph: (centerNodeId?: string, depth?: number) => Promise<void>;
   selectNode: (nodeId: string | null) => void;
+  selectRelationship: (relationship: GraphEdge | null) => void;
   updateNode: (nodeId: string, data: WorkItemUpdate) => Promise<void>;
+  updateRelationship: (relationshipId: string, type: string) => Promise<void>;
   createRelationship: (fromId: string, toId: string, type: string) => Promise<void>;
   deleteRelationship: (relationshipId: string) => Promise<void>;
 
@@ -195,6 +203,16 @@ export interface GraphActions {
 
   // Error handling
   clearError: () => void;
+
+  // Connection mode operations
+  /** Toggle connection mode on/off */
+  toggleConnectionMode: () => void;
+  /** Set the source node for connection */
+  setConnectionSource: (nodeId: string | null) => void;
+  /** Set the target node for connection */
+  setConnectionTarget: (nodeId: string | null) => void;
+  /** Create connection with duplicate check */
+  createConnection: (sourceId: string, targetId: string, type: string) => Promise<void>;
 
   // Reset
   reset: () => void;
@@ -269,6 +287,7 @@ const initialState: GraphState = {
   nodes: [],
   edges: [],
   selectedNode: null,
+  selectedRelationship: null,
   viewMode: '2d',
   searchResults: [],
   isSearching: false,
@@ -278,6 +297,9 @@ const initialState: GraphState = {
   isCreatingRelationship: false,
   isLoadingNodeTypes: false,
   error: null,
+  isConnectionMode: false,
+  connectionSource: null,
+  connectionTarget: null,
   centerNodeId: null,
   depth: 2,
   // State synchronization
@@ -454,6 +476,14 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     set({ selectedNode: node ?? null });
   },
 
+  selectRelationship: (relationship: GraphEdge | null): void => {
+    set({ selectedRelationship: relationship });
+    // Deselect node when selecting a relationship
+    if (relationship) {
+      set({ selectedNode: null });
+    }
+  },
+
   updateNode: async (nodeId: string, data: WorkItemUpdate): Promise<void> => {
     set({ isUpdating: true, error: null });
 
@@ -493,6 +523,31 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     }
   },
 
+  updateRelationship: async (relationshipId: string, type: string): Promise<void> => {
+    set({ isUpdating: true, error: null });
+
+    try {
+      await graphService.updateRelationship(relationshipId, type);
+
+      // Update edge in local state
+      set((state) => ({
+        edges: state.edges.map((e) =>
+          e.id === relationshipId ? { ...e, type } : e
+        ),
+        // Update selected relationship if it's the one being updated
+        selectedRelationship: state.selectedRelationship?.id === relationshipId
+          ? { ...state.selectedRelationship, type }
+          : state.selectedRelationship,
+        isUpdating: false,
+      }));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to update relationship';
+      set({ error: message, isUpdating: false });
+      throw error;
+    }
+  },
+
   deleteRelationship: async (relationshipId: string): Promise<void> => {
     set({ isUpdating: true, error: null });
 
@@ -502,6 +557,10 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
       // Remove edge from local state immediately for better UX
       set((state) => ({
         edges: state.edges.filter((e) => e.id !== relationshipId),
+        // Clear selected relationship if it's the one being deleted
+        selectedRelationship: state.selectedRelationship?.id === relationshipId
+          ? null
+          : state.selectedRelationship,
         isUpdating: false,
       }));
     } catch (error) {
@@ -618,6 +677,83 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     
     // Load the graph centered on the selected node
     await get().loadGraph(result.id);
+  },
+
+  // ============================================================================
+  // Connection Mode Methods
+  // ============================================================================
+
+  /**
+   * Toggle connection mode on/off
+   * Resets connection state when toggling off
+   */
+  toggleConnectionMode: (): void => {
+    set((state) => ({
+      isConnectionMode: !state.isConnectionMode,
+      connectionSource: !state.isConnectionMode ? null : state.connectionSource,
+      connectionTarget: null,
+      error: null,
+    }));
+  },
+
+  /**
+   * Set the source node for connection
+   * First node selected in connection mode
+   */
+  setConnectionSource: (nodeId: string | null): void => {
+    set({ connectionSource: nodeId, connectionTarget: null, error: null });
+  },
+
+  /**
+   * Set the target node for connection
+   * Second node selected in connection mode
+   */
+  setConnectionTarget: (nodeId: string | null): void => {
+    set({ connectionTarget: nodeId, error: null });
+  },
+
+  /**
+   * Create connection with duplicate relationship prevention
+   * Validates that no duplicate relationship exists before creating
+   */
+  createConnection: async (sourceId: string, targetId: string, type: string): Promise<void> => {
+    set({ isCreatingRelationship: true, error: null });
+
+    try {
+      // Check for duplicate relationships
+      const { edges } = get();
+      const duplicateExists = edges.some(
+        (edge) =>
+          edge.source === sourceId &&
+          edge.target === targetId &&
+          edge.type === type
+      );
+
+      if (duplicateExists) {
+        throw new Error(
+          `A relationship of type "${type}" already exists between these nodes`
+        );
+      }
+
+      // Create the relationship
+      await graphService.createRelationship(sourceId, targetId, type);
+
+      // Reload graph to get updated relationships
+      await get().loadGraph();
+
+      // Reset connection mode state
+      set({
+        isCreatingRelationship: false,
+        isConnectionMode: false,
+        connectionSource: null,
+        connectionTarget: null,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to create relationship';
+      set({ error: message, isCreatingRelationship: false });
+      throw error;
+    }
   },
 
   reset: (): void => {

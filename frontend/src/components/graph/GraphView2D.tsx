@@ -38,6 +38,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useGraphStore, type GraphNodeData } from '../../stores/graphStore';
+import type { GraphEdge } from '../../services/graphService';
 import {
   RelationshipTypeDialog,
   type PendingConnection,
@@ -283,6 +284,14 @@ export interface GraphView2DProps {
   onConnectionMade?: (sourceId: string, targetId: string, type: string) => void;
   /** Render prop for toolbar content that needs ReactFlow context (e.g., export button) */
   renderToolbarContent?: () => React.ReactNode;
+  /** Whether connection mode is active */
+  isConnectionMode?: boolean;
+  /** Callback when a node is clicked in connection mode */
+  onNodeClickInConnectionMode?: (nodeId: string) => void;
+  /** Source node ID in connection mode */
+  connectionSource?: string | null;
+  /** Target node ID in connection mode */
+  connectionTarget?: string | null;
 }
 
 /**
@@ -299,6 +308,10 @@ export const GraphView2D: React.FC<GraphView2DProps> = ({
   backgroundVariant = BackgroundVariant.Dots,
   onConnectionMade,
   renderToolbarContent,
+  isConnectionMode = false,
+  onNodeClickInConnectionMode,
+  connectionSource = null,
+  connectionTarget = null,
 }) => {
   return (
     <ReactFlowProvider>
@@ -307,6 +320,18 @@ export const GraphView2D: React.FC<GraphView2DProps> = ({
         style={style}
         showMiniMap={showMiniMap}
         showControls={showControls}
+        showBackground={showBackground}
+        backgroundVariant={backgroundVariant}
+        onConnectionMade={onConnectionMade}
+        renderToolbarContent={renderToolbarContent}
+        isConnectionMode={isConnectionMode}
+        onNodeClickInConnectionMode={onNodeClickInConnectionMode}
+        connectionSource={connectionSource}
+        connectionTarget={connectionTarget}
+      />
+    </ReactFlowProvider>
+  );
+};
         showBackground={showBackground}
         backgroundVariant={backgroundVariant}
         onConnectionMade={onConnectionMade}
@@ -329,10 +354,15 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   backgroundVariant = BackgroundVariant.Dots,
   onConnectionMade,
   renderToolbarContent,
+  isConnectionMode = false,
+  onNodeClickInConnectionMode,
+  connectionSource = null,
+  connectionTarget = null,
 }) => {
   // Get state and actions from graphStore
   const {
     selectNode,
+    selectRelationship,
     createRelationship,
     updateNodePosition,
     setViewport,
@@ -536,15 +566,43 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   // Handle node click (select node)
   const handleNodeClick: NodeMouseHandler<Node<GraphNodeData>> = useCallback(
     (_event, node) => {
-      selectNode(node.id);
+      // If in connection mode, handle node selection for connection
+      if (isConnectionMode && onNodeClickInConnectionMode) {
+        onNodeClickInConnectionMode(node.id);
+      } else {
+        // Normal mode - select node for editing
+        selectNode(node.id);
+      }
     },
-    [selectNode]
+    [isConnectionMode, onNodeClickInConnectionMode, selectNode]
+  );
+
+  // Handle edge click (select relationship)
+  const handleEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      // Find the full edge data from store
+      const fullEdge = storeEdges.find((e) => e.id === edge.id);
+      if (fullEdge) {
+        // Convert react-flow Edge to GraphEdge format
+        const graphEdge: GraphEdge = {
+          id: fullEdge.id,
+          source: fullEdge.source,
+          target: fullEdge.target,
+          type: fullEdge.type || 'default',
+          label: fullEdge.label,
+          properties: fullEdge.data,
+        };
+        selectRelationship(graphEdge);
+      }
+    },
+    [storeEdges, selectRelationship]
   );
 
   // Handle pane click (deselect)
   const handlePaneClick = useCallback(() => {
     selectNode(null);
-  }, [selectNode]);
+    selectRelationship(null);
+  }, [selectNode, selectRelationship]);
 
   // Container styles - ensure explicit dimensions for React Flow
   const containerStyle: React.CSSProperties = {
@@ -574,7 +632,31 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   }
 
   return (
-    <div className={className} style={containerStyle}>
+    <div 
+      className={`${className} ${isConnectionMode ? 'connection-mode-active' : ''}`} 
+      style={containerStyle}
+    >
+      {/* Connection mode indicator */}
+      {isConnectionMode && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 10,
+            padding: '8px 12px',
+            background: '#667eea',
+            color: 'white',
+            borderRadius: '6px',
+            fontSize: '12px',
+            fontWeight: 600,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        >
+          🔗 Connection Mode Active
+        </div>
+      )}
+      
       {/* Toolbar content slot for components that need ReactFlow context */}
       {renderToolbarContent && (
         <div className="graph-toolbar-slot" style={{ position: 'absolute', top: 10, right: 10, zIndex: 10 }}>
@@ -588,6 +670,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onNodeClick={handleNodeClick}
+        onEdgeClick={handleEdgeClick}
         onPaneClick={handlePaneClick}
         onMoveEnd={handleMoveEnd}
         onInit={(instance) => {

@@ -169,6 +169,112 @@ class GraphService:
 
         results = await self.execute_query(query)
         return results[0] if results else {}
+    async def update_relationship(
+        self,
+        relationship_id: str,
+        new_type: str,
+        properties: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """
+        Update a relationship's type and/or properties
+
+        Args:
+            relationship_id: Relationship ID
+            new_type: New relationship type
+            properties: Optional new properties
+
+        Returns:
+            Updated relationship
+        """
+        # First, get the relationship to find source and target
+        query = f"""
+        MATCH ()-[r]->()
+        WHERE id(r) = {relationship_id}
+        RETURN r, startNode(r) as source, endNode(r) as target
+        """
+
+        results = await self.execute_query(query)
+        if not results:
+            raise ValueError(f"Relationship {relationship_id} not found")
+
+        result = results[0]
+        source_id = result.get('source', {}).get('id')
+        target_id = result.get('target', {}).get('id')
+
+        if not source_id or not target_id:
+            raise ValueError(f"Could not determine source/target for relationship {relationship_id}")
+
+        # Delete old relationship and create new one with updated type
+        props_str = self._dict_to_cypher_props(properties) if properties else ""
+
+        query = f"""
+        MATCH (a {{id: '{source_id}'}})-[r]->( b {{id: '{target_id}'}})
+        WHERE id(r) = {relationship_id}
+        DELETE r
+        WITH a, b
+        CREATE (a)-[new_r:{new_type} {props_str}]->(b)
+        RETURN new_r
+        """
+
+        results = await self.execute_query(query)
+        return results[0] if results else {}
+
+    async def delete_relationship(
+        self,
+        relationship_id: str
+    ) -> bool:
+        """
+        Delete a relationship by ID
+
+        Args:
+            relationship_id: Relationship ID to delete
+
+        Returns:
+            True if deleted successfully
+        """
+        query = f"""
+        MATCH ()-[r]->()
+        WHERE id(r) = {relationship_id}
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+
+        results = await self.execute_query(query)
+        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        return deleted_count > 0
+
+    async def get_relationship(
+        self,
+        relationship_id: str
+    ) -> dict[str, Any] | None:
+        """
+        Get a relationship by ID
+
+        Args:
+            relationship_id: Relationship ID
+
+        Returns:
+            Relationship data or None if not found
+        """
+        query = f"""
+        MATCH (source)-[r]->(target)
+        WHERE id(r) = {relationship_id}
+        RETURN r, source.id as source_id, target.id as target_id, type(r) as rel_type
+        """
+
+        results = await self.execute_query(query)
+        if not results:
+            return None
+
+        result = results[0]
+        return {
+            'id': relationship_id,
+            'source': result.get('source_id'),
+            'target': result.get('target_id'),
+            'type': result.get('rel_type'),
+            'properties': result.get('r', {})
+        }
+
 
     async def get_node(self, node_id: str) -> dict[str, Any] | None:
         """Get a node by ID"""

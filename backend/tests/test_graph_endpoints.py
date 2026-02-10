@@ -756,3 +756,394 @@ class TestGraphVisualizationResponseValidation:
 
         finally:
             app.dependency_overrides.clear()
+
+
+
+class TestRelationshipEndpoints:
+    """Test relationship CRUD endpoints"""
+
+    def test_create_relationship_success(self, client, mock_user):
+        """Test successful relationship creation"""
+        mock_service = AsyncMock()
+        mock_service.create_relationship.return_value = {
+            "id": "rel-1",
+            "source": "node-1",
+            "target": "node-2",
+            "type": "DEPENDS_ON",
+            "properties": {}
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.post(
+                "/api/v1/graph/relationships",
+                json={
+                    "source_id": "node-1",
+                    "target_id": "node-2",
+                    "relationship_type": "DEPENDS_ON"
+                }
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+
+            assert data["id"] == "rel-1"
+            assert data["source"] == "node-1"
+            assert data["target"] == "node-2"
+            assert data["type"] == "DEPENDS_ON"
+
+            # Verify service was called correctly
+            mock_service.create_relationship.assert_called_once_with(
+                from_id="node-1",
+                to_id="node-2",
+                rel_type="DEPENDS_ON",
+                properties=None
+            )
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_create_relationship_with_properties(self, client, mock_user):
+        """Test relationship creation with properties"""
+        mock_service = AsyncMock()
+        mock_service.create_relationship.return_value = {
+            "id": "rel-1",
+            "source": "node-1",
+            "target": "node-2",
+            "type": "DEPENDS_ON",
+            "properties": {"weight": 5}
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.post(
+                "/api/v1/graph/relationships",
+                json={
+                    "source_id": "node-1",
+                    "target_id": "node-2",
+                    "relationship_type": "DEPENDS_ON",
+                    "properties": {"weight": 5}
+                }
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+
+            assert data["properties"]["weight"] == 5
+
+            # Verify service was called with properties
+            mock_service.create_relationship.assert_called_once_with(
+                from_id="node-1",
+                to_id="node-2",
+                rel_type="DEPENDS_ON",
+                properties={"weight": 5}
+            )
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_create_relationship_missing_fields(self, client, mock_user):
+        """Test relationship creation with missing required fields"""
+        from app.api import deps
+        from app.db import graph
+
+        mock_service = AsyncMock()
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            # Missing target_id
+            response = client.post(
+                "/api/v1/graph/relationships",
+                json={
+                    "source_id": "node-1",
+                    "relationship_type": "DEPENDS_ON"
+                }
+            )
+
+            assert response.status_code == 400
+            assert "required" in response.json()["detail"].lower()
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_create_relationship_unauthorized(self, client):
+        """Test relationship creation without authentication"""
+        response = client.post(
+            "/api/v1/graph/relationships",
+            json={
+                "source_id": "node-1",
+                "target_id": "node-2",
+                "relationship_type": "DEPENDS_ON"
+            }
+        )
+        assert response.status_code == 401
+
+    def test_update_relationship_success(self, client, mock_user):
+        """Test successful relationship update"""
+        mock_service = AsyncMock()
+        mock_service.get_relationship.return_value = {
+            "id": "rel-1",
+            "source": "node-1",
+            "target": "node-2",
+            "type": "DEPENDS_ON"
+        }
+        mock_service.update_relationship.return_value = {
+            "id": "rel-1",
+            "source": "node-1",
+            "target": "node-2",
+            "type": "TESTED_BY"
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.patch(
+                "/api/v1/graph/relationships/rel-1",
+                json={"type": "TESTED_BY"}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+
+            assert data["id"] == "rel-1"
+            assert data["type"] == "TESTED_BY"
+
+            # Verify service was called correctly
+            mock_service.get_relationship.assert_called_once_with("rel-1")
+            mock_service.update_relationship.assert_called_once_with(
+                relationship_id="rel-1",
+                new_type="TESTED_BY",
+                properties=None
+            )
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_update_relationship_not_found(self, client, mock_user):
+        """Test updating non-existent relationship"""
+        mock_service = AsyncMock()
+        mock_service.get_relationship.return_value = None
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.patch(
+                "/api/v1/graph/relationships/nonexistent",
+                json={"type": "TESTED_BY"}
+            )
+
+            assert response.status_code == 404
+            assert "not found" in response.json()["detail"].lower()
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_update_relationship_missing_type(self, client, mock_user):
+        """Test updating relationship without type"""
+        from app.api import deps
+        from app.db import graph
+
+        mock_service = AsyncMock()
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.patch(
+                "/api/v1/graph/relationships/rel-1",
+                json={}
+            )
+
+            assert response.status_code == 400
+            assert "required" in response.json()["detail"].lower()
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_update_relationship_unauthorized(self, client):
+        """Test relationship update without authentication"""
+        response = client.patch(
+            "/api/v1/graph/relationships/rel-1",
+            json={"type": "TESTED_BY"}
+        )
+        assert response.status_code == 401
+
+    def test_delete_relationship_success(self, client, mock_user):
+        """Test successful relationship deletion"""
+        mock_service = AsyncMock()
+        mock_service.get_relationship.return_value = {
+            "id": "rel-1",
+            "source": "node-1",
+            "target": "node-2",
+            "type": "DEPENDS_ON"
+        }
+        mock_service.delete_relationship.return_value = True
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.delete("/api/v1/graph/relationships/rel-1")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            assert "message" in data
+            assert "deleted successfully" in data["message"].lower()
+
+            # Verify service was called correctly
+            mock_service.get_relationship.assert_called_once_with("rel-1")
+            mock_service.delete_relationship.assert_called_once_with("rel-1")
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_delete_relationship_not_found(self, client, mock_user):
+        """Test deleting non-existent relationship"""
+        mock_service = AsyncMock()
+        mock_service.get_relationship.return_value = None
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.delete("/api/v1/graph/relationships/nonexistent")
+
+            assert response.status_code == 404
+            assert "not found" in response.json()["detail"].lower()
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_delete_relationship_unauthorized(self, client):
+        """Test relationship deletion without authentication"""
+        response = client.delete("/api/v1/graph/relationships/rel-1")
+        assert response.status_code == 401
+
+    def test_delete_relationship_service_error(self, client, mock_user):
+        """Test relationship deletion with service error"""
+        mock_service = AsyncMock()
+        mock_service.get_relationship.return_value = {
+            "id": "rel-1",
+            "source": "node-1",
+            "target": "node-2",
+            "type": "DEPENDS_ON"
+        }
+        mock_service.delete_relationship.return_value = False
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.delete("/api/v1/graph/relationships/rel-1")
+
+            assert response.status_code == 500
+            assert "failed" in response.json()["detail"].lower()
+
+        finally:
+            app.dependency_overrides.clear()
+
+
+class TestGraphSchemaEndpoint:
+    """Test /api/v1/graph/schema endpoint"""
+
+    def test_get_schema_success(self, client, mock_user):
+        """Test successful schema retrieval"""
+        mock_service = AsyncMock()
+        mock_service.initialize_graph_schema.return_value = {
+            "node_types": [
+                "WorkItem", "Project", "Phase", "Workpackage", "Resource",
+                "Company", "Department", "Milestone", "Sprint", "Backlog",
+                "User", "Entity", "Document", "Failure"
+            ],
+            "relationship_types": [
+                "TESTED_BY", "MITIGATES", "DEPENDS_ON", "IMPLEMENTS",
+                "LEADS_TO", "RELATES_TO", "MENTIONED_IN", "REFERENCES",
+                "NEXT_VERSION", "CREATED_BY", "ASSIGNED_TO", "PARENT_OF",
+                "BELONGS_TO", "ALLOCATED_TO", "LINKED_TO_DEPARTMENT",
+                "IN_BACKLOG", "ASSIGNED_TO_SPRINT", "has_risk",
+                "implements", "BLOCKS"
+            ]
+        }
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/schema")
+
+            assert response.status_code == 200
+            data = response.json()
+
+            assert "node_types" in data
+            assert "relationship_types" in data
+
+            # Verify expected node types
+            assert "WorkItem" in data["node_types"]
+            assert "Project" in data["node_types"]
+            assert "User" in data["node_types"]
+
+            # Verify expected relationship types
+            assert "TESTED_BY" in data["relationship_types"]
+            assert "DEPENDS_ON" in data["relationship_types"]
+            assert "IMPLEMENTS" in data["relationship_types"]
+
+        finally:
+            app.dependency_overrides.clear()
+
+    def test_get_schema_unauthorized(self, client):
+        """Test schema retrieval without authentication"""
+        response = client.get("/api/v1/graph/schema")
+        assert response.status_code == 401
+
+    def test_get_schema_service_error(self, client, mock_user):
+        """Test schema retrieval with service error"""
+        mock_service = AsyncMock()
+        mock_service.initialize_graph_schema.side_effect = Exception("Database error")
+
+        from app.api import deps
+        from app.db import graph
+
+        app.dependency_overrides[deps.get_current_user] = lambda: mock_user
+        app.dependency_overrides[graph.get_graph_service] = lambda: mock_service
+
+        try:
+            response = client.get("/api/v1/graph/schema")
+
+            assert response.status_code == 500
+            assert "Failed to retrieve graph schema" in response.json()["detail"]
+
+        finally:
+            app.dependency_overrides.clear()

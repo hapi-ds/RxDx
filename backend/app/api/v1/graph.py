@@ -329,3 +329,156 @@ async def get_graph_schema(
             status_code=500,
             detail=f"Failed to retrieve graph schema: {str(e)}"
         )
+
+
+@router.post("/relationships")
+@require_permission(Permission.WRITE_WORKITEM)
+async def create_relationship(
+    data: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service)
+) -> dict[str, Any]:
+    """
+    Create a new relationship between two nodes
+
+    Args:
+        data: Request body containing:
+            - source_id: Source node ID
+            - target_id: Target node ID
+            - relationship_type: Type of relationship (e.g., DEPENDS_ON, TESTED_BY)
+            - properties: Optional relationship properties
+
+    Returns:
+        Created relationship
+    """
+    try:
+        source_id = data.get('source_id')
+        target_id = data.get('target_id')
+        relationship_type = data.get('relationship_type')
+        properties = data.get('properties')
+
+        if not source_id or not target_id or not relationship_type:
+            raise HTTPException(
+                status_code=400,
+                detail="source_id, target_id, and relationship_type are required"
+            )
+
+        relationship = await graph_service.create_relationship(
+            from_id=source_id,
+            to_id=target_id,
+            rel_type=relationship_type,
+            properties=properties
+        )
+        return relationship
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create relationship: {str(e)}"
+        )
+
+
+@router.patch("/relationships/{relationship_id}")
+@require_permission(Permission.WRITE_WORKITEM)
+async def update_relationship(
+    relationship_id: str,
+    data: dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service)
+) -> dict[str, Any]:
+    """
+    Update a relationship's type
+
+    Args:
+        relationship_id: Relationship ID to update
+        data: Request body containing:
+            - type: New relationship type
+            - properties: Optional new properties
+
+    Returns:
+        Updated relationship
+    """
+    try:
+        new_type = data.get('type')
+        properties = data.get('properties')
+
+        if not new_type:
+            raise HTTPException(
+                status_code=400,
+                detail="type is required"
+            )
+
+        # Check if relationship exists
+        existing = await graph_service.get_relationship(relationship_id)
+        if not existing:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Relationship {relationship_id} not found"
+            )
+
+        # Update the relationship
+        updated = await graph_service.update_relationship(
+            relationship_id=relationship_id,
+            new_type=new_type,
+            properties=properties
+        )
+        return updated
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update relationship: {str(e)}"
+        )
+
+
+@router.delete("/relationships/{relationship_id}")
+@require_permission(Permission.WRITE_WORKITEM)
+async def delete_relationship(
+    relationship_id: str,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service)
+) -> dict[str, str]:
+    """
+    Delete a relationship
+
+    Args:
+        relationship_id: Relationship ID to delete
+
+    Returns:
+        Success message
+    """
+    try:
+        # Check if relationship exists
+        existing = await graph_service.get_relationship(relationship_id)
+        if not existing:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Relationship {relationship_id} not found"
+            )
+
+        # Delete the relationship
+        success = await graph_service.delete_relationship(relationship_id)
+        if not success:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to delete relationship"
+            )
+
+        return {"message": "Relationship deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete relationship: {str(e)}"
+        )

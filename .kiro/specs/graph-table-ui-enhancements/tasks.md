@@ -255,109 +255,109 @@ This implementation plan breaks down the graph and table UI enhancements into di
   - **Property 10: Selection Preservation After Save**
   - **Validates: Requirements 5.10**
 
-- [ ] 13. Implement relationship editing
-  - [~] 13.1 Create RelationshipEditor component
+- [x] 13. Implement relationship editing
+  - [x] 13.1 Create RelationshipEditor component
     - Display relationship details
     - Dropdown for relationship type
     - Delete button with confirmation
     - Property editor
     - _Requirements: 6.1, 6.2, 6.3, 6.5_
   
-  - [~] 13.2 Add relationship selection to graph views
+  - [x] 13.2 Add relationship selection to graph views
     - Make edges clickable in GraphView2D
     - Make edges clickable in GraphView3D
     - Show RelationshipEditor on edge click
     - _Requirements: 6.1_
   
-  - [~] 13.3 Implement relationship update in graphStore
+  - [x] 13.3 Implement relationship update in graphStore
     - Add updateRelationship action
     - Call graphService.updateRelationship()
     - Update edge in local state
     - _Requirements: 6.4, 6.8_
   
-  - [~] 13.4 Implement relationship delete in graphStore
+  - [x] 13.4 Implement relationship delete in graphStore
     - Add deleteRelationship action (already exists, verify)
     - Show confirmation dialog
     - Remove edge from local state
     - _Requirements: 6.5, 6.6, 6.7_
 
-- [~] 13.5 Write unit tests for RelationshipEditor
+- [x] 13.5 Write unit tests for RelationshipEditor
   - Test rendering
   - Test type change
   - Test delete confirmation
   - _Requirements: 6.2, 6.3, 6.5_
 
-- [~] 13.6 Write property test for relationship deletion persistence
+- [x] 13.6 Write property test for relationship deletion persistence
   - **Property 11: Relationship Deletion Persistence**
   - **Validates: Requirements 6.6**
 
-- [ ] 14. Implement relationship creation
-  - [~] 14.1 Create ConnectionMode component
+- [x] 14. Implement relationship creation
+  - [x] 14.1 Create ConnectionMode component
     - Toggle button for connection mode
     - Visual feedback (cursor, highlighting)
     - Two-step node selection
     - Relationship type selector
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
   
-  - [~] 14.2 Integrate ConnectionMode into Graph Explorer
+  - [x] 14.2 Integrate ConnectionMode into Graph Explorer
     - Add to toolbar
     - Handle node selection in connection mode
     - Show relationship type dialog
     - Create relationship on confirmation
     - _Requirements: 7.1, 7.6, 7.7, 7.10_
   
-  - [~] 14.3 Implement connection creation in graphStore
+  - [x] 14.3 Implement connection creation in graphStore
     - Add connection mode state
     - Add createConnection action (already exists, verify)
     - Validate no duplicate relationships
     - Add edge to local state
     - _Requirements: 7.6, 7.7, 7.9_
 
-- [~] 14.4 Write unit tests for ConnectionMode
+- [x] 14.4 Write unit tests for ConnectionMode
   - Test mode toggle
   - Test node selection
   - Test relationship creation
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [~] 14.5 Write property test for duplicate relationship prevention
+- [x] 14.5 Write property test for duplicate relationship prevention
   - **Property 12: Duplicate Relationship Prevention**
   - **Validates: Requirements 7.9**
 
-- [ ] 15. Implement backend relationship endpoints
-  - [~] 15.1 Create PATCH /api/v1/graph/relationships/{id} endpoint
+- [x] 15. Implement backend relationship endpoints
+  - [x] 15.1 Create PATCH /api/v1/graph/relationships/{id} endpoint
     - Accept new relationship type
     - Update relationship in graph database
     - Return updated relationship
     - _Requirements: 6.4_
   
-  - [~] 15.2 Add updateRelationship method to graphService
+  - [x] 15.2 Add updateRelationship method to graphService
     - Call update relationship endpoint
     - Handle errors
     - Return updated relationship
     - _Requirements: 6.4, 6.8_
   
-  - [~] 15.3 Create GET /api/v1/graph/schema endpoint
+  - [x] 15.3 Create GET /api/v1/graph/schema endpoint
     - Return available node types
     - Return available relationship types
     - Cache response
     - _Requirements: 4.2_
   
-  - [~] 15.4 Add getAvailableNodeTypes method to graphService
+  - [x] 15.4 Add getAvailableNodeTypes method to graphService
     - Call schema endpoint
     - Return node types array
     - Fallback to hardcoded list on error
     - _Requirements: 4.2_
 
-- [~] 15.5 Write integration tests for relationship endpoints
+- [x] 15.5 Write integration tests for relationship endpoints
   - Test relationship update
   - Test schema endpoint
   - _Requirements: 6.4, 4.2_
 
-- [~] 15.6 Write property test for referential integrity on node deletion
+- [x] 15.6 Write property test for referential integrity on node deletion
   - **Property 15: Referential Integrity on Node Deletion**
   - **Validates: Requirements 15.3**
 
-- [~] 16. Checkpoint - Verify relationship editing functionality
+- [x] 16. Checkpoint - Verify relationship editing functionality
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 17. Fix and enhance graph search

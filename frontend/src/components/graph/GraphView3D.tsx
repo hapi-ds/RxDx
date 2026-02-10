@@ -26,6 +26,7 @@ import { OrbitControls, Line, Text, QuadraticBezierLine, Cone } from '@react-thr
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { XR, createXRStore } from '@react-three/xr';
 import { useGraphStore, type GraphNodeData } from '../../stores/graphStore';
+import type { GraphEdge } from '../../services/graphService';
 import { useXRSupport, type XRSessionMode, type XRSessionConfig, DEFAULT_XR_CONFIG } from '../../hooks/useXRSupport';
 import { VRButton, ARButton, XRControllers, XRHands, VRInteraction, VoiceCommands, XRFallbackMessage } from '../xr';
 import type { XRUnavailableReason } from '../xr/XRFallbackMessage';
@@ -1493,6 +1494,7 @@ const GraphScene: React.FC<GraphSceneProps> = ({
 }) => {
   const { 
     selectNode, 
+    selectRelationship,
     selectedNode, 
     getFilteredNodes, 
     getFilteredEdges,
@@ -1572,6 +1574,20 @@ const GraphScene: React.FC<GraphSceneProps> = ({
       cameraControlsRef.current.focusOnNode(nodeId);
     }
   }, [selectNode, cameraControlsRef]);
+
+  // Handle edge click (select relationship)
+  const handleEdgeClick = useCallback((edge: Edge) => {
+    // Convert react-three-fiber Edge to GraphEdge format
+    const graphEdge: GraphEdge = {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      type: edge.type || 'default',
+      label: edge.label,
+      properties: edge.data,
+    };
+    selectRelationship(graphEdge);
+  }, [selectRelationship]);
 
   // VR-specific handlers
   const handleVRNodeSelect = useCallback((nodeId: string | null, source: InteractionSource) => {
@@ -1658,6 +1674,7 @@ const GraphScene: React.FC<GraphSceneProps> = ({
             end={targetPos}
             isHovered={hoveredEdge === edge.id}
             onHover={handleEdgeHover}
+            onClick={handleEdgeClick}
           />
         );
       })}
@@ -2173,6 +2190,7 @@ interface Edge3DProps {
   end: THREE.Vector3;
   isHovered: boolean;
   onHover: (edgeId: string | null) => void;
+  onClick?: (edge: Edge) => void;
 }
 
 /**
@@ -2184,6 +2202,7 @@ const Edge3D: React.FC<Edge3DProps> = ({
   end,
   isHovered,
   onHover,
+  onClick,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [localHovered, setLocalHovered] = useState(false);
@@ -2280,6 +2299,13 @@ const Edge3D: React.FC<Edge3DProps> = ({
     document.body.style.cursor = 'auto';
   }, [onHover]);
 
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (onClick) {
+      onClick(edge);
+    }
+  }, [edge, onClick]);
+
   return (
     <group ref={groupRef}>
       {/* Edge line - curved or straight based on style */}
@@ -2298,6 +2324,7 @@ const Edge3D: React.FC<Edge3DProps> = ({
           opacity={effectiveOpacity}
           onPointerOver={handlePointerOver}
           onPointerOut={handlePointerOut}
+          onClick={handleClick}
         />
       ) : (
         <Line
@@ -2315,6 +2342,7 @@ const Edge3D: React.FC<Edge3DProps> = ({
           opacity={effectiveOpacity}
           onPointerOver={handlePointerOver}
           onPointerOut={handlePointerOut}
+          onClick={handleClick}
         />
       )}
 

@@ -657,6 +657,68 @@ class WorkItemService:
         current = await self.get_workitem(workitem_id)
         return [current] if current else []
 
+    async def bulk_update(
+        self,
+        workitem_ids: list[UUID],
+        updates: WorkItemUpdate,
+        current_user: User,
+        change_description: str = "Bulk update"
+    ) -> tuple[list[WorkItemResponse], list[dict[str, Any]]]:
+        """
+        Update multiple WorkItems with the same data
+
+        Args:
+            workitem_ids: List of WorkItem UUIDs to update
+            updates: Update data to apply to all items
+            current_user: User making the updates
+            change_description: Description of changes made
+
+        Returns:
+            Tuple of (successfully updated items, failed items with error messages)
+        """
+        updated_items: list[WorkItemResponse] = []
+        failed_items: list[dict[str, Any]] = []
+
+        for workitem_id in workitem_ids:
+            try:
+                # Check if user has permission to update this workitem
+                workitem_data = await self.graph_service.get_workitem(str(workitem_id))
+                if not workitem_data:
+                    failed_items.append({
+                        "id": workitem_id,
+                        "error": "WorkItem not found"
+                    })
+                    continue
+
+                # Update the workitem
+                updated_item = await self.update_workitem(
+                    workitem_id=workitem_id,
+                    updates=updates,
+                    current_user=current_user,
+                    change_description=change_description
+                )
+
+                if updated_item:
+                    updated_items.append(updated_item)
+                else:
+                    failed_items.append({
+                        "id": workitem_id,
+                        "error": "Update failed"
+                    })
+
+            except ValueError as e:
+                failed_items.append({
+                    "id": workitem_id,
+                    "error": str(e)
+                })
+            except Exception as e:
+                failed_items.append({
+                    "id": workitem_id,
+                    "error": f"Unexpected error: {str(e)}"
+                })
+
+        return updated_items, failed_items
+
     def _graph_data_to_response(self, graph_data: dict[str, Any]) -> WorkItemResponse | None:
         """
         Convert graph database data to WorkItemResponse

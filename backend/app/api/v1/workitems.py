@@ -13,6 +13,9 @@ from app.schemas.workitem import (
     WorkItemCreate,
     WorkItemResponse,
     WorkItemUpdate,
+    BulkUpdateRequest,
+    BulkUpdateResponse,
+    BulkUpdateFailure,
 )
 from app.db.graph import GraphService, get_graph_service
 from app.services.audit_service import AuditService, get_audit_service
@@ -359,6 +362,91 @@ async def delete_workitem(
         raise HTTPException(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting WorkItem: {str(e)}"
+        )
+
+
+@router.patch("/workitems/bulk", response_model=BulkUpdateResponse)
+async def bulk_update_workitems(
+    request: BulkUpdateRequest,
+    change_description: str = Query("Bulk update", description="Description of changes made"),
+    current_user: User = Depends(get_current_user),
+    workitem_service: WorkItemService = Depends(get_workitem_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Bulk update multiple WorkItems with the same data
+
+    Updates multiple WorkItems at once with the same update data.
+    Each item is updated individually, and permissions are checked for each item.
+    Returns both successfully updated items and items that failed to update.
+
+    Args:
+        request: Bulk update request containing IDs and update data
+        change_description: Description of changes made
+        current_user: Authenticated user
+        workitem_service: WorkItem service
+        audit_service: Audit service
+
+    Returns:
+        BulkUpdateResponse with updated items and failures
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to update WorkItems"
+        )
+
+    try:
+        # Perform bulk update
+        updated_items, failed_items = await workitem_service.bulk_update(
+            workitem_ids=request.ids,
+            updates=request.data,
+            current_user=current_user,
+            change_description=change_description
+        )
+
+        # Convert failed items to BulkUpdateFailure objects
+        failures = [
+            BulkUpdateFailure(id=item["id"], error=item["error"])
+            for item in failed_items
+        ]
+
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="BULK_UPDATE",
+            entity_type="WorkItem",
+            entity_id=None,
+            details={
+                "total_requested": len(request.ids),
+                "total_updated": len(updated_items),
+                "total_failed": len(failures),
+                "change_description": change_description,
+                "updated_fields": [
+                    field for field, value in request.data.model_dump(exclude_unset=True).items()
+                    if value is not None
+                ]
+            }
+        )
+
+        return BulkUpdateResponse(
+            updated=updated_items,
+            failed=failures,
+            total_requested=len(request.ids),
+            total_updated=len(updated_items),
+            total_failed=len(failures)
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error performing bulk update: {str(e)}"
         )
 
 

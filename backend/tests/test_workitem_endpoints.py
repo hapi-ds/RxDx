@@ -794,3 +794,379 @@ class TestWorkItemVersionHistoryIntegration:
         # Test comparison endpoint
         response = await client.get(f"/api/v1/workitems/{workitem_id}/compare/1.0/1.1")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+class TestBulkUpdateEndpoint:
+    """Test bulk update WorkItem API endpoint"""
+
+    async def test_bulk_update_success(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+        test_user: User,
+    ):
+        """Test successful bulk update of multiple WorkItems"""
+        # Setup mock workitems
+        workitem_id_1 = str(uuid4())
+        workitem_id_2 = str(uuid4())
+        workitem_id_3 = str(uuid4())
+
+        mock_workitem_1 = {
+            "id": workitem_id_1,
+            "type": "task",
+            "title": "Task 1",
+            "description": "First task",
+            "status": "draft",
+            "priority": 1,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        mock_workitem_2 = {
+            "id": workitem_id_2,
+            "type": "task",
+            "title": "Task 2",
+            "description": "Second task",
+            "status": "draft",
+            "priority": 2,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        mock_workitem_3 = {
+            "id": workitem_id_3,
+            "type": "task",
+            "title": "Task 3",
+            "description": "Third task",
+            "status": "draft",
+            "priority": 3,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        # Mock get_workitem to return existing workitems
+        def mock_get_workitem(workitem_id: str):
+            if workitem_id == workitem_id_1:
+                return mock_workitem_1
+            elif workitem_id == workitem_id_2:
+                return mock_workitem_2
+            elif workitem_id == workitem_id_3:
+                return mock_workitem_3
+            return None
+
+        mock_graph_service.get_workitem.side_effect = mock_get_workitem
+
+        # Mock create_workitem_version to simulate version creation
+        mock_graph_service.create_workitem_version.return_value = None
+        mock_graph_service.create_relationship.return_value = None
+
+        # Bulk update request
+        bulk_update_data = {
+            "ids": [workitem_id_1, workitem_id_2, workitem_id_3],
+            "data": {
+                "status": "active",
+                "priority": 5
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk?change_description=Bulk+status+update",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # Verify response structure
+        assert "updated" in data
+        assert "failed" in data
+        assert "total_requested" in data
+        assert "total_updated" in data
+        assert "total_failed" in data
+
+        # Verify all items were updated successfully
+        assert data["total_requested"] == 3
+        assert data["total_updated"] == 3
+        assert data["total_failed"] == 0
+        assert len(data["updated"]) == 3
+        assert len(data["failed"]) == 0
+
+        # Verify updated items have new version
+        for item in data["updated"]:
+            assert item["version"] == "1.1"
+
+    async def test_bulk_update_partial_failure(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+        test_user: User,
+    ):
+        """Test bulk update with some items failing"""
+        # Setup mock workitems
+        workitem_id_1 = str(uuid4())
+        workitem_id_2 = str(uuid4())  # This one will not be found
+        workitem_id_3 = str(uuid4())
+
+        mock_workitem_1 = {
+            "id": workitem_id_1,
+            "type": "task",
+            "title": "Task 1",
+            "description": "First task",
+            "status": "draft",
+            "priority": 1,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        mock_workitem_3 = {
+            "id": workitem_id_3,
+            "type": "task",
+            "title": "Task 3",
+            "description": "Third task",
+            "status": "draft",
+            "priority": 3,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        # Mock get_workitem to return None for workitem_id_2
+        def mock_get_workitem(workitem_id: str):
+            if workitem_id == workitem_id_1:
+                return mock_workitem_1
+            elif workitem_id == workitem_id_2:
+                return None  # Not found
+            elif workitem_id == workitem_id_3:
+                return mock_workitem_3
+            return None
+
+        mock_graph_service.get_workitem.side_effect = mock_get_workitem
+
+        # Mock create_workitem_version to simulate version creation
+        mock_graph_service.create_workitem_version.return_value = None
+        mock_graph_service.create_relationship.return_value = None
+
+        # Bulk update request
+        bulk_update_data = {
+            "ids": [workitem_id_1, workitem_id_2, workitem_id_3],
+            "data": {
+                "status": "active"
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk?change_description=Bulk+status+update",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # Verify partial success
+        assert data["total_requested"] == 3
+        assert data["total_updated"] == 2
+        assert data["total_failed"] == 1
+        assert len(data["updated"]) == 2
+        assert len(data["failed"]) == 1
+
+        # Verify failed item has error message
+        failed_item = data["failed"][0]
+        assert failed_item["id"] == workitem_id_2
+        assert "not found" in failed_item["error"].lower()
+
+    async def test_bulk_update_unauthorized(
+        self,
+        client: AsyncClient,
+    ):
+        """Test bulk update without authentication"""
+        bulk_update_data = {
+            "ids": [str(uuid4()), str(uuid4())],
+            "data": {
+                "status": "active"
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk",
+            json=bulk_update_data
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    async def test_bulk_update_empty_ids(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+    ):
+        """Test bulk update with empty IDs list"""
+        bulk_update_data = {
+            "ids": [],
+            "data": {
+                "status": "active"
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    async def test_bulk_update_duplicate_ids(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+    ):
+        """Test bulk update with duplicate IDs"""
+        workitem_id = str(uuid4())
+        bulk_update_data = {
+            "ids": [workitem_id, workitem_id],  # Duplicate
+            "data": {
+                "status": "active"
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    async def test_bulk_update_too_many_items(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+    ):
+        """Test bulk update with more than 100 items"""
+        bulk_update_data = {
+            "ids": [str(uuid4()) for _ in range(101)],  # 101 items
+            "data": {
+                "status": "active"
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    async def test_bulk_update_invalid_data(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+    ):
+        """Test bulk update with invalid update data"""
+        bulk_update_data = {
+            "ids": [str(uuid4()), str(uuid4())],
+            "data": {
+                "status": "invalid_status",  # Invalid status
+                "priority": 10  # Invalid priority (must be 1-5)
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+    async def test_bulk_update_permission_check(
+        self,
+        client: AsyncClient,
+        auth_headers: dict,
+        mock_graph_service: AsyncMock,
+        test_user: User,
+    ):
+        """Test that bulk update checks permissions for each item"""
+        # Setup mock workitems
+        workitem_id_1 = str(uuid4())
+        workitem_id_2 = str(uuid4())
+
+        mock_workitem_1 = {
+            "id": workitem_id_1,
+            "type": "task",
+            "title": "Task 1",
+            "description": "First task",
+            "status": "draft",
+            "priority": 1,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        mock_workitem_2 = {
+            "id": workitem_id_2,
+            "type": "task",
+            "title": "Task 2",
+            "description": "Second task",
+            "status": "draft",
+            "priority": 2,
+            "version": "1.0",
+            "created_by": str(test_user.id),
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z",
+            "is_signed": False
+        }
+
+        # Mock get_workitem to return existing workitems
+        def mock_get_workitem(workitem_id: str):
+            if workitem_id == workitem_id_1:
+                return mock_workitem_1
+            elif workitem_id == workitem_id_2:
+                return mock_workitem_2
+            return None
+
+        mock_graph_service.get_workitem.side_effect = mock_get_workitem
+
+        # Mock create_workitem_version to simulate version creation
+        mock_graph_service.create_workitem_version.return_value = None
+        mock_graph_service.create_relationship.return_value = None
+
+        # Bulk update request
+        bulk_update_data = {
+            "ids": [workitem_id_1, workitem_id_2],
+            "data": {
+                "status": "active"
+            }
+        }
+
+        response = await client.patch(
+            "/api/v1/workitems/bulk?change_description=Bulk+status+update",
+            json=bulk_update_data,
+            headers=auth_headers
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # Verify both items were checked (get_workitem called for each)
+        assert mock_graph_service.get_workitem.call_count == 2

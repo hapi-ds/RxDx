@@ -915,3 +915,41 @@ class CommentListResponse(BaseModel):
     page_size: int = Field(..., description="Number of comments per page")
     has_next: bool = Field(..., description="Whether there are more comments")
     has_previous: bool = Field(..., description="Whether there are previous comments")
+
+
+# Bulk Update Schemas
+
+class BulkUpdateRequest(BaseModel):
+    """Schema for bulk update request"""
+
+    ids: list[UUID] = Field(..., min_length=1, description="List of WorkItem IDs to update")
+    data: WorkItemUpdate = Field(..., description="Update data to apply to all items")
+
+    @field_validator("ids")
+    @classmethod
+    def validate_ids(cls, v: list[UUID]) -> list[UUID]:
+        """Validate IDs list is not empty and has no duplicates"""
+        if not v:
+            raise ValueError("IDs list cannot be empty")
+        if len(v) != len(set(v)):
+            raise ValueError("IDs list contains duplicates")
+        if len(v) > 100:
+            raise ValueError("Cannot update more than 100 items at once")
+        return v
+
+
+class BulkUpdateFailure(BaseModel):
+    """Schema for a failed bulk update item"""
+
+    id: UUID = Field(..., description="WorkItem ID that failed to update")
+    error: str = Field(..., description="Error message describing why the update failed")
+
+
+class BulkUpdateResponse(BaseModel):
+    """Schema for bulk update response"""
+
+    updated: list[WorkItemResponse] = Field(..., description="Successfully updated WorkItems")
+    failed: list[BulkUpdateFailure] = Field(..., description="WorkItems that failed to update")
+    total_requested: int = Field(..., description="Total number of items requested for update")
+    total_updated: int = Field(..., description="Number of items successfully updated")
+    total_failed: int = Field(..., description="Number of items that failed to update")

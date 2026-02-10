@@ -132,21 +132,21 @@ This implementation plan breaks down the graph and table UI enhancements into di
   - **Property 19: Table Refresh After Bulk Update**
   - **Validates: Requirements 17.12**
 
-- [ ] 7. Implement backend bulk update endpoint
-  - [~] 7.1 Create PATCH /api/v1/workitems/bulk endpoint
+- [x] 7. Implement backend bulk update endpoint
+  - [x] 7.1 Create PATCH /api/v1/workitems/bulk endpoint
     - Accept array of IDs and update data
     - Validate permissions for each item
     - Update items in database
     - Return updated items and failures
     - _Requirements: 17.8, 17.11_
   
-  - [~] 7.2 Add bulkUpdate method to workitemService
+  - [x] 7.2 Add bulkUpdate method to workitemService
     - Call bulk update endpoint
     - Handle response with updated/failed items
     - Throw errors appropriately
     - _Requirements: 17.8, 17.11_
 
-- [~] 7.3 Write integration tests for bulk update endpoint
+- [x] 7.3 Write integration tests for bulk update endpoint
   - Test successful bulk update
   - Test partial failures
   - Test permission checks

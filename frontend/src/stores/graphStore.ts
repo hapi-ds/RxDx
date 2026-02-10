@@ -35,18 +35,55 @@ export type ViewMode = '2d' | '3d';
 
 /**
  * Node types that can be filtered in the graph view
+ * Includes all graph node types, not just work items
  */
-export type FilterableNodeType = 'requirement' | 'task' | 'test' | 'risk' | 'document';
+export type FilterableNodeType = 
+  | 'requirement' 
+  | 'task' 
+  | 'test' 
+  | 'risk' 
+  | 'document'
+  | 'WorkItem'
+  | 'Project'
+  | 'Phase'
+  | 'Workpackage'
+  | 'Resource'
+  | 'Company'
+  | 'Department'
+  | 'Milestone'
+  | 'Sprint'
+  | 'Backlog'
+  | 'User'
+  | 'Entity'
+  | 'Document'
+  | 'Failure';
 
 /**
  * Filter state for showing/hiding node types
+ * All node types are visible by default
  */
 export interface NodeTypeFilter {
+  // Work item types (lowercase for backward compatibility)
   requirement: boolean;
   task: boolean;
   test: boolean;
   risk: boolean;
   document: boolean;
+  // Graph node types (PascalCase as returned by backend)
+  WorkItem: boolean;
+  Project: boolean;
+  Phase: boolean;
+  Workpackage: boolean;
+  Resource: boolean;
+  Company: boolean;
+  Department: boolean;
+  Milestone: boolean;
+  Sprint: boolean;
+  Backlog: boolean;
+  User: boolean;
+  Entity: boolean;
+  Document: boolean;
+  Failure: boolean;
 }
 
 /**
@@ -109,6 +146,7 @@ export interface GraphState {
   isLoading: boolean;
   isUpdating: boolean;
   isCreatingRelationship: boolean;
+  isLoadingNodeTypes: boolean;
 
   // Error state
   error: string | null;
@@ -124,6 +162,8 @@ export interface GraphState {
   viewport: ViewportState;
   /** Filter state for showing/hiding node types */
   nodeTypeFilter: NodeTypeFilter;
+  /** Available node types from the backend */
+  availableNodeTypes: string[];
   /** Whether a view transition is in progress */
   isViewTransitioning: boolean;
   /** Timestamp of last view mode change */
@@ -176,6 +216,8 @@ export interface GraphActions {
   getFilteredNodes: () => Node<GraphNodeData>[];
   /** Get filtered edges based on filtered nodes */
   getFilteredEdges: () => Edge[];
+  /** Load available node types from backend */
+  loadAvailableNodeTypes: () => Promise<void>;
   /** Mark view transition as starting */
   startViewTransition: () => void;
   /** Mark view transition as complete */
@@ -190,11 +232,27 @@ export type GraphStore = GraphState & GraphActions;
  * Default filter state - all node types visible
  */
 const defaultNodeTypeFilter: NodeTypeFilter = {
+  // Work item types
   requirement: true,
   task: true,
   test: true,
   risk: true,
   document: true,
+  // Graph node types
+  WorkItem: true,
+  Project: true,
+  Phase: true,
+  Workpackage: true,
+  Resource: true,
+  Company: true,
+  Department: true,
+  Milestone: true,
+  Sprint: true,
+  Backlog: true,
+  User: true,
+  Entity: true,
+  Document: true,
+  Failure: true,
 };
 
 /**
@@ -218,6 +276,7 @@ const initialState: GraphState = {
   isLoading: false,
   isUpdating: false,
   isCreatingRelationship: false,
+  isLoadingNodeTypes: false,
   error: null,
   centerNodeId: null,
   depth: 2,
@@ -225,6 +284,7 @@ const initialState: GraphState = {
   nodePositions: new Map(),
   viewport: { ...defaultViewport },
   nodeTypeFilter: { ...defaultNodeTypeFilter },
+  availableNodeTypes: [],
   isViewTransitioning: false,
   lastViewModeChange: 0,
 };
@@ -460,6 +520,8 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     set({ isViewTransitioning: true });
 
     // Synchronize positions before switching
+    // Note: Filter state (nodeTypeFilter) is automatically preserved
+    // during view transitions as it's part of the store state
     if (currentMode === '2d' && mode === '3d') {
       // Switching from 2D to 3D - sync 2D positions to 3D
       get().syncPositions2Dto3D();
@@ -697,15 +759,31 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
   /**
    * Get filtered nodes based on current filter state
    * Returns only nodes whose types are enabled in the filter
+   * Handles both work item types (lowercase) and graph node types (PascalCase)
    */
   getFilteredNodes: (): Node<GraphNodeData>[] => {
     const { nodes, nodeTypeFilter } = get();
     return nodes.filter((node) => {
       const nodeType = (node.data?.type || node.type || 'default') as string;
-      // Check if this node type is in the filter and enabled
+      
+      // Check if this node type is in the filter
       if (nodeType in nodeTypeFilter) {
         return nodeTypeFilter[nodeType as FilterableNodeType];
       }
+      
+      // For WorkItem nodes, also check the work item subtype
+      // Backend may return nodes with type "WorkItem" and properties.type = "requirement"
+      if (nodeType === 'WorkItem' || nodeType === 'workitem') {
+        const workItemType = node.data?.properties?.type as string | undefined;
+        if (workItemType && workItemType in nodeTypeFilter) {
+          return nodeTypeFilter[workItemType as FilterableNodeType];
+        }
+        // If WorkItem filter exists, use it
+        if ('WorkItem' in nodeTypeFilter) {
+          return nodeTypeFilter.WorkItem;
+        }
+      }
+      
       // Show nodes with unknown types by default
       return true;
     });
@@ -723,6 +801,23 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     return edges.filter((edge) => 
       visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target)
     );
+  },
+
+  /**
+   * Load available node types from backend
+   * Updates availableNodeTypes state with types from the graph schema
+   */
+  loadAvailableNodeTypes: async (): Promise<void> => {
+    set({ isLoadingNodeTypes: true, error: null });
+
+    try {
+      const nodeTypes = await graphService.getAvailableNodeTypes();
+      set({ availableNodeTypes: nodeTypes, isLoadingNodeTypes: false });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load node types';
+      console.error('[GraphStore] Error loading node types:', error);
+      set({ error: message, isLoadingNodeTypes: false });
+    }
   },
 
   /**

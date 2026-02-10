@@ -13,8 +13,12 @@ import { GraphExport, type ExportFormat } from '../components/graph/GraphExport'
 import { NodeEditor } from '../components/graph/NodeEditor';
 import { ViewModeToggle } from '../components/graph/ViewModeToggle';
 import { GraphEmptyState } from '../components/graph/GraphEmptyState';
+import { NodeTypeFilter } from '../components/common/NodeTypeFilter';
 import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
+import { GRAPH_NODE_TYPE_OPTIONS } from '../types/filters';
+import type { NodeTypeOption } from '../types/filters';
+import { saveFilterState, loadFilterState } from '../utils/sessionStorage';
 
 // Lazy load GraphView3D to prevent WebGL errors from crashing the entire page
 const GraphView3D = React.lazy(() => 
@@ -58,6 +62,8 @@ export function GraphExplorer(): React.ReactElement {
     isSearching,
     searchQuery,
     viewMode,
+    nodeTypeFilter,
+    setNodeTypeFilters,
   } = useGraphStore();
 
   // Check if we have data to display
@@ -74,14 +80,75 @@ export function GraphExplorer(): React.ReactElement {
   // Track if initial load has been done
   const hasLoadedRef = useRef(false);
 
+  // Convert nodeTypeFilter to Set for NodeTypeFilter component
+  const selectedNodeTypes = React.useMemo(() => {
+    const selected = new Set<string>();
+    Object.entries(nodeTypeFilter).forEach(([key, value]) => {
+      if (value) {
+        selected.add(key);
+      }
+    });
+    return selected;
+  }, [nodeTypeFilter]);
+
+  // Get available node types from the predefined options
+  const availableNodeTypes: NodeTypeOption[] = React.useMemo(() => {
+    return GRAPH_NODE_TYPE_OPTIONS;
+  }, []);
+
+  // Handle node type filter change
+  const handleNodeTypeFilterChange = useCallback((selectedTypes: Set<string>) => {
+    // Convert Set to filter object
+    const newFilters: Record<string, boolean> = {};
+    
+    // Set all types to false first
+    GRAPH_NODE_TYPE_OPTIONS.forEach(option => {
+      newFilters[option.value] = false;
+    });
+    
+    // Set selected types to true
+    selectedTypes.forEach(type => {
+      newFilters[type] = true;
+    });
+    
+    setNodeTypeFilters(newFilters);
+  }, [setNodeTypeFilters]);
+
   // Load graph data on mount (only once)
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
+      
+      // Load filter state from session storage
+      const savedFilterState = loadFilterState('graph');
+      if (savedFilterState && savedFilterState.size > 0) {
+        // Convert Set to filter object
+        const newFilters: Record<string, boolean> = {};
+        
+        // Set all types to false first
+        GRAPH_NODE_TYPE_OPTIONS.forEach(option => {
+          newFilters[option.value] = false;
+        });
+        
+        // Set saved types to true
+        savedFilterState.forEach(type => {
+          newFilters[type] = true;
+        });
+        
+        setNodeTypeFilters(newFilters);
+      }
+      
       loadGraph();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only run once on mount
+
+  // Save filter state to session storage when it changes
+  useEffect(() => {
+    if (hasLoadedRef.current) {
+      saveFilterState('graph', selectedNodeTypes);
+    }
+  }, [selectedNodeTypes]);
 
   // Sync local search input with store query when cleared externally
   useEffect(() => {
@@ -252,6 +319,17 @@ export function GraphExplorer(): React.ReactElement {
       {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-left">
+          {/* Node Type Filter */}
+          <NodeTypeFilter
+            selectedTypes={selectedNodeTypes}
+            onChange={handleNodeTypeFilterChange}
+            availableTypes={availableNodeTypes}
+            showWorkItemTypes={true}
+            showCategories={true}
+            layout="compact"
+            className="graph-node-filter"
+          />
+
           {/* Search */}
           <div className="search-container" ref={searchContainerRef}>
             <form onSubmit={handleSearch} className="search-form">
@@ -519,6 +597,10 @@ export function GraphExplorer(): React.ReactElement {
           align-items: center;
           gap: 1rem;
           flex-wrap: wrap;
+        }
+
+        .graph-node-filter {
+          min-width: 200px;
         }
 
         .toolbar-right {

@@ -367,6 +367,39 @@ class GraphService {
       throw new Error(getErrorMessage(error));
     }
   }
+
+  /**
+   * Get available node types from the graph schema
+   * Returns array of node type strings
+   * Falls back to default types if endpoint fails
+   */
+  async getAvailableNodeTypes(): Promise<string[]> {
+    try {
+      const response = await apiClient.get<{ node_types: string[] }>(
+        `${this.basePath}/schema`
+      );
+      return response.data.node_types || [];
+    } catch (error) {
+      console.error('[GraphService] Failed to load node types:', error);
+      // Return default types as fallback
+      return [
+        'WorkItem',
+        'Project',
+        'Phase',
+        'Workpackage',
+        'Resource',
+        'Company',
+        'Department',
+        'Milestone',
+        'Sprint',
+        'Backlog',
+        'User',
+        'Entity',
+        'Document',
+        'Failure'
+      ];
+    }
+  }
 }
 
 export const graphService = new GraphService();

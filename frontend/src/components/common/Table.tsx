@@ -10,7 +10,7 @@ export type SortDirection = 'asc' | 'desc' | null;
 
 export interface Column<T> {
   key: string;
-  header: string;
+  header: string | ReactNode;
   render?: (item: T, index: number) => ReactNode;
   sortable?: boolean;
   width?: string;
@@ -139,7 +139,11 @@ export function Table<T extends object>({
                 onClick={column.sortable ? () => handleSort(column.key) : undefined}
               >
                 <div className="th-content">
-                  <span>{column.header}</span>
+                  {typeof column.header === 'string' ? (
+                    <span>{column.header}</span>
+                  ) : (
+                    column.header
+                  )}
                   {column.sortable && (
                     <span className="sort-indicator">
                       {currentSortKey === column.key && currentSortDirection === 'asc' && '↑'}

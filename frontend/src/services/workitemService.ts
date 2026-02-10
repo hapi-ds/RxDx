@@ -40,6 +40,17 @@ export interface WorkItemUpdate {
   assigned_to?: string;
 }
 
+export interface BulkUpdateData {
+  status?: WorkItemStatus;
+  priority?: number;
+  assigned_to?: string;
+}
+
+export interface BulkUpdateResponse {
+  updated: WorkItem[];
+  failed: Array<{ id: string; error: string }>;
+}
+
 export interface WorkItemListParams {
   type?: WorkItemType;
   status?: WorkItemStatus;
@@ -158,6 +169,18 @@ class WorkItemService {
     try {
       const response = await apiClient.get<WorkItem>(
         `${this.basePath}/${id}/version/${version}`
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(getErrorMessage(error));
+    }
+  }
+
+  async bulkUpdate(ids: string[], data: BulkUpdateData): Promise<BulkUpdateResponse> {
+    try {
+      const response = await apiClient.patch<BulkUpdateResponse>(
+        `${this.basePath}/bulk`,
+        { ids, data }
       );
       return response.data;
     } catch (error) {

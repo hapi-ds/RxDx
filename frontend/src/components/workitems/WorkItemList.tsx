@@ -14,6 +14,12 @@ export interface WorkItemListProps {
   showFilters?: boolean;
   showPagination?: boolean;
   initialFilters?: WorkItemFilters;
+  isBulkEditing?: boolean;
+  selectedIds?: Set<string>;
+  onSelectItem?: (id: string) => void;
+  onDeselectItem?: (id: string) => void;
+  onSelectAll?: () => void;
+  onDeselectAll?: () => void;
 }
 
 const typeOptions = [
@@ -72,6 +78,12 @@ export function WorkItemList({
   showFilters = true,
   showPagination = true,
   initialFilters,
+  isBulkEditing = false,
+  selectedIds = new Set(),
+  onSelectItem,
+  onDeselectItem,
+  onSelectAll,
+  onDeselectAll,
 }: WorkItemListProps): React.ReactElement {
   const items = useWorkItemStore((state) => state.items);
   const total = useWorkItemStore((state) => state.total);
@@ -141,72 +153,148 @@ export function WorkItemList({
 
   const handleRowClick = useCallback(
     (item: WorkItem) => {
-      onItemClick?.(item);
+      if (isBulkEditing) {
+        // In bulk edit mode, clicking row toggles selection
+        if (selectedIds.has(item.id)) {
+          onDeselectItem?.(item.id);
+        } else {
+          onSelectItem?.(item.id);
+        }
+      } else {
+        // Normal mode, open detail view
+        onItemClick?.(item);
+      }
     },
-    [onItemClick]
+    [isBulkEditing, selectedIds, onSelectItem, onDeselectItem, onItemClick]
   );
 
+  const handleCheckboxChange = useCallback(
+    (item: WorkItem, checked: boolean) => {
+      if (checked) {
+        onSelectItem?.(item.id);
+      } else {
+        onDeselectItem?.(item.id);
+      }
+    },
+    [onSelectItem, onDeselectItem]
+  );
+
+  const handleSelectAllChange = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        onSelectAll?.();
+      } else {
+        onDeselectAll?.();
+      }
+    },
+    [onSelectAll, onDeselectAll]
+  );
+
+  const allSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id));
+  const someSelected = items.some((item) => selectedIds.has(item.id)) && !allSelected;
+
   const columns: Column<WorkItem>[] = useMemo(
-    () => [
-      {
-        key: 'type',
-        header: 'Type',
-        width: '100px',
-        render: (item) => (
-          <span className={`badge ${getTypeBadgeClass(item.type)}`}>
-            {item.type}
-          </span>
-        ),
-      },
-      {
-        key: 'title',
-        header: 'Title',
-        sortable: true,
-        render: (item) => (
-          <div className="workitem-title">
-            <span className="title-text">{item.title}</span>
-            {item.is_signed && (
-              <span className="signed-indicator" title="Signed">
-                ✓
-              </span>
-            )}
-          </div>
-        ),
-      },
-      {
-        key: 'status',
-        header: 'Status',
-        width: '120px',
-        sortable: true,
-        render: (item) => (
-          <span className={`badge ${getStatusBadgeClass(item.status)}`}>
-            {item.status}
-          </span>
-        ),
-      },
-      {
-        key: 'version',
-        header: 'Version',
-        width: '80px',
-        align: 'center',
-      },
-      {
-        key: 'priority',
-        header: 'Priority',
-        width: '80px',
-        align: 'center',
-        sortable: true,
-        render: (item) => (item.priority ? `P${item.priority}` : '-'),
-      },
-      {
-        key: 'updated_at',
-        header: 'Updated',
-        width: '150px',
-        sortable: true,
-        render: (item) => new Date(item.updated_at).toLocaleDateString(),
-      },
-    ],
-    []
+    () => {
+      const baseColumns: Column<WorkItem>[] = [
+        {
+          key: 'type',
+          header: 'Type',
+          width: '100px',
+          render: (item) => (
+            <span className={`badge ${getTypeBadgeClass(item.type)}`}>
+              {item.type}
+            </span>
+          ),
+        },
+        {
+          key: 'title',
+          header: 'Title',
+          sortable: true,
+          render: (item) => (
+            <div className="workitem-title">
+              <span className="title-text">{item.title}</span>
+              {item.is_signed && (
+                <span className="signed-indicator" title="Signed">
+                  ✓
+                </span>
+              )}
+            </div>
+          ),
+        },
+        {
+          key: 'status',
+          header: 'Status',
+          width: '120px',
+          sortable: true,
+          render: (item) => (
+            <span className={`badge ${getStatusBadgeClass(item.status)}`}>
+              {item.status}
+            </span>
+          ),
+        },
+        {
+          key: 'version',
+          header: 'Version',
+          width: '80px',
+          align: 'center',
+        },
+        {
+          key: 'priority',
+          header: 'Priority',
+          width: '80px',
+          align: 'center',
+          sortable: true,
+          render: (item) => (item.priority ? `P${item.priority}` : '-'),
+        },
+        {
+          key: 'updated_at',
+          header: 'Updated',
+          width: '150px',
+          sortable: true,
+          render: (item) => new Date(item.updated_at).toLocaleDateString(),
+        },
+      ];
+
+      // Add checkbox column at the beginning when in bulk edit mode
+      if (isBulkEditing) {
+        const checkboxColumn: Column<WorkItem> = {
+          key: 'select',
+          header: (
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(input) => {
+                if (input) {
+                  input.indeterminate = someSelected;
+                }
+              }}
+              onChange={(e) => handleSelectAllChange(e.target.checked)}
+              className="bulk-checkbox"
+              aria-label="Select all items"
+            />
+          ),
+          width: '50px',
+          align: 'center',
+          render: (item) => (
+            <input
+              type="checkbox"
+              checked={selectedIds.has(item.id)}
+              onChange={(e) => {
+                e.stopPropagation();
+                handleCheckboxChange(item, e.target.checked);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="bulk-checkbox"
+              aria-label={`Select ${item.title}`}
+            />
+          ),
+        };
+        return [checkboxColumn, ...baseColumns];
+      }
+
+      return baseColumns;
+    },
+    [isBulkEditing, selectedIds, allSelected, someSelected, handleCheckboxChange, handleSelectAllChange]
   );
 
   const totalPages = Math.ceil(total / limit);
@@ -455,6 +543,18 @@ export function WorkItemList({
         .page-indicator {
           font-size: 0.875rem;
           color: #374151;
+        }
+
+        .bulk-checkbox {
+          cursor: pointer;
+          width: 16px;
+          height: 16px;
+          margin: 0;
+        }
+
+        .bulk-checkbox:disabled {
+          cursor: not-allowed;
+          opacity: 0.5;
         }
       `}</style>
     </div>

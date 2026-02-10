@@ -17,6 +17,7 @@ vi.mock('../services/workitemService', () => ({
     delete: vi.fn(),
     getHistory: vi.fn(),
     getVersion: vi.fn(),
+    bulkUpdate: vi.fn(),
   },
 }));
 
@@ -32,6 +33,36 @@ const mockWorkItem: WorkItem = {
   created_by: 'user-1',
   created_at: '2024-01-01T00:00:00Z',
   updated_at: '2024-01-01T00:00:00Z',
+  is_signed: false,
+};
+
+const mockWorkItem2: WorkItem = {
+  id: 'test-id-2',
+  type: 'task',
+  title: 'Test Task',
+  description: 'Test task description',
+  status: 'draft',
+  priority: 1,
+  assigned_to: 'user-2',
+  version: '1.0',
+  created_by: 'user-2',
+  created_at: '2024-01-02T00:00:00Z',
+  updated_at: '2024-01-02T00:00:00Z',
+  is_signed: false,
+};
+
+const mockWorkItem3: WorkItem = {
+  id: 'test-id-3',
+  type: 'test',
+  title: 'Test Case',
+  description: 'Test case description',
+  status: 'active',
+  priority: 3,
+  assigned_to: 'user-3',
+  version: '1.0',
+  created_by: 'user-3',
+  created_at: '2024-01-03T00:00:00Z',
+  updated_at: '2024-01-03T00:00:00Z',
   is_signed: false,
 };
 
@@ -60,6 +91,9 @@ describe('workitemStore', () => {
       expect(state.skip).toBe(0);
       expect(state.limit).toBe(20);
       expect(state.filters).toEqual({});
+      expect(state.selectedIds).toEqual(new Set());
+      expect(state.isBulkEditing).toBe(false);
+      expect(state.isBulkUpdating).toBe(false);
       expect(state.isLoading).toBe(false);
       expect(state.error).toBeNull();
     });
@@ -321,6 +355,239 @@ describe('workitemStore', () => {
       expect(state.skip).toBe(0);
       expect(state.filters).toEqual({});
       expect(state.error).toBeNull();
+    });
+  });
+
+  describe('bulk edit', () => {
+    describe('toggleBulkEdit', () => {
+      it('should toggle bulk edit mode on', () => {
+        useWorkItemStore.getState().toggleBulkEdit();
+
+        const state = useWorkItemStore.getState();
+        expect(state.isBulkEditing).toBe(true);
+      });
+
+      it('should toggle bulk edit mode off', () => {
+        useWorkItemStore.setState({ isBulkEditing: true });
+
+        useWorkItemStore.getState().toggleBulkEdit();
+
+        const state = useWorkItemStore.getState();
+        expect(state.isBulkEditing).toBe(false);
+      });
+
+      it('should clear selections when toggling', () => {
+        useWorkItemStore.setState({ 
+          selectedIds: new Set(['test-id-1', 'test-id-2']),
+        });
+
+        useWorkItemStore.getState().toggleBulkEdit();
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.size).toBe(0);
+      });
+    });
+
+    describe('selectItemForBulk', () => {
+      it('should select an item', () => {
+        useWorkItemStore.getState().selectItemForBulk('test-id-1');
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.has('test-id-1')).toBe(true);
+      });
+
+      it('should select multiple items', () => {
+        useWorkItemStore.getState().selectItemForBulk('test-id-1');
+        useWorkItemStore.getState().selectItemForBulk('test-id-2');
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.has('test-id-1')).toBe(true);
+        expect(state.selectedIds.has('test-id-2')).toBe(true);
+        expect(state.selectedIds.size).toBe(2);
+      });
+
+      it('should not duplicate selections', () => {
+        useWorkItemStore.getState().selectItemForBulk('test-id-1');
+        useWorkItemStore.getState().selectItemForBulk('test-id-1');
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.size).toBe(1);
+      });
+    });
+
+    describe('deselectItemForBulk', () => {
+      it('should deselect an item', () => {
+        useWorkItemStore.setState({ 
+          selectedIds: new Set(['test-id-1', 'test-id-2']),
+        });
+
+        useWorkItemStore.getState().deselectItemForBulk('test-id-1');
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.has('test-id-1')).toBe(false);
+        expect(state.selectedIds.has('test-id-2')).toBe(true);
+        expect(state.selectedIds.size).toBe(1);
+      });
+
+      it('should handle deselecting non-existent item', () => {
+        useWorkItemStore.setState({ 
+          selectedIds: new Set(['test-id-1']),
+        });
+
+        useWorkItemStore.getState().deselectItemForBulk('test-id-2');
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.size).toBe(1);
+      });
+    });
+
+    describe('selectAll', () => {
+      it('should select all items', () => {
+        useWorkItemStore.setState({ 
+          items: [mockWorkItem, mockWorkItem2, mockWorkItem3],
+        });
+
+        useWorkItemStore.getState().selectAll();
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.size).toBe(3);
+        expect(state.selectedIds.has('test-id-1')).toBe(true);
+        expect(state.selectedIds.has('test-id-2')).toBe(true);
+        expect(state.selectedIds.has('test-id-3')).toBe(true);
+      });
+
+      it('should handle empty items list', () => {
+        useWorkItemStore.setState({ items: [] });
+
+        useWorkItemStore.getState().selectAll();
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.size).toBe(0);
+      });
+    });
+
+    describe('deselectAll', () => {
+      it('should deselect all items', () => {
+        useWorkItemStore.setState({ 
+          selectedIds: new Set(['test-id-1', 'test-id-2', 'test-id-3']),
+        });
+
+        useWorkItemStore.getState().deselectAll();
+
+        const state = useWorkItemStore.getState();
+        expect(state.selectedIds.size).toBe(0);
+      });
+    });
+
+    describe('bulkUpdate', () => {
+      it('should bulk update items successfully', async () => {
+        const updatedItem1 = { ...mockWorkItem, status: 'active' as const };
+        const updatedItem2 = { ...mockWorkItem2, status: 'active' as const };
+
+        vi.mocked(workitemService.bulkUpdate).mockResolvedValue({
+          updated: [updatedItem1, updatedItem2],
+          failed: [],
+        });
+
+        useWorkItemStore.setState({ 
+          items: [mockWorkItem, mockWorkItem2, mockWorkItem3],
+          selectedIds: new Set(['test-id-1', 'test-id-2']),
+          isBulkEditing: true,
+        });
+
+        await useWorkItemStore.getState().bulkUpdate({ status: 'active' });
+
+        const state = useWorkItemStore.getState();
+        expect(state.items[0].status).toBe('active');
+        expect(state.items[1].status).toBe('active');
+        expect(state.items[2].status).toBe('active'); // unchanged
+        expect(state.isBulkUpdating).toBe(false);
+        expect(state.isBulkEditing).toBe(false);
+        expect(state.selectedIds.size).toBe(0);
+      });
+
+      it('should handle partial failures', async () => {
+        const updatedItem1 = { ...mockWorkItem, status: 'active' as const };
+
+        vi.mocked(workitemService.bulkUpdate).mockResolvedValue({
+          updated: [updatedItem1],
+          failed: [{ id: 'test-id-2', error: 'Permission denied' }],
+        });
+
+        useWorkItemStore.setState({ 
+          items: [mockWorkItem, mockWorkItem2],
+          selectedIds: new Set(['test-id-1', 'test-id-2']),
+        });
+
+        await useWorkItemStore.getState().bulkUpdate({ status: 'active' });
+
+        const state = useWorkItemStore.getState();
+        expect(state.items[0].status).toBe('active');
+        expect(state.error).toContain('1 success');
+        expect(state.error).toContain('1 failure');
+      });
+
+      it('should handle no items selected', async () => {
+        useWorkItemStore.setState({ 
+          items: [mockWorkItem],
+          selectedIds: new Set(),
+        });
+
+        await useWorkItemStore.getState().bulkUpdate({ status: 'active' });
+
+        const state = useWorkItemStore.getState();
+        expect(state.error).toBe('No items selected for bulk update');
+        expect(workitemService.bulkUpdate).not.toHaveBeenCalled();
+      });
+
+      it('should handle bulk update error', async () => {
+        vi.mocked(workitemService.bulkUpdate).mockRejectedValue(
+          new Error('Network error')
+        );
+
+        useWorkItemStore.setState({ 
+          items: [mockWorkItem, mockWorkItem2],
+          selectedIds: new Set(['test-id-1', 'test-id-2']),
+        });
+
+        await expect(
+          useWorkItemStore.getState().bulkUpdate({ status: 'active' })
+        ).rejects.toThrow('Network error');
+
+        const state = useWorkItemStore.getState();
+        expect(state.error).toBe('Network error');
+        expect(state.isBulkUpdating).toBe(false);
+      });
+
+      it('should update multiple fields', async () => {
+        const updatedItem1 = { 
+          ...mockWorkItem, 
+          status: 'completed' as const,
+          priority: 5,
+          assigned_to: 'new-user',
+        };
+
+        vi.mocked(workitemService.bulkUpdate).mockResolvedValue({
+          updated: [updatedItem1],
+          failed: [],
+        });
+
+        useWorkItemStore.setState({ 
+          items: [mockWorkItem],
+          selectedIds: new Set(['test-id-1']),
+        });
+
+        await useWorkItemStore.getState().bulkUpdate({ 
+          status: 'completed',
+          priority: 5,
+          assigned_to: 'new-user',
+        });
+
+        const state = useWorkItemStore.getState();
+        expect(state.items[0].status).toBe('completed');
+        expect(state.items[0].priority).toBe(5);
+        expect(state.items[0].assigned_to).toBe('new-user');
+      });
     });
   });
 });

@@ -77,58 +77,58 @@ This implementation plan breaks down the graph and table UI enhancements into di
 - [x] 4. Checkpoint - Verify Table page functionality
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Extend workitemStore for bulk editing
-  - [~] 5.1 Add bulk edit state to workitemStore
+- [x] 5. Extend workitemStore for bulk editing
+  - [x] 5.1 Add bulk edit state to workitemStore
     - Add selectedIds Set
     - Add isBulkEditing boolean
     - Add isBulkUpdating boolean
     - _Requirements: 17.1, 17.2_
   
-  - [~] 5.2 Implement bulk edit actions in workitemStore
+  - [x] 5.2 Implement bulk edit actions in workitemStore
     - toggleBulkEdit()
     - selectItem() / deselectItem()
     - selectAll() / deselectAll()
     - bulkUpdate()
     - _Requirements: 17.2, 17.3, 17.4_
 
-- [~] 5.3 Write unit tests for bulk edit store actions
+- [x] 5.3 Write unit tests for bulk edit store actions
   - Test selection state management
   - Test bulk update logic
   - _Requirements: 17.2, 17.3, 17.4_
 
-- [ ] 6. Implement bulk edit UI components
-  - [~] 6.1 Create BulkEditModal component
+- [x] 6. Implement bulk edit UI components
+  - [x] 6.1 Create BulkEditModal component
     - Form with status, priority, assigned_to fields
     - Field enable/disable checkboxes
     - Validation logic
     - Progress indicator
     - _Requirements: 17.5, 17.6, 17.7, 17.9_
   
-  - [~] 6.2 Add bulk edit mode to Table page
+  - [x] 6.2 Add bulk edit mode to Table page
     - Add "Bulk Edit" toggle button
     - Add checkbox column to WorkItemList
     - Add "Select All" checkbox to table header
     - Show "Bulk Edit" button when items selected
     - _Requirements: 17.1, 17.2, 17.3, 17.4_
   
-  - [~] 6.3 Wire bulk edit modal to Table page
+  - [x] 6.3 Wire bulk edit modal to Table page
     - Open modal on "Bulk Edit" button click
     - Pass selected IDs to modal
     - Handle success/cancel callbacks
     - Refresh table after update
     - _Requirements: 17.5, 17.10, 17.12, 17.13_
 
-- [~] 6.4 Write unit tests for BulkEditModal
+- [x] 6.4 Write unit tests for BulkEditModal
   - Test form validation
   - Test field enable/disable
   - Test submission handling
   - _Requirements: 17.6, 17.7_
 
-- [~] 6.5 Write property test for bulk update consistency
+- [x] 6.5 Write property test for bulk update consistency
   - **Property 18: Bulk Update Consistency**
   - **Validates: Requirements 17.8**
 
-- [~] 6.6 Write property test for table refresh after bulk update
+- [x] 6.6 Write property test for table refresh after bulk update
   - **Property 19: Table Refresh After Bulk Update**
   - **Validates: Requirements 17.12**
 

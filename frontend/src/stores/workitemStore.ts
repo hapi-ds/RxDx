@@ -13,6 +13,7 @@ import {
   type WorkItemType,
   type WorkItemStatus,
   type VersionHistoryItem,
+  type BulkUpdateData,
 } from '../services/workitemService';
 
 export interface WorkItemFilters {
@@ -36,6 +37,11 @@ export interface WorkItemState {
   
   // Filters
   filters: WorkItemFilters;
+  
+  // Bulk edit state
+  selectedIds: Set<string>;
+  isBulkEditing: boolean;
+  isBulkUpdating: boolean;
   
   // Loading states
   isLoading: boolean;
@@ -64,6 +70,14 @@ export interface WorkItemActions {
   selectItem: (item: WorkItem | null) => void;
   clearSelection: () => void;
   
+  // Bulk edit operations
+  toggleBulkEdit: () => void;
+  selectItemForBulk: (id: string) => void;
+  deselectItemForBulk: (id: string) => void;
+  selectAll: () => void;
+  deselectAll: () => void;
+  bulkUpdate: (data: BulkUpdateData) => Promise<void>;
+  
   // Filters
   setFilters: (filters: WorkItemFilters) => void;
   clearFilters: () => void;
@@ -90,6 +104,9 @@ const initialState: WorkItemState = {
   skip: 0,
   limit: 20,
   filters: {},
+  selectedIds: new Set<string>(),
+  isBulkEditing: false,
+  isBulkUpdating: false,
   isLoading: false,
   isLoadingItem: false,
   isLoadingHistory: false,
@@ -262,6 +279,87 @@ export const useWorkItemStore = create<WorkItemStore>()((set, get) => ({
 
   clearSelection: (): void => {
     set({ selectedItem: null, versionHistory: [] });
+  },
+
+  toggleBulkEdit: (): void => {
+    set((state) => ({
+      isBulkEditing: !state.isBulkEditing,
+      selectedIds: new Set<string>(), // Clear selections when toggling
+    }));
+  },
+
+  selectItemForBulk: (id: string): void => {
+    set((state) => {
+      const newSelectedIds = new Set(state.selectedIds);
+      newSelectedIds.add(id);
+      return { selectedIds: newSelectedIds };
+    });
+  },
+
+  deselectItemForBulk: (id: string): void => {
+    set((state) => {
+      const newSelectedIds = new Set(state.selectedIds);
+      newSelectedIds.delete(id);
+      return { selectedIds: newSelectedIds };
+    });
+  },
+
+  selectAll: (): void => {
+    set((state) => {
+      const allIds = new Set(state.items.map((item) => item.id));
+      return { selectedIds: allIds };
+    });
+  },
+
+  deselectAll: (): void => {
+    set({ selectedIds: new Set<string>() });
+  },
+
+  bulkUpdate: async (data: BulkUpdateData): Promise<void> => {
+    const { selectedIds } = get();
+    
+    if (selectedIds.size === 0) {
+      set({ error: 'No items selected for bulk update' });
+      return;
+    }
+
+    set({ isBulkUpdating: true, error: null });
+
+    try {
+      const ids = Array.from(selectedIds);
+      const response = await workitemService.bulkUpdate(ids, data);
+
+      // Update items in the store with the updated items
+      set((state) => {
+        const updatedItemsMap = new Map(
+          response.updated.map((item) => [item.id, item])
+        );
+
+        const updatedItems = state.items.map((item) =>
+          updatedItemsMap.has(item.id) ? updatedItemsMap.get(item.id)! : item
+        );
+
+        return {
+          items: updatedItems,
+          isBulkUpdating: false,
+          isBulkEditing: false,
+          selectedIds: new Set<string>(),
+        };
+      });
+
+      // If there were failures, set error message
+      if (response.failed.length > 0) {
+        const failedCount = response.failed.length;
+        const successCount = response.updated.length;
+        set({
+          error: `Bulk update completed with ${successCount} success(es) and ${failedCount} failure(s)`,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to bulk update work items';
+      set({ error: message, isBulkUpdating: false });
+      throw error;
+    }
   },
 
   setFilters: (filters: WorkItemFilters): void => {

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { WorkItemList, WorkItemDetail, WorkItemForm, VersionHistory } from '../components/workitems';
+import { WorkItemList, WorkItemDetail, WorkItemForm, VersionHistory, BulkEditModal } from '../components/workitems';
 import { Modal, ConfirmModal, Button, NodeTypeFilter } from '../components/common';
 import { useWorkItemStore } from '../stores/workitemStore';
 import { WORK_ITEM_TYPE_OPTIONS } from '../types/filters';
@@ -53,8 +53,26 @@ export function Table(): React.ReactElement {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<WorkItem | null>(null);
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
   
-  const { deleteItem, isDeleting, fetchItems, filters, setNodeTypeFilter } = useWorkItemStore();
+  const {
+    deleteItem,
+    isDeleting,
+    fetchItems,
+    filters,
+    setNodeTypeFilter,
+    isBulkEditing,
+    selectedIds,
+    toggleBulkEdit,
+    selectItemForBulk,
+    deselectItemForBulk,
+    selectAll,
+    deselectAll,
+    bulkUpdate,
+    isBulkUpdating,
+    error: storeError,
+    clearError,
+  } = useWorkItemStore();
 
   // Load filter state from session storage on mount
   useEffect(() => {
@@ -149,6 +167,24 @@ export function Table(): React.ReactElement {
     setViewMode('detail');
   }, []);
 
+  const handleToggleBulkEdit = useCallback(() => {
+    toggleBulkEdit();
+  }, [toggleBulkEdit]);
+
+  const handleBulkEditClick = useCallback(() => {
+    setShowBulkEditModal(true);
+  }, []);
+
+  const handleBulkEditSuccess = useCallback(() => {
+    setShowBulkEditModal(false);
+    fetchItems();
+  }, [fetchItems]);
+
+  const handleBulkEditCancel = useCallback(() => {
+    setShowBulkEditModal(false);
+    clearError();
+  }, [clearError]);
+
   return (
     <div className="table-page">
       <div className="page-header">
@@ -168,6 +204,24 @@ export function Table(): React.ReactElement {
             layout="compact"
             className="table-node-filter"
           />
+          {viewMode === 'list' && (
+            <>
+              <Button
+                variant={isBulkEditing ? 'primary' : 'secondary'}
+                onClick={handleToggleBulkEdit}
+              >
+                {isBulkEditing ? 'Exit Bulk Edit' : 'Bulk Edit'}
+              </Button>
+              {isBulkEditing && selectedIds.size > 0 && (
+                <Button
+                  variant="primary"
+                  onClick={handleBulkEditClick}
+                >
+                  Edit {selectedIds.size} Item{selectedIds.size !== 1 ? 's' : ''}
+                </Button>
+              )}
+            </>
+          )}
           {viewMode !== 'list' && (
             <Button variant="secondary" onClick={handleBackToList}>
               ← Back to List
@@ -183,6 +237,12 @@ export function Table(): React.ReactElement {
             onCreateClick={handleCreateClick}
             showFilters={true}
             showPagination={true}
+            isBulkEditing={isBulkEditing}
+            selectedIds={selectedIds}
+            onSelectItem={selectItemForBulk}
+            onDeselectItem={deselectItemForBulk}
+            onSelectAll={selectAll}
+            onDeselectAll={deselectAll}
           />
         )}
 
@@ -236,6 +296,17 @@ export function Table(): React.ReactElement {
         variant="danger"
         isLoading={isDeleting}
       />
+
+      {showBulkEditModal && (
+        <BulkEditModal
+          selectedIds={Array.from(selectedIds)}
+          onSuccess={handleBulkEditSuccess}
+          onCancel={handleBulkEditCancel}
+          isUpdating={isBulkUpdating}
+          error={storeError}
+          onBulkUpdate={bulkUpdate}
+        />
+      )}
 
       <style>{`
         .table-page {

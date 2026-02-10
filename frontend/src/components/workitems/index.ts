@@ -25,3 +25,6 @@ export type { RequirementCardProps } from './RequirementCard';
 
 export { CommentSection } from './CommentSection';
 export type { CommentSectionProps, Comment } from './CommentSection';
+
+export { BulkEditModal } from './BulkEditModal';
+export type { BulkEditModalProps } from './BulkEditModal';

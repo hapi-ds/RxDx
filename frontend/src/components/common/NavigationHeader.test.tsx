@@ -19,7 +19,7 @@ const mockUser: User = {
 
 function renderWithRouter(
   ui: React.ReactElement,
-  { initialEntries = ['/requirements'] } = {}
+  { initialEntries = ['/table'] } = {}
 ) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
@@ -57,12 +57,12 @@ describe('NavigationHeader', () => {
   it('applies active state to current route link', () => {
     renderWithRouter(
       <NavigationHeader user={mockUser} onLogout={mockLogout} />,
-      { initialEntries: ['/requirements'] }
+      { initialEntries: ['/table'] }
     );
 
-    const requirementsLink = screen.getByRole('link', { name: /Requirements/ });
-    expect(requirementsLink).toHaveClass('nav-link-active');
-    expect(requirementsLink).toHaveAttribute('aria-current', 'page');
+    const tableLink = screen.getByRole('link', { name: /Table/ });
+    expect(tableLink).toHaveClass('nav-link-active');
+    expect(tableLink).toHaveAttribute('aria-current', 'page');
   });
 
   it('applies active state correctly for each route', () => {

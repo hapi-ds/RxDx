@@ -6,7 +6,7 @@ import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { Login } from './pages/Login';
-import { Requirements } from './pages/Requirements';
+import { Table } from './pages/Table';
 import { TestsPage } from './pages/TestsPage';
 import { RisksPage } from './pages/RisksPage';
 import { SchedulePage } from './pages/SchedulePage';
@@ -142,7 +142,7 @@ function AuthRedirect(): React.ReactElement {
   const { isAuthenticated } = useAuthStore();
   
   if (isAuthenticated) {
-    return <Navigate to="/requirements" replace />;
+    return <Navigate to="/table" replace />;
   }
   
   return <Navigate to="/login" replace />;
@@ -154,17 +154,19 @@ function App(): React.ReactElement {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
-          path="/requirements"
+          path="/table"
           element={
             <AppLayout>
               <ProtectedRoute>
                 <PageErrorBoundary>
-                  <Requirements />
+                  <Table />
                 </PageErrorBoundary>
               </ProtectedRoute>
             </AppLayout>
           }
         />
+        {/* Backward compatibility redirect */}
+        <Route path="/requirements" element={<Navigate to="/table" replace />} />
         <Route
           path="/graph"
           element={

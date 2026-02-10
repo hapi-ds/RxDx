@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { clearFilterState } from '../utils/sessionStorage';
 
 export interface User {
   id: string;
@@ -148,6 +149,9 @@ export const useAuthStore = create<AuthStore>()(
             // Ignore errors on logout
           });
         }
+
+        // Clear filter state from session storage
+        clearFilterState();
 
         set({
           user: null,

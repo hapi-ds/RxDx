@@ -20,6 +20,7 @@ export interface WorkItemFilters {
   status?: WorkItemStatus;
   assignedTo?: string;
   search?: string;
+  nodeTypes?: Set<string>; // Multi-select node type filter
 }
 
 export interface WorkItemState {
@@ -66,6 +67,7 @@ export interface WorkItemActions {
   // Filters
   setFilters: (filters: WorkItemFilters) => void;
   clearFilters: () => void;
+  setNodeTypeFilter: (types: Set<string>) => void; // New method for node type filter
   
   // Pagination
   setPage: (skip: number) => void;
@@ -116,11 +118,32 @@ export const useWorkItemStore = create<WorkItemStore>()((set, get) => ({
         queryParams.assigned_to = filters.assignedTo;
       }
       
+      // Handle nodeTypes filter - if set, use it instead of single type filter
+      if (filters.nodeTypes && filters.nodeTypes.size > 0) {
+        // Convert Set to array and use first type for now
+        // Note: Backend API currently only supports single type filter
+        // This will need backend enhancement for multi-type support
+        const types = Array.from(filters.nodeTypes);
+        if (types.length === 1) {
+          queryParams.type = types[0] as WorkItemType;
+        }
+        // If multiple types selected, don't send type filter (show all)
+        // Backend will need to be enhanced to support multiple types
+      }
+      
       const response = await workitemService.list(queryParams);
       
+      // Client-side filtering for multiple node types until backend supports it
+      let filteredItems = response.items;
+      if (filters.nodeTypes && filters.nodeTypes.size > 0 && filters.nodeTypes.size > 1) {
+        filteredItems = response.items.filter(item => 
+          filters.nodeTypes!.has(item.type)
+        );
+      }
+      
       set({
-        items: response.items,
-        total: response.total,
+        items: filteredItems,
+        total: filteredItems.length, // Adjust total for client-side filtering
         skip: response.skip,
         limit: response.limit,
         isLoading: false,
@@ -247,6 +270,13 @@ export const useWorkItemStore = create<WorkItemStore>()((set, get) => ({
 
   clearFilters: (): void => {
     set({ filters: {}, skip: 0 });
+  },
+
+  setNodeTypeFilter: (types: Set<string>): void => {
+    set((state) => ({
+      filters: { ...state.filters, nodeTypes: types },
+      skip: 0,
+    }));
   },
 
   setPage: (skip: number): void => {

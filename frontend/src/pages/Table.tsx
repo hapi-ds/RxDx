@@ -1,23 +1,25 @@
 /**
- * Requirements page
- * Main page for managing requirements with list, detail, and form views
+ * Table page
+ * Main page for managing all work items with list, detail, and form views
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { WorkItemList, WorkItemDetail, WorkItemForm, VersionHistory } from '../components/workitems';
-import { Modal, ConfirmModal, Button } from '../components/common';
+import { Modal, ConfirmModal, Button, NodeTypeFilter } from '../components/common';
 import { useWorkItemStore } from '../stores/workitemStore';
+import { WORK_ITEM_TYPE_OPTIONS } from '../types/filters';
+import { saveFilterState, loadFilterState } from '../utils/sessionStorage';
 import type { WorkItem } from '../services/workitemService';
 
 type ViewMode = 'list' | 'detail' | 'create' | 'edit' | 'history';
 
-interface EditRequirementModalProps {
+interface EditWorkItemModalProps {
   itemId: string;
   onSuccess: (item: WorkItem) => void;
   onCancel: () => void;
 }
 
-function EditRequirementModal({ itemId, onSuccess, onCancel }: EditRequirementModalProps): React.ReactElement {
+function EditWorkItemModal({ itemId, onSuccess, onCancel }: EditWorkItemModalProps): React.ReactElement {
   const { selectedItem, fetchItem } = useWorkItemStore();
 
   useEffect(() => {
@@ -30,7 +32,7 @@ function EditRequirementModal({ itemId, onSuccess, onCancel }: EditRequirementMo
     <Modal
       isOpen={true}
       onClose={onCancel}
-      title="Edit Requirement"
+      title="Edit Work Item"
       size="lg"
     >
       {selectedItem && selectedItem.id === itemId ? (
@@ -46,13 +48,39 @@ function EditRequirementModal({ itemId, onSuccess, onCancel }: EditRequirementMo
   );
 }
 
-export function Requirements(): React.ReactElement {
+export function Table(): React.ReactElement {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<WorkItem | null>(null);
   
-  const { deleteItem, isDeleting, fetchItems } = useWorkItemStore();
+  const { deleteItem, isDeleting, fetchItems, filters, setNodeTypeFilter } = useWorkItemStore();
+
+  // Load filter state from session storage on mount
+  useEffect(() => {
+    const storedFilters = loadFilterState('table');
+    
+    if (storedFilters && storedFilters.size > 0) {
+      // Restore filter state from session storage
+      setNodeTypeFilter(storedFilters);
+    } else if (!filters.nodeTypes || filters.nodeTypes.size === 0) {
+      // Initialize with all types selected if no stored state
+      const allTypes = new Set(WORK_ITEM_TYPE_OPTIONS.map(opt => opt.value));
+      setNodeTypeFilter(allTypes);
+    }
+  }, []); // Run only on mount
+
+  // Save filter state to session storage whenever it changes
+  useEffect(() => {
+    if (filters.nodeTypes && filters.nodeTypes.size > 0) {
+      saveFilterState('table', filters.nodeTypes);
+    }
+  }, [filters.nodeTypes]);
+
+  // Handle node type filter changes
+  const handleNodeTypeFilterChange = useCallback((selectedTypes: Set<string>) => {
+    setNodeTypeFilter(selectedTypes);
+  }, [setNodeTypeFilter]);
 
   const handleItemClick = useCallback((item: WorkItem) => {
     setSelectedItemId(item.id);
@@ -122,19 +150,30 @@ export function Requirements(): React.ReactElement {
   }, []);
 
   return (
-    <div className="requirements-page">
+    <div className="table-page">
       <div className="page-header">
         <div className="page-title-section">
-          <h1 className="page-title">Requirements</h1>
+          <h1 className="page-title">Table</h1>
           <p className="page-subtitle">
-            Manage project requirements with version control and digital signatures
+            Manage all work items with version control and digital signatures
           </p>
         </div>
-        {viewMode !== 'list' && (
-          <Button variant="secondary" onClick={handleBackToList}>
-            ← Back to List
-          </Button>
-        )}
+        <div className="page-header-actions">
+          <NodeTypeFilter
+            selectedTypes={filters.nodeTypes || new Set()}
+            onChange={handleNodeTypeFilterChange}
+            availableTypes={WORK_ITEM_TYPE_OPTIONS}
+            showWorkItemTypes={true}
+            showCategories={false}
+            layout="compact"
+            className="table-node-filter"
+          />
+          {viewMode !== 'list' && (
+            <Button variant="secondary" onClick={handleBackToList}>
+              ← Back to List
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="page-content">
@@ -142,7 +181,6 @@ export function Requirements(): React.ReactElement {
           <WorkItemList
             onItemClick={handleItemClick}
             onCreateClick={handleCreateClick}
-            initialFilters={{ type: 'requirement' }}
             showFilters={true}
             showPagination={true}
           />
@@ -160,7 +198,7 @@ export function Requirements(): React.ReactElement {
 
         {viewMode === 'create' && (
           <div className="form-container">
-            <h2 className="form-title">Create New Requirement</h2>
+            <h2 className="form-title">Create New Work Item</h2>
             <WorkItemForm
               onSuccess={handleFormSuccess}
               onCancel={handleFormCancel}
@@ -170,7 +208,7 @@ export function Requirements(): React.ReactElement {
         )}
 
         {viewMode === 'edit' && selectedItemId && (
-          <EditRequirementModal
+          <EditWorkItemModal
             itemId={selectedItemId}
             onSuccess={handleFormSuccess}
             onCancel={handleFormCancel}
@@ -191,7 +229,7 @@ export function Requirements(): React.ReactElement {
         isOpen={showDeleteConfirm}
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
-        title="Delete Requirement"
+        title="Delete Work Item"
         message={`Are you sure you want to delete "${itemToDelete?.title}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
@@ -200,7 +238,7 @@ export function Requirements(): React.ReactElement {
       />
 
       <style>{`
-        .requirements-page {
+        .table-page {
           display: flex;
           flex-direction: column;
           height: 100%;
@@ -212,12 +250,24 @@ export function Requirements(): React.ReactElement {
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 1.5rem;
+          gap: 1rem;
         }
 
         .page-title-section {
           display: flex;
           flex-direction: column;
           gap: 0.25rem;
+          flex: 1;
+        }
+
+        .page-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .table-node-filter {
+          min-width: 200px;
         }
 
         .page-title {
@@ -261,9 +311,25 @@ export function Requirements(): React.ReactElement {
           padding: 1.5rem;
           height: calc(100vh - 200px);
         }
+
+        @media (max-width: 768px) {
+          .page-header {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .page-header-actions {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .table-node-filter {
+            width: 100%;
+          }
+        }
       `}</style>
     </div>
   );
 }
 
-export default Requirements;
+export default Table;

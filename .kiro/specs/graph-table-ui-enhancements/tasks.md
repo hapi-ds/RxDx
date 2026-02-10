@@ -23,58 +23,58 @@ This implementation plan breaks down the graph and table UI enhancements into di
   - **Validates: Requirements 3.5, 8.2**
 
 - [ ] 2. Rename Requirements page to Table page
-  - [~] 2.1 Rename Requirements.tsx to Table.tsx
+  - [x] 2.1 Rename Requirements.tsx to Table.tsx
     - Update file name and component name
     - Update all internal references
     - _Requirements: 1.1, 1.2_
   
-  - [~] 2.2 Update routing in App.tsx
+  - [x] 2.2 Update routing in App.tsx
     - Change route from "/requirements" to "/table"
     - Add redirect route for backward compatibility
     - Update navigation links
     - _Requirements: 1.3, 1.4_
   
-  - [~] 2.3 Update NavigationHeader component
+  - [x] 2.3 Update NavigationHeader component
     - Change menu item text from "Requirements" to "Table"
     - Update page title and subtitle
     - _Requirements: 1.1, 1.2, 1.5_
 
-- [~] 2.4 Write unit tests for routing changes
+- [x] 2.4 Write unit tests for routing changes
   - Test "/table" route loads correct component
   - Test "/requirements" redirects to "/table"
   - _Requirements: 1.3, 1.4_
 
-- [~] 2.5 Write property test for backward compatibility redirect
+- [x] 2.5 Write property test for backward compatibility redirect
   - **Property 1: Backward Compatibility Redirect**
   - **Validates: Requirements 1.4**
 
 - [ ] 3. Implement Table page filtering
-  - [~] 3.1 Remove hardcoded type filter from Table page
+  - [x] 3.1 Remove hardcoded type filter from Table page
     - Remove `initialFilters={{ type: 'requirement' }}` from WorkItemList
     - Update default filter state in workitemStore
     - _Requirements: 2.1, 2.2_
   
-  - [~] 3.2 Integrate NodeTypeFilter component into Table page
+  - [x] 3.2 Integrate NodeTypeFilter component into Table page
     - Add NodeTypeFilter to page header
     - Connect to workitemStore filter state
     - Implement filter change handlers
     - _Requirements: 3.1, 3.2, 3.3_
   
-  - [~] 3.3 Implement session storage for Table filters
+  - [x] 3.3 Implement session storage for Table filters
     - Save filter state on change
     - Load filter state on mount
     - Clear on logout
     - _Requirements: 3.5, 8.1, 8.2_
 
-- [~] 3.4 Write property test for default filter shows all types
+- [x] 3.4 Write property test for default filter shows all types
   - **Property 2: Default Filter Shows All Types**
   - **Validates: Requirements 2.1**
 
-- [~] 3.5 Write property test for filter affects visible items
+- [x] 3.5 Write property test for filter affects visible items
   - **Property 3: Filter Affects Visible Items**
   - **Validates: Requirements 3.4**
 
-- [~] 4. Checkpoint - Verify Table page functionality
+- [x] 4. Checkpoint - Verify Table page functionality
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 5. Extend workitemStore for bulk editing

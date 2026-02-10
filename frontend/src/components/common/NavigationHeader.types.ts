@@ -12,7 +12,7 @@ export interface NavigationHeaderProps {
 }
 
 export const navItems: NavItem[] = [
-  { path: '/requirements', label: 'Requirements', icon: '📋' },
+  { path: '/table', label: 'Table', icon: '📋' },
   { path: '/graph', label: 'Graph', icon: '🔗' },
   { path: '/tests', label: 'Tests', icon: '🧪' },
   { path: '/risks/', label: 'Risks', icon: '⚠️' },

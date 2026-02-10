@@ -678,7 +678,8 @@ class WorkItemService:
 
             # Parse UUIDs
             workitem_id = UUID(graph_data["id"])
-            created_by = UUID(graph_data["created_by"])
+            # Handle missing created_by (for legacy data or template imports)
+            created_by = UUID(graph_data["created_by"]) if graph_data.get("created_by") else UUID("00000000-0000-0000-0000-000000000000")
             assigned_to = UUID(graph_data["assigned_to"]) if graph_data.get("assigned_to") else None
 
             return WorkItemResponse(
@@ -696,8 +697,11 @@ class WorkItemService:
                 is_signed=graph_data.get("is_signed", False)
             )
         except (KeyError, ValueError, TypeError) as e:
-            # Log error and return None
+            # Log error with more details for debugging
             print(f"Error converting graph data to WorkItemResponse: {e}")
+            print(f"Graph data keys: {graph_data.keys() if isinstance(graph_data, dict) else 'not a dict'}")
+            print(f"Graph data: {graph_data}")
+            return None
             return None
 
 

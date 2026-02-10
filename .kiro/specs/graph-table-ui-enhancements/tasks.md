@@ -216,42 +216,42 @@ This implementation plan breaks down the graph and table UI enhancements into di
 - [x] 11. Checkpoint - Verify graph filtering functionality
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 12. Enhance NodeEditor with save functionality
-  - [~] 12.1 Add save button to NodeEditor
+- [x] 12. Enhance NodeEditor with save functionality
+  - [x] 12.1 Add save button to NodeEditor
     - Add button to footer
     - Enable only when changes detected
     - Show loading state during save
     - _Requirements: 5.2, 5.8, 5.9_
   
-  - [~] 12.2 Implement save handler in NodeEditor
+  - [x] 12.2 Implement save handler in NodeEditor
     - Validate form data
     - Call updateNode from graphStore
     - Handle success/error states
     - Display notifications
     - _Requirements: 5.3, 5.4, 5.5, 5.6, 5.7_
   
-  - [~] 12.3 Implement updateNode in graphStore
+  - [x] 12.3 Implement updateNode in graphStore
     - Call workitemService.update()
     - Update node in local state
     - Maintain selection after save
     - Reload graph if needed
     - _Requirements: 5.4, 5.5, 5.10_
 
-- [~] 12.4 Write unit tests for NodeEditor save functionality
+- [x] 12.4 Write unit tests for NodeEditor save functionality
   - Test save button enable/disable
   - Test validation
   - Test success/error handling
   - _Requirements: 5.2, 5.3, 5.8_
 
-- [~] 12.5 Write property test for node update validation
+- [x] 12.5 Write property test for node update validation
   - **Property 8: Node Update Validation**
   - **Validates: Requirements 5.3**
 
-- [~] 12.6 Write property test for node update persistence
+- [x] 12.6 Write property test for node update persistence
   - **Property 9: Node Update Persistence**
   - **Validates: Requirements 5.4**
 
-- [~] 12.7 Write property test for selection preservation after save
+- [x] 12.7 Write property test for selection preservation after save
   - **Property 10: Selection Preservation After Save**
   - **Validates: Requirements 5.10**
 

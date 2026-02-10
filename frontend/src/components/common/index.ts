@@ -29,3 +29,6 @@ export type { NavigationHeaderProps, NavItem } from './NavigationHeader.types';
 
 export { PlaceholderPage } from './PlaceholderPage';
 export type { PlaceholderPageProps } from './PlaceholderPage';
+
+export { NodeTypeFilter } from './NodeTypeFilter';
+export type { NodeTypeFilterProps } from './NodeTypeFilter';

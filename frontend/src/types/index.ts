@@ -45,3 +45,18 @@ export interface ApiError {
   detail?: string;
   statusCode: number;
 }
+
+// Re-export filter types
+export type {
+  NodeTypeOption,
+  FilterLayout,
+  NodeTypeCategory,
+  WorkItemType,
+  GraphNodeType,
+} from './filters';
+
+export {
+  WORK_ITEM_TYPE_OPTIONS,
+  GRAPH_NODE_TYPE_OPTIONS,
+  CATEGORY_LABELS,
+} from './filters';

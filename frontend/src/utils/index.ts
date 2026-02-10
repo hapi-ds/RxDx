@@ -7,3 +7,6 @@ export * from './questOptimizations';
 
 // Version management utilities
 export * from './version';
+
+// Session storage utilities
+export * from './sessionStorage';

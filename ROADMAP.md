@@ -1,5 +1,8 @@
 # release 0.0.1
 - already planned, see rxdx tasks
+- rework graph and table view
+- add link "next" between phases
+- rework gantt
 
 # release 0.0.2
 

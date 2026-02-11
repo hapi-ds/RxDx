@@ -11,6 +11,8 @@ Combined with project management - both in parallel **classic (plan-driven)** as
 
 The system is intended as an entry point for SPEC Driven Development. Open source, easy to start with Docker, all results can be exported as simple documents (docx, xlsx, pdf) for use in a paper-based quality management system. Or you can stay in the system and enjoy all the benefits of paperless working.
 
+More on these topics, including short training courses, can be found [here](https://www.hapi.eu.com/blog/development-process/why-your-project-feels-like-herding-cats-and-how-to-fix-it)
+
 ## Scope and Characteristics
 - Management of content, requirements, specifications, tests, tasks, and risks 
 - End-to-end traceability across artifacts (Tracability-Matrix) 

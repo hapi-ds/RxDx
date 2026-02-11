@@ -130,6 +130,11 @@ export interface GraphNodeData extends Record<string, unknown> {
   properties: Record<string, unknown>;
 }
 
+/**
+ * Layout algorithm types
+ */
+export type LayoutAlgorithm = 'force' | 'hierarchical' | 'circular' | 'grid';
+
 export interface GraphState {
   // Data
   nodes: Node<GraphNodeData>[];
@@ -160,6 +165,10 @@ export interface GraphState {
   // Query parameters
   centerNodeId: string | null;
   depth: number;
+
+  // Layout state
+  /** Selected layout algorithm */
+  layoutAlgorithm: LayoutAlgorithm;
 
   // State synchronization between 2D and 3D views
   /** Node position mappings for synchronization between views */
@@ -200,6 +209,10 @@ export interface GraphActions {
   // Query parameters
   setCenterNode: (nodeId: string | null) => void;
   setDepth: (depth: number) => void;
+
+  // Layout operations
+  /** Set the layout algorithm */
+  setLayoutAlgorithm: (algorithm: LayoutAlgorithm) => void;
 
   // Error handling
   clearError: () => void;
@@ -283,6 +296,21 @@ const defaultViewport: ViewportState = {
   panZ: 0,
 };
 
+/**
+ * Load layout algorithm from local storage
+ */
+const loadLayoutAlgorithm = (): LayoutAlgorithm => {
+  try {
+    const stored = localStorage.getItem('graph-layout-algorithm');
+    if (stored && ['force', 'hierarchical', 'circular', 'grid'].includes(stored)) {
+      return stored as LayoutAlgorithm;
+    }
+  } catch (error) {
+    console.error('Failed to load layout algorithm from storage:', error);
+  }
+  return 'force'; // Default
+};
+
 const initialState: GraphState = {
   nodes: [],
   edges: [],
@@ -302,6 +330,8 @@ const initialState: GraphState = {
   connectionTarget: null,
   centerNodeId: null,
   depth: 2,
+  // Layout state
+  layoutAlgorithm: loadLayoutAlgorithm(),
   // State synchronization
   nodePositions: new Map(),
   viewport: { ...defaultViewport },
@@ -634,6 +664,16 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
 
   setDepth: (depth: number): void => {
     set({ depth: Math.max(1, Math.min(depth, 10)) }); // Clamp between 1 and 10
+  },
+
+  setLayoutAlgorithm: (algorithm: LayoutAlgorithm): void => {
+    set({ layoutAlgorithm: algorithm });
+    // Persist to local storage
+    try {
+      localStorage.setItem('graph-layout-algorithm', algorithm);
+    } catch (error) {
+      console.error('Failed to persist layout algorithm:', error);
+    }
   },
 
   clearError: (): void => {

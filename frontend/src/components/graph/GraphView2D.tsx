@@ -12,7 +12,7 @@
  * References: Requirement 16 (Dual Frontend Interface)
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -44,6 +44,7 @@ import {
   type PendingConnection,
   type RelationshipType,
 } from './RelationshipTypeDialog';
+import { LayoutEngine, type LayoutNode, type LayoutEdge } from '../../services/layout/LayoutEngine';
 
 // Node styling constants
 const NODE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -365,6 +366,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     isCreatingRelationship,
     isViewTransitioning,
     error,
+    layoutAlgorithm,
   } = useGraphStore();
 
   // Get filtered nodes and edges for rendering
@@ -385,6 +387,20 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
 
   // Store the React Flow instance
   const [rfInstance, setRfInstance] = React.useState<any>(null);
+
+  // Layout engine instance
+  const layoutEngineRef = useRef<LayoutEngine | null>(null);
+  const [isApplyingLayout, setIsApplyingLayout] = useState(false);
+
+  // Initialize layout engine
+  useEffect(() => {
+    if (!layoutEngineRef.current) {
+      layoutEngineRef.current = new LayoutEngine({
+        animationDuration: 500,
+        preserveSelection: true,
+      });
+    }
+  }, []);
 
   // Sync store nodes/edges to flow nodes/edges when they change
   // Use JSON.stringify for deep comparison to avoid infinite loops
@@ -439,6 +455,85 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
       }, 600);
     }
   }, [rfInstance, flowNodes.length]);
+
+  // Apply layout when algorithm changes
+  useEffect(() => {
+    const applyLayout = async () => {
+      if (!layoutEngineRef.current || !rfInstance || flowNodes.length === 0 || isApplyingLayout) {
+        return;
+      }
+
+      console.log('[GraphView2D] Applying layout:', layoutAlgorithm);
+      setIsApplyingLayout(true);
+
+      try {
+        // Convert flow nodes to layout nodes
+        const layoutNodes: LayoutNode[] = flowNodes.map((node) => ({
+          id: node.id,
+          x: node.position.x,
+          y: node.position.y,
+        }));
+
+        // Convert flow edges to layout edges
+        const layoutEdges: LayoutEdge[] = flowEdges.map((edge) => ({
+          source: edge.source,
+          target: edge.target,
+        }));
+
+        // Get current positions
+        const currentPositions = new Map<string, { x: number; y: number }>();
+        flowNodes.forEach((node) => {
+          currentPositions.set(node.id, { x: node.position.x, y: node.position.y });
+        });
+
+        // Apply layout with animation
+        await layoutEngineRef.current.transitionToLayout(
+          layoutNodes,
+          layoutEdges,
+          currentPositions,
+          { algorithm: layoutAlgorithm },
+          (positions) => {
+            // Update node positions during animation
+            const updatedNodes = flowNodes.map((node) => {
+              const newPos = positions.get(node.id);
+              if (newPos) {
+                return {
+                  ...node,
+                  position: { x: newPos.x, y: newPos.y },
+                };
+              }
+              return node;
+            });
+            setFlowNodes(updatedNodes);
+          }
+        );
+
+        // Update store with final positions
+        const finalPositions = layoutEngineRef.current.calculateLayout(
+          layoutNodes,
+          layoutEdges,
+          { algorithm: layoutAlgorithm }
+        );
+        finalPositions.forEach((pos, nodeId) => {
+          updateNodePosition(nodeId, pos);
+        });
+
+        // Fit view after layout
+        setTimeout(() => {
+          rfInstance.fitView({ padding: 0.2, duration: 300 });
+        }, 100);
+
+        console.log('[GraphView2D] Layout applied successfully');
+      } catch (err) {
+        console.error('[GraphView2D] Failed to apply layout:', err);
+      } finally {
+        setIsApplyingLayout(false);
+      }
+    };
+
+    applyLayout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layoutAlgorithm, rfInstance]);
 
   // State for relationship type dialog
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);

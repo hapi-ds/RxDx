@@ -16,3 +16,4 @@ export {
 } from './RelationshipTypeDialog';
 export { ViewModeToggle, type ViewModeToggleProps } from './ViewModeToggle';
 export { GraphEmptyState, type GraphEmptyStateProps } from './GraphEmptyState';
+export { LayoutSelector, type LayoutSelectorProps } from './LayoutSelector';

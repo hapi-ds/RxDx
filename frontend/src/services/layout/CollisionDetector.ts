@@ -6,7 +6,7 @@
  * Requirements: 1.1, 1.2, 1.3
  */
 
-import { Quadtree, type Point, type Rectangle } from './Quadtree';
+import { Quadtree, type Rectangle } from './Quadtree';
 
 export interface NodeBounds {
   id: string;

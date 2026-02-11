@@ -490,6 +490,42 @@ def create_schedule(data: dict) -> Schedule:
 
 ## Testing Standards
 
+### Test Commands
+
+**Frontend:**
+```bash
+# Run tests once (default - exits automatically)
+npm test
+
+# Run tests in watch mode (stays running, watches for changes)
+npm run test:watch
+
+# Run specific test file
+npm test -- BarnesHutQuadtree.test.ts
+
+# Run tests with UI
+npm run test:ui
+
+# Run tests silently (minimal output)
+npm test -- --silent
+```
+
+**Backend:**
+```bash
+# Run all tests
+cd backend
+uvx pytest
+
+# Run with minimal output
+uvx pytest -q
+
+# Run specific test file
+uvx pytest tests/test_workitem_service.py
+
+# Run with coverage
+uvx pytest --cov=app --cov-report=term-missing
+```
+
 ### Frontend Testing
 
 Test error scenarios:

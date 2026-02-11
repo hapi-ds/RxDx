@@ -9,52 +9,52 @@
   - [x] 1.4 Write unit tests for collision detection algorithm
   - [x] 1.5 Write property test: no overlapping nodes after layout stabilization
 
-- [ ] 2. Enhance force-directed layout with Barnes-Hut optimization
-  - [ ] 2.1 Implement Barnes-Hut quadtree for force calculations
-  - [ ] 2.2 Add automatic activation for graphs with >50 nodes
-  - [ ] 2.3 Implement adaptive cooling schedule based on node movement
-  - [ ] 2.4 Add temperature increase on node drag
-  - [ ] 2.5 Write unit tests for Barnes-Hut optimization
-  - [ ] 2.6 Write property test: Barnes-Hut activation threshold
+- [x] 2. Enhance force-directed layout with Barnes-Hut optimization
+  - [x] 2.1 Implement Barnes-Hut quadtree for force calculations
+  - [x] 2.2 Add automatic activation for graphs with >50 nodes
+  - [x] 2.3 Implement adaptive cooling schedule based on node movement
+  - [x] 2.4 Add temperature increase on node drag
+  - [x] 2.5 Write unit tests for Barnes-Hut optimization
+  - [x] 2.6 Write property test: Barnes-Hut activation threshold
 
-- [ ] 3. Implement hierarchical layout algorithm
-  - [ ] 3.1 Implement Sugiyama framework layer assignment
-  - [ ] 3.2 Implement barycenter heuristic for crossing minimization
-  - [ ] 3.3 Implement coordinate assignment with configurable direction (TB/BT/LR/RL)
-  - [ ] 3.4 Add support for multiple root nodes (forest structures)
-  - [ ] 3.5 Write unit tests for hierarchical layout
-  - [ ] 3.6 Write property test: same-level nodes at same vertical/horizontal position
+- [x] 3. Implement hierarchical layout algorithm
+  - [x] 3.1 Implement Sugiyama framework layer assignment
+  - [x] 3.2 Implement barycenter heuristic for crossing minimization
+  - [x] 3.3 Implement coordinate assignment with configurable direction (TB/BT/LR/RL)
+  - [x] 3.4 Add support for multiple root nodes (forest structures)
+  - [x] 3.5 Write unit tests for hierarchical layout
+  - [x] 3.6 Write property test: same-level nodes at same vertical/horizontal position
 
-- [ ] 4. Implement circular layout algorithm
-  - [ ] 4.1 Implement node sorting by degree
-  - [ ] 4.2 Implement concentric circle placement based on graph distance
-  - [ ] 4.3 Implement angular position optimization to minimize edge crossings
-  - [ ] 4.4 Add configurable radius, start angle, and end angle
-  - [ ] 4.5 Write unit tests for circular layout
-  - [ ] 4.6 Write property test: radial distance proportional to graph distance
+- [x] 4. Implement circular layout algorithm
+  - [x] 4.1 Implement node sorting by degree
+  - [x] 4.2 Implement concentric circle placement based on graph distance
+  - [x] 4.3 Implement angular position optimization to minimize edge crossings
+  - [x] 4.4 Add configurable radius, start angle, and end angle
+  - [x] 4.5 Write unit tests for circular layout
+  - [x] 4.6 Write property test: radial distance proportional to graph distance
 
-- [ ] 5. Implement grid layout algorithm
-  - [ ] 5.1 Calculate optimal grid dimensions (columns = ceil(sqrt(nodeCount)))
-  - [ ] 5.2 Implement node sorting by type and priority
-  - [ ] 5.3 Implement left-to-right, top-to-bottom placement
-  - [ ] 5.4 Add configurable row and column spacing
-  - [ ] 5.5 Write unit tests for grid layout
-  - [ ] 5.6 Write property test: consistent spacing between adjacent nodes
+- [x] 5. Implement grid layout algorithm
+  - [x] 5.1 Calculate optimal grid dimensions (columns = ceil(sqrt(nodeCount)))
+  - [x] 5.2 Implement node sorting by type and priority
+  - [x] 5.3 Implement left-to-right, top-to-bottom placement
+  - [x] 5.4 Add configurable row and column spacing
+  - [x] 5.5 Write unit tests for grid layout
+  - [x] 5.6 Write property test: consistent spacing between adjacent nodes
 
-- [ ] 6. Implement layout transition animations
-  - [ ] 6.1 Create animation system for position transitions
-  - [ ] 6.2 Implement 500ms ease-in-out transitions between layouts
-  - [ ] 6.3 Preserve node selection during layout changes
-  - [ ] 6.4 Write unit tests for animation timing
-  - [ ] 6.5 Write property test: animation duration 500ms ± 50ms
+- [x] 6. Implement layout transition animations
+  - [x] 6.1 Create animation system for position transitions
+  - [x] 6.2 Implement 500ms ease-in-out transitions between layouts
+  - [x] 6.3 Preserve node selection during layout changes
+  - [x] 6.4 Write unit tests for animation timing
+  - [x] 6.5 Write property test: animation duration 500ms ± 50ms
 
-- [ ] 7. Add layout algorithm selector UI
-  - [ ] 7.1 Create layout selector dropdown component
-  - [ ] 7.2 Add icons for each layout type
-  - [ ] 7.3 Integrate with graph store for state management
-  - [ ] 7.4 Persist selected layout in local storage
-  - [ ] 7.5 Write component tests for layout selector
-  - [ ] 7.6 Write property test: layout preference persistence
+- [x] 7. Add layout algorithm selector UI
+  - [x] 7.1 Create layout selector dropdown component
+  - [x] 7.2 Add icons for each layout type
+  - [x] 7.3 Integrate with graph store for state management
+  - [x] 7.4 Persist selected layout in local storage
+  - [x] 7.5 Write component tests for layout selector
+  - [x] 7.6 Write property test: layout preference persistence
 
 ## Phase 2: Custom Node Components
 

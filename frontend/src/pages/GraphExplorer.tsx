@@ -15,6 +15,7 @@ import { RelationshipEditor } from '../components/graph/RelationshipEditor';
 import { ConnectionMode } from '../components/graph/ConnectionMode';
 import { ViewModeToggle } from '../components/graph/ViewModeToggle';
 import { GraphEmptyState } from '../components/graph/GraphEmptyState';
+import { LayoutSelector } from '../components/graph/LayoutSelector';
 import { NodeTypeFilter } from '../components/common/NodeTypeFilter';
 import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
@@ -400,6 +401,13 @@ export function GraphExplorer(): React.ReactElement {
             showCategories={true}
             layout="compact"
             className="graph-node-filter"
+          />
+
+          {/* Layout Algorithm Selector */}
+          <LayoutSelector
+            showLabel={true}
+            showHint={false}
+            className="graph-layout-selector"
           />
 
           {/* Search */}

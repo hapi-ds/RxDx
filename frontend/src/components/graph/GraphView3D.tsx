@@ -1583,7 +1583,7 @@ const GraphScene: React.FC<GraphSceneProps> = ({
       source: edge.source,
       target: edge.target,
       type: edge.type || 'default',
-      label: edge.label,
+      label: typeof edge.label === 'string' ? edge.label : undefined,
       properties: edge.data,
     };
     selectRelationship(graphEdge);

@@ -151,6 +151,13 @@ export function GraphExplorer(): React.ReactElement {
         });
         
         setNodeTypeFilters(newFilters);
+      } else {
+        // No saved state - initialize with all types enabled
+        const newFilters: Record<string, boolean> = {};
+        GRAPH_NODE_TYPE_OPTIONS.forEach(option => {
+          newFilters[option.value] = true;
+        });
+        setNodeTypeFilters(newFilters);
       }
       
       loadGraph();

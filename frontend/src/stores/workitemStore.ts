@@ -137,15 +137,18 @@ export const useWorkItemStore = create<WorkItemStore>()((set, get) => ({
       
       // Handle nodeTypes filter - if set, use it instead of single type filter
       if (filters.nodeTypes && filters.nodeTypes.size > 0) {
-        // Convert Set to array and use first type for now
-        // Note: Backend API currently only supports single type filter
-        // This will need backend enhancement for multi-type support
+        // Convert Set to array
         const types = Array.from(filters.nodeTypes);
         if (types.length === 1) {
+          // Single type - use backend filter
           queryParams.type = types[0] as WorkItemType;
+        } else {
+          // Multiple types - need to fetch more items for client-side filtering
+          // Increase limit to ensure we get enough items of each type
+          // Use a large limit (e.g., 1000) to get all items
+          queryParams.limit = 1000;
+          delete queryParams.type; // Don't filter by type on backend
         }
-        // If multiple types selected, don't send type filter (show all)
-        // Backend will need to be enhanced to support multiple types
       }
       
       const response = await workitemService.list(queryParams);

@@ -332,14 +332,6 @@ export const GraphView2D: React.FC<GraphView2DProps> = ({
     </ReactFlowProvider>
   );
 };
-        showBackground={showBackground}
-        backgroundVariant={backgroundVariant}
-        onConnectionMade={onConnectionMade}
-        renderToolbarContent={renderToolbarContent}
-      />
-    </ReactFlowProvider>
-  );
-};
 
 /**
  * Inner component that has access to ReactFlow context
@@ -356,8 +348,8 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
   renderToolbarContent,
   isConnectionMode = false,
   onNodeClickInConnectionMode,
-  connectionSource = null,
-  connectionTarget = null,
+  connectionSource: _connectionSource = null,
+  connectionTarget: _connectionTarget = null,
 }) => {
   // Get state and actions from graphStore
   const {
@@ -589,7 +581,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
           source: fullEdge.source,
           target: fullEdge.target,
           type: fullEdge.type || 'default',
-          label: fullEdge.label,
+          label: typeof fullEdge.label === 'string' ? fullEdge.label : undefined,
           properties: fullEdge.data,
         };
         selectRelationship(graphEdge);

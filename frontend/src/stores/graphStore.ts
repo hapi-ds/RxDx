@@ -902,26 +902,46 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     return nodes.filter((node) => {
       const nodeType = (node.data?.type || node.type || 'default') as string;
       
-      // Check if this node type is in the filter
+      // Check if this node type is in the filter (exact match)
       if (nodeType in nodeTypeFilter) {
         return nodeTypeFilter[nodeType as FilterableNodeType];
       }
       
+      // Check case-insensitive match (e.g., "project" matches "Project")
+      const filterKeys = Object.keys(nodeTypeFilter);
+      const matchingKey = filterKeys.find(key => key.toLowerCase() === nodeType.toLowerCase());
+      if (matchingKey) {
+        return nodeTypeFilter[matchingKey as FilterableNodeType];
+      }
+      
       // For WorkItem nodes, also check the work item subtype
       // Backend may return nodes with type "WorkItem" and properties.type = "requirement"
-      if (nodeType === 'WorkItem' || nodeType === 'workitem') {
+      if (nodeType.toLowerCase() === 'workitem') {
         const workItemType = node.data?.properties?.type as string | undefined;
-        if (workItemType && workItemType in nodeTypeFilter) {
-          return nodeTypeFilter[workItemType as FilterableNodeType];
+        if (workItemType) {
+          // Check exact match
+          if (workItemType in nodeTypeFilter) {
+            return nodeTypeFilter[workItemType as FilterableNodeType];
+          }
+          // Check case-insensitive match
+          const workItemMatchingKey = filterKeys.find(key => key.toLowerCase() === workItemType.toLowerCase());
+          if (workItemMatchingKey) {
+            return nodeTypeFilter[workItemMatchingKey as FilterableNodeType];
+          }
         }
         // If WorkItem filter exists, use it
         if ('WorkItem' in nodeTypeFilter) {
           return nodeTypeFilter.WorkItem;
         }
+        // Check case-insensitive for WorkItem
+        const workItemKey = filterKeys.find(key => key.toLowerCase() === 'workitem');
+        if (workItemKey) {
+          return nodeTypeFilter[workItemKey as FilterableNodeType];
+        }
       }
       
-      // Show nodes with unknown types by default
-      return true;
+      // Hide nodes with unknown types by default (if not in filter, don't show)
+      return false;
     });
   },
 

@@ -368,13 +368,39 @@ export function GraphExplorer(): React.ReactElement {
   // Get node type display color
   const getNodeTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
+      // Work item types
       requirement: '#3b82f6',
       task: '#10b981',
       test: '#8b5cf6',
       risk: '#ef4444',
       document: '#f59e0b',
+      // Project structure types
+      Project: '#06b6d4',
+      Phase: '#14b8a6',
+      Workpackage: '#84cc16',
+      Milestone: '#ec4899',
+      // Resource types
+      Resource: '#f97316',
+      Company: '#6366f1',
+      Department: '#a855f7',
+      User: '#8b5cf6',
+      // Other types
+      Sprint: '#22c55e',
+      Backlog: '#64748b',
+      Entity: '#78716c',
+      Failure: '#dc2626',
+      WorkItem: '#3b82f6',
     };
-    return colors[type.toLowerCase()] ?? '#6b7280';
+    return colors[type] ?? colors[type.toLowerCase()] ?? '#6b7280';
+  };
+
+  // Format node type for display
+  const formatNodeType = (type: string): string => {
+    // Handle WorkItem subtypes
+    if (['requirement', 'task', 'test', 'risk', 'document'].includes(type.toLowerCase())) {
+      return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+    }
+    return type;
   };
 
   return (
@@ -455,12 +481,17 @@ export function GraphExplorer(): React.ReactElement {
                           <span
                             className="search-result-type-badge"
                             style={{ backgroundColor: getNodeTypeColor(result.type) }}
+                            title={`Type: ${formatNodeType(result.type)}`}
                           >
-                            {result.type}
+                            {formatNodeType(result.type)}
                           </span>
                           <div className="search-result-content">
-                            <span className="search-result-label">{result.label}</span>
-                            <span className="search-result-id">ID: {result.id}</span>
+                            <span className="search-result-label" title={result.label}>
+                              {result.label}
+                            </span>
+                            <span className="search-result-id" title={`Node ID: ${result.id}`}>
+                              ID: {result.id.substring(0, 8)}...
+                            </span>
                           </div>
                         </button>
                       </li>
@@ -468,7 +499,24 @@ export function GraphExplorer(): React.ReactElement {
                   </ul>
                 ) : searchInput.trim() && !isSearching ? (
                   <div className="search-no-results">
-                    No nodes found matching "{searchInput}"
+                    <svg 
+                      width="24" 
+                      height="24" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                      style={{ marginBottom: '0.5rem' }}
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="m21 21-4.35-4.35" />
+                    </svg>
+                    <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>
+                      No results found
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      No nodes match "{searchInput}"
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -845,7 +893,11 @@ export function GraphExplorer(): React.ReactElement {
         }
 
         .search-no-results {
-          padding: 1rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 2rem 1rem;
           text-align: center;
           color: #6b7280;
           font-size: 0.875rem;

@@ -298,21 +298,52 @@ class GraphService {
 
   async search(query: string, limit?: number): Promise<GraphNode[]> {
     try {
+      // Handle null/empty query
+      if (!query || query.trim().length === 0) {
+        console.log('[GraphService] Search called with empty query, returning empty results');
+        return [];
+      }
+
       const queryParams = new URLSearchParams();
-      queryParams.append('query', query);
-      if (limit !== undefined) queryParams.append('limit', limit.toString());
+      queryParams.append('query', query.trim());
+      if (limit !== undefined) {
+        queryParams.append('limit', limit.toString());
+      }
+
+      console.log('[GraphService] Searching for:', query.trim(), 'with limit:', limit);
 
       const response = await apiClient.get<{ results: BackendNode[] }>(
         `${this.basePath}/search?${queryParams.toString()}`
       );
+      
+      // Validate response structure
+      if (!response || !response.data) {
+        console.error('[GraphService] Invalid response structure:', response);
+        return [];
+      }
+
+      if (!response.data.results) {
+        console.error('[GraphService] Response missing results array:', response.data);
+        return [];
+      }
+
+      if (!Array.isArray(response.data.results)) {
+        console.error('[GraphService] Results is not an array:', response.data.results);
+        return [];
+      }
+
+      console.log('[GraphService] Search returned', response.data.results.length, 'results');
       
       // Transform backend nodes to frontend format
       const nodes = response.data.results
         .map(transformBackendNode)
         .filter((node): node is GraphNode => node !== null);
       
+      console.log('[GraphService] Transformed to', nodes.length, 'valid nodes');
+      
       return nodes;
     } catch (error) {
+      console.error('[GraphService] Search error:', error);
       throw new Error(getErrorMessage(error));
     }
   }

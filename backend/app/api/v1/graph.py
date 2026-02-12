@@ -184,7 +184,7 @@ async def search_graph(
     graph_service: GraphService = Depends(get_graph_service)
 ) -> dict[str, Any]:
     """
-    Search nodes in the graph by text content
+    Search nodes in the graph by text content (case-insensitive)
 
     Args:
         query: Text to search for in node titles and descriptions
@@ -195,12 +195,27 @@ async def search_graph(
         Search results with matching nodes
     """
     try:
+        # Validate and sanitize query
+        if not query or not query.strip():
+            return {
+                "query": query,
+                "results": [],
+                "total_found": 0,
+                "truncated": False
+            }
+
+        query_text = query.strip()
+        
+        # Log search request
+        print(f"[GraphAPI] Search request: query='{query_text}', node_types={node_types}, limit={limit}")
+
         # Search WorkItems (most common search case)
         if not node_types or "WorkItem" in node_types:
             workitems = await graph_service.search_workitems(
-                search_text=query,
+                search_text=query_text,
                 limit=limit
             )
+            print(f"[GraphAPI] Found {len(workitems)} workitems")
         else:
             workitems = []
 
@@ -213,30 +228,47 @@ async def search_graph(
                         label=node_type,
                         limit=limit // len(node_types) if len(node_types) > 1 else limit
                     )
-                    # Filter by query text
+                    # Filter by query text (case-insensitive search in title, name, and description)
+                    query_lower = query_text.lower()
                     filtered_nodes = [
                         node for node in nodes
-                        if query.lower() in str(node.get('title', '')).lower() or
-                           query.lower() in str(node.get('name', '')).lower() or
-                           query.lower() in str(node.get('description', '')).lower()
+                        if query_lower in str(node.get('title', '')).lower() or
+                           query_lower in str(node.get('name', '')).lower() or
+                           query_lower in str(node.get('description', '')).lower()
                     ]
                     other_nodes.extend(filtered_nodes)
+                    print(f"[GraphAPI] Found {len(filtered_nodes)} {node_type} nodes")
 
         # Combine results
         all_results = workitems + other_nodes
 
         # Limit total results
-        if len(all_results) > limit:
+        truncated = len(all_results) > limit
+        if truncated:
             all_results = all_results[:limit]
 
+        print(f"[GraphAPI] Returning {len(all_results)} total results (truncated: {truncated})")
+
+        # Return consistent response format
         return {
-            "query": query,
+            "query": query_text,
             "results": all_results,
             "total_found": len(all_results),
-            "truncated": len(workitems + other_nodes) > limit
+            "truncated": truncated
         }
 
+    except ValueError as e:
+        # Handle validation errors
+        print(f"[GraphAPI] Validation error: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid search query: {str(e)}"
+        )
     except Exception as e:
+        # Log and handle unexpected errors
+        print(f"[GraphAPI] Search error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=500,
             detail=f"Search failed: {str(e)}"

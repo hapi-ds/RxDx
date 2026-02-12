@@ -1,6 +1,12 @@
 /**
  * BulkEditModal component
  * Modal for editing multiple work items simultaneously
+ * 
+ * Keyboard Navigation:
+ * - Tab: Navigate through form fields
+ * - Escape: Cancel and close modal
+ * - Enter: Submit form (when focused on submit button)
+ * - Space: Toggle checkboxes
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -70,6 +76,7 @@ export function BulkEditModal({
 
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [touched, setTouched] = useState<Set<keyof FormData>>(new Set());
+  const [announcement, setAnnouncement] = useState<string>('');
 
   // Reset form when modal opens
   useEffect(() => {
@@ -85,6 +92,7 @@ export function BulkEditModal({
     });
     setValidationErrors({});
     setTouched(new Set());
+    setAnnouncement(`Bulk edit modal opened. Editing ${selectedIds.length} work items.`);
   }, [selectedIds]);
 
   const handleFieldChange = useCallback((field: keyof FormData, value: string) => {
@@ -113,6 +121,14 @@ export function BulkEditModal({
         return newErrors;
       });
     }
+    
+    // Announce field enable/disable
+    const fieldNames: Record<keyof FieldEnabled, string> = {
+      status: 'Status',
+      priority: 'Priority',
+      assigned_to: 'Assigned To',
+    };
+    setAnnouncement(`${fieldNames[field]} field ${enabled ? 'enabled' : 'disabled'}.`);
   }, []);
 
   const validateForm = useCallback((): boolean => {
@@ -157,10 +173,13 @@ export function BulkEditModal({
     setTouched(newTouched);
 
     if (!validateForm()) {
+      setAnnouncement('Form validation failed. Please check the fields and try again.');
       return;
     }
 
     try {
+      setAnnouncement(`Updating ${selectedIds.length} work items...`);
+      
       // Build update data with only enabled fields
       const updateData: BulkUpdateData = {};
 
@@ -177,11 +196,22 @@ export function BulkEditModal({
       }
 
       await onBulkUpdate(updateData);
+      setAnnouncement(`Successfully updated ${selectedIds.length} work items.`);
       onSuccess();
     } catch {
+      setAnnouncement('Bulk update failed. Please try again.');
       // Error is handled by parent component
     }
-  }, [formData, fieldEnabled, validateForm, onBulkUpdate, onSuccess]);
+  }, [formData, fieldEnabled, validateForm, onBulkUpdate, onSuccess, selectedIds.length]);
+
+  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Escape to cancel
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  }, [onCancel]);
 
   const hasEnabledFields = fieldEnabled.status || fieldEnabled.priority || fieldEnabled.assigned_to;
 
@@ -192,7 +222,17 @@ export function BulkEditModal({
       title="Bulk Edit Work Items"
       size="md"
     >
-      <form onSubmit={handleSubmit} className="bulk-edit-form">
+      <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="bulk-edit-form">
+        {/* Screen reader announcements */}
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+        >
+          {announcement}
+        </div>
+
         <div className="bulk-edit-info">
           <p>
             Editing <strong>{selectedIds.length}</strong> work item{selectedIds.length !== 1 ? 's' : ''}
@@ -216,12 +256,13 @@ export function BulkEditModal({
 
         <div className="form-fields">
           {/* Status Field */}
-          <div className="field-group">
+          <div className="field-group" role="group" aria-labelledby="status-field-label">
             <div className="field-header">
               <Checkbox
                 checked={fieldEnabled.status}
                 onChange={(e) => handleFieldEnabledChange('status', e.target.checked)}
                 label="Update Status"
+                id="status-field-label"
               />
             </div>
             <Select
@@ -231,16 +272,24 @@ export function BulkEditModal({
               onBlur={() => handleFieldBlur('status')}
               disabled={!fieldEnabled.status}
               error={touched.has('status') ? validationErrors.status : undefined}
+              aria-label="Work item status"
+              aria-describedby={fieldEnabled.status ? 'status-hint' : undefined}
             />
+            {fieldEnabled.status && (
+              <span id="status-hint" className="sr-only">
+                Select the new status for all selected work items
+              </span>
+            )}
           </div>
 
           {/* Priority Field */}
-          <div className="field-group">
+          <div className="field-group" role="group" aria-labelledby="priority-field-label">
             <div className="field-header">
               <Checkbox
                 checked={fieldEnabled.priority}
                 onChange={(e) => handleFieldEnabledChange('priority', e.target.checked)}
                 label="Update Priority"
+                id="priority-field-label"
               />
             </div>
             <Input
@@ -252,16 +301,22 @@ export function BulkEditModal({
               placeholder="1-5"
               error={touched.has('priority') ? validationErrors.priority : undefined}
               hint="Priority from 1 (highest) to 5 (lowest)"
+              aria-label="Work item priority"
+              aria-describedby="priority-hint"
             />
+            <span id="priority-hint" className="sr-only">
+              Enter a priority value between 1 and 5, where 1 is highest priority
+            </span>
           </div>
 
           {/* Assigned To Field */}
-          <div className="field-group">
+          <div className="field-group" role="group" aria-labelledby="assigned-to-field-label">
             <div className="field-header">
               <Checkbox
                 checked={fieldEnabled.assigned_to}
                 onChange={(e) => handleFieldEnabledChange('assigned_to', e.target.checked)}
                 label="Update Assigned To"
+                id="assigned-to-field-label"
               />
             </div>
             <Input
@@ -272,7 +327,12 @@ export function BulkEditModal({
               disabled={!fieldEnabled.assigned_to}
               placeholder="User ID or email"
               error={touched.has('assigned_to') ? validationErrors.assigned_to : undefined}
+              aria-label="Assigned to user"
+              aria-describedby="assigned-to-hint"
             />
+            <span id="assigned-to-hint" className="sr-only">
+              Enter the user ID or email address to assign the work items to
+            </span>
           </div>
         </div>
 
@@ -307,6 +367,21 @@ export function BulkEditModal({
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
+          max-height: 70vh;
+          overflow-y: auto;
+        }
+
+        /* Screen reader only content */
+        .sr-only {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          padding: 0;
+          margin: -1px;
+          overflow: hidden;
+          clip: rect(0, 0, 0, 0);
+          white-space: nowrap;
+          border-width: 0;
         }
 
         .bulk-edit-info {
@@ -361,10 +436,12 @@ export function BulkEditModal({
           gap: 0.75rem;
           padding-top: 0.5rem;
           border-top: 1px solid #e5e7eb;
+          margin-top: auto;
         }
 
         .form-actions button {
           min-width: 100px;
+          min-height: 40px;
         }
 
         .form-actions button[type="submit"] {
@@ -374,13 +451,82 @@ export function BulkEditModal({
           justify-content: center;
         }
 
-        @media (max-width: 640px) {
+        /* Mobile responsive styles (< 768px) */
+        @media (max-width: 767px) {
+          .bulk-edit-form {
+            gap: 1.25rem;
+            max-height: 80vh;
+          }
+
+          .bulk-edit-info {
+            padding: 0.875rem;
+          }
+
+          .bulk-edit-info p {
+            font-size: 1rem;
+          }
+
+          .error-message {
+            padding: 0.875rem 1rem;
+            font-size: 1rem;
+          }
+
+          .form-fields {
+            gap: 1.5rem;
+          }
+
+          .field-group {
+            gap: 0.75rem;
+          }
+
+          .field-header label {
+            font-size: 1rem;
+          }
+
           .form-actions {
             flex-direction: column-reverse;
+            gap: 0.75rem;
+            padding-top: 1rem;
           }
 
           .form-actions button {
             width: 100%;
+            min-height: 44px;
+            font-size: 1rem;
+            padding: 0.75rem 1rem;
+          }
+        }
+
+        /* Tablet responsive styles (768px - 1024px) */
+        @media (min-width: 768px) and (max-width: 1024px) {
+          .bulk-edit-form {
+            max-height: 75vh;
+          }
+
+          .form-actions button {
+            min-width: 120px;
+            min-height: 42px;
+          }
+        }
+
+        /* Touch-friendly enhancements */
+        @media (hover: none) and (pointer: coarse) {
+          .form-actions button {
+            min-height: 44px;
+            padding: 0.75rem 1rem;
+          }
+
+          .field-header label {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+          }
+        }
+
+        /* Ensure scrollable content on small screens */
+        @media (max-height: 600px) {
+          .bulk-edit-form {
+            max-height: 60vh;
           }
         }
       `}</style>

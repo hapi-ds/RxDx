@@ -457,7 +457,16 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
         edgeCount: graphData.edges.length 
       });
 
-      const nodes = graphData.nodes.map(transformNode);
+      // Enforce 1000 node limit (Requirement 13.4)
+      let nodes = graphData.nodes.map(transformNode);
+      let limitWarning: string | null = null;
+      
+      if (nodes.length > 1000) {
+        console.warn('[GraphStore] Node count exceeds 1000, limiting to 1000 nodes');
+        limitWarning = `Graph contains ${nodes.length} nodes. Displaying first 1000 nodes. Please use filters to reduce the dataset.`;
+        nodes = nodes.slice(0, 1000);
+      }
+
       const edges = graphData.edges.map(transformEdge);
 
       console.log('[GraphStore] Transformed data:', { 
@@ -487,6 +496,7 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
         depth: depth ?? get().depth,
         nodePositions,
         isLoading: false,
+        error: limitWarning, // Show warning if node limit exceeded
       });
       console.log('[GraphStore] State updated successfully');
     } catch (error) {
@@ -712,11 +722,21 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
   },
 
   selectSearchResult: async (result: SearchResult): Promise<void> => {
+    // Clear search results and query
+    set({ searchResults: [], searchQuery: '', isSearching: false });
+    
     // Set the selected node as center and reload the graph
-    set({ centerNodeId: result.id, searchResults: [], searchQuery: '' });
+    set({ centerNodeId: result.id });
     
     // Load the graph centered on the selected node
     await get().loadGraph(result.id);
+    
+    // After loading, select the node to highlight it
+    const state = get();
+    const node = state.nodes.find(n => n.id === result.id);
+    if (node) {
+      set({ selectedNode: node });
+    }
   },
 
   // ============================================================================

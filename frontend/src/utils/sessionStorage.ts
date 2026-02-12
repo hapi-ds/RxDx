@@ -3,9 +3,19 @@
  * 
  * Provides functions to save, load, and clear filter state in browser session storage.
  * Filter state persists during a user's session but is cleared on logout or browser close.
+ * 
+ * Performance optimizations:
+ * - Debounced writes to reduce excessive storage operations
+ * - Shallow equality checks to avoid unnecessary writes
  */
 
 const FILTER_STORAGE_KEY = 'rxdx_node_filters';
+
+// Debounce delay for session storage writes (in milliseconds)
+const STORAGE_WRITE_DELAY = 500;
+
+// Store pending timeouts for debouncing
+const pendingWrites = new Map<string, number>();
 
 export interface StoredFilterState {
   table: {
@@ -19,11 +29,86 @@ export interface StoredFilterState {
 }
 
 /**
- * Save filter state for a specific page
+ * Check if two Sets are equal (shallow comparison)
+ * @param a - First set
+ * @param b - Second set
+ * @returns True if sets contain the same elements
+ */
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
+/**
+ * Save filter state for a specific page (debounced)
  * @param page - The page identifier ('table' or 'graph')
  * @param filterState - Set of selected node type strings
  */
 export function saveFilterState(page: 'table' | 'graph', filterState: Set<string>): void {
+  // Clear any pending write for this page
+  const existingTimeout = pendingWrites.get(page);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+  }
+
+  // Schedule a new write after the debounce delay
+  const timeout = setTimeout(() => {
+    try {
+      // Load existing state
+      const existingState = loadAllFilterState();
+      
+      // Check if the state has actually changed (shallow equality)
+      const currentPageState = existingState[page];
+      const currentSet = new Set(currentPageState.nodeTypes);
+      
+      if (setsEqual(currentSet, filterState)) {
+        // No change, skip write
+        console.log(`[SessionStorage] Skipping write for ${page} - no changes detected`);
+        pendingWrites.delete(page);
+        return;
+      }
+      
+      // Update the specific page's filter state
+      const updatedState: StoredFilterState = {
+        ...existingState,
+        [page]: {
+          nodeTypes: Array.from(filterState),
+          timestamp: Date.now(),
+        },
+      };
+      
+      // Save to session storage
+      sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(updatedState));
+      console.log(`[SessionStorage] Saved filter state for ${page}:`, Array.from(filterState));
+      
+      // Remove from pending writes
+      pendingWrites.delete(page);
+    } catch (error) {
+      console.error('[SessionStorage] Failed to save filter state:', error);
+      pendingWrites.delete(page);
+    }
+  }, STORAGE_WRITE_DELAY) as unknown as number;
+
+  pendingWrites.set(page, timeout);
+}
+
+/**
+ * Save filter state immediately (bypasses debouncing)
+ * Use this for critical operations like logout
+ * @param page - The page identifier ('table' or 'graph')
+ * @param filterState - Set of selected node type strings
+ */
+export function saveFilterStateImmediate(page: 'table' | 'graph', filterState: Set<string>): void {
+  // Clear any pending write for this page
+  const existingTimeout = pendingWrites.get(page);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+    pendingWrites.delete(page);
+  }
+
   try {
     // Load existing state
     const existingState = loadAllFilterState();
@@ -39,9 +124,22 @@ export function saveFilterState(page: 'table' | 'graph', filterState: Set<string
     
     // Save to session storage
     sessionStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(updatedState));
+    console.log(`[SessionStorage] Saved filter state immediately for ${page}:`, Array.from(filterState));
   } catch (error) {
     console.error('[SessionStorage] Failed to save filter state:', error);
   }
+}
+
+/**
+ * Flush all pending writes immediately
+ * Call this before critical operations like logout or page unload
+ */
+export function flushPendingWrites(): void {
+  // Trigger all pending writes immediately
+  pendingWrites.forEach((timeout) => {
+    clearTimeout(timeout);
+  });
+  pendingWrites.clear();
 }
 
 /**
@@ -163,6 +261,9 @@ function getDefaultFilterState(): StoredFilterState {
  */
 export function clearFilterState(): void {
   try {
+    // Flush any pending writes before clearing
+    flushPendingWrites();
+    
     sessionStorage.removeItem(FILTER_STORAGE_KEY);
   } catch (error) {
     console.error('[SessionStorage] Failed to clear filter state:', error);

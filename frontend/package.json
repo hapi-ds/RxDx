@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "type-check": "tsc -b --noEmit"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",

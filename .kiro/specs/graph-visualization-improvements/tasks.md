@@ -58,20 +58,20 @@
 
 ## Phase 2: Custom Node Components
 
-- [ ] 8. Create base custom node component infrastructure
-  - [ ] 8.1 Define CustomNodeProps interface with progress and priority
-  - [ ] 8.2 Create base node component with common features
-  - [ ] 8.3 Implement node color scheme from NODE_COLORS constant
-  - [ ] 8.4 Add selection and hover state handling
-  - [ ] 8.5 Write unit tests for base node component
+- [x] 8. Create base custom node component infrastructure
+  - [x] 8.1 Define CustomNodeProps interface with progress and priority
+  - [x] 8.2 Create base node component with common features
+  - [x] 8.3 Implement node color scheme from NODE_COLORS constant
+  - [x] 8.4 Add selection and hover state handling
+  - [x] 8.5 Write unit tests for base node component
 
-- [ ] 9. Implement TaskNode (circle with progress)
-  - [ ] 9.1 Create circular SVG shape component
-  - [ ] 9.2 Add task icon in upper left corner
-  - [ ] 9.3 Integrate progress indicator (concentric circle)
-  - [ ] 9.4 Add "done" attribute visualization
-  - [ ] 9.5 Write component tests for TaskNode
-  - [ ] 9.6 Write property test: done attribute maps to 100%/0% progress
+- [x] 9. Implement TaskNode (circle with progress)
+  - [x] 9.1 Create circular SVG shape component
+  - [x] 9.2 Add task icon in upper left corner
+  - [x] 9.3 Integrate progress indicator (concentric circle)
+  - [x] 9.4 Add "done" attribute visualization
+  - [x] 9.5 Write component tests for TaskNode
+  - [x] 9.6 Write property test: done attribute maps to 100%/0% progress
 
 - [ ] 10. Implement RequirementNode (rounded rectangle)
   - [ ] 10.1 Create rounded rectangle SVG shape component

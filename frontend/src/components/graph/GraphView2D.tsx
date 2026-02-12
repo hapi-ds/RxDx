@@ -45,6 +45,7 @@ import {
   type RelationshipType,
 } from './RelationshipTypeDialog';
 import { LayoutEngine, type LayoutNode, type LayoutEdge } from '../../services/layout/LayoutEngine';
+import { TaskNode } from './nodes/TaskNode';
 
 // Node styling constants
 const NODE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -101,37 +102,6 @@ const RequirementNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selec
           <span style={{ fontSize: '10px', color: '#388e3c' }} title="Signed">
             ✓
           </span>
-        )}
-      </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-};
-
-/**
- * Custom node component for Task type
- */
-const TaskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
-  const colors = NODE_COLORS.task;
-  const status = data?.properties?.status as string | undefined;
-
-  return (
-    <div
-      style={{
-        ...baseNodeStyle,
-        backgroundColor: colors.bg,
-        borderColor: selected ? '#000' : colors.border,
-        color: colors.text,
-      }}
-    >
-      <Handle type="target" position={Position.Top} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '10px', opacity: 0.7 }}>
-          {NODE_TYPE_LABELS.task}
-        </span>
-        {status && (
-          <span style={{ fontSize: '10px', opacity: 0.8 }}>{status}</span>
         )}
       </div>
       <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>

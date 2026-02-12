@@ -1,11 +1,10 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * PhaseNode Component
+ * Phase node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
- * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
+ * - Phase-specific icon (calendar)
+ * - Progress dial gauge (0-360 degrees, teal)
  * - Status-specific icon below box
  */
 
@@ -14,12 +13,12 @@ import type { CustomNodeProps, GaugeDefinition } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * PhaseIcon - SVG icon component for phase nodes
+ * Displays a calendar icon
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const PhaseIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#14b8a6',
 }) => (
   <svg
     width={size}
@@ -28,9 +27,9 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Calendar icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h10v2H7v-2z"
       fill={color}
     />
   </svg>
@@ -46,7 +45,6 @@ const getStatusIcon = (
 
   switch (status) {
     case 'draft':
-      // Draft icon - pencil/edit icon
       return ({ size = 16, color = '#9e9e9e' }) => (
         <svg
           width={size}
@@ -63,7 +61,6 @@ const getStatusIcon = (
       );
 
     case 'active':
-      // Active icon - play/arrow icon
       return ({ size = 16, color = '#2196f3' }) => (
         <svg
           width={size}
@@ -77,7 +74,6 @@ const getStatusIcon = (
       );
 
     case 'completed':
-      // Completed icon - checkmark in circle
       return ({ size = 16, color = '#388e3c' }) => (
         <svg
           width={size}
@@ -99,7 +95,6 @@ const getStatusIcon = (
       );
 
     case 'archived':
-      // Archived icon - box/archive icon
       return ({ size = 16, color = '#757575' }) => (
         <svg
           width={size}
@@ -121,20 +116,19 @@ const getStatusIcon = (
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * PhaseNode - Phase node component with unified design
+ * Extends UnifiedNode with phase-specific configuration
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const PhaseNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
+  // Calculate progress from properties
   const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
+    return (data.properties?.progress as number | undefined) || 0;
+  }, [data.properties?.progress]);
 
   // Configure progress dial gauge
   const gauges: GaugeDefinition[] = useMemo(
@@ -147,7 +141,7 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
         max: 100,
         startAngle: 0,
         endAngle: 360,
-        color: '#388e3c', // Green color for progress
+        color: '#14b8a6', // Teal color for phase progress
         showValue: true,
       },
     ],
@@ -165,8 +159,8 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={PhaseIcon}
+      typeName="Phase"
       statusIcon={StatusIcon}
       gauges={gauges}
       iconPosition="upper-left"
@@ -174,4 +168,4 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
   );
 };
 
-export default TaskNode;
+export default PhaseNode;

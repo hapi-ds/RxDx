@@ -1,18 +1,18 @@
 /**
- * Unit tests for TaskNode component
- * Tests the unified design implementation with mini pie chart progress indicator
+ * Unit tests for RiskNode component
+ * Tests the unified design implementation with RPN dial gauge
  */
 
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { ReactFlowProvider } from '@xyflow/react';
-import { TaskNode } from './TaskNode';
+import { RiskNode } from './RiskNode';
 import type { CustomNodeData } from './types';
 
 // Mock data for testing
 const createMockData = (overrides?: Partial<CustomNodeData>): CustomNodeData => ({
-  label: 'Test Task',
-  type: 'task',
+  label: 'Test Risk',
+  type: 'risk',
   properties: {},
   ...overrides,
 });
@@ -22,28 +22,28 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <ReactFlowProvider>{children}</ReactFlowProvider>
 );
 
-describe('TaskNode', () => {
+describe('RiskNode', () => {
   describe('Unified Design Rendering', () => {
     it('should render with unified node structure', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-1"
+          <RiskNode
+            id="risk-1"
             data={createMockData()}
             selected={false}
           />
         </TestWrapper>
       );
 
-      const node = container.querySelector('[data-node-type="task"]');
+      const node = container.querySelector('[data-node-type="risk"]');
       expect(node).toBeTruthy();
     });
 
     it('should render rounded rectangle content box', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-3"
+          <RiskNode
+            id="risk-2"
             data={createMockData()}
             selected={false}
           />
@@ -57,12 +57,12 @@ describe('TaskNode', () => {
       expect(rect?.getAttribute('height')).toBe('60');
     });
 
-    it('should render task label inside box', () => {
+    it('should render risk label inside box', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-4"
-            data={createMockData({ label: 'My Task' })}
+          <RiskNode
+            id="risk-3"
+            data={createMockData({ label: 'Critical Risk' })}
             selected={false}
           />
         </TestWrapper>
@@ -70,31 +70,31 @@ describe('TaskNode', () => {
 
       // Find all text elements and look for the label
       const texts = container.querySelectorAll('text');
-      const labelText = Array.from(texts).find((text) => text.textContent === 'My Task');
+      const labelText = Array.from(texts).find((text) => text.textContent === 'Critical Risk');
       expect(labelText).toBeTruthy();
     });
 
-    it('should render task icon in header', () => {
+    it('should render warning icon in header', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-5"
+          <RiskNode
+            id="risk-4"
             data={createMockData()}
             selected={false}
           />
         </TestWrapper>
       );
 
-      // Check for SVG paths (task icon is an SVG)
+      // Check for SVG paths (warning icon is an SVG)
       const paths = container.querySelectorAll('path');
       expect(paths.length).toBeGreaterThan(0);
     });
 
-    it('should render "Task" type label in header', () => {
+    it('should render "Risk" type label in header', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-6"
+          <RiskNode
+            id="risk-5"
             data={createMockData()}
             selected={false}
           />
@@ -102,15 +102,15 @@ describe('TaskNode', () => {
       );
 
       const texts = container.querySelectorAll('text');
-      const typeLabel = Array.from(texts).find((text) => text.textContent === 'Task');
+      const typeLabel = Array.from(texts).find((text) => text.textContent === 'Risk');
       expect(typeLabel).toBeTruthy();
     });
 
     it('should render status icon in header when status is provided', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-7"
+          <RiskNode
+            id="risk-6"
             data={createMockData({ status: 'active' })}
             selected={false}
           />
@@ -123,13 +123,13 @@ describe('TaskNode', () => {
     });
   });
 
-  describe('Progress Mini Pie Chart', () => {
-    it('should render mini pie chart for progress', () => {
+  describe('RPN Mini Pie Chart', () => {
+    it('should render mini pie chart for RPN', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-8"
-            data={createMockData({ properties: { done: true } })}
+          <RiskNode
+            id="risk-7"
+            data={createMockData({ properties: { rpn: 150 } })}
             selected={false}
           />
         </TestWrapper>
@@ -140,45 +140,28 @@ describe('TaskNode', () => {
       expect(circles.length).toBeGreaterThan(0);
     });
 
-    it('should show 100% progress when done is true', () => {
+    it('should display RPN value in pie chart', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-9"
-            data={createMockData({ properties: { done: true } })}
+          <RiskNode
+            id="risk-8"
+            data={createMockData({ properties: { rpn: 250 } })}
             selected={false}
           />
         </TestWrapper>
       );
 
-      // Check for value text showing 100
+      // Check for value text showing RPN
       const texts = container.querySelectorAll('text');
-      const valueText = Array.from(texts).find((text) => text.textContent === '100');
+      const valueText = Array.from(texts).find((text) => text.textContent === '25');
       expect(valueText).toBeTruthy();
     });
 
-    it('should show 0% progress when done is false', () => {
+    it('should show 0 RPN when rpn is undefined', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-10"
-            data={createMockData({ properties: { done: false } })}
-            selected={false}
-          />
-        </TestWrapper>
-      );
-
-      // Check for value text showing 0
-      const texts = container.querySelectorAll('text');
-      const valueText = Array.from(texts).find((text) => text.textContent === '0');
-      expect(valueText).toBeTruthy();
-    });
-
-    it('should show 0% progress when done is undefined', () => {
-      const { container } = render(
-        <TestWrapper>
-          <TaskNode
-            id="task-11"
+          <RiskNode
+            id="risk-9"
             data={createMockData({ properties: {} })}
             selected={false}
           />
@@ -191,28 +174,12 @@ describe('TaskNode', () => {
       expect(valueText).toBeTruthy();
     });
 
-    it('should use green color for progress pie chart', () => {
-      const { container } = render(
-        <TestWrapper>
-          <TaskNode
-            id="task-12"
-            data={createMockData({ properties: { done: true } })}
-            selected={false}
-          />
-        </TestWrapper>
-      );
-
-      // Find pie chart path with green fill
-      const paths = container.querySelectorAll('path[fill="#388e3c"]');
-      expect(paths.length).toBeGreaterThan(0);
-    });
-
     it('should render pie chart in footer area', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-13"
-            data={createMockData({ properties: { done: true } })}
+          <RiskNode
+            id="risk-10"
+            data={createMockData({ properties: { rpn: 100 } })}
             selected={false}
           />
         </TestWrapper>
@@ -224,69 +191,252 @@ describe('TaskNode', () => {
     });
   });
 
-  describe('Done Attribute Integration', () => {
-    it('should calculate progress from done attribute', () => {
-      const { container: container1 } = render(
+  describe('RPN Color Coding', () => {
+    it('should use red color for critical RPN (>=200)', () => {
+      const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-14"
-            data={createMockData({ properties: { done: true } })}
+          <RiskNode
+            id="risk-11"
+            data={createMockData({ properties: { rpn: 250 } })}
             selected={false}
           />
         </TestWrapper>
       );
 
-      const { container: container2 } = render(
-        <TestWrapper>
-          <TaskNode
-            id="task-15"
-            data={createMockData({ properties: { done: false } })}
-            selected={false}
-          />
-        </TestWrapper>
-      );
-
-      // Check for different progress values
-      const texts1 = container1.querySelectorAll('text');
-      const value1 = Array.from(texts1).find((text) => text.textContent === '100');
-      expect(value1).toBeTruthy();
-
-      const texts2 = container2.querySelectorAll('text');
-      const value2 = Array.from(texts2).find((text) => text.textContent === '0');
-      expect(value2).toBeTruthy();
+      // Find pie chart path with red fill
+      const paths = container.querySelectorAll('path[fill="#dc2626"]');
+      expect(paths.length).toBeGreaterThan(0);
     });
 
-    it('should update progress when done attribute changes', () => {
+    it('should use orange color for high RPN (>=100, <200)', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-12"
+            data={createMockData({ properties: { rpn: 150 } })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Find pie chart path with orange fill
+      const paths = container.querySelectorAll('path[fill="#f57c00"]');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should use yellow color for medium RPN (>=50, <100)', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-13"
+            data={createMockData({ properties: { rpn: 75 } })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Find pie chart path with yellow fill
+      const paths = container.querySelectorAll('path[fill="#fbc02d"]');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should use green color for low RPN (<50)', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-14"
+            data={createMockData({ properties: { rpn: 25 } })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Find pie chart path with green fill
+      const paths = container.querySelectorAll('path[fill="#388e3c"]');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should update color when RPN changes', () => {
       const { container, rerender } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-16"
-            data={createMockData({ properties: { done: false } })}
+          <RiskNode
+            id="risk-15"
+            data={createMockData({ properties: { rpn: 25 } })}
             selected={false}
           />
         </TestWrapper>
       );
 
-      // Initial state: 0%
-      let texts = container.querySelectorAll('text');
-      let valueText = Array.from(texts).find((text) => text.textContent === '0');
-      expect(valueText).toBeTruthy();
+      // Initial state: green (low RPN)
+      let paths = container.querySelectorAll('path[fill="#388e3c"]');
+      expect(paths.length).toBeGreaterThan(0);
 
-      // Update to done=true
+      // Update to high RPN
       rerender(
         <TestWrapper>
-          <TaskNode
-            id="task-16"
-            data={createMockData({ properties: { done: true } })}
+          <RiskNode
+            id="risk-15"
+            data={createMockData({ properties: { rpn: 250 } })}
             selected={false}
           />
         </TestWrapper>
       );
 
-      // Updated state: 100%
-      texts = container.querySelectorAll('text');
-      valueText = Array.from(texts).find((text) => text.textContent === '100');
+      // Updated state: red (critical RPN)
+      paths = container.querySelectorAll('path[fill="#dc2626"]');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('RPN Attribute Integration', () => {
+    it('should extract RPN from properties', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-16"
+            data={createMockData({ properties: { rpn: 123 } })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Check for RPN value display
+      const texts = container.querySelectorAll('text');
+      const valueText = Array.from(texts).find((text) => text.textContent === '12');
       expect(valueText).toBeTruthy();
+    });
+
+    it('should handle missing RPN property', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-17"
+            data={createMockData({ properties: {} })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Should default to 0
+      const texts = container.querySelectorAll('text');
+      const valueText = Array.from(texts).find((text) => text.textContent === '0');
+      expect(valueText).toBeTruthy();
+    });
+
+    it('should handle RPN value of 0', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-18"
+            data={createMockData({ properties: { rpn: 0 } })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Should show 0
+      const texts = container.querySelectorAll('text');
+      const valueText = Array.from(texts).find((text) => text.textContent === '0');
+      expect(valueText).toBeTruthy();
+    });
+
+    it('should handle maximum RPN value (1000)', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-19"
+            data={createMockData({ properties: { rpn: 1000 } })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Should show 100 (100% of max)
+      const texts = container.querySelectorAll('text');
+      const valueText = Array.from(texts).find((text) => text.textContent === '100');
+      expect(valueText).toBeTruthy();
+    });
+  });
+
+  describe('Status Icons', () => {
+    it('should render draft status icon', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-20"
+            data={createMockData({ status: 'draft' })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Status icon should be present
+      const paths = container.querySelectorAll('path');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should render active status icon', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-21"
+            data={createMockData({ status: 'active' })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Status icon should be present
+      const paths = container.querySelectorAll('path');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should render mitigated status icon', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-22"
+            data={createMockData({ status: 'mitigated' })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Status icon should be present
+      const paths = container.querySelectorAll('path');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should render archived status icon', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-23"
+            data={createMockData({ status: 'archived' })}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Status icon should be present
+      const paths = container.querySelectorAll('path');
+      expect(paths.length).toBeGreaterThan(0);
+    });
+
+    it('should not render status icon when status is undefined', () => {
+      const { container } = render(
+        <TestWrapper>
+          <RiskNode
+            id="risk-24"
+            data={createMockData()}
+            selected={false}
+          />
+        </TestWrapper>
+      );
+
+      // Should still render but without status icon
+      const node = container.querySelector('[data-node-type="risk"]');
+      expect(node).toBeTruthy();
     });
   });
 
@@ -294,8 +444,8 @@ describe('TaskNode', () => {
     it('should apply selected styles when selected', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-17"
+          <RiskNode
+            id="risk-25"
             data={createMockData()}
             selected={true}
           />
@@ -317,8 +467,8 @@ describe('TaskNode', () => {
     it('should have thicker border when selected', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-18"
+          <RiskNode
+            id="risk-26"
             data={createMockData()}
             selected={true}
           />
@@ -338,8 +488,8 @@ describe('TaskNode', () => {
     it('should render priority badge when priority is set', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-19"
+          <RiskNode
+            id="risk-27"
             data={createMockData({ priority: 1 })}
             selected={false}
           />
@@ -355,8 +505,8 @@ describe('TaskNode', () => {
     it('should not render priority badge when priority is undefined', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-20"
+          <RiskNode
+            id="risk-28"
             data={createMockData()}
             selected={false}
           />
@@ -364,7 +514,7 @@ describe('TaskNode', () => {
       );
 
       // Should still render but without priority badge
-      const node = container.querySelector('[data-node-type="task"]');
+      const node = container.querySelector('[data-node-type="risk"]');
       expect(node).toBeTruthy();
     });
   });
@@ -373,8 +523,8 @@ describe('TaskNode', () => {
     it('should have hover data attribute', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-21"
+          <RiskNode
+            id="risk-29"
             data={createMockData()}
             selected={false}
           />
@@ -388,8 +538,8 @@ describe('TaskNode', () => {
     it('should apply scale transform on hover', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-22"
+          <RiskNode
+            id="risk-30"
             data={createMockData()}
             selected={false}
           />
@@ -406,8 +556,8 @@ describe('TaskNode', () => {
     it('should render target handle at top', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-23"
+          <RiskNode
+            id="risk-31"
             data={createMockData()}
             selected={false}
           />
@@ -424,8 +574,8 @@ describe('TaskNode', () => {
     it('should render source handle at bottom', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-24"
+          <RiskNode
+            id="risk-32"
             data={createMockData()}
             selected={false}
           />
@@ -441,8 +591,8 @@ describe('TaskNode', () => {
     it('should have text with proper styling for readability', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-25"
+          <RiskNode
+            id="risk-33"
             data={createMockData()}
             selected={false}
           />
@@ -457,8 +607,8 @@ describe('TaskNode', () => {
     it('should have smooth transitions', () => {
       const { container } = render(
         <TestWrapper>
-          <TaskNode
-            id="task-26"
+          <RiskNode
+            id="risk-34"
             data={createMockData()}
             selected={false}
           />

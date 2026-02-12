@@ -31,13 +31,21 @@ GraphView2D (Container)
 │   └── GraphView2DInner
 │       ├── ReactFlow
 │       │   ├── Custom Node Components
-│       │   │   ├── RequirementNode (rounded rectangle)
-│       │   │   ├── TaskNode (circle with progress)
-│       │   │   ├── TestNode (hexagon)
-│       │   │   ├── RiskNode (triangle)
-│       │   │   ├── DocumentNode (folded rectangle)
-│       │   │   ├── WorkpackageNode (rectangle with progress)
-│       │   │   └── ProjectNode (large rectangle with progress)
+│       │   │   ├── UnifiedNode (base component for all types)
+│       │   │   │   ├── CircularBackground
+│       │   │   │   ├── RoundedRectangle (content box)
+│       │   │   │   ├── TypeIcon (above box)
+│       │   │   │   ├── TypeLabel (text below icon)
+│       │   │   │   ├── StatusIcon (below box)
+│       │   │   │   ├── PriorityBadge (upper right)
+│       │   │   │   └── DialGauges (around circle)
+│       │   │   ├── RequirementNode (extends UnifiedNode)
+│       │   │   ├── TaskNode (extends UnifiedNode)
+│       │   │   ├── TestNode (extends UnifiedNode)
+│       │   │   ├── RiskNode (extends UnifiedNode)
+│       │   │   ├── DocumentNode (extends UnifiedNode)
+│       │   │   ├── WorkpackageNode (extends UnifiedNode)
+│       │   │   └── ProjectNode (extends UnifiedNode)
 │       │   ├── Custom Edge Components
 │       │   │   ├── CurvedEdge (Bezier curves)
 │       │   │   └── BundledEdge (grouped edges)
@@ -197,7 +205,7 @@ interface LayoutConfig {
 
 ### 2. Custom Node Components
 
-Each node type has a custom component with distinctive shape and progress indicators.
+All node types use a unified design with a base component that provides consistent structure.
 
 #### Base Node Interface
 
@@ -207,231 +215,314 @@ interface CustomNodeProps extends NodeProps<GraphNodeData> {
     progress?: number;  // 0-100
     priority?: number;  // 1-5
     children?: string[];  // Child node IDs
+    status?: string;  // Node status
+    gauges?: GaugeDefinition[];  // Dial gauge configurations
   };
   selected: boolean;
   dragging?: boolean;
 }
 
-interface ProgressIndicator {
-  percentage: number;
-  color: string;
-  radius: number;
-  strokeWidth: number;
+interface GaugeDefinition {
+  id: string;
+  label: string;
+  value: number;  // Current value
+  min: number;  // Minimum value
+  max: number;  // Maximum value
+  startAngle: number;  // Start angle in degrees (0 = top)
+  endAngle: number;  // End angle in degrees
+  color: string;  // Gauge color
+  showValue: boolean;  // Whether to show numeric value
 }
 ```
 
-#### Node Shape Implementations
+#### Unified Node Component
 
-**TaskNode (Circle)**:
+The base component that all node types extend:
+
 ```typescript
-const TaskNode: React.FC<CustomNodeProps> = ({ data, selected }) => {
-  const progress = useNodeProgress(data.id, data.properties?.done);
+interface UnifiedNodeProps extends CustomNodeProps {
+  typeIcon: React.ComponentType<IconProps>;
+  typeName: string;
+  statusIcon?: React.ComponentType<IconProps>;
+  gauges?: GaugeDefinition[];
+}
+
+const UnifiedNode: React.FC<UnifiedNodeProps> = ({
+  data,
+  selected,
+  typeIcon: TypeIcon,
+  typeName,
+  statusIcon: StatusIcon,
+  gauges = [],
+}) => {
+  const circleRadius = 95;  // Radius of circular background
+  const boxWidth = 150;
+  const boxHeight = 60;
   
   return (
     <g>
-      {/* Progress indicator (concentric circle) */}
-      <ProgressCircle
-        percentage={progress}
-        radius={40}
-        strokeWidth={4}
-        color="#388e3c"
-      />
+      {/* Dial gauges (outermost) */}
+      {gauges.map((gauge, index) => (
+        <DialGauge
+          key={gauge.id}
+          {...gauge}
+          radius={circleRadius + 8 + (index * 8)}
+          strokeWidth={4}
+        />
+      ))}
       
-      {/* Node circle */}
+      {/* Circular background */}
       <circle
-        r={32}
-        fill={NODE_COLORS.task.bg}
-        stroke={selected ? '#000' : NODE_COLORS.task.border}
+        r={circleRadius}
+        fill={NODE_COLORS[data.type]?.bg || NODE_COLORS.default.bg}
+        stroke={selected ? '#000' : NODE_COLORS[data.type]?.border}
         strokeWidth={selected ? 3 : 2}
+        opacity={0.9}
       />
       
-      {/* Icon */}
-      <TaskIcon x={-24} y={-24} size={16} />
+      {/* Type icon (above box) */}
+      <g transform={`translate(0, ${-boxHeight/2 - 25})`}>
+        <TypeIcon size={20} color={NODE_COLORS[data.type]?.icon} />
+        <text
+          y={20}
+          textAnchor="middle"
+          fontSize={12}
+          fill={NODE_COLORS[data.type]?.text}
+        >
+          {typeName}
+        </text>
+      </g>
       
-      {/* Label */}
-      <text y={0} textAnchor="middle">
-        {data.label}
-      </text>
-    </g>
-  );
-};
-```
-
-**RequirementNode (Rounded Rectangle)**:
-```typescript
-const RequirementNode: React.FC<CustomNodeProps> = ({ data, selected }) => {
-  return (
-    <g>
-      {/* Node shape */}
+      {/* Rounded rectangle content box */}
       <rect
-        x={-75}
-        y={-30}
-        width={150}
-        height={60}
+        x={-boxWidth/2}
+        y={-boxHeight/2}
+        width={boxWidth}
+        height={boxHeight}
         rx={8}
         ry={8}
-        fill={NODE_COLORS.requirement.bg}
-        stroke={selected ? '#000' : NODE_COLORS.requirement.border}
-        strokeWidth={selected ? 3 : 2}
+        fill="white"
+        stroke={NODE_COLORS[data.type]?.border}
+        strokeWidth={2}
       />
       
-      {/* Icon */}
-      <RequirementIcon x={-70} y={-25} size={16} />
-      
-      {/* Label */}
-      <text y={0} textAnchor="middle">
+      {/* Node label (inside box) */}
+      <text
+        y={0}
+        textAnchor="middle"
+        fontSize={14}
+        fill="#333"
+        style={{
+          maxWidth: boxWidth - 20,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
         {data.label}
       </text>
       
-      {/* Signed indicator */}
-      {data.properties?.is_signed && (
-        <CheckIcon x={60} y={-25} size={16} color="#388e3c" />
+      {/* Priority badge (upper right) */}
+      {data.priority && (
+        <g transform={`translate(${boxWidth/2 - 15}, ${-boxHeight/2 + 15})`}>
+          <PriorityBadge priority={data.priority} />
+        </g>
+      )}
+      
+      {/* Status icon (below box) */}
+      {StatusIcon && (
+        <g transform={`translate(0, ${boxHeight/2 + 20})`}>
+          <StatusIcon size={16} color={getStatusColor(data.status)} />
+        </g>
       )}
     </g>
   );
 };
 ```
 
-**TestNode (Hexagon)**:
+#### Node Type Implementations
+
+Each node type extends the unified component with type-specific configuration:
+
+**TaskNode**:
 ```typescript
-const TestNode: React.FC<CustomNodeProps> = ({ data, selected }) => {
-  const hexagonPoints = calculateHexagonPoints(32);
+const TaskNode: React.FC<CustomNodeProps> = (props) => {
+  const progress = useNodeProgress(props.data.id, props.data.properties?.done);
+  
+  const gauges: GaugeDefinition[] = [
+    {
+      id: 'progress',
+      label: 'Progress',
+      value: progress,
+      min: 0,
+      max: 100,
+      startAngle: 0,
+      endAngle: 360,
+      color: '#388e3c',
+      showValue: true,
+    },
+  ];
   
   return (
-    <g>
-      {/* Node shape */}
-      <polygon
-        points={hexagonPoints}
-        fill={NODE_COLORS.test.bg}
-        stroke={selected ? '#000' : NODE_COLORS.test.border}
-        strokeWidth={selected ? 3 : 2}
-      />
-      
-      {/* Icon */}
-      <TestIcon x={-24} y={-24} size={16} />
-      
-      {/* Label */}
-      <text y={0} textAnchor="middle">
-        {data.label}
-      </text>
-      
-      {/* Status indicator */}
-      {data.properties?.status && (
-        <StatusBadge status={data.properties.status} x={20} y={-20} />
-      )}
-    </g>
+    <UnifiedNode
+      {...props}
+      typeIcon={TaskIcon}
+      typeName="Task"
+      statusIcon={getTaskStatusIcon(props.data.status)}
+      gauges={gauges}
+    />
   );
 };
 ```
 
-**RiskNode (Triangle)**:
+**RequirementNode**:
 ```typescript
-const RiskNode: React.FC<CustomNodeProps> = ({ data, selected }) => {
-  const trianglePoints = "0,-30 26,15 -26,15";
+const RequirementNode: React.FC<CustomNodeProps> = (props) => {
+  const gauges: GaugeDefinition[] = [];
+  
+  // Add signed indicator as a gauge if applicable
+  if (props.data.properties?.is_signed) {
+    gauges.push({
+      id: 'signed',
+      label: 'Signed',
+      value: 100,
+      min: 0,
+      max: 100,
+      startAngle: 0,
+      endAngle: 90,
+      color: '#388e3c',
+      showValue: false,
+    });
+  }
   
   return (
-    <g>
-      {/* Node shape */}
-      <polygon
-        points={trianglePoints}
-        fill={NODE_COLORS.risk.bg}
-        stroke={selected ? '#000' : NODE_COLORS.risk.border}
-        strokeWidth={selected ? 3 : 2}
-      />
-      
-      {/* Icon */}
-      <WarningIcon x={-8} y={-15} size={16} />
-      
-      {/* Label */}
-      <text y={25} textAnchor="middle">
-        {data.label}
-      </text>
-      
-      {/* RPN indicator */}
-      {data.properties?.rpn && (
-        <RPNBadge rpn={data.properties.rpn} x={0} y={-35} />
-      )}
-    </g>
+    <UnifiedNode
+      {...props}
+      typeIcon={RequirementIcon}
+      typeName="Requirement"
+      statusIcon={getRequirementStatusIcon(props.data.status)}
+      gauges={gauges}
+    />
   );
 };
 ```
 
-**DocumentNode (Folded Rectangle)**:
+**TestNode**:
 ```typescript
-const DocumentNode: React.FC<CustomNodeProps> = ({ data, selected }) => {
+const TestNode: React.FC<CustomNodeProps> = (props) => {
   return (
-    <g>
-      {/* Main rectangle */}
-      <rect
-        x={-60}
-        y={-40}
-        width={120}
-        height={70}
-        fill={NODE_COLORS.document.bg}
-        stroke={selected ? '#000' : NODE_COLORS.document.border}
-        strokeWidth={selected ? 3 : 2}
-      />
-      
-      {/* Folded corner */}
-      <path
-        d="M 60,-40 L 60,-20 L 40,-40 Z"
-        fill={NODE_COLORS.document.border}
-        opacity={0.3}
-      />
-      
-      {/* Icon */}
-      <DocumentIcon x={-55} y={-35} size={16} />
-      
-      {/* Label */}
-      <text y={0} textAnchor="middle">
-        {data.label}
-      </text>
-    </g>
+    <UnifiedNode
+      {...props}
+      typeIcon={TestIcon}
+      typeName="Test"
+      statusIcon={getTestStatusIcon(props.data.status)}
+    />
   );
 };
 ```
 
-**WorkpackageNode (Rectangle with Progress)**:
+**RiskNode**:
 ```typescript
-const WorkpackageNode: React.FC<CustomNodeProps> = ({ data, selected }) => {
-  const progress = useHierarchicalProgress(data.id, data.children);
+const RiskNode: React.FC<CustomNodeProps> = (props) => {
+  const rpn = props.data.properties?.rpn || 0;
+  
+  const gauges: GaugeDefinition[] = [
+    {
+      id: 'rpn',
+      label: 'RPN',
+      value: rpn,
+      min: 0,
+      max: 1000,
+      startAngle: 0,
+      endAngle: 270,
+      color: getRPNColor(rpn),
+      showValue: true,
+    },
+  ];
   
   return (
-    <g>
-      {/* Progress indicator */}
-      <ProgressCircle
-        percentage={progress}
-        radius={85}
-        strokeWidth={4}
-        color="#388e3c"
-      />
-      
-      {/* Node shape */}
-      <rect
-        x={-75}
-        y={-40}
-        width={150}
-        height={80}
-        rx={4}
-        ry={4}
-        fill={NODE_COLORS.default.bg}
-        stroke={selected ? '#000' : NODE_COLORS.default.border}
-        strokeWidth={selected ? 3 : 2}
-      />
-      
-      {/* Icon */}
-      <FolderIcon x={-70} y={-35} size={16} />
-      
-      {/* Label */}
-      <text y={-10} textAnchor="middle">
-        {data.label}
-      </text>
-      
-      {/* Progress text */}
-      <text y={10} textAnchor="middle" fontSize={12} opacity={0.7}>
-        {progress.toFixed(0)}% complete
-      </text>
-    </g>
+    <UnifiedNode
+      {...props}
+      typeIcon={WarningIcon}
+      typeName="Risk"
+      statusIcon={getRiskStatusIcon(props.data.status)}
+      gauges={gauges}
+    />
+  );
+};
+```
+
+**DocumentNode**:
+```typescript
+const DocumentNode: React.FC<CustomNodeProps> = (props) => {
+  return (
+    <UnifiedNode
+      {...props}
+      typeIcon={DocumentIcon}
+      typeName="Document"
+      statusIcon={getDocumentStatusIcon(props.data.status)}
+    />
+  );
+};
+```
+
+**WorkpackageNode**:
+```typescript
+const WorkpackageNode: React.FC<CustomNodeProps> = (props) => {
+  const progress = useHierarchicalProgress(props.data.id, props.data.children);
+  
+  const gauges: GaugeDefinition[] = [
+    {
+      id: 'progress',
+      label: 'Completion',
+      value: progress,
+      min: 0,
+      max: 100,
+      startAngle: 0,
+      endAngle: 360,
+      color: '#388e3c',
+      showValue: true,
+    },
+  ];
+  
+  return (
+    <UnifiedNode
+      {...props}
+      typeIcon={FolderIcon}
+      typeName="Workpackage"
+      statusIcon={getWorkpackageStatusIcon(props.data.status)}
+      gauges={gauges}
+    />
+  );
+};
+```
+
+**ProjectNode**:
+```typescript
+const ProjectNode: React.FC<CustomNodeProps> = (props) => {
+  const progress = useHierarchicalProgress(props.data.id, props.data.children);
+  
+  const gauges: GaugeDefinition[] = [
+    {
+      id: 'progress',
+      label: 'Overall Progress',
+      value: progress,
+      min: 0,
+      max: 100,
+      startAngle: 0,
+      endAngle: 360,
+      color: '#1976d2',
+      showValue: true,
+    },
+  ];
+  
+  return (
+    <UnifiedNode
+      {...props}
+      typeIcon={ProjectIcon}
+      typeName="Project"
+      statusIcon={getProjectStatusIcon(props.data.status)}
+      gauges={gauges}
+    />
   );
 };
 ```
@@ -634,56 +725,177 @@ function useHierarchicalProgress(
 }
 ```
 
-### 4. Progress Circle Component
+### 4. Dial Gauge Component
 
-Reusable component for rendering concentric circle progress indicators.
+Reusable component for rendering dial-type gauge indicators around nodes.
 
 ```typescript
-interface ProgressCircleProps {
-  percentage: number;  // 0-100
+interface DialGaugeProps {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  startAngle: number;  // Degrees, 0 = top
+  endAngle: number;    // Degrees
   radius: number;
   strokeWidth: number;
   color: string;
   backgroundColor?: string;
+  showValue?: boolean;
   animated?: boolean;
 }
 
-const ProgressCircle: React.FC<ProgressCircleProps> = ({
-  percentage,
+const DialGauge: React.FC<DialGaugeProps> = ({
+  id,
+  label,
+  value,
+  min,
+  max,
+  startAngle,
+  endAngle,
   radius,
   strokeWidth,
   color,
   backgroundColor = '#e0e0e0',
+  showValue = false,
   animated = true,
 }) => {
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
+  // Normalize value to 0-1 range
+  const normalizedValue = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  
+  // Calculate arc angles in radians
+  const startRad = (startAngle - 90) * (Math.PI / 180);
+  const endRad = (endAngle - 90) * (Math.PI / 180);
+  const totalAngle = endRad - startRad;
+  const valueAngle = startRad + (totalAngle * normalizedValue);
+  
+  // Calculate arc path
+  const startX = radius * Math.cos(startRad);
+  const startY = radius * Math.sin(startRad);
+  const endX = radius * Math.cos(endRad);
+  const endY = radius * Math.sin(endRad);
+  const valueX = radius * Math.cos(valueAngle);
+  const valueY = radius * Math.sin(valueAngle);
+  
+  const largeArcFlag = Math.abs(endAngle - startAngle) > 180 ? 1 : 0;
+  const valueLargeArcFlag = Math.abs(valueAngle - startRad) > Math.PI ? 1 : 0;
+  
+  // Background arc path
+  const backgroundPath = `
+    M ${startX} ${startY}
+    A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}
+  `;
+  
+  // Value arc path
+  const valuePath = `
+    M ${startX} ${startY}
+    A ${radius} ${radius} 0 ${valueLargeArcFlag} 1 ${valueX} ${valueY}
+  `;
   
   return (
-    <g>
-      {/* Background circle */}
-      <circle
-        r={radius}
+    <g className="dial-gauge" data-gauge-id={id}>
+      {/* Background arc */}
+      <path
+        d={backgroundPath}
         fill="none"
         stroke={backgroundColor}
         strokeWidth={strokeWidth}
+        strokeLinecap="round"
         opacity={0.3}
       />
       
-      {/* Progress arc */}
-      <circle
-        r={radius}
+      {/* Value arc */}
+      <path
+        d={valuePath}
         fill="none"
         stroke={color}
         strokeWidth={strokeWidth}
-        strokeDasharray={circumference}
-        strokeDashoffset={offset}
         strokeLinecap="round"
-        transform={`rotate(-90)`}
         style={{
-          transition: animated ? 'stroke-dashoffset 300ms ease-in-out' : 'none',
+          transition: animated ? 'd 300ms ease-in-out' : 'none',
         }}
       />
+      
+      {/* Value text (if enabled) */}
+      {showValue && (
+        <text
+          x={valueX * 1.15}
+          y={valueY * 1.15}
+          textAnchor="middle"
+          fontSize={10}
+          fill={color}
+          fontWeight="bold"
+        >
+          {value.toFixed(0)}
+        </text>
+      )}
+      
+      {/* Tooltip trigger area */}
+      <title>
+        {label}: {value.toFixed(1)} ({min}-{max})
+      </title>
+    </g>
+  );
+};
+```
+
+#### Priority Badge Component
+
+Component for displaying priority as a numeric badge:
+
+```typescript
+interface PriorityBadgeProps {
+  priority: number;  // 1-5
+}
+
+const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
+  const getPriorityColor = (p: number): string => {
+    if (p === 1) return '#d32f2f';  // High priority - red
+    if (p === 2) return '#f57c00';  // Medium-high - orange
+    if (p === 3) return '#fbc02d';  // Medium - yellow
+    if (p === 4) return '#388e3c';  // Medium-low - green
+    return '#1976d2';  // Low priority - blue
+  };
+  
+  const getPriorityIcon = (p: number): string => {
+    if (p <= 2) return '⬆';  // High priority
+    if (p === 3) return '➡';  // Medium priority
+    return '⬇';  // Low priority
+  };
+  
+  return (
+    <g className="priority-badge">
+      {/* Badge background */}
+      <circle
+        r={12}
+        fill={getPriorityColor(priority)}
+        stroke="white"
+        strokeWidth={2}
+      />
+      
+      {/* Priority number */}
+      <text
+        y={-2}
+        textAnchor="middle"
+        fontSize={10}
+        fill="white"
+        fontWeight="bold"
+      >
+        {priority}
+      </text>
+      
+      {/* Priority icon */}
+      <text
+        y={8}
+        textAnchor="middle"
+        fontSize={8}
+        fill="white"
+      >
+        {getPriorityIcon(priority)}
+      </text>
+      
+      <title>Priority: {priority} (1=Highest, 5=Lowest)</title>
     </g>
   );
 };
@@ -1116,9 +1328,17 @@ Property 16: Progress tooltip accuracy
 
 ### Node Styling Properties
 
-Property 17: Priority-based size scaling
-*For any* node with a priority value P (1-5), the node size should be base_size × (2 - P/5), ensuring priority 1 nodes are 1.5x base size and priority 5 nodes are 1.0x base size.
-**Validates: Requirements 5.2**
+Property 17: Priority badge display
+*For any* node with a priority value P (1-5), the node should display a priority badge in the upper right corner showing the priority number and an appropriate icon.
+**Validates: Requirements 5.2, 5.3**
+
+Property 18: Unified node structure
+*For any* node type, the node should consist of a circular background, a rounded rectangle content box (150px × 60px), a type icon above the box, a type label below the icon, and optionally a status icon below the box.
+**Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7**
+
+Property 19: Dial gauge configuration
+*For any* dial gauge, the gauge should render as a circular arc with configurable start angle, end angle, radius, stroke width, and color, positioned around the node's circular background.
+**Validates: Requirements 4.1, 4.6, 4.7, 4.8, 4.9, 4.13**
 
 ### Edge Rendering Properties
 

@@ -1,25 +1,24 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * DocumentNode Component
+ * Document node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
- * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
+ * - Document-specific icon
+ * - "Document" type label
  * - Status-specific icon below box
  */
 
 import React, { useMemo } from 'react';
-import type { CustomNodeProps, GaugeDefinition } from './types';
+import type { CustomNodeProps } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * DocumentIcon - SVG icon component for document nodes
+ * Displays a document/file icon
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const DocumentIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#7b1fa2',
 }) => (
   <svg
     width={size}
@@ -28,9 +27,9 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Document/file icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
       fill={color}
     />
   </svg>
@@ -63,8 +62,8 @@ const getStatusIcon = (
       );
 
     case 'active':
-      // Active icon - play/arrow icon
-      return ({ size = 16, color = '#2196f3' }) => (
+      // Active icon - document with checkmark
+      return ({ size = 16, color = '#7b1fa2' }) => (
         <svg
           width={size}
           height={size}
@@ -72,12 +71,15 @@ const getStatusIcon = (
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M8 5v14l11-7z" fill={color} />
+          <path
+            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-3 16l-4-4 1.41-1.41L11 15.17l4.59-4.59L17 12l-6 6z"
+            fill={color}
+          />
         </svg>
       );
 
     case 'completed':
-      // Completed icon - checkmark in circle
+      // Completed icon - document with checkmark (filled)
       return ({ size = 16, color = '#388e3c' }) => (
         <svg
           width={size}
@@ -86,14 +88,9 @@ const getStatusIcon = (
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" />
           <path
-            d="M8 12l2 2 4-4"
-            stroke={color}
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-3 16l-4-4 1.41-1.41L11 15.17l4.59-4.59L17 12l-6 6z"
+            fill={color}
           />
         </svg>
       );
@@ -115,45 +112,56 @@ const getStatusIcon = (
         </svg>
       );
 
+    case 'approved':
+      // Approved icon - document with star
+      return ({ size = 16, color = '#388e3c' }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-2 15l-3.5-2.1L5 17l.95-3.95L3 10l4.05-.35L9 6l1.95 3.65L15 10l-2.95 3.05L13 17l-3.5-2.1z"
+            fill={color}
+          />
+        </svg>
+      );
+
+    case 'review':
+      // Review icon - document with magnifying glass
+      return ({ size = 16, color = '#ff9800' }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-1 15c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4z"
+            fill={color}
+          />
+          <circle cx="13" cy="13" r="2.5" stroke={color} strokeWidth="1" fill="none" />
+        </svg>
+      );
+
     default:
       return undefined;
   }
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * DocumentNode - Document node component with unified design
+ * Extends UnifiedNode with document-specific configuration
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const DocumentNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
-  const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
-
-  // Configure progress dial gauge
-  const gauges: GaugeDefinition[] = useMemo(
-    () => [
-      {
-        id: 'progress',
-        label: 'Progress',
-        value: progress,
-        min: 0,
-        max: 100,
-        startAngle: 0,
-        endAngle: 360,
-        color: '#388e3c', // Green color for progress
-        showValue: true,
-      },
-    ],
-    [progress]
-  );
-
   // Get status icon based on actual status
   const StatusIcon = useMemo(() => {
     return getStatusIcon(data.status);
@@ -165,13 +173,13 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={DocumentIcon}
+      typeName="Document"
       statusIcon={StatusIcon}
-      gauges={gauges}
+      gauges={[]} // No gauges for document nodes
       iconPosition="upper-left"
     />
   );
 };
 
-export default TaskNode;
+export default DocumentNode;

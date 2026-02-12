@@ -55,38 +55,41 @@ The current implementation uses @xyflow/react for 2D visualization with a basic 
 6. THE Graph_Visualization_System SHALL persist the selected layout algorithm in user preferences
 7. WHEN a layout algorithm is changed, THE Graph_Visualization_System SHALL maintain the current node selection
 
-### Requirement 3: Type-Specific Node Shapes
+### Requirement 3: Unified Node Design with Type Icons
 
-**User Story:** As a user, I want different node types to have distinctive shapes, so that I can quickly identify the type of each node without reading labels.
-
-#### Acceptance Criteria
-
-1. WHEN rendering a task node, THE Graph_Visualization_System SHALL display it as a circle
-2. WHEN rendering a requirement node, THE Graph_Visualization_System SHALL display it as a rounded rectangle
-3. WHEN rendering a test node, THE Graph_Visualization_System SHALL display it as a hexagon
-4. WHEN rendering a risk node, THE Graph_Visualization_System SHALL display it as a triangle
-5. WHEN rendering a document node, THE Graph_Visualization_System SHALL display it as a rectangle with a folded corner
-6. WHEN rendering any node type, THE Graph_Visualization_System SHALL display a type-specific icon in the upper left corner
-7. THE Graph_Visualization_System SHALL maintain consistent shape rendering across all zoom levels
-
-### Requirement 4: Concentric Circle Progress Indicators
-
-**User Story:** As a user, I want to see progress indicators as concentric circles around nodes, so that I can quickly assess completion status and numeric metrics at a glance.
+**User Story:** As a user, I want all nodes to have a consistent visual design with type-specific icons and text labels, so that I can quickly identify node types while maintaining visual harmony.
 
 #### Acceptance Criteria
 
-1. WHEN a node has a numeric completion attribute, THE Graph_Visualization_System SHALL display a concentric circle around the node showing the completion percentage
-2. WHEN a task node has the "done" attribute set to true, THE Graph_Visualization_System SHALL display a complete green circle (100% completion)
-3. WHEN a task node has the "done" attribute set to false, THE Graph_Visualization_System SHALL display an empty circle outline
-4. WHEN a workpackage node contains child tasks, THE Graph_Visualization_System SHALL calculate and display the percentage of completed tasks as a partial circle
+1. WHEN rendering any node, THE Graph_Visualization_System SHALL display it as a rounded rectangle (8px border radius) containing text
+2. WHEN rendering any node, THE Graph_Visualization_System SHALL display a circular background behind the rounded rectangle
+3. WHEN rendering any node, THE Graph_Visualization_System SHALL display a type-specific icon above the rounded rectangle
+4. WHEN rendering any node, THE Graph_Visualization_System SHALL display the node type name as text below the icon
+5. WHEN rendering any node, THE Graph_Visualization_System SHALL display a status icon below the rounded rectangle
+6. THE rounded rectangle SHALL have dimensions of 150px width × 60px height
+7. THE circular background SHALL have a radius 8 pixels larger than the rounded rectangle's diagonal
+8. THE Graph_Visualization_System SHALL maintain consistent node rendering across all zoom levels
+
+### Requirement 4: Dial-Type Gauge Indicators
+
+**User Story:** As a user, I want to see numeric metrics displayed as dial-type gauges around nodes, so that I can quickly assess completion status and other numeric values at a glance.
+
+#### Acceptance Criteria
+
+1. WHEN a node has a numeric attribute to display, THE Graph_Visualization_System SHALL render a dial-type gauge as a circular arc around the node
+2. WHEN a task node has the "done" attribute set to true, THE Graph_Visualization_System SHALL display a complete green arc (100% completion)
+3. WHEN a task node has the "done" attribute set to false, THE Graph_Visualization_System SHALL display an empty arc outline
+4. WHEN a workpackage node contains child tasks, THE Graph_Visualization_System SHALL calculate and display the percentage of completed tasks as a partial arc
 5. WHEN a project node contains child workpackages, THE Graph_Visualization_System SHALL calculate and display the overall completion percentage across all child items
-6. THE progress indicator circle SHALL have a radius 8 pixels larger than the node boundary
-7. THE progress indicator SHALL use a stroke width of 4 pixels
-8. THE progress indicator SHALL use color #388e3c for the completed portion
-9. THE progress indicator SHALL use color #e0e0e0 for the incomplete portion
-10. WHEN a node's completion status changes, THE Graph_Visualization_System SHALL animate the progress indicator update over 300 milliseconds
-11. WHEN a node has multiple numeric attributes (e.g., completion and priority), THE Graph_Visualization_System SHALL display multiple concentric circles with 4-pixel spacing between them
-12. THE Graph_Visualization_System SHALL display a tooltip showing the exact percentage when hovering over a progress indicator
+6. THE dial gauge SHALL be positioned around the circular background with a radius 8 pixels larger than the circle
+7. THE dial gauge SHALL use a stroke width of 4 pixels
+8. THE dial gauge SHALL use color #388e3c for the filled portion
+9. THE dial gauge SHALL use color #e0e0e0 for the unfilled portion
+10. WHEN a node's numeric value changes, THE Graph_Visualization_System SHALL animate the gauge update over 300 milliseconds
+11. WHEN a node has multiple numeric attributes to display, THE Graph_Visualization_System SHALL display multiple concentric dial gauges with 4-pixel spacing between them
+12. THE Graph_Visualization_System SHALL display a tooltip showing the exact value and label when hovering over a dial gauge
+13. EACH dial gauge SHALL have a configurable start angle, end angle, and value range
+14. THE Graph_Visualization_System SHALL support displaying numeric values as text labels adjacent to their corresponding gauges
 
 ### Requirement 4.1: Hierarchical Progress Calculation
 
@@ -109,11 +112,14 @@ The current implementation uses @xyflow/react for 2D visualization with a basic 
 #### Acceptance Criteria
 
 1. WHEN rendering nodes, THE Graph_Visualization_System SHALL use distinct colors for each node type that maintain WCAG AA contrast ratios
-2. WHEN a node has a priority property, THE Graph_Visualization_System SHALL scale the node size proportionally (priority 1 = 1.5x base size, priority 5 = 1.0x base size)
-3. WHEN a node is selected, THE Graph_Visualization_System SHALL display a black border with 3-pixel width
-4. WHEN a node is hovered, THE Graph_Visualization_System SHALL increase its size by 10% and display a shadow
-5. THE Graph_Visualization_System SHALL maintain the existing color scheme defined in NODE_COLORS constant
-6. THE Graph_Visualization_System SHALL ensure all node styling is consistent across different zoom levels
+2. WHEN a node has a priority property, THE Graph_Visualization_System SHALL display the priority as a numeric badge in the upper right corner of the rounded rectangle
+3. THE priority badge SHALL display the priority number (1-5) with an icon indicating priority level
+4. WHEN a node is selected, THE Graph_Visualization_System SHALL display a black border with 3-pixel width around the circular background
+5. WHEN a node is hovered, THE Graph_Visualization_System SHALL increase its size by 10% and display a shadow
+6. THE Graph_Visualization_System SHALL maintain the existing color scheme defined in NODE_COLORS constant
+7. THE Graph_Visualization_System SHALL ensure all node styling is consistent across different zoom levels
+8. THE type icon SHALL use colors matching the node type color scheme
+9. THE type text label SHALL be displayed in a readable font size (12px minimum) below the type icon
 
 ### Requirement 6: Curved Edge Rendering
 

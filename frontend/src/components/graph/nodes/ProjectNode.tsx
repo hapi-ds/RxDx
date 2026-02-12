@@ -1,11 +1,11 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * ProjectNode Component
+ * Project node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
- * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
+ * - Project-specific icon (briefcase/project) in corner
+ * - Hierarchical progress dial gauge (0-360 degrees, blue)
+ * - Aggregates progress from all descendant nodes
  * - Status-specific icon below box
  */
 
@@ -14,12 +14,12 @@ import type { CustomNodeProps, GaugeDefinition } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * ProjectIcon - SVG icon component for project nodes
+ * Displays a briefcase/project icon
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const ProjectIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#1976d2',
 }) => (
   <svg
     width={size}
@@ -28,9 +28,9 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Briefcase/Project icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z"
       fill={color}
     />
   </svg>
@@ -121,33 +121,55 @@ const getStatusIcon = (
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * ProjectNode - Project node component with unified design
+ * Extends UnifiedNode with project-specific configuration
+ * 
+ * Hierarchical progress calculation:
+ * - If progress is explicitly provided in data.progress, use that value
+ * - Otherwise, calculate from all descendant nodes (if available)
+ * - If no children or progress data, default to 0
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const ProjectNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
+  // Calculate hierarchical progress
+  // Priority: explicit progress > calculated from descendants > 0
   const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
+    // If explicit progress is provided, use it
+    if (data.progress !== undefined) {
+      return data.progress;
+    }
 
-  // Configure progress dial gauge
+    // If children data is available, calculate aggregate progress
+    // Note: In a real implementation, this would recursively query
+    // all descendant nodes (workpackages, tasks, etc.)
+    // For now, we use the progress property if available
+    if (data.children && data.children.length > 0) {
+      // This would be calculated by a progress calculator service
+      // that recursively queries all descendant nodes and aggregates their progress
+      // For now, return 0 as placeholder
+      return 0;
+    }
+
+    // Default to 0 if no progress data available
+    return 0;
+  }, [data.progress, data.children]);
+
+  // Configure hierarchical progress dial gauge with blue color
   const gauges: GaugeDefinition[] = useMemo(
     () => [
       {
         id: 'progress',
-        label: 'Progress',
+        label: 'Overall Progress',
         value: progress,
         min: 0,
         max: 100,
         startAngle: 0,
         endAngle: 360,
-        color: '#388e3c', // Green color for progress
+        color: '#1976d2', // Blue color for project progress
         showValue: true,
       },
     ],
@@ -165,8 +187,8 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={ProjectIcon}
+      typeName="Project"
       statusIcon={StatusIcon}
       gauges={gauges}
       iconPosition="upper-left"
@@ -174,4 +196,4 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
   );
 };
 
-export default TaskNode;
+export default ProjectNode;

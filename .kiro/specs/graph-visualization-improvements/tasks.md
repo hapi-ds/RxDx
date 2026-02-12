@@ -56,92 +56,105 @@
   - [x] 7.5 Write component tests for layout selector
   - [x] 7.6 Write property test: layout preference persistence
 
-## Phase 2: Custom Node Components
+## Phase 2: Unified Node Component System
 
-- [x] 8. Create base custom node component infrastructure
-  - [x] 8.1 Define CustomNodeProps interface with progress and priority
-  - [x] 8.2 Create base node component with common features
-  - [x] 8.3 Implement node color scheme from NODE_COLORS constant
-  - [x] 8.4 Add selection and hover state handling
-  - [x] 8.5 Write unit tests for base node component
+- [x] 8. Create base unified node component infrastructure
+  - [x] 8.1 Define CustomNodeProps interface with gauges and status
+  - [x] 8.2 Define GaugeDefinition interface for dial-type gauges
+  - [x] 8.3 Create UnifiedNode base component with circular background and rounded rectangle
+  - [x] 8.4 Implement type icon positioning (above box)
+  - [x] 8.5 Implement type label rendering (below icon)
+  - [x] 8.6 Implement status icon positioning (below box)
+  - [x] 8.7 Add selection and hover state handling
+  - [x] 8.8 Write unit tests for UnifiedNode component
 
-- [x] 9. Implement TaskNode (circle with progress)
-  - [x] 9.1 Create circular SVG shape component
-  - [x] 9.2 Add task icon in upper left corner
-  - [x] 9.3 Integrate progress indicator (concentric circle)
-  - [x] 9.4 Add "done" attribute visualization
-  - [x] 9.5 Write component tests for TaskNode
-  - [x] 9.6 Write property test: done attribute maps to 100%/0% progress
+- [x] 9. Implement DialGauge component
+  - [x] 9.1 Create DialGauge component with configurable angles
+  - [x] 9.2 Implement arc path calculation for start/end angles
+  - [x] 9.3 Implement value-based arc rendering
+  - [x] 9.4 Add optional numeric value display
+  - [x] 9.5 Implement 300ms animation for value changes
+  - [x] 9.6 Add tooltip with label and value range
+  - [x] 9.7 Support multiple concentric gauges with 4px spacing
+  - [x] 9.8 Write component tests for DialGauge
+  - [x] 9.9 Write property test: gauge animation timing 300ms ± 30ms
 
-- [ ] 10. Implement RequirementNode (rounded rectangle)
-  - [ ] 10.1 Create rounded rectangle SVG shape component
-  - [ ] 10.2 Add requirement icon in upper left corner
-  - [ ] 10.3 Add signed indicator (checkmark) when is_signed is true
-  - [ ] 10.4 Implement label rendering
-  - [ ] 10.5 Write component tests for RequirementNode
+- [x] 10. Implement PriorityBadge component
+  - [x] 10.1 Create PriorityBadge component with circular background
+  - [x] 10.2 Implement priority number display (1-5)
+  - [x] 10.3 Implement priority icon display (⬆ high, ➡ medium, ⬇ low)
+  - [x] 10.4 Add priority-based color coding
+  - [x] 10.5 Position badge in upper right corner of content box
+  - [x] 10.6 Write component tests for PriorityBadge
+  - [x] 10.7 Write property test: priority badge display
 
-- [ ] 11. Implement TestNode (hexagon)
-  - [ ] 11.1 Create hexagon SVG shape component with calculateHexagonPoints utility
-  - [ ] 11.2 Add test icon in upper left corner
-  - [ ] 11.3 Add status badge indicator
-  - [ ] 11.4 Implement label rendering
-  - [ ] 11.5 Write component tests for TestNode
+- [x] 11. Implement TaskNode with unified design
+  - [x] 11.1 Extend UnifiedNode component for TaskNode
+  - [x] 11.2 Add task-specific icon (TaskIcon)
+  - [x] 11.3 Configure progress dial gauge (0-360 degrees, green)
+  - [x] 11.4 Integrate "done" attribute for progress calculation
+  - [x] 11.5 Add task status icon below box
+  - [x] 11.6 Write component tests for TaskNode
+  - [x] 11.7 Write property test: done attribute maps to 100%/0% progress
 
-- [ ] 12. Implement RiskNode (triangle)
-  - [ ] 12.1 Create triangle SVG shape component
-  - [ ] 12.2 Add warning icon in center
-  - [ ] 12.3 Add RPN (Risk Priority Number) badge
-  - [ ] 12.4 Implement label rendering below shape
-  - [ ] 12.5 Write component tests for RiskNode
+- [x] 12. Implement RequirementNode with unified design
+  - [x] 12.1 Extend UnifiedNode component for RequirementNode
+  - [x] 12.2 Add requirement-specific icon (RequirementIcon)
+  - [x] 12.3 Add "Requirement" type label
+  - [x] 12.4 Add signed indicator as dial gauge (0-90 degrees) if applicable
+  - [x] 12.5 Add requirement status icon below box
+  - [x] 12.6 Write component tests for RequirementNode
 
-- [ ] 13. Implement DocumentNode (folded rectangle)
-  - [ ] 13.1 Create rectangle SVG shape component
-  - [ ] 13.2 Add folded corner path element
-  - [ ] 13.3 Add document icon in upper left corner
-  - [ ] 13.4 Implement label rendering
-  - [ ] 13.5 Write component tests for DocumentNode
+- [x] 13. Implement TestNode with unified design
+  - [x] 13.1 Extend UnifiedNode component for TestNode
+  - [x] 13.2 Add test-specific icon (TestIcon)
+  - [x] 13.3 Add "Test" type label
+  - [x] 13.4 Add test status icon below box
+  - [x] 13.5 Write component tests for TestNode
 
-- [ ] 14. Implement WorkpackageNode (rectangle with progress)
-  - [ ] 14.1 Create rectangle SVG shape component
-  - [ ] 14.2 Add folder icon in upper left corner
-  - [ ] 14.3 Integrate hierarchical progress indicator
-  - [ ] 14.4 Add progress percentage text display
-  - [ ] 14.5 Write component tests for WorkpackageNode
+- [x] 14. Implement RiskNode with unified design
+  - [x] 14.1 Extend UnifiedNode component for RiskNode
+  - [x] 14.2 Add risk-specific icon (WarningIcon)
+  - [x] 14.3 Add "Risk" type label
+  - [x] 14.4 Configure RPN dial gauge (0-270 degrees, color-coded by value)
+  - [x] 14.5 Add risk status icon below box
+  - [x] 14.6 Write component tests for RiskNode
 
-- [ ] 15. Implement ProjectNode (large rectangle with progress)
-  - [ ] 15.1 Create large rectangle SVG shape component
-  - [ ] 15.2 Add project icon in upper left corner
-  - [ ] 15.3 Integrate hierarchical progress indicator
-  - [ ] 15.4 Add progress percentage text display
-  - [ ] 15.5 Write component tests for ProjectNode
+- [x] 15. Implement DocumentNode with unified design
+  - [x] 15.1 Extend UnifiedNode component for DocumentNode
+  - [x] 15.2 Add document-specific icon (DocumentIcon)
+  - [x] 15.3 Add "Document" type label
+  - [x] 15.4 Add document status icon below box
+  - [x] 15.5 Write component tests for DocumentNode
 
-- [ ] 16. Implement priority-based node sizing
-  - [ ] 16.1 Add size calculation: base_size × (2 - priority/5)
-  - [ ] 16.2 Apply sizing to all node components
-  - [ ] 16.3 Write unit tests for size calculation
-  - [ ] 16.4 Write property test: priority-based size scaling formula
+- [x] 16. Implement WorkpackageNode with unified design
+  - [x] 16.1 Extend UnifiedNode component for WorkpackageNode
+  - [x] 16.2 Add workpackage-specific icon (FolderIcon)
+  - [x] 16.3 Add "Workpackage" type label
+  - [x] 16.4 Configure hierarchical progress dial gauge (0-360 degrees, green)
+  - [x] 16.5 Add workpackage status icon below box
+  - [x] 16.6 Write component tests for WorkpackageNode
+
+- [x] 17. Implement ProjectNode with unified design
+  - [x] 17.1 Extend UnifiedNode component for ProjectNode
+  - [x] 17.2 Add project-specific icon (ProjectIcon)
+  - [x] 17.3 Add "Project" type label
+  - [x] 17.4 Configure hierarchical progress dial gauge (0-360 degrees, blue)
+  - [x] 17.5 Add project status icon below box
+  - [x] 17.6 Write component tests for ProjectNode
 
 ## Phase 3: Progress Calculation System
 
-- [ ] 17. Create ProgressCalculator service
-  - [ ] 17.1 Implement ProgressCalculator interface
-  - [ ] 17.2 Implement calculateNodeProgress for leaf nodes
-  - [ ] 17.3 Implement calculateHierarchicalProgress for container nodes
-  - [ ] 17.4 Add progress caching with 30-second TTL
-  - [ ] 17.5 Implement cache invalidation for node and ancestors
-  - [ ] 17.6 Write unit tests for ProgressCalculator
-  - [ ] 17.7 Write property test: task completion mapping (done → 100%, not done → 0%)
-  - [ ] 17.8 Write property test: hierarchical progress aggregation (sum/N)
-  - [ ] 17.9 Write property test: cache validity within 30 seconds
-
-- [ ] 18. Create ProgressCircle component
-  - [ ] 18.1 Implement SVG circle with stroke-dasharray for progress arc
-  - [ ] 18.2 Add configurable radius, stroke width, and colors
-  - [ ] 18.3 Implement 300ms animation for progress updates
-  - [ ] 18.4 Add support for multiple concentric circles (4px spacing)
-  - [ ] 18.5 Write component tests for ProgressCircle
-  - [ ] 18.6 Write property test: progress animation timing 300ms ± 30ms
-  - [ ] 18.7 Write property test: multiple progress indicators with correct spacing
+- [ ] 18. Create ProgressCalculator service
+  - [ ] 18.1 Implement ProgressCalculator interface
+  - [ ] 18.2 Implement calculateNodeProgress for leaf nodes
+  - [ ] 18.3 Implement calculateHierarchicalProgress for container nodes
+  - [ ] 18.4 Add progress caching with 30-second TTL
+  - [ ] 18.5 Implement cache invalidation for node and ancestors
+  - [ ] 18.6 Write unit tests for ProgressCalculator
+  - [ ] 18.7 Write property test: task completion mapping (done → 100%, not done → 0%)
+  - [ ] 18.8 Write property test: hierarchical progress aggregation (sum/N)
+  - [ ] 18.9 Write property test: cache validity within 30 seconds
 
 - [ ] 19. Create React hooks for progress
   - [ ] 19.1 Implement useNodeProgress hook for leaf nodes
@@ -151,13 +164,13 @@
   - [ ] 19.5 Write unit tests for progress hooks
   - [ ] 19.6 Write property test: cache invalidation on child change
 
-- [ ] 20. Add progress tooltip
-  - [ ] 20.1 Create tooltip component for progress indicators
-  - [ ] 20.2 Display percentage with 1 decimal place
-  - [ ] 20.3 Show completed/total counts
+- [ ] 20. Add gauge tooltip component
+  - [ ] 20.1 Create tooltip component for dial gauges
+  - [ ] 20.2 Display label, value, and range
+  - [ ] 20.3 Format values with appropriate precision
   - [ ] 20.4 Add hover trigger
-  - [ ] 20.5 Write component tests for progress tooltip
-  - [ ] 20.6 Write property test: tooltip accuracy (max 1 decimal place)
+  - [ ] 20.5 Write component tests for gauge tooltip
+  - [ ] 20.6 Write property test: tooltip accuracy
 
 ## Phase 4: Enhanced Edge Rendering
 

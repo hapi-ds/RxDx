@@ -1,11 +1,10 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * RiskNode Component
+ * Risk node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
- * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
+ * - Risk-specific warning icon
+ * - RPN dial gauge (0-270 degrees, color-coded by value)
  * - Status-specific icon below box
  */
 
@@ -14,12 +13,12 @@ import type { CustomNodeProps, GaugeDefinition } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * WarningIcon - SVG icon component for risk nodes
+ * Displays a warning/alert triangle icon
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const WarningIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#f57c00',
 }) => (
   <svg
     width={size}
@@ -28,13 +27,27 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Warning triangle icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
       fill={color}
     />
   </svg>
 );
+
+/**
+ * Get RPN color based on risk level
+ * Critical (>=200): Red
+ * High (>=100): Orange
+ * Medium (>=50): Yellow
+ * Low (<50): Green
+ */
+const getRPNColor = (rpn: number): string => {
+  if (rpn >= 200) return '#dc2626'; // red-600 - critical
+  if (rpn >= 100) return '#f57c00'; // orange-600 - high
+  if (rpn >= 50) return '#fbc02d'; // yellow-700 - medium
+  return '#388e3c'; // green-700 - low
+};
 
 /**
  * Get status icon component based on status value
@@ -63,8 +76,8 @@ const getStatusIcon = (
       );
 
     case 'active':
-      // Active icon - play/arrow icon
-      return ({ size = 16, color = '#2196f3' }) => (
+      // Active icon - alert/warning icon
+      return ({ size = 16, color = '#f57c00' }) => (
         <svg
           width={size}
           height={size}
@@ -72,12 +85,15 @@ const getStatusIcon = (
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path d="M8 5v14l11-7z" fill={color} />
+          <path
+            d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"
+            fill={color}
+          />
         </svg>
       );
 
-    case 'completed':
-      // Completed icon - checkmark in circle
+    case 'mitigated':
+      // Mitigated icon - shield/check icon
       return ({ size = 16, color = '#388e3c' }) => (
         <svg
           width={size}
@@ -86,14 +102,9 @@ const getStatusIcon = (
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" />
           <path
-            d="M8 12l2 2 4-4"
-            stroke={color}
-            strokeWidth="2"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+            d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"
+            fill={color}
           />
         </svg>
       );
@@ -121,37 +132,42 @@ const getStatusIcon = (
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * RiskNode - Risk node component with unified design
+ * Extends UnifiedNode with risk-specific configuration
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const RiskNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
-  const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
+  // Extract RPN from properties
+  const rpn = useMemo(() => {
+    const rpnValue = data.properties?.rpn;
+    return typeof rpnValue === 'number' ? rpnValue : 0;
+  }, [data.properties?.rpn]);
 
-  // Configure progress dial gauge
+  // Calculate RPN percentage (0-100) for display
+  const rpnPercentage = useMemo(() => {
+    return (rpn / 1000) * 100;
+  }, [rpn]);
+
+  // Configure RPN dial gauge (0-270 degrees, color-coded by value)
   const gauges: GaugeDefinition[] = useMemo(
     () => [
       {
-        id: 'progress',
-        label: 'Progress',
-        value: progress,
+        id: 'rpn',
+        label: 'RPN',
+        value: rpnPercentage, // Use percentage for mini pie chart
         min: 0,
         max: 100,
         startAngle: 0,
-        endAngle: 360,
-        color: '#388e3c', // Green color for progress
+        endAngle: 270, // 270 degrees (3/4 circle)
+        color: getRPNColor(rpn),
         showValue: true,
       },
     ],
-    [progress]
+    [rpn, rpnPercentage]
   );
 
   // Get status icon based on actual status
@@ -165,8 +181,8 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={WarningIcon}
+      typeName="Risk"
       statusIcon={StatusIcon}
       gauges={gauges}
       iconPosition="upper-left"
@@ -174,4 +190,4 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
   );
 };
 
-export default TaskNode;
+export default RiskNode;

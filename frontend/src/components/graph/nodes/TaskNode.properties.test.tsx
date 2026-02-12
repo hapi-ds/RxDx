@@ -21,31 +21,26 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 /**
  * Helper function to extract progress percentage from rendered TaskNode
- * Calculates progress from stroke-dashoffset of the progress circle
+ * Extracts progress from the mini pie chart text
  */
 const extractProgressPercentage = (container: HTMLElement): number => {
-  // Find progress circle (has stroke-dashoffset attribute)
-  const progressCircle = Array.from(container.querySelectorAll('circle')).find(
-    (circle) => circle.hasAttribute('stroke-dashoffset')
-  );
-
-  if (!progressCircle) {
-    throw new Error('Progress circle not found');
+  // Find all text elements
+  const texts = container.querySelectorAll('text');
+  
+  // Look for text that contains a number (progress percentage)
+  // The pie chart shows the percentage as text
+  for (const text of Array.from(texts)) {
+    const content = text.textContent;
+    if (content && /^\d+$/.test(content.trim())) {
+      const value = parseInt(content.trim(), 10);
+      // Progress values should be 0 or 100 for tasks
+      if (value === 0 || value === 100) {
+        return value;
+      }
+    }
   }
 
-  const dasharray = parseFloat(progressCircle.getAttribute('stroke-dasharray') || '0');
-  const dashoffset = parseFloat(progressCircle.getAttribute('stroke-dashoffset') || '0');
-
-  if (dasharray === 0) {
-    return 0;
-  }
-
-  // Calculate percentage from dashoffset
-  // offset = circumference - (percentage / 100) * circumference
-  // percentage = (1 - offset / circumference) * 100
-  const percentage = (1 - dashoffset / dasharray) * 100;
-
-  return Math.round(percentage); // Round to handle floating point precision
+  throw new Error('Progress value not found in rendered TaskNode');
 };
 
 describe('TaskNode Property-Based Tests', () => {

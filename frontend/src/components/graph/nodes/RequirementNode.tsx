@@ -1,11 +1,10 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * RequirementNode Component
+ * Requirement node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
- * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
+ * - Requirement-specific icon
+ * - Signed indicator as dial gauge (0-90 degrees) if applicable
  * - Status-specific icon below box
  */
 
@@ -14,12 +13,12 @@ import type { CustomNodeProps, GaugeDefinition } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * RequirementIcon - SVG icon component for requirement nodes
+ * Displays a document/list icon
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const RequirementIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#1976d2',
 }) => (
   <svg
     width={size}
@@ -28,9 +27,9 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Document/list icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"
       fill={color}
     />
   </svg>
@@ -121,38 +120,36 @@ const getStatusIcon = (
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * RequirementNode - Requirement node component with unified design
+ * Extends UnifiedNode with requirement-specific configuration
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const RequirementNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
-  const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
+  // Configure signed indicator as dial gauge (0-90 degrees) if applicable
+  const gauges: GaugeDefinition[] = useMemo(() => {
+    const gaugeList: GaugeDefinition[] = [];
 
-  // Configure progress dial gauge
-  const gauges: GaugeDefinition[] = useMemo(
-    () => [
-      {
-        id: 'progress',
-        label: 'Progress',
-        value: progress,
+    // Add signed indicator if the requirement is signed
+    if (data.properties?.is_signed === true) {
+      gaugeList.push({
+        id: 'signed',
+        label: 'Signed',
+        value: 100, // Full arc when signed
         min: 0,
         max: 100,
         startAngle: 0,
-        endAngle: 360,
-        color: '#388e3c', // Green color for progress
-        showValue: true,
-      },
-    ],
-    [progress]
-  );
+        endAngle: 90, // 90-degree arc (quarter circle)
+        color: '#388e3c', // Green color for signed
+        showValue: false,
+      });
+    }
+
+    return gaugeList;
+  }, [data.properties?.is_signed]);
 
   // Get status icon based on actual status
   const StatusIcon = useMemo(() => {
@@ -165,8 +162,8 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={RequirementIcon}
+      typeName="Requirement"
       statusIcon={StatusIcon}
       gauges={gauges}
       iconPosition="upper-left"
@@ -174,4 +171,4 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
   );
 };
 
-export default TaskNode;
+export default RequirementNode;

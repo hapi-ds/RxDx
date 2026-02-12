@@ -12,7 +12,7 @@
  * References: Requirement 16 (Dual Frontend Interface)
  */
 
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -31,9 +31,6 @@ import {
   type NodeTypes,
   type Viewport,
   BackgroundVariant,
-  Handle,
-  Position,
-  type NodeProps,
   type Connection,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -45,7 +42,23 @@ import {
   type RelationshipType,
 } from './RelationshipTypeDialog';
 import { LayoutEngine, type LayoutNode, type LayoutEdge } from '../../services/layout/LayoutEngine';
-import { TaskNode } from './nodes/TaskNode';
+import { 
+  TaskNode,
+  RequirementNode,
+  TestNode,
+  RiskNode,
+  DocumentNode,
+  WorkpackageNode,
+  ProjectNode,
+  PhaseNode,
+  ResourceNode,
+  CompanyNode,
+  DepartmentNode,
+  SprintNode,
+  BacklogNode,
+  EntityNode,
+  MilestoneNode,
+} from './nodes';
 
 // Node styling constants
 const NODE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -54,172 +67,17 @@ const NODE_COLORS: Record<string, { bg: string; border: string; text: string }> 
   test: { bg: '#fff3e0', border: '#f57c00', text: '#e65100' },
   risk: { bg: '#ffebee', border: '#d32f2f', text: '#b71c1c' },
   document: { bg: '#f3e5f5', border: '#7b1fa2', text: '#4a148c' },
+  workpackage: { bg: '#e8f5e9', border: '#388e3c', text: '#1b5e20' },
+  project: { bg: '#e3f2fd', border: '#1976d2', text: '#0d47a1' },
+  phase: { bg: '#e0f2f1', border: '#14b8a6', text: '#0f766e' },
+  resource: { bg: '#fff7ed', border: '#f97316', text: '#c2410c' },
+  company: { bg: '#eef2ff', border: '#6366f1', text: '#4338ca' },
+  department: { bg: '#faf5ff', border: '#a855f7', text: '#7e22ce' },
+  sprint: { bg: '#f0fdf4', border: '#22c55e', text: '#15803d' },
+  backlog: { bg: '#f8fafc', border: '#64748b', text: '#475569' },
+  entity: { bg: '#fafaf9', border: '#78716c', text: '#57534e' },
+  milestone: { bg: '#fce7f3', border: '#ec4899', text: '#be185d' },
   default: { bg: '#fafafa', border: '#9e9e9e', text: '#424242' },
-};
-
-const NODE_TYPE_LABELS: Record<string, string> = {
-  requirement: 'REQ',
-  task: 'TASK',
-  test: 'TEST',
-  risk: 'RISK',
-  document: 'DOC',
-};
-
-// Base styles for custom nodes
-const baseNodeStyle: React.CSSProperties = {
-  padding: '10px 15px',
-  borderRadius: '8px',
-  borderWidth: '2px',
-  borderStyle: 'solid',
-  minWidth: '150px',
-  maxWidth: '250px',
-  fontSize: '12px',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-};
-
-/**
- * Custom node component for Requirement type
- */
-const RequirementNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
-  const colors = NODE_COLORS.requirement;
-  const isSigned = data?.properties?.is_signed === true;
-
-  return (
-    <div
-      style={{
-        ...baseNodeStyle,
-        backgroundColor: colors.bg,
-        borderColor: selected ? '#000' : colors.border,
-        color: colors.text,
-      }}
-    >
-      <Handle type="target" position={Position.Top} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '10px', opacity: 0.7 }}>
-          {NODE_TYPE_LABELS.requirement}
-        </span>
-        {isSigned && (
-          <span style={{ fontSize: '10px', color: '#388e3c' }} title="Signed">
-            ✓
-          </span>
-        )}
-      </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-};
-
-/**
- * Custom node component for Test type
- */
-const TestNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
-  const colors = NODE_COLORS.test;
-  const status = data?.properties?.status as string | undefined;
-
-  const statusIcon = useMemo(() => {
-    if (status === 'passed') return '✓';
-    if (status === 'failed') return '✗';
-    if (status === 'blocked') return '⊘';
-    return null;
-  }, [status]);
-
-  return (
-    <div
-      style={{
-        ...baseNodeStyle,
-        backgroundColor: colors.bg,
-        borderColor: selected ? '#000' : colors.border,
-        color: colors.text,
-      }}
-    >
-      <Handle type="target" position={Position.Top} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '10px', opacity: 0.7 }}>
-          {NODE_TYPE_LABELS.test}
-        </span>
-        {statusIcon && (
-          <span
-            style={{
-              fontSize: '10px',
-              color: status === 'passed' ? '#388e3c' : status === 'failed' ? '#d32f2f' : '#757575',
-            }}
-          >
-            {statusIcon}
-          </span>
-        )}
-      </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-};
-
-/**
- * Custom node component for Risk type
- */
-const RiskNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
-  const colors = NODE_COLORS.risk;
-  const rpn = data?.properties?.rpn as number | undefined;
-
-  return (
-    <div
-      style={{
-        ...baseNodeStyle,
-        backgroundColor: colors.bg,
-        borderColor: selected ? '#000' : colors.border,
-        color: colors.text,
-      }}
-    >
-      <Handle type="target" position={Position.Top} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '10px', opacity: 0.7 }}>
-          {NODE_TYPE_LABELS.risk}
-        </span>
-        {rpn !== undefined && (
-          <span
-            style={{
-              fontSize: '10px',
-              fontWeight: 'bold',
-              color: rpn > 100 ? '#d32f2f' : rpn > 50 ? '#f57c00' : '#388e3c',
-            }}
-            title="Risk Priority Number"
-          >
-            RPN: {rpn}
-          </span>
-        )}
-      </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
-};
-
-/**
- * Default node component for other types (document, etc.)
- */
-const DefaultNode: React.FC<NodeProps<Node<GraphNodeData>>> = ({ data, selected }) => {
-  const nodeType = data?.type || 'default';
-  const colors = NODE_COLORS[nodeType] || NODE_COLORS.default;
-  const typeLabel = NODE_TYPE_LABELS[nodeType] || nodeType.toUpperCase();
-
-  return (
-    <div
-      style={{
-        ...baseNodeStyle,
-        backgroundColor: colors.bg,
-        borderColor: selected ? '#000' : colors.border,
-        color: colors.text,
-      }}
-    >
-      <Handle type="target" position={Position.Top} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <span style={{ fontWeight: 'bold', fontSize: '10px', opacity: 0.7 }}>{typeLabel}</span>
-      </div>
-      <div style={{ fontWeight: 500, wordBreak: 'break-word' }}>{data?.label || 'Untitled'}</div>
-      <Handle type="source" position={Position.Bottom} />
-    </div>
-  );
 };
 
 // Register custom node types
@@ -228,8 +86,18 @@ const nodeTypes: NodeTypes = {
   task: TaskNode,
   test: TestNode,
   risk: RiskNode,
-  document: DefaultNode,
-  default: DefaultNode,
+  document: DocumentNode,
+  workpackage: WorkpackageNode,
+  project: ProjectNode,
+  phase: PhaseNode,
+  resource: ResourceNode,
+  company: CompanyNode,
+  department: DepartmentNode,
+  sprint: SprintNode,
+  backlog: BacklogNode,
+  entity: EntityNode,
+  milestone: MilestoneNode,
+  default: TaskNode, // Use TaskNode as default fallback
 };
 
 // MiniMap node color function

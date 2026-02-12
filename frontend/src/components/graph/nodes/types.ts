@@ -15,6 +15,35 @@ export interface CustomNodeData extends GraphNodeData {
   priority?: number;
   /** Child node IDs for hierarchical progress calculation */
   children?: string[];
+  /** Node status for status icon display */
+  status?: string;
+  /** Gauge definitions for dial-type gauges */
+  gauges?: GaugeDefinition[];
+}
+
+/**
+ * Definition for a dial-type gauge indicator
+ * Renders as a circular arc around the node
+ */
+export interface GaugeDefinition {
+  /** Unique identifier for the gauge */
+  id: string;
+  /** Label for tooltip display */
+  label: string;
+  /** Current value */
+  value: number;
+  /** Minimum value */
+  min: number;
+  /** Maximum value */
+  max: number;
+  /** Start angle in degrees (0 = top) */
+  startAngle: number;
+  /** End angle in degrees */
+  endAngle: number;
+  /** Gauge color */
+  color: string;
+  /** Whether to show numeric value */
+  showValue: boolean;
 }
 
 /**

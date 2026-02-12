@@ -23,6 +23,7 @@ import {
   type GraphVisualizationParams,
 } from '../services/graphService';
 import { workitemService, type WorkItemUpdate } from '../services/workitemService';
+import type { CustomNodeData } from '../components/graph/nodes/types';
 
 export interface SearchResult {
   id: string;
@@ -137,9 +138,9 @@ export type LayoutAlgorithm = 'force' | 'hierarchical' | 'circular' | 'grid';
 
 export interface GraphState {
   // Data
-  nodes: Node<GraphNodeData>[];
+  nodes: Node<CustomNodeData>[];
   edges: Edge[];
-  selectedNode: Node<GraphNodeData> | null;
+  selectedNode: Node<CustomNodeData> | null;
   selectedRelationship: GraphEdge | null;
   viewMode: ViewMode;
 
@@ -382,10 +383,14 @@ export const convert3Dto2D = (
  * Transform API GraphNode to react-flow Node format
  * Also initializes position mapping for synchronization
  */
-const transformNode = (node: GraphNode): Node<GraphNodeData> => {
+const transformNode = (node: GraphNode): Node<CustomNodeData> => {
   const position2D = node.position ?? { x: Math.random() * 500, y: Math.random() * 500 };
   // Ensure node type is lowercase to match react-flow nodeTypes keys
   const nodeType = node.type?.toLowerCase() ?? 'default';
+  
+  // Extract common properties for easier access
+  const priority = typeof node.properties.priority === 'number' ? node.properties.priority : undefined;
+  const status = typeof node.properties.status === 'string' ? node.properties.status : undefined;
   
   const transformedNode = {
     id: node.id,
@@ -395,6 +400,8 @@ const transformNode = (node: GraphNode): Node<GraphNodeData> => {
       label: node.label,
       type: nodeType,
       properties: node.properties,
+      priority, // Extract for easier access
+      status, // Extract for easier access
     },
   };
   
@@ -403,7 +410,9 @@ const transformNode = (node: GraphNode): Node<GraphNodeData> => {
     type: transformedNode.type,
     position: transformedNode.position,
     hasData: !!transformedNode.data,
-    label: transformedNode.data.label
+    label: transformedNode.data.label,
+    priority: transformedNode.data.priority,
+    status: transformedNode.data.status,
   });
   
   return transformedNode;

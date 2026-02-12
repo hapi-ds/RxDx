@@ -1,11 +1,10 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * SprintNode Component
+ * Sprint node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
+ * - Sprint-specific icon (lightning-bolt)
  * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
  * - Status-specific icon below box
  */
 
@@ -14,12 +13,12 @@ import type { CustomNodeProps, GaugeDefinition } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * SprintIcon - SVG icon component for sprint nodes
+ * Displays a lightning-bolt icon
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const SprintIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#22c55e',
 }) => (
   <svg
     width={size}
@@ -28,9 +27,9 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Lightning bolt icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M7 2v11h3v9l7-12h-4l4-8z"
       fill={color}
     />
   </svg>
@@ -45,8 +44,7 @@ const getStatusIcon = (
   if (!status) return undefined;
 
   switch (status) {
-    case 'draft':
-      // Draft icon - pencil/edit icon
+    case 'planned':
       return ({ size = 16, color = '#9e9e9e' }) => (
         <svg
           width={size}
@@ -55,15 +53,19 @@ const getStatusIcon = (
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" />
           <path
-            d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
-            fill={color}
+            d="M12 6v6l4 2"
+            stroke={color}
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
         </svg>
       );
 
     case 'active':
-      // Active icon - play/arrow icon
       return ({ size = 16, color = '#2196f3' }) => (
         <svg
           width={size}
@@ -77,7 +79,6 @@ const getStatusIcon = (
       );
 
     case 'completed':
-      // Completed icon - checkmark in circle
       return ({ size = 16, color = '#388e3c' }) => (
         <svg
           width={size}
@@ -98,43 +99,25 @@ const getStatusIcon = (
         </svg>
       );
 
-    case 'archived':
-      // Archived icon - box/archive icon
-      return ({ size = 16, color = '#757575' }) => (
-        <svg
-          width={size}
-          height={size}
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12l.94 1H5.12z"
-            fill={color}
-          />
-        </svg>
-      );
-
     default:
       return undefined;
   }
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * SprintNode - Sprint node component with unified design
+ * Extends UnifiedNode with sprint-specific configuration
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const SprintNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
+  // Calculate progress from properties
   const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
+    return (data.properties?.progress as number | undefined) || 0;
+  }, [data.properties?.progress]);
 
   // Configure progress dial gauge
   const gauges: GaugeDefinition[] = useMemo(
@@ -147,7 +130,7 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
         max: 100,
         startAngle: 0,
         endAngle: 360,
-        color: '#388e3c', // Green color for progress
+        color: '#22c55e', // Green color for sprint progress
         showValue: true,
       },
     ],
@@ -165,8 +148,8 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={SprintIcon}
+      typeName="Sprint"
       statusIcon={StatusIcon}
       gauges={gauges}
       iconPosition="upper-left"
@@ -174,4 +157,4 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
   );
 };
 
-export default TaskNode;
+export default SprintNode;

@@ -1,25 +1,24 @@
 /**
- * TaskNode Component
- * Task node with unified design pattern
+ * TestNode Component
+ * Test node with unified design pattern
  * Features:
  * - Unified node design (circular background + rounded rectangle)
- * - Task-specific icon in corner
- * - Progress dial gauge (0-360 degrees, green)
- * - "done" attribute integration (done=true → 100%, done=false/undefined → 0%)
+ * - Test-specific icon
+ * - "Test" type label
  * - Status-specific icon below box
  */
 
 import React, { useMemo } from 'react';
-import type { CustomNodeProps, GaugeDefinition } from './types';
+import type { CustomNodeProps } from './types';
 import { UnifiedNode } from './UnifiedNode';
 
 /**
- * TaskIcon - SVG icon component for task nodes
- * Displays a checkmark icon
+ * TestIcon - SVG icon component for test nodes
+ * Displays a beaker/flask icon representing testing
  */
-const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
+const TestIcon: React.FC<{ size?: number; color?: string }> = ({
   size = 16,
-  color = '#388e3c',
+  color = '#9c27b0',
 }) => (
   <svg
     width={size}
@@ -28,9 +27,9 @@ const TaskIcon: React.FC<{ size?: number; color?: string }> = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Checkmark icon */}
+    {/* Beaker/flask icon */}
     <path
-      d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+      d="M7 2v2h1v14c0 2.21 1.79 4 4 4s4-1.79 4-4V4h1V2H7zm2 2h6v3H9V4zm0 5h6v9c0 1.1-.9 2-2 2s-2-.9-2-2V9z"
       fill={color}
     />
   </svg>
@@ -115,45 +114,83 @@ const getStatusIcon = (
         </svg>
       );
 
+    case 'passed':
+      // Passed icon - checkmark in circle (green)
+      return ({ size = 16, color = '#388e3c' }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle cx="12" cy="12" r="10" fill={color} />
+          <path
+            d="M8 12l2 2 4-4"
+            stroke="white"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+
+    case 'failed':
+      // Failed icon - X in circle (red)
+      return ({ size = 16, color = '#d32f2f' }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle cx="12" cy="12" r="10" fill={color} />
+          <path
+            d="M8 8l8 8M16 8l-8 8"
+            stroke="white"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+
+    case 'pending':
+      // Pending icon - clock icon
+      return ({ size = 16, color = '#ff9800' }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="2" fill="none" />
+          <path
+            d="M12 6v6l4 2"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+
     default:
       return undefined;
   }
 };
 
 /**
- * TaskNode - Task node component with unified design
- * Extends UnifiedNode with task-specific configuration
+ * TestNode - Test node component with unified design
+ * Extends UnifiedNode with test-specific configuration
  */
-export const TaskNode: React.FC<CustomNodeProps> = ({
+export const TestNode: React.FC<CustomNodeProps> = ({
   data,
   selected,
   dragging,
   ...props
 }) => {
-  // Calculate progress from "done" attribute
-  // done = true → 100%, done = false/undefined → 0%
-  const progress = useMemo(() => {
-    return data.properties?.done === true ? 100 : 0;
-  }, [data.properties?.done]);
-
-  // Configure progress dial gauge
-  const gauges: GaugeDefinition[] = useMemo(
-    () => [
-      {
-        id: 'progress',
-        label: 'Progress',
-        value: progress,
-        min: 0,
-        max: 100,
-        startAngle: 0,
-        endAngle: 360,
-        color: '#388e3c', // Green color for progress
-        showValue: true,
-      },
-    ],
-    [progress]
-  );
-
   // Get status icon based on actual status
   const StatusIcon = useMemo(() => {
     return getStatusIcon(data.status);
@@ -165,13 +202,13 @@ export const TaskNode: React.FC<CustomNodeProps> = ({
       data={data}
       selected={selected}
       dragging={dragging}
-      typeIcon={TaskIcon}
-      typeName="Task"
+      typeIcon={TestIcon}
+      typeName="Test"
       statusIcon={StatusIcon}
-      gauges={gauges}
+      gauges={[]} // No gauges for test nodes
       iconPosition="upper-left"
     />
   );
 };
 
-export default TaskNode;
+export default TestNode;

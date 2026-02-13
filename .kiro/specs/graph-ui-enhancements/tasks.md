@@ -62,44 +62,44 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - **Property 3: Animation continuity**
     - **Validates: Requirements 1.4**
 
-- [ ] 4. Checkpoint - Distance control feature complete
+- [x] 4. Checkpoint - Distance control feature complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Enhance search functionality
-  - [ ] 5.1 Modify graphStore.searchNodes to search all node types
+- [x] 5. Enhance search functionality
+  - [x] 5.1 Modify graphStore.searchNodes to search all node types
     - Change from API-based search to client-side filtering
     - Search across all nodes in current graph state
     - Match against both node.id and node.label
     - Implement case-insensitive matching with toLowerCase()
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
   
-  - [ ] 5.2 Write property test for search scope completeness
+  - [x] 5.2 Write property test for search scope completeness
     - **Property 6: Search scope completeness**
     - **Validates: Requirements 2.1, 2.2**
   
-  - [ ] 5.3 Write property test for case-insensitive search
+  - [x] 5.3 Write property test for case-insensitive search
     - **Property 7: Case-insensitive search equivalence**
     - **Validates: Requirements 2.3**
   
-  - [ ] 5.4 Write property test for search result completeness
+  - [x] 5.4 Write property test for search result completeness
     - **Property 8: Search result completeness**
     - **Validates: Requirements 2.4**
   
-  - [ ] 5.5 Update search results display
+  - [x] 5.5 Update search results display
     - Ensure all node types are displayed correctly
     - Verify type badges show correct colors for all types
     - Test with WorkItems, Users, Projects, Phases, etc.
     - _Requirements: 2.6_
   
-  - [ ] 5.6 Write property test for search result formatting
+  - [x] 5.6 Write property test for search result formatting
     - **Property 9: Search result formatting**
     - **Validates: Requirements 2.6**
 
-- [ ] 6. Checkpoint - Enhanced search complete
+- [x] 6. Checkpoint - Enhanced search complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Implement isolation mode state management
-  - [ ] 7.1 Add isolation mode state to graphStore
+- [-] 7. Implement isolation mode state management
+  - [-] 7.1 Add isolation mode state to graphStore
     - Add `isIsolationMode` boolean state
     - Add `isolatedNodeId` string state
     - Add `isolationDepth` number state

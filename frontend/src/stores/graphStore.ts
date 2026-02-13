@@ -877,14 +877,24 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     set({ isSearching: true, searchQuery: query, error: null });
 
     try {
-      const results = await graphService.search(query);
+      // Search across ALL nodes in the current graph, not just via API
+      const state = get();
+      const allNodes = state.nodes;
+      const normalizedQuery = query.toLowerCase().trim();
       
-      // Transform GraphNode results to SearchResult format
-      const searchResults: SearchResult[] = results.map((node) => ({
+      // Filter nodes by ID or label (case-insensitive)
+      const matchingNodes = allNodes.filter(node => {
+        const idMatch = node.id.toLowerCase().includes(normalizedQuery);
+        const labelMatch = node.data?.label?.toLowerCase().includes(normalizedQuery);
+        return idMatch || labelMatch;
+      });
+      
+      // Transform to SearchResult format
+      const searchResults: SearchResult[] = matchingNodes.map(node => ({
         id: node.id,
-        type: node.type,
-        label: node.label,
-        properties: node.properties,
+        type: node.data?.type || node.type || 'unknown',
+        label: node.data?.label || 'Untitled',
+        properties: node.data?.properties || {},
       }));
 
       set({ searchResults, isSearching: false });

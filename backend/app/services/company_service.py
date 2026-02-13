@@ -35,6 +35,7 @@ class CompanyService:
         properties = {
             "id": str(company_id),
             "name": company_data.name,
+            "type": "Company",  # Add explicit type property
             "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }

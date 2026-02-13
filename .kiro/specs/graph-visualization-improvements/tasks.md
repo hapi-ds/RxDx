@@ -164,12 +164,12 @@
   - [ ] 19.5 Write unit tests for progress hooks
   - [ ] 19.6 Write property test: cache invalidation on child change
 
-- [ ] 20. Add gauge tooltip component
-  - [ ] 20.1 Create tooltip component for dial gauges
+- [ ] 20. Add mini pie chart tooltip component
+  - [ ] 20.1 Create tooltip component for mini pie chart
   - [ ] 20.2 Display label, value, and range
   - [ ] 20.3 Format values with appropriate precision
   - [ ] 20.4 Add hover trigger
-  - [ ] 20.5 Write component tests for gauge tooltip
+  - [ ] 20.5 Write component tests for mini pie chart
   - [ ] 20.6 Write property test: tooltip accuracy
 
 ## Phase 4: Enhanced Edge Rendering

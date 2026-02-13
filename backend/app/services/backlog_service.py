@@ -46,6 +46,7 @@ class BacklogService:
         properties = {
             "id": str(backlog_id),
             "name": backlog_data.name,
+            "type": "Backlog",  # Add explicit type property
             "project_id": str(backlog_data.project_id),
             "created_at": datetime.now(UTC).isoformat(),
             "updated_at": datetime.now(UTC).isoformat(),

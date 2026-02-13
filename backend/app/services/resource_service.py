@@ -52,7 +52,8 @@ class ResourceService:
         properties = {
             "id": str(resource_id),
             "name": resource_data.name,
-            "type": resource_data.type,
+            "type": "Resource",  # Add explicit type property
+            "resource_type": resource_data.type,  # Rename the resource type field
             "capacity": resource_data.capacity,
             "department_id": str(resource_data.department_id),
             "availability": resource_data.availability,
@@ -80,7 +81,7 @@ class ResourceService:
             return ResourceResponse(
                 id=resource_id,
                 name=resource_data.name,
-                type=resource_data.type,
+                type=resource_data.type,  # This is the resource_type for the response
                 capacity=resource_data.capacity,
                 department_id=resource_data.department_id,
                 skills=resource_data.skills,
@@ -163,7 +164,7 @@ class ResourceService:
         if resource_data.name is not None:
             update_props["name"] = resource_data.name
         if resource_data.type is not None:
-            update_props["type"] = resource_data.type
+            update_props["resource_type"] = resource_data.type  # Update resource_type field
         if resource_data.capacity is not None:
             update_props["capacity"] = resource_data.capacity
         if resource_data.department_id is not None:
@@ -255,7 +256,7 @@ class ResourceService:
         if department_id:
             where_clauses.append(f"r.department_id = '{str(department_id)}'")
         if resource_type:
-            where_clauses.append(f"r.type = '{resource_type}'")
+            where_clauses.append(f"r.resource_type = '{resource_type}'")  # Query resource_type field
         if availability:
             where_clauses.append(f"r.availability = '{availability}'")
 

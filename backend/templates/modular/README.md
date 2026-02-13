@@ -11,6 +11,7 @@ This directory contains modular templates that can be combined to create a compl
 ```bash
 # 1. Apply company structure (users, departments, resources)
 docker compose exec backend uv run python scripts/seed_data.py --template modular/company-acme
+docker compose exec backend uv run python scripts/seed_data.py --template modular/users-acme
 
 # 2. Apply project structure (projects, sprints, phases, workpackages, backlogs, milestones)
 docker compose exec backend uv run python scripts/seed_data.py --template modular/project-medical-device

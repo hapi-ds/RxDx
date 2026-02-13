@@ -184,7 +184,7 @@ class GraphService:
             properties: Optional new properties
 
         Returns:
-            Updated relationship
+            Updated relationship with new AGE ID
         """
         # First, get the relationship to find source and target
         query = f"""
@@ -213,11 +213,21 @@ class GraphService:
         DELETE r
         WITH a, b
         CREATE (a)-[new_r:{new_type} {props_str}]->(b)
-        RETURN new_r
+        RETURN new_r, id(new_r) as rel_id, '{source_id}' as source_id, '{target_id}' as target_id
         """
 
         results = await self.execute_query(query)
-        return results[0] if results else {}
+        if not results:
+            return {}
+
+        result = results[0]
+        return {
+            'id': result.get('rel_id'),
+            'source': result.get('source_id'),
+            'target': result.get('target_id'),
+            'type': new_type,
+            'properties': properties or {}
+        }
 
     async def delete_relationship(
         self,
@@ -468,7 +478,7 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Create a new version of a WorkItem by updating the existing node.
-        
+
         This updates the WorkItem node with new version data. Full version history
         is tracked through audit logs.
         """
@@ -787,7 +797,7 @@ class GraphService:
         RETURN d.id as dept_id
         """
         existing_results = await self.execute_query(existing_link_query)
-        
+
         if existing_results:
             existing_dept_id = existing_results[0].get('dept_id')
             if existing_dept_id and existing_dept_id != department_id:
@@ -877,7 +887,7 @@ class GraphService:
         RETURN d
         """
         results = await self.execute_query(query)
-        
+
         if not results:
             return None
 
@@ -917,13 +927,13 @@ class GraphService:
         RETURN r
         """
         results = await self.execute_query(query)
-        
+
         resources = []
         for result in results:
             resource_data = result
             if 'properties' in resource_data:
                 resource_data = resource_data['properties']
-            
+
             # Apply skills filter if provided
             if skills_filter:
                 resource_skills = resource_data.get('skills', [])
@@ -934,13 +944,13 @@ class GraphService:
                         resource_skills = json.loads(resource_skills)
                     except json.JSONDecodeError:
                         resource_skills = []
-                
+
                 # Check if resource has all required skills
                 if all(skill in resource_skills for skill in skills_filter):
                     resources.append(resource_data)
             else:
                 resources.append(resource_data)
-        
+
         return resources
 
     async def allocate_resource_to_project(
@@ -954,7 +964,7 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Allocate a resource to a project with ALLOCATED_TO relationship.
-        
+
         Args:
             resource_id: Resource UUID
             project_id: Project UUID
@@ -962,10 +972,10 @@ class GraphService:
             lead: Whether this is a lead/primary resource (default False)
             start_date: Optional allocation start date (ISO format)
             end_date: Optional allocation end date (ISO format)
-        
+
         Returns:
             Created relationship
-        
+
         Raises:
             ValueError: If resource or project doesn't exist, or if resource is already allocated to a task
         """
@@ -974,13 +984,13 @@ class GraphService:
         resource_results = await self.execute_query(resource_query)
         if not resource_results:
             raise ValueError(f"Resource {resource_id} not found")
-        
+
         # Verify project exists
         project_query = f"MATCH (p:Project {{id: '{project_id}'}}) RETURN p"
         project_results = await self.execute_query(project_query)
         if not project_results:
             raise ValueError(f"Project {project_id} not found")
-        
+
         # Check if resource is already allocated to a task (mutually exclusive)
         task_allocation_query = f"""
         MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(t:WorkItem {{type: 'task'}})
@@ -992,22 +1002,22 @@ class GraphService:
                 f"Resource {resource_id} is already allocated to a task. "
                 "A resource cannot be allocated to both a project and a task."
             )
-        
+
         # Validate allocation percentage
         if not 0 <= allocation_percentage <= 100:
             raise ValueError("Allocation percentage must be between 0 and 100")
-        
+
         # Build relationship properties
         properties = {
             "allocation_percentage": allocation_percentage,
             "lead": lead
         }
-        
+
         if start_date:
             properties["start_date"] = start_date
         if end_date:
             properties["end_date"] = end_date
-        
+
         # Create the ALLOCATED_TO relationship
         return await self.create_relationship(
             from_id=resource_id,
@@ -1027,7 +1037,7 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Allocate a resource to a task with ALLOCATED_TO relationship.
-        
+
         Args:
             resource_id: Resource UUID
             task_id: Task UUID (WorkItem with type='task')
@@ -1035,10 +1045,10 @@ class GraphService:
             lead: Whether this is a lead/primary resource (default False)
             start_date: Optional allocation start date (ISO format)
             end_date: Optional allocation end date (ISO format)
-        
+
         Returns:
             Created relationship
-        
+
         Raises:
             ValueError: If resource or task doesn't exist, or if resource is already allocated to a project
         """
@@ -1047,13 +1057,13 @@ class GraphService:
         resource_results = await self.execute_query(resource_query)
         if not resource_results:
             raise ValueError(f"Resource {resource_id} not found")
-        
+
         # Verify task exists and is of type 'task'
         task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Check if resource is already allocated to a project (mutually exclusive)
         project_allocation_query = f"""
         MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(p:Project)
@@ -1065,22 +1075,22 @@ class GraphService:
                 f"Resource {resource_id} is already allocated to a project. "
                 "A resource cannot be allocated to both a project and a task."
             )
-        
+
         # Validate allocation percentage
         if not 0 <= allocation_percentage <= 100:
             raise ValueError("Allocation percentage must be between 0 and 100")
-        
+
         # Build relationship properties
         properties = {
             "allocation_percentage": allocation_percentage,
             "lead": lead
         }
-        
+
         if start_date:
             properties["start_date"] = start_date
         if end_date:
             properties["end_date"] = end_date
-        
+
         # Create the ALLOCATED_TO relationship
         return await self.create_relationship(
             from_id=resource_id,
@@ -1100,7 +1110,7 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Update an existing ALLOCATED_TO relationship.
-        
+
         Args:
             resource_id: Resource UUID
             target_id: Project or Task UUID
@@ -1108,10 +1118,10 @@ class GraphService:
             lead: Optional new lead status
             start_date: Optional new start date
             end_date: Optional new end date
-        
+
         Returns:
             Updated relationship
-        
+
         Raises:
             ValueError: If relationship doesn't exist
         """
@@ -1125,27 +1135,27 @@ class GraphService:
             raise ValueError(
                 f"No ALLOCATED_TO relationship found between resource {resource_id} and target {target_id}"
             )
-        
+
         # Build SET clauses for properties to update
         set_clauses = []
         if allocation_percentage is not None:
             if not 0 <= allocation_percentage <= 100:
                 raise ValueError("Allocation percentage must be between 0 and 100")
             set_clauses.append(f"rel.allocation_percentage = {allocation_percentage}")
-        
+
         if lead is not None:
             set_clauses.append(f"rel.lead = {str(lead).lower()}")
-        
+
         if start_date is not None:
             set_clauses.append(f"rel.start_date = '{start_date}'")
-        
+
         if end_date is not None:
             set_clauses.append(f"rel.end_date = '{end_date}'")
-        
+
         if not set_clauses:
             # Nothing to update
             return check_results[0]
-        
+
         # Update the relationship
         update_query = f"""
         MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(target {{id: '{target_id}'}})
@@ -1162,11 +1172,11 @@ class GraphService:
     ) -> bool:
         """
         Remove an ALLOCATED_TO relationship.
-        
+
         Args:
             resource_id: Resource UUID
             target_id: Project or Task UUID
-        
+
         Returns:
             True if relationship was removed, False if it didn't exist
         """
@@ -1185,10 +1195,10 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Get all allocations for a resource.
-        
+
         Args:
             resource_id: Resource UUID
-        
+
         Returns:
             List of allocations with target information
         """
@@ -1201,33 +1211,33 @@ class GraphService:
         }} as result
         """
         results = await self.execute_query(query)
-        
+
         allocations = []
         for result in results:
             rel_data = result.get('rel', {})
             target_data = result.get('target', {})
             target_labels = result.get('target_labels', [])
-            
+
             # Extract properties
             if 'properties' in rel_data:
                 rel_props = rel_data['properties']
             else:
                 rel_props = rel_data
-            
+
             if 'properties' in target_data:
                 target_props = target_data['properties']
             else:
                 target_props = target_data
-            
+
             # Determine target type
             target_type = 'Project' if 'Project' in target_labels else 'Task' if 'WorkItem' in target_labels else 'Unknown'
-            
+
             # Get target_id - ensure it exists
             target_id = target_props.get('id')
             if not target_id:
                 # Skip allocations without valid target_id
                 continue
-            
+
             allocations.append({
                 'allocation_percentage': rel_props.get('allocation_percentage'),
                 'lead': rel_props.get('lead', False),
@@ -1237,7 +1247,7 @@ class GraphService:
                 'target_type': target_type,
                 'target_name': target_props.get('name') or target_props.get('title'),
             })
-        
+
         return allocations
 
     async def get_lead_resources_for_project(
@@ -1246,10 +1256,10 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Get all lead resources allocated to a project.
-        
+
         Args:
             project_id: Project UUID
-        
+
         Returns:
             List of lead resources
         """
@@ -1258,7 +1268,7 @@ class GraphService:
         RETURN r as result
         """
         results = await self.execute_query(query)
-        
+
         resources = []
         for result in results:
             # Result is the resource node directly
@@ -1266,16 +1276,16 @@ class GraphService:
                 resource_props = result['properties']
             else:
                 resource_props = result
-            
+
             # Parse skills if it's a JSON string
             if 'skills' in resource_props and isinstance(resource_props['skills'], str):
                 try:
                     resource_props['skills'] = json.loads(resource_props['skills'])
                 except (json.JSONDecodeError, TypeError):
                     resource_props['skills'] = []
-            
+
             resources.append(resource_props)
-        
+
         return resources
 
     async def get_lead_resources_for_task(
@@ -1284,10 +1294,10 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Get all lead resources allocated to a task.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
-        
+
         Returns:
             List of lead resources
         """
@@ -1296,7 +1306,7 @@ class GraphService:
         RETURN r as result
         """
         results = await self.execute_query(query)
-        
+
         resources = []
         for result in results:
             # Result is the resource node directly
@@ -1304,16 +1314,16 @@ class GraphService:
                 resource_props = result['properties']
             else:
                 resource_props = result
-            
+
             # Parse skills if it's a JSON string
             if 'skills' in resource_props and isinstance(resource_props['skills'], str):
                 try:
                     resource_props['skills'] = json.loads(resource_props['skills'])
                 except (json.JSONDecodeError, TypeError):
                     resource_props['skills'] = []
-            
+
             resources.append(resource_props)
-        
+
         return resources
 
     async def check_task_backlog_sprint_status(
@@ -1322,13 +1332,13 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Check if a task is in backlog or assigned to a sprint.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
-        
+
         Returns:
             Dictionary with in_backlog (bool), sprint_id (str|None), and backlog_id (str|None)
-        
+
         Raises:
             ValueError: If task doesn't exist
         """
@@ -1337,21 +1347,21 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Check for IN_BACKLOG relationship
         backlog_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:IN_BACKLOG]->(b:Backlog)
         RETURN b.id as backlog_id
         """
         backlog_results = await self.execute_query(backlog_query)
-        
+
         # Check for ASSIGNED_TO_SPRINT relationship
         sprint_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:ASSIGNED_TO_SPRINT]->(s:Sprint)
         RETURN s.id as sprint_id
         """
         sprint_results = await self.execute_query(sprint_query)
-        
+
         # Extract IDs from results - AGE returns values directly
         backlog_id = None
         if backlog_results:
@@ -1360,7 +1370,7 @@ class GraphService:
                 backlog_id = result.get('backlog_id')
             elif isinstance(result, str):
                 backlog_id = result
-        
+
         sprint_id = None
         if sprint_results:
             result = sprint_results[0]
@@ -1368,7 +1378,7 @@ class GraphService:
                 sprint_id = result.get('sprint_id')
             elif isinstance(result, str):
                 sprint_id = result
-        
+
         return {
             'in_backlog': len(backlog_results) > 0,
             'backlog_id': backlog_id,
@@ -1384,15 +1394,15 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Move a task to backlog, removing any sprint assignment (mutual exclusivity).
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             backlog_id: Backlog UUID
             priority_order: Optional priority order in backlog
-        
+
         Returns:
             Created IN_BACKLOG relationship
-        
+
         Raises:
             ValueError: If task or backlog doesn't exist
         """
@@ -1401,34 +1411,34 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Verify backlog exists
         backlog_query = f"MATCH (b:Backlog {{id: '{backlog_id}'}}) RETURN b"
         backlog_results = await self.execute_query(backlog_query)
         if not backlog_results:
             raise ValueError(f"Backlog {backlog_id} not found")
-        
+
         # Remove any existing ASSIGNED_TO_SPRINT relationship (mutual exclusivity)
         remove_sprint_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:ASSIGNED_TO_SPRINT]->(:Sprint)
         DELETE r
         """
         await self.execute_query(remove_sprint_query)
-        
+
         # Remove any existing IN_BACKLOG relationship (to avoid duplicates)
         remove_backlog_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:IN_BACKLOG]->(:Backlog)
         DELETE r
         """
         await self.execute_query(remove_backlog_query)
-        
+
         # Create IN_BACKLOG relationship
         properties = {
             'added_at': datetime.now(UTC).isoformat()
         }
         if priority_order is not None:
             properties['priority_order'] = priority_order
-        
+
         return await self.create_relationship(
             from_id=task_id,
             to_id=backlog_id,
@@ -1444,15 +1454,15 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Move a task to sprint, removing any backlog assignment (mutual exclusivity).
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             sprint_id: Sprint UUID
             assigned_by_user_id: User ID who assigned the task
-        
+
         Returns:
             Created ASSIGNED_TO_SPRINT relationship
-        
+
         Raises:
             ValueError: If task or sprint doesn't exist
         """
@@ -1461,33 +1471,33 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Verify sprint exists
         sprint_query = f"MATCH (s:Sprint {{id: '{sprint_id}'}}) RETURN s"
         sprint_results = await self.execute_query(sprint_query)
         if not sprint_results:
             raise ValueError(f"Sprint {sprint_id} not found")
-        
+
         # Remove any existing IN_BACKLOG relationship (mutual exclusivity)
         remove_backlog_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:IN_BACKLOG]->(:Backlog)
         DELETE r
         """
         await self.execute_query(remove_backlog_query)
-        
+
         # Remove any existing ASSIGNED_TO_SPRINT relationship (to avoid duplicates)
         remove_sprint_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:ASSIGNED_TO_SPRINT]->(:Sprint)
         DELETE r
         """
         await self.execute_query(remove_sprint_query)
-        
+
         # Create ASSIGNED_TO_SPRINT relationship
         properties = {
             'assigned_at': datetime.now(UTC).isoformat(),
             'assigned_by_user_id': assigned_by_user_id
         }
-        
+
         return await self.create_relationship(
             from_id=task_id,
             to_id=sprint_id,
@@ -1504,16 +1514,16 @@ class GraphService:
     ) -> bool:
         """
         Remove a task from a sprint, optionally returning it to backlog.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             sprint_id: Sprint UUID
             return_to_backlog: Whether to return task to backlog (default True)
             backlog_id: Backlog UUID (required if return_to_backlog is True)
-        
+
         Returns:
             True if relationship was removed
-        
+
         Raises:
             ValueError: If task or sprint doesn't exist, or if return_to_backlog is True but backlog_id is None
         """
@@ -1522,7 +1532,7 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Remove ASSIGNED_TO_SPRINT relationship
         remove_query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[r:ASSIGNED_TO_SPRINT]->(s:Sprint {{id: '{sprint_id}'}})
@@ -1530,7 +1540,7 @@ class GraphService:
         RETURN count(r) as deleted_count
         """
         results = await self.execute_query(remove_query)
-        
+
         # Extract deleted count - AGE may return int directly or in dict
         deleted_count = 0
         if results:
@@ -1539,23 +1549,23 @@ class GraphService:
                 deleted_count = result.get('deleted_count', 0)
             elif isinstance(result, int):
                 deleted_count = result
-        
+
         # Return to backlog if requested
         if return_to_backlog and deleted_count > 0:
             if not backlog_id:
                 raise ValueError("backlog_id is required when return_to_backlog is True")
-            
+
             # Check if task status is "ready" before adding to backlog
             task_data = task_results[0]
             if 'properties' in task_data:
                 task_props = task_data['properties']
             else:
                 task_props = task_data
-            
+
             task_status = task_props.get('status')
             if task_status == 'ready':
                 await self.move_task_to_backlog(task_id, backlog_id)
-        
+
         return deleted_count > 0
 
     async def link_task_to_risk(
@@ -1565,14 +1575,14 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Create has_risk relationship from Task to Risk.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             risk_id: Risk UUID (WorkItem with type='risk')
-        
+
         Returns:
             Created relationship
-        
+
         Raises:
             ValueError: If task or risk doesn't exist
         """
@@ -1581,13 +1591,13 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Verify risk exists
         risk_query = f"MATCH (r:WorkItem {{id: '{risk_id}', type: 'risk'}}) RETURN r"
         risk_results = await self.execute_query(risk_query)
         if not risk_results:
             raise ValueError(f"Risk {risk_id} not found or is not of type 'risk'")
-        
+
         # Create has_risk relationship
         return await self.create_relationship(
             from_id=task_id,
@@ -1602,11 +1612,11 @@ class GraphService:
     ) -> bool:
         """
         Remove has_risk relationship from Task to Risk.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             risk_id: Risk UUID (WorkItem with type='risk')
-        
+
         Returns:
             True if relationship was removed, False if it didn't exist
         """
@@ -1616,7 +1626,7 @@ class GraphService:
         RETURN count(r) as deleted_count
         """
         results = await self.execute_query(query)
-        
+
         # Extract deleted count - AGE may return int directly or in dict
         deleted_count = 0
         if results:
@@ -1625,7 +1635,7 @@ class GraphService:
                 deleted_count = result.get('deleted_count', 0)
             elif isinstance(result, int):
                 deleted_count = result
-        
+
         return deleted_count > 0
 
     async def get_task_risks(
@@ -1634,13 +1644,13 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Get all risks linked to a task.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
-        
+
         Returns:
             List of risk data
-        
+
         Raises:
             ValueError: If task doesn't exist
         """
@@ -1649,14 +1659,14 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Get linked risks
         query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:has_risk]->(r:WorkItem {{type: 'risk'}})
         RETURN r
         """
         results = await self.execute_query(query)
-        
+
         risks = []
         for result in results:
             risk_data = result
@@ -1664,7 +1674,7 @@ class GraphService:
                 risks.append(risk_data['properties'])
             else:
                 risks.append(risk_data)
-        
+
         return risks
 
     async def link_task_to_requirement(
@@ -1674,14 +1684,14 @@ class GraphService:
     ) -> dict[str, Any]:
         """
         Create implements relationship from Task to Requirement.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             requirement_id: Requirement UUID (WorkItem with type='requirement')
-        
+
         Returns:
             Created relationship
-        
+
         Raises:
             ValueError: If task or requirement doesn't exist
         """
@@ -1690,13 +1700,13 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Verify requirement exists
         req_query = f"MATCH (r:WorkItem {{id: '{requirement_id}', type: 'requirement'}}) RETURN r"
         req_results = await self.execute_query(req_query)
         if not req_results:
             raise ValueError(f"Requirement {requirement_id} not found or is not of type 'requirement'")
-        
+
         # Create implements relationship
         return await self.create_relationship(
             from_id=task_id,
@@ -1711,11 +1721,11 @@ class GraphService:
     ) -> bool:
         """
         Remove implements relationship from Task to Requirement.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
             requirement_id: Requirement UUID (WorkItem with type='requirement')
-        
+
         Returns:
             True if relationship was removed, False if it didn't exist
         """
@@ -1725,7 +1735,7 @@ class GraphService:
         RETURN count(r) as deleted_count
         """
         results = await self.execute_query(query)
-        
+
         # Extract deleted count - AGE may return int directly or in dict
         deleted_count = 0
         if results:
@@ -1734,7 +1744,7 @@ class GraphService:
                 deleted_count = result.get('deleted_count', 0)
             elif isinstance(result, int):
                 deleted_count = result
-        
+
         return deleted_count > 0
 
     async def get_task_requirements(
@@ -1743,13 +1753,13 @@ class GraphService:
     ) -> list[dict[str, Any]]:
         """
         Get all requirements implemented by a task.
-        
+
         Args:
             task_id: Task UUID (WorkItem with type='task')
-        
+
         Returns:
             List of requirement data
-        
+
         Raises:
             ValueError: If task doesn't exist
         """
@@ -1758,14 +1768,14 @@ class GraphService:
         task_results = await self.execute_query(task_query)
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
-        
+
         # Get linked requirements
         query = f"""
         MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}})-[:implements]->(r:WorkItem {{type: 'requirement'}})
         RETURN r
         """
         results = await self.execute_query(query)
-        
+
         requirements = []
         for result in results:
             req_data = result
@@ -1773,7 +1783,7 @@ class GraphService:
                 requirements.append(req_data['properties'])
             else:
                 requirements.append(req_data)
-        
+
         return requirements
 
     def _dict_to_cypher_props(self, props: dict[str, Any]) -> str:
@@ -1985,7 +1995,7 @@ class GraphService:
             rel_query = f"""
             MATCH (a)-[r{rel_filter}]->(b)
             WHERE a.id IN ['{node_ids_str}'] AND b.id IN ['{node_ids_str}']
-            RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r)}}
+            RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r), id: id(r)}}
             LIMIT {limit * 2}
             """
 
@@ -2001,6 +2011,7 @@ class GraphService:
                     edge_data['start_id'] = result.get('start_id')
                     edge_data['end_id'] = result.get('end_id')
                     edge_data['type'] = result.get('rel_type', 'RELATED')
+                    edge_data['id'] = result.get('id')  # Store AGE relationship ID
 
                     if edge_data.get('start_id') and edge_data.get('end_id'):
                         edge_key = f"{edge_data['start_id']}-{edge_data['end_id']}-{edge_data['type']}"
@@ -2026,11 +2037,11 @@ class GraphService:
         node_query += f" RETURN n LIMIT {limit}"
 
         print(f"[GraphService] Node query: {node_query}")
-        
+
         # Get nodes
         node_results = await self.execute_query(node_query)
         nodes = [result for result in node_results if result]
-        
+
         print(f"[GraphService] Node query returned {len(nodes)} nodes")
 
         # Build relationship query - return as a single map to avoid column mismatch
@@ -2042,24 +2053,25 @@ class GraphService:
         rel_query += f" RETURN r LIMIT {limit * 2}"
 
         print(f"[GraphService] Edge query: {rel_query}")
-        
+
         # Get relationships
         rel_results = await self.execute_query(rel_query)
-        
+
         print(f"[GraphService] Edge query returned {len(rel_results)} results")
-        
+
         edges = []
 
         for result in rel_results:
             if result:
                 print(f"[GraphService] Processing edge result: {result}")
-                
+
                 # AGE returns edges with id, label, start_id, end_id, properties
                 edge_data = {}
-                
+
                 # Check if result has the edge structure
                 if 'id' in result and 'label' in result:
                     # This is the edge itself
+                    edge_data['id'] = result.get('id')  # Store AGE relationship ID
                     edge_data['start_id'] = result.get('start_id')
                     edge_data['end_id'] = result.get('end_id')
                     edge_data['type'] = result.get('label', 'RELATED')
@@ -2068,13 +2080,14 @@ class GraphService:
                 elif 'properties' in result:
                     # Nested structure
                     edge_data = result['properties'].copy() if result['properties'] else {}
+                    edge_data['id'] = result.get('id')  # Store AGE relationship ID
                     edge_data['start_id'] = result.get('start_id')
                     edge_data['end_id'] = result.get('end_id')
                     edge_data['type'] = result.get('label', 'RELATED')
                 else:
                     # Fallback - treat whole result as edge data
                     edge_data = result.copy()
-                
+
                 if edge_data.get('start_id') and edge_data.get('end_id'):
                     edges.append(edge_data)
                     print(f"[GraphService] Added edge: {edge_data['start_id']} -> {edge_data['end_id']} ({edge_data.get('type', 'UNKNOWN')})")
@@ -2082,7 +2095,7 @@ class GraphService:
                     print(f"[GraphService] Skipped edge - missing IDs: {edge_data}")
 
         print(f"[GraphService] Total edges collected: {len(edges)}")
-        
+
         return nodes, edges
 
     def _format_node_for_visualization(self, node: dict[str, Any]) -> dict[str, Any] | None:
@@ -2107,7 +2120,7 @@ class GraphService:
         title = props.get('title') or props.get('name') or f"{node_type} {str(node_id)[:8]}"
         description = props.get('description') or ''
         status = props.get('status') or 'draft'
-        
+
         # Ensure priority is an integer
         priority = props.get('priority')
         if priority is None:
@@ -2221,7 +2234,7 @@ class GraphService:
 
     def _format_edge_for_visualization(self, edge: dict[str, Any], age_id_to_uuid: dict[int, str] | None = None) -> dict[str, Any] | None:
         """Format edge data for react-flow and R3F visualization with defensive checks
-        
+
         Args:
             edge: Edge data from AGE
             age_id_to_uuid: Mapping from AGE internal IDs to UUIDs
@@ -2247,6 +2260,9 @@ class GraphService:
         if not start_age_id or not end_age_id:
             return None
 
+        # Store the AGE relationship ID for update/delete operations
+        age_relationship_id = edge.get('id')
+
         # Convert AGE internal IDs to UUIDs if mapping provided
         if age_id_to_uuid:
             start_id = age_id_to_uuid.get(start_age_id, str(start_age_id))
@@ -2257,8 +2273,11 @@ class GraphService:
 
         edge_type = edge.get('type') or props.get('type') or 'RELATED'
 
-        # Generate edge ID
-        edge_id = f"{start_id}-{end_id}-{edge_type}"
+        # Generate edge ID - use AGE ID if available, otherwise composite
+        if age_relationship_id is not None:
+            edge_id = str(age_relationship_id)
+        else:
+            edge_id = f"{start_id}-{end_id}-{edge_type}"
 
         # Determine edge color, style, and properties based on type
         edge_styles = {
@@ -2382,6 +2401,7 @@ class GraphService:
             'animated': style['animated'],
             'importance': style['importance'],
             'properties': props,
+            'age_id': age_relationship_id,  # Store AGE ID for updates/deletes
             'reactFlow': react_flow_data,
             'r3f': r3f_data
         }

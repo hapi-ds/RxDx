@@ -174,14 +174,16 @@ export function GraphExplorer(): React.ReactElement {
   }, [selectedNodeTypes]);
 
   // Sync local search input with store query when cleared externally
+  // Only clear when search is explicitly cleared via clearSearch()
+  const prevSearchQueryRef = useRef(searchQuery);
   useEffect(() => {
-    if (searchQuery === '' && searchInput !== '') {
-      const timer = setTimeout(() => {
-        setSearchInput('');
-      }, 0);
-      return () => clearTimeout(timer);
+    // Only clear local input if searchQuery went from non-empty to empty
+    // This indicates clearSearch() was called, not just typing
+    if (prevSearchQueryRef.current !== '' && searchQuery === '') {
+      setSearchInput('');
     }
-  }, [searchQuery, searchInput]);
+    prevSearchQueryRef.current = searchQuery;
+  }, [searchQuery]);
 
   // Show search results dropdown when there are results
   useEffect(() => {
@@ -237,6 +239,7 @@ export function GraphExplorer(): React.ReactElement {
   // Handle search input change
   const handleSearchInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
+      console.log('[GraphExplorer] Search input change:', e.target.value);
       const value = e.target.value;
       setSearchInput(value);
       
@@ -258,6 +261,15 @@ export function GraphExplorer(): React.ReactElement {
     },
     [selectSearchResult]
   );
+
+  // Handle clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchInput('');
+    clearSearch();
+    setShowSearchResults(false);
+    // Reload the full graph to show all nodes again
+    loadGraph();
+  }, [clearSearch, loadGraph]);
 
   // Handle search input focus
   const handleSearchFocus = useCallback(() => {
@@ -416,7 +428,11 @@ export function GraphExplorer(): React.ReactElement {
       </div>
 
       {/* Toolbar */}
-      <div className="toolbar">
+      <div 
+        className="toolbar"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <div className="toolbar-left">
           {/* Node Type Filter */}
           <NodeTypeFilter
@@ -437,8 +453,19 @@ export function GraphExplorer(): React.ReactElement {
           />
 
           {/* Search */}
-          <div className="search-container" ref={searchContainerRef}>
-            <form onSubmit={handleSearch} className="search-form">
+          <div 
+            className="search-container" 
+            ref={searchContainerRef}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <form 
+              onSubmit={handleSearch} 
+              className="search-form"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
               <input
                 type="text"
                 className="search-input"
@@ -446,6 +473,9 @@ export function GraphExplorer(): React.ReactElement {
                 value={searchInput}
                 onChange={handleSearchInputChange}
                 onFocus={handleSearchFocus}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
                 aria-label="Search nodes"
                 aria-expanded={showSearchResults}
                 aria-haspopup="listbox"
@@ -458,6 +488,18 @@ export function GraphExplorer(): React.ReactElement {
               >
                 {isSearching ? 'Searching...' : 'Search'}
               </Button>
+              {(searchInput || searchQuery || searchResults.length > 0) && (
+                <Button 
+                  type="button"
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleClearSearch}
+                  aria-label="Clear search and show all nodes"
+                  title="Clear search and show all nodes"
+                >
+                  Clear
+                </Button>
+              )}
             </form>
 
             {/* Search Results Dropdown */}
@@ -702,7 +744,7 @@ export function GraphExplorer(): React.ReactElement {
         .graph-explorer-page {
           display: flex;
           flex-direction: column;
-          height: 100%;
+          min-height: 100vh;
           padding: 1.5rem;
           background-color: #f9fafb;
         }
@@ -744,6 +786,7 @@ export function GraphExplorer(): React.ReactElement {
           margin-bottom: 1rem;
           flex-wrap: wrap;
           gap: 0.75rem;
+          pointer-events: auto;
         }
 
         .toolbar-left {
@@ -765,6 +808,7 @@ export function GraphExplorer(): React.ReactElement {
 
         .search-container {
           position: relative;
+          pointer-events: auto;
         }
 
         .search-form {
@@ -939,7 +983,6 @@ export function GraphExplorer(): React.ReactElement {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
           min-height: 500px;
-          height: calc(100vh - 250px);
           display: flex;
           flex-direction: column;
         }

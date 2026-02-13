@@ -24,6 +24,7 @@ export interface GraphEdge {
   type: string;
   label?: string;
   properties?: Record<string, unknown>;
+  age_id?: number;  // AGE database relationship ID for updates/deletes
 }
 
 export interface GraphData {

@@ -516,6 +516,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
           type: fullEdge.type || 'default',
           label: typeof fullEdge.label === 'string' ? fullEdge.label : undefined,
           properties: fullEdge.data,
+          age_id: fullEdge.data?.age_id as number | undefined,  // Pass AGE ID for updates/deletes
         };
         selectRelationship(graphEdge);
       }

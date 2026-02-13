@@ -59,6 +59,7 @@ class SprintService:
         properties = {
             "id": str(sprint_id),
             "name": sprint_data.name,
+            "type": "Sprint",  # Add explicit type property
             "start_date": sprint_data.start_date.isoformat(),
             "end_date": sprint_data.end_date.isoformat(),
             "status": sprint_data.status,

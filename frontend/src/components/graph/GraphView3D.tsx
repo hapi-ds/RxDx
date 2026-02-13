@@ -1585,6 +1585,7 @@ const GraphScene: React.FC<GraphSceneProps> = ({
       type: edge.type || 'default',
       label: typeof edge.label === 'string' ? edge.label : undefined,
       properties: edge.data,
+      age_id: edge.data?.age_id as number | undefined,  // Pass AGE ID for updates/deletes
     };
     selectRelationship(graphEdge);
   }, [selectRelationship]);

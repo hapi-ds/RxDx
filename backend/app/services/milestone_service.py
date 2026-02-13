@@ -41,6 +41,7 @@ class MilestoneService:
         properties = {
             "id": str(milestone_id),
             "title": milestone_data.title,
+            "type": "Milestone",  # Add explicit type property
             "target_date": milestone_data.target_date.isoformat(),
             "is_manual_constraint": milestone_data.is_manual_constraint,
             "status": milestone_data.status,

@@ -951,7 +951,8 @@ class TemplateService:
                 properties = {
                     "id": resource_uuid_str,
                     "name": resource.name,
-                    "type": resource.type.value,
+                    "type": "Resource",  # Node type for graph visualization
+                    "resource_type": resource.type.value,  # Resource kind (person, machine, etc.)
                     "availability": resource.availability.value,
                     "created_at": datetime.now(UTC).isoformat(),
                     "updated_at": datetime.now(UTC).isoformat(),

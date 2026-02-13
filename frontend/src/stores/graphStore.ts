@@ -442,7 +442,10 @@ const transformEdge = (edge: GraphEdge): Edge => ({
   target: edge.target,
   type: edge.type,
   label: edge.label,
-  data: edge.properties,
+  data: {
+    ...edge.properties,
+    age_id: edge.age_id,  // Preserve AGE ID for updates/deletes
+  },
 });
 
 export const useGraphStore = create<GraphStore>()((set, get) => ({
@@ -576,22 +579,75 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     set({ isUpdating: true, error: null });
 
     try {
-      await graphService.updateRelationship(relationshipId, type);
+      const state = get();
+      
+      console.log('[GraphStore] updateRelationship called:', { relationshipId, type });
+      console.log('[GraphStore] Current selectedRelationship:', state.selectedRelationship);
+      
+      // Find the edge being updated (before the update)
+      const edgeToUpdate = state.edges.find((e) => e.id === relationshipId);
+      
+      console.log('[GraphStore] Edge to update:', edgeToUpdate);
+      
+      if (!edgeToUpdate) {
+        throw new Error('Relationship not found in local state');
+      }
 
-      // Update edge in local state
-      set((state) => ({
-        edges: state.edges.map((e) =>
-          e.id === relationshipId ? { ...e, type } : e
-        ),
-        // Update selected relationship if it's the one being updated
-        selectedRelationship: state.selectedRelationship?.id === relationshipId
-          ? { ...state.selectedRelationship, type }
-          : state.selectedRelationship,
-        isUpdating: false,
-      }));
+      // Call backend to update (this creates a new relationship with new AGE ID)
+      const updatedRelationship = await graphService.updateRelationship(relationshipId, type);
+      
+      console.log('[GraphStore] Backend returned:', updatedRelationship);
+
+      // Update edge in local state - match by source/target since AGE ID changed
+      set((state) => {
+        const shouldUpdateSelected = state.selectedRelationship?.source === edgeToUpdate.source &&
+                                     state.selectedRelationship?.target === edgeToUpdate.target;
+        
+        console.log('[GraphStore] Should update selected?', shouldUpdateSelected);
+        console.log('[GraphStore] Comparison:', {
+          selectedSource: state.selectedRelationship?.source,
+          edgeSource: edgeToUpdate.source,
+          selectedTarget: state.selectedRelationship?.target,
+          edgeTarget: edgeToUpdate.target,
+        });
+        
+        const newSelectedRelationship = shouldUpdateSelected
+          ? {
+              ...state.selectedRelationship!,
+              type,
+              id: updatedRelationship.id?.toString() || state.selectedRelationship!.id,
+              age_id: typeof updatedRelationship.id === 'number' ? updatedRelationship.id : undefined,
+            }
+          : state.selectedRelationship;
+        
+        console.log('[GraphStore] New selectedRelationship:', newSelectedRelationship);
+        
+        return {
+          edges: state.edges.map((e) => {
+            // Match by source and target (since AGE ID changed)
+            if (e.source === edgeToUpdate.source && e.target === edgeToUpdate.target) {
+              // Update with new type and new AGE ID from backend
+              return {
+                ...e,
+                type,
+                // Update the ID if backend returned a new one
+                id: updatedRelationship.id?.toString() || e.id,
+                data: {
+                  ...e.data,
+                  age_id: typeof updatedRelationship.id === 'number' ? updatedRelationship.id : undefined,
+                },
+              };
+            }
+            return e;
+          }),
+          selectedRelationship: newSelectedRelationship,
+          isUpdating: false,
+        };
+      });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to update relationship';
+      console.error('[GraphStore] Update failed:', error);
       set({ error: message, isUpdating: false });
       throw error;
     }
@@ -601,20 +657,44 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     set({ isUpdating: true, error: null });
 
     try {
-      await graphService.deleteRelationship(relationshipId);
+      const state = get();
+      
+      console.log('[GraphStore] deleteRelationship called:', { relationshipId });
+      console.log('[GraphStore] Current selectedRelationship:', state.selectedRelationship);
+      
+      // Find the edge being deleted (before deletion)
+      const edgeToDelete = state.edges.find((e) => e.id === relationshipId);
+      
+      console.log('[GraphStore] Edge to delete:', edgeToDelete);
+      
+      if (!edgeToDelete) {
+        throw new Error('Relationship not found in local state');
+      }
 
-      // Remove edge from local state immediately for better UX
-      set((state) => ({
-        edges: state.edges.filter((e) => e.id !== relationshipId),
-        // Clear selected relationship if it's the one being deleted
-        selectedRelationship: state.selectedRelationship?.id === relationshipId
-          ? null
-          : state.selectedRelationship,
-        isUpdating: false,
-      }));
+      // Call backend to delete
+      await graphService.deleteRelationship(relationshipId);
+      
+      console.log('[GraphStore] Backend delete successful');
+
+      // Remove edge from local state - match by source/target to be safe
+      set((state) => {
+        const shouldClearSelected = state.selectedRelationship?.source === edgeToDelete.source &&
+                                    state.selectedRelationship?.target === edgeToDelete.target;
+        
+        console.log('[GraphStore] Should clear selected?', shouldClearSelected);
+        
+        return {
+          edges: state.edges.filter((e) => 
+            !(e.source === edgeToDelete.source && e.target === edgeToDelete.target)
+          ),
+          selectedRelationship: shouldClearSelected ? null : state.selectedRelationship,
+          isUpdating: false,
+        };
+      });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Failed to delete relationship';
+      console.error('[GraphStore] Delete failed:', error);
       set({ error: message, isUpdating: false });
       throw error;
     }

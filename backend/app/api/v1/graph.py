@@ -47,7 +47,9 @@ async def get_graph_visualization(
     if node_types:
         valid_types = [
             "WorkItem", "Requirement", "Task", "Test", "Risk",
-            "Failure", "Document", "Entity", "User"
+            "Failure", "Document", "Entity", "User",
+            "Project", "Phase", "Workpackage", "Resource", 
+            "Company", "Department", "Milestone", "Sprint", "Backlog"
         ]
         invalid_types = [t for t in node_types if t not in valid_types]
         if invalid_types:

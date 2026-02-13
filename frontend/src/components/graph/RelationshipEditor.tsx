@@ -78,6 +78,7 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
   // Initialize form when relationship changes
   useEffect(() => {
+    console.log('[RelationshipEditor] Relationship changed:', relationship);
     if (relationship) {
       setSelectedType(relationship.type);
       setHasChanges(false);
@@ -109,9 +110,14 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
     try {
       setError(null);
-      await onUpdate(relationship.id, selectedType);
+      // Use age_id if available, otherwise fall back to composite ID
+      const relationshipId = relationship.age_id?.toString() || relationship.id;
+      console.log('[RelationshipEditor] Calling onUpdate with:', { relationshipId, selectedType, relationship });
+      await onUpdate(relationshipId, selectedType);
+      console.log('[RelationshipEditor] onUpdate completed');
       setHasChanges(false);
     } catch (err) {
+      console.error('[RelationshipEditor] onUpdate failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to update relationship');
     }
   }, [relationship, selectedType, hasChanges, onUpdate]);
@@ -122,7 +128,9 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 
     try {
       setError(null);
-      await onDelete(relationship.id);
+      // Use age_id if available, otherwise fall back to composite ID
+      const relationshipId = relationship.age_id?.toString() || relationship.id;
+      await onDelete(relationshipId);
       setShowDeleteConfirm(false);
       onClose();
     } catch (err) {
@@ -146,11 +154,22 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
   }, [hasChanges, onClose]);
 
   if (!relationship) {
+    console.log('[RelationshipEditor] Relationship is null, not rendering');
     return null;
   }
 
+  // Prevent clicks from propagating to the graph pane
+  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
   return (
-    <div className="relationship-editor" style={styles.container}>
+    <div 
+      className="relationship-editor" 
+      style={styles.container}
+      onClick={handleContainerClick}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       {/* Header */}
       <div style={styles.header}>
         <h3 style={styles.title}>Relationship Details</h3>
@@ -162,6 +181,9 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
           ×
         </button>
       </div>
+
+      {/* Scrollable Content */}
+      <div style={styles.content}>
 
       {/* Error message */}
       {error && (
@@ -255,6 +277,8 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
         </button>
       </div>
 
+      </div> {/* End of scrollable content */}
+
       {/* Delete confirmation dialog */}
       {showDeleteConfirm && (
         <div style={styles.overlay}>
@@ -294,21 +318,30 @@ export const RelationshipEditor: React.FC<RelationshipEditorProps> = ({
 // Styles
 const styles: Record<string, React.CSSProperties> = {
   container: {
+    position: 'absolute',
+    top: '80px',
+    right: '20px',
+    zIndex: 1000,
     backgroundColor: '#fff',
     border: '1px solid #e0e0e0',
     borderRadius: '8px',
-    padding: '16px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
     maxWidth: '400px',
     width: '100%',
+    pointerEvents: 'auto',
+    overflow: 'hidden', // Container doesn't scroll
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '16px',
+    padding: '12px 16px',
     borderBottom: '1px solid #e0e0e0',
-    paddingBottom: '8px',
+  },
+  content: {
+    padding: '16px',
+    maxHeight: '400px', // Fixed height like NodeEditor
+    overflowY: 'auto' as const, // Content scrolls
   },
   title: {
     margin: 0,

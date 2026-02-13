@@ -12,6 +12,12 @@ vi.mock('./api', () => ({
   apiClient: {
     get: vi.fn(),
   },
+  getErrorMessage: vi.fn((error: unknown) => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
+  }),
 }));
 
 describe('GraphService - Search Functionality', () => {
@@ -88,7 +94,7 @@ describe('GraphService - Search Functionality', () => {
       const mockBackendNodes = [
         {
           id: 'node-1',
-          type: 'WorkItem',
+          type: 'requirement',
           label: 'Test Requirement',
           properties: {
             type: 'requirement',
@@ -110,6 +116,7 @@ describe('GraphService - Search Functionality', () => {
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe('node-1');
       expect(results[0].type).toBe('requirement');
+      expect(results[0].label).toBe('Test Requirement');
     });
 
     it('should include limit parameter when provided', async () => {

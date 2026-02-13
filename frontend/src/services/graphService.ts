@@ -188,12 +188,17 @@ function transformBackendNode(backendNode: BackendNode): GraphNode | null {
   }
 
   // Provide default label if missing
-  const label = backendNode.label || `Node ${backendNode.id.substring(0, 8)}`;
+  // Try multiple fields: label, title (top-level), properties.title, properties.name (in that order)
+  const label = backendNode.label || 
+                (backendNode as any).title ||  // Search results have title at top level
+                backendNode.properties?.title || 
+                backendNode.properties?.name || 
+                `Node ${backendNode.id.substring(0, 8)}`;
 
   return {
     id: backendNode.id,
     type: backendNode.type?.toLowerCase() ?? 'default',
-    label,
+    label: String(label),
     properties: {
       ...backendNode.properties,
       status: backendNode.status,

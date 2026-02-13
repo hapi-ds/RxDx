@@ -16,6 +16,7 @@ import { ConnectionMode } from '../components/graph/ConnectionMode';
 import { ViewModeToggle } from '../components/graph/ViewModeToggle';
 import { GraphEmptyState } from '../components/graph/GraphEmptyState';
 import { LayoutSelector } from '../components/graph/LayoutSelector';
+import { DistanceControl } from '../components/graph/DistanceControl';
 import { NodeTypeFilter } from '../components/common/NodeTypeFilter';
 import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
@@ -450,6 +451,13 @@ export function GraphExplorer(): React.ReactElement {
             showLabel={true}
             showHint={false}
             className="graph-layout-selector"
+          />
+
+          {/* Distance Control */}
+          <DistanceControl
+            showLabel={true}
+            showValue={true}
+            className="graph-distance-control"
           />
 
           {/* Search */}

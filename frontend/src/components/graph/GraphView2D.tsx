@@ -215,6 +215,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     isViewTransitioning,
     error,
     layoutAlgorithm,
+    layoutDistance,
   } = useGraphStore();
 
   // Get filtered nodes and edges for rendering
@@ -319,7 +320,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         return;
       }
 
-      console.log('[GraphView2D] Applying layout:', layoutAlgorithm);
+      console.log('[GraphView2D] Applying layout:', layoutAlgorithm, 'with distance:', layoutDistance);
       setIsApplyingLayout(true);
 
       try {
@@ -342,12 +343,12 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
           currentPositions.set(node.id, { x: node.position.x, y: node.position.y });
         });
 
-        // Apply layout with animation
+        // Apply layout with animation, including distance parameter
         await layoutEngineRef.current.transitionToLayout(
           layoutNodes,
           layoutEdges,
           currentPositions,
-          { algorithm: layoutAlgorithm },
+          { algorithm: layoutAlgorithm, distance: layoutDistance },
           (positions) => {
             // Update node positions during animation
             const updatedNodes = flowNodes.map((node) => {
@@ -368,7 +369,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         const finalPositions = layoutEngineRef.current.calculateLayout(
           layoutNodes,
           layoutEdges,
-          { algorithm: layoutAlgorithm }
+          { algorithm: layoutAlgorithm, distance: layoutDistance }
         );
         finalPositions.forEach((pos, nodeId) => {
           updateNodePosition(nodeId, pos);
@@ -389,7 +390,7 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
 
     applyLayout();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layoutAlgorithm, rfInstance]);
+  }, [layoutAlgorithm, layoutDistance, rfInstance]);
 
   // State for relationship type dialog
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null);

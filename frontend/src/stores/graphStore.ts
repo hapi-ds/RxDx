@@ -170,6 +170,8 @@ export interface GraphState {
   // Layout state
   /** Selected layout algorithm */
   layoutAlgorithm: LayoutAlgorithm;
+  /** Layout distance parameter (50-500 pixels) */
+  layoutDistance: number;
 
   // Edge bundling state
   /** Whether edge bundling is enabled */
@@ -218,6 +220,8 @@ export interface GraphActions {
   // Layout operations
   /** Set the layout algorithm */
   setLayoutAlgorithm: (algorithm: LayoutAlgorithm) => void;
+  /** Set the layout distance parameter */
+  setLayoutDistance: (distance: number) => void;
 
   // Edge bundling operations
   /** Toggle edge bundling on/off */
@@ -323,6 +327,25 @@ const loadLayoutAlgorithm = (): LayoutAlgorithm => {
 };
 
 /**
+ * Load layout distance from local storage
+ */
+const loadLayoutDistance = (): number => {
+  try {
+    const stored = localStorage.getItem('graph-layout-distance');
+    if (stored !== null) {
+      const distance = parseInt(stored, 10);
+      // Validate: must be between 50-500 and multiple of 10
+      if (!isNaN(distance) && distance >= 50 && distance <= 500 && distance % 10 === 0) {
+        return distance;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load layout distance from storage:', error);
+  }
+  return 100; // Default
+};
+
+/**
  * Load edge bundling preference from local storage
  */
 const loadEdgeBundlingEnabled = (): boolean => {
@@ -358,6 +381,7 @@ const initialState: GraphState = {
   depth: 2,
   // Layout state
   layoutAlgorithm: loadLayoutAlgorithm(),
+  layoutDistance: loadLayoutDistance(),
   // Edge bundling state
   edgeBundlingEnabled: loadEdgeBundlingEnabled(),
   // State synchronization
@@ -800,6 +824,21 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
       localStorage.setItem('graph-layout-algorithm', algorithm);
     } catch (error) {
       console.error('Failed to persist layout algorithm:', error);
+    }
+  },
+
+  setLayoutDistance: (distance: number): void => {
+    // Validate and clamp distance value (50-500, multiples of 10)
+    let validDistance = Math.max(50, Math.min(500, distance));
+    // Round to nearest multiple of 10
+    validDistance = Math.round(validDistance / 10) * 10;
+    
+    set({ layoutDistance: validDistance });
+    // Persist to local storage
+    try {
+      localStorage.setItem('graph-layout-distance', validDistance.toString());
+    } catch (error) {
+      console.error('Failed to persist layout distance:', error);
     }
   },
 

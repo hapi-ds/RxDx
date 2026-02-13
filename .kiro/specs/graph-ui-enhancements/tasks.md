@@ -6,40 +6,40 @@ This implementation plan breaks down the four Graph UI enhancements into discret
 
 ## Tasks
 
-- [ ] 1. Extend graphStore with distance control state
+- [x] 1. Extend graphStore with distance control state
   - Add `layoutDistance` state (default: 100)
   - Add `setLayoutDistance` action
   - Implement localStorage persistence for distance value
   - Add distance parameter to layout configuration
   - _Requirements: 1.2, 1.5, 1.8_
 
-- [ ]* 1.1 Write property test for distance value constraints
+- [x] 1.1 Write property test for distance value constraints
   - **Property 1: Distance value constraints**
   - **Validates: Requirements 1.2**
 
-- [ ]* 1.2 Write property test for distance persistence
+- [x] 1.2 Write property test for distance persistence
   - **Property 4: Distance persistence round-trip**
   - **Validates: Requirements 1.5**
 
-- [ ] 2. Create DistanceControl component
-  - [ ] 2.1 Implement slider with range 50-500, step 10
+- [x] 2. Create DistanceControl component
+  - [x] 2.1 Implement slider with range 50-500, step 10
     - Create `frontend/src/components/graph/DistanceControl.tsx`
     - Render HTML range input with numeric display
     - Implement debounced onChange (300ms)
     - Add ARIA labels for accessibility
     - _Requirements: 1.1, 1.2, 1.7_
   
-  - [ ]* 2.2 Write property test for distance display consistency
+  - [x] 2.2 Write property test for distance display consistency
     - **Property 5: Distance display consistency**
     - **Validates: Requirements 1.7**
   
-  - [ ] 2.3 Integrate DistanceControl into GraphExplorer toolbar
+  - [x] 2.3 Integrate DistanceControl into GraphExplorer toolbar
     - Add component to toolbar between LayoutSelector and SearchContainer
     - Connect to graphStore's layoutDistance state
     - _Requirements: 1.1_
 
-- [ ] 3. Update LayoutEngine to use distance parameter
-  - [ ] 3.1 Modify LayoutEngine.calculateLayout to accept distance
+- [x] 3. Update LayoutEngine to use distance parameter
+  - [x] 3.1 Modify LayoutEngine.calculateLayout to accept distance
     - Add distance parameter to LayoutConfig interface
     - Implement `applyDistanceToConfig` helper function
     - Map distance to force layout parameters (idealEdgeLength, minSpacing, repulsionStrength)
@@ -48,17 +48,17 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Map distance to grid layout parameters (rowSpacing, columnSpacing)
     - _Requirements: 1.3, 1.8_
   
-  - [ ]* 3.2 Write property test for layout configuration updates
+  - [x] 3.2 Write property test for layout configuration updates
     - **Property 2: Layout configuration updates**
     - **Validates: Requirements 1.3, 1.8**
   
-  - [ ] 3.3 Update GraphView2D to pass distance to layout calculations
+  - [x] 3.3 Update GraphView2D to pass distance to layout calculations
     - Get distance from graphStore
     - Pass distance in layout config to LayoutEngine
     - Ensure smooth transitions when distance changes
     - _Requirements: 1.3, 1.4_
   
-  - [ ]* 3.4 Write property test for animation continuity
+  - [x] 3.4 Write property test for animation continuity
     - **Property 3: Animation continuity**
     - **Validates: Requirements 1.4**
 
@@ -73,15 +73,15 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Implement case-insensitive matching with toLowerCase()
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
   
-  - [ ]* 5.2 Write property test for search scope completeness
+  - [ ] 5.2 Write property test for search scope completeness
     - **Property 6: Search scope completeness**
     - **Validates: Requirements 2.1, 2.2**
   
-  - [ ]* 5.3 Write property test for case-insensitive search
+  - [ ] 5.3 Write property test for case-insensitive search
     - **Property 7: Case-insensitive search equivalence**
     - **Validates: Requirements 2.3**
   
-  - [ ]* 5.4 Write property test for search result completeness
+  - [ ] 5.4 Write property test for search result completeness
     - **Property 8: Search result completeness**
     - **Validates: Requirements 2.4**
   
@@ -91,7 +91,7 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Test with WorkItems, Users, Projects, Phases, etc.
     - _Requirements: 2.6_
   
-  - [ ]* 5.6 Write property test for search result formatting
+  - [ ] 5.6 Write property test for search result formatting
     - **Property 9: Search result formatting**
     - **Validates: Requirements 2.6**
 
@@ -119,19 +119,19 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Calculate visible nodes using calculateNeighbors
     - _Requirements: 3.1, 3.2, 3.4, 3.8_
   
-  - [ ]* 7.4 Write property test for isolation visibility
+  - [ ] 7.4 Write property test for isolation visibility
     - **Property 10: Isolation visibility correctness**
     - **Validates: Requirements 3.1, 3.2**
   
-  - [ ]* 7.5 Write property test for isolated edge validity
+  - [ ] 7.5 Write property test for isolated edge validity
     - **Property 11: Isolated edge validity**
     - **Validates: Requirements 3.3**
   
-  - [ ]* 7.6 Write property test for isolation mode transitions
+  - [ ] 7.6 Write property test for isolation mode transitions
     - **Property 12: Isolation mode transitions**
     - **Validates: Requirements 3.4**
   
-  - [ ]* 7.7 Write property test for isolation depth responsiveness
+  - [ ] 7.7 Write property test for isolation depth responsiveness
     - **Property 13: Isolation depth responsiveness**
     - **Validates: Requirements 3.8**
 
@@ -143,7 +143,7 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Style with distinct background for visibility
     - _Requirements: 3.6, 3.7_
   
-  - [ ]* 8.2 Write property test for isolation indicator content
+  - [ ] 8.2 Write property test for isolation indicator content
     - **Property 14: Isolation indicator content**
     - **Validates: Requirements 3.7**
   
@@ -190,7 +190,7 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Ensure color indicator has proper ARIA attributes
     - _Requirements: 4.1, 4.3_
   
-  - [ ]* 11.2 Write property test for type label format
+  - [ ] 11.2 Write property test for type label format
     - **Property 15: Type label format**
     - **Validates: Requirements 4.1**
   
@@ -199,7 +199,7 @@ This implementation plan breaks down the four Graph UI enhancements into discret
     - Keep descriptive text like "Color indicator for {type}"
     - _Requirements: 4.4_
   
-  - [ ]* 11.4 Write property test for hover text format
+  - [ ] 11.4 Write property test for hover text format
     - **Property 16: Hover text format**
     - **Validates: Requirements 4.4**
   

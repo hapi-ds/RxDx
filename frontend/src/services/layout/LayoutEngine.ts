@@ -26,6 +26,7 @@ export interface LayoutEdge {
 
 export interface LayoutConfig {
   algorithm: LayoutAlgorithm;
+  distance?: number; // User-controlled distance parameter (50-500)
   force?: ForceSimulationConfig;
   hierarchical?: HierarchicalLayoutConfig;
   circular?: CircularLayoutConfig;
@@ -80,6 +81,54 @@ const DEFAULT_GRID_CONFIG: GridLayoutConfig = {
 };
 
 /**
+ * Apply distance parameter to layout configuration
+ * Maps the distance value (50-500) to algorithm-specific parameters
+ */
+function applyDistanceToConfig(
+  distance: number,
+  algorithm: LayoutAlgorithm,
+  baseConfig: LayoutConfig
+): LayoutConfig {
+  const config = { ...baseConfig };
+
+  switch (algorithm) {
+    case 'force':
+      config.force = {
+        ...(config.force || {}),
+        idealEdgeLength: distance,
+        minSpacing: distance * 0.2,
+        repulsionStrength: distance * 10,
+      } as ForceSimulationConfig;
+      break;
+
+    case 'hierarchical':
+      config.hierarchical = {
+        ...(config.hierarchical || {}),
+        levelSeparation: distance,
+        nodeSeparation: distance * 0.5,
+      } as HierarchicalLayoutConfig;
+      break;
+
+    case 'circular':
+      config.circular = {
+        ...(config.circular || {}),
+        radius: distance * 2,
+      } as CircularLayoutConfig;
+      break;
+
+    case 'grid':
+      config.grid = {
+        ...(config.grid || {}),
+        rowSpacing: distance,
+        columnSpacing: distance,
+      } as GridLayoutConfig;
+      break;
+  }
+
+  return config;
+}
+
+/**
  * LayoutEngine provides a unified interface for all layout algorithms
  * with smooth transitions between layouts
  */
@@ -112,13 +161,18 @@ export class LayoutEngine {
   ): Map<string, { x: number; y: number }> {
     const positions = new Map<string, { x: number; y: number }>();
 
-    switch (layoutConfig.algorithm) {
+    // Apply distance parameter if provided
+    const config = layoutConfig.distance
+      ? applyDistanceToConfig(layoutConfig.distance, layoutConfig.algorithm, layoutConfig)
+      : layoutConfig;
+
+    switch (config.algorithm) {
       case 'force':
         positions.clear();
         this.calculateForceLayout(
           nodes,
           edges,
-          { ...DEFAULT_FORCE_CONFIG, ...layoutConfig.force },
+          { ...DEFAULT_FORCE_CONFIG, ...config.force },
           positions
         );
         break;
@@ -127,7 +181,7 @@ export class LayoutEngine {
         this.calculateHierarchicalLayout(
           nodes,
           edges,
-          { ...DEFAULT_HIERARCHICAL_CONFIG, ...layoutConfig.hierarchical },
+          { ...DEFAULT_HIERARCHICAL_CONFIG, ...config.hierarchical },
           positions
         );
         break;
@@ -136,7 +190,7 @@ export class LayoutEngine {
         this.calculateCircularLayout(
           nodes,
           edges,
-          { ...DEFAULT_CIRCULAR_CONFIG, ...layoutConfig.circular },
+          { ...DEFAULT_CIRCULAR_CONFIG, ...config.circular },
           positions
         );
         break;
@@ -144,13 +198,13 @@ export class LayoutEngine {
       case 'grid':
         this.calculateGridLayout(
           nodes,
-          { ...DEFAULT_GRID_CONFIG, ...layoutConfig.grid },
+          { ...DEFAULT_GRID_CONFIG, ...config.grid },
           positions
         );
         break;
 
       default:
-        throw new Error(`Unknown layout algorithm: ${layoutConfig.algorithm}`);
+        throw new Error(`Unknown layout algorithm: ${config.algorithm}`);
     }
 
     return positions;

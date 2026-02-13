@@ -17,6 +17,7 @@ import { ViewModeToggle } from '../components/graph/ViewModeToggle';
 import { GraphEmptyState } from '../components/graph/GraphEmptyState';
 import { LayoutSelector } from '../components/graph/LayoutSelector';
 import { DistanceControl } from '../components/graph/DistanceControl';
+import { IsolationIndicator } from '../components/graph/IsolationIndicator';
 import { NodeTypeFilter } from '../components/common/NodeTypeFilter';
 import { useGraphStore, type SearchResult, type ViewMode } from '../stores/graphStore';
 import { Button } from '../components/common';
@@ -81,6 +82,11 @@ export function GraphExplorer(): React.ReactElement {
     setConnectionTarget,
     createConnection,
     isCreatingRelationship,
+    // Isolation mode state and actions
+    isIsolationMode,
+    isolatedNodeId,
+    isolationDepth,
+    exitIsolationMode,
   } = useGraphStore();
 
   // Check if we have data to display
@@ -416,6 +422,13 @@ export function GraphExplorer(): React.ReactElement {
     return type;
   };
 
+  // Get isolated node name
+  const getIsolatedNodeName = (): string => {
+    if (!isolatedNodeId) return '';
+    const node = nodes.find(n => n.id === isolatedNodeId);
+    return node?.data?.label || isolatedNodeId;
+  };
+
   return (
     <div className="graph-explorer-page">
       {/* Page Header */}
@@ -628,6 +641,15 @@ export function GraphExplorer(): React.ReactElement {
 
       {/* Main Content Area */}
       <div className="graph-container">
+        {/* Isolation Mode Indicator */}
+        {isIsolationMode && isolatedNodeId && (
+          <IsolationIndicator
+            nodeName={getIsolatedNodeName()}
+            depth={isolationDepth}
+            onExit={exitIsolationMode}
+          />
+        )}
+
         {/* Error Banner */}
         {error && (
           <div className="error-banner" role="alert">

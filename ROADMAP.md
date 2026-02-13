@@ -18,3 +18,5 @@
 - Documents
 - LIMS: From WIR a PDF WI can be exported (Step by Step instruction), where for each AC a input form is made. After digitaly filled and signed, it is read by the system (GIT/CVS Hooks) to LIMS. LIMS database is prebuild by the same AC.
 - Ticket-System
+- Highlight selected items on all levels (e.g. yellow)
+- After editing and saving items, the view must remain the same  and must not jump back to the main view.

@@ -216,15 +216,33 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     error,
     layoutAlgorithm,
     layoutDistance,
+    enterIsolationMode,
+    exitIsolationMode,
+    isIsolationMode,
+    visibleNodeIds,
+    depth,
+    updateIsolationDepth,
   } = useGraphStore();
 
   // Get filtered nodes and edges for rendering
   const storeNodes = getFilteredNodes() || [];
   const storeEdges = getFilteredEdges() || [];
 
-  console.log('[GraphView2D] Rendering with nodes:', storeNodes.length, 'edges:', storeEdges.length);
-  if (storeNodes.length > 0) {
-    console.log('[GraphView2D] First node:', storeNodes[0]);
+  // Apply isolation mode filtering if active
+  const displayNodes = isIsolationMode && visibleNodeIds.size > 0
+    ? storeNodes.filter(node => visibleNodeIds.has(node.id))
+    : storeNodes;
+  
+  const displayEdges = isIsolationMode && visibleNodeIds.size > 0
+    ? storeEdges.filter(edge => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+    : storeEdges;
+
+  console.log('[GraphView2D] Rendering with nodes:', displayNodes.length, 'edges:', displayEdges.length);
+  if (isIsolationMode) {
+    console.log('[GraphView2D] Isolation mode active, visible nodes:', visibleNodeIds.size);
+  }
+  if (displayNodes.length > 0) {
+    console.log('[GraphView2D] First node:', displayNodes[0]);
   }
 
   // Get react-flow instance for viewport synchronization
@@ -251,33 +269,54 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     }
   }, []);
 
+  // Handle Escape key to exit isolation mode
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isIsolationMode) {
+        exitIsolationMode();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isIsolationMode, exitIsolationMode]);
+
+  // Update isolation depth when depth changes during isolation mode
+  useEffect(() => {
+    if (isIsolationMode) {
+      updateIsolationDepth(depth);
+    }
+  }, [depth, isIsolationMode, updateIsolationDepth]);
+
   // Sync store nodes/edges to flow nodes/edges when they change
   // Use JSON.stringify for deep comparison to avoid infinite loops
-  const storeNodesJson = JSON.stringify(storeNodes.map(n => n.id));
-  const storeEdgesJson = JSON.stringify(storeEdges.map(e => e.id));
+  const displayNodesJson = JSON.stringify(displayNodes.map(n => n.id));
+  const displayEdgesJson = JSON.stringify(displayEdges.map(e => e.id));
   
   useEffect(() => {
-    console.log('[GraphView2D] Syncing storeNodes to flowNodes:', storeNodes.length);
-    if (storeNodes.length > 0) {
-      console.log('[GraphView2D] Sample node being synced:', JSON.stringify(storeNodes[0], null, 2));
+    console.log('[GraphView2D] Syncing displayNodes to flowNodes:', displayNodes.length);
+    if (displayNodes.length > 0) {
+      console.log('[GraphView2D] Sample node being synced:', JSON.stringify(displayNodes[0], null, 2));
     }
-    setFlowNodes(storeNodes);
+    setFlowNodes(displayNodes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeNodesJson, setFlowNodes]);
+  }, [displayNodesJson, setFlowNodes]);
 
   useEffect(() => {
-    console.log('[GraphView2D] Syncing storeEdges to flowEdges:', storeEdges.length);
+    console.log('[GraphView2D] Syncing displayEdges to flowEdges:', displayEdges.length);
     // Add totalEdgeCount to each edge for density detection
-    const edgesWithCount = storeEdges.map(edge => ({
+    const edgesWithCount = displayEdges.map(edge => ({
       ...edge,
       data: {
         ...edge.data,
-        totalEdgeCount: storeEdges.length,
+        totalEdgeCount: displayEdges.length,
       },
     }));
     setFlowEdges(edgesWithCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storeEdgesJson, setFlowEdges]);
+  }, [displayEdgesJson, setFlowEdges]);
 
   // Fit view when nodes are loaded
   useEffect(() => {
@@ -507,9 +546,17 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
     setPendingConnection(null);
   }, []);
 
-  // Handle node click (select node)
+  // Handle node click (select node or enter isolation mode with Shift-click)
   const handleNodeClick: NodeMouseHandler<Node<GraphNodeData>> = useCallback(
-    (_event, node) => {
+    (event, node) => {
+      // Check if Shift key is held
+      if (event.shiftKey) {
+        // Shift-click: Enter isolation mode
+        enterIsolationMode(node.id);
+        // Prevent default node selection
+        return;
+      }
+      
       // If in connection mode, handle node selection for connection
       if (isConnectionMode && onNodeClickInConnectionMode) {
         onNodeClickInConnectionMode(node.id);
@@ -518,14 +565,14 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         selectNode(node.id);
       }
     },
-    [isConnectionMode, onNodeClickInConnectionMode, selectNode]
+    [isConnectionMode, onNodeClickInConnectionMode, selectNode, enterIsolationMode]
   );
 
   // Handle edge click (select relationship)
   const handleEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => {
-      // Find the full edge data from store
-      const fullEdge = storeEdges.find((e) => e.id === edge.id);
+      // Find the full edge data from display edges
+      const fullEdge = displayEdges.find((e) => e.id === edge.id);
       if (fullEdge) {
         // Convert react-flow Edge to GraphEdge format
         const graphEdge: GraphEdge = {
@@ -540,14 +587,20 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
         selectRelationship(graphEdge);
       }
     },
-    [storeEdges, selectRelationship]
+    [displayEdges, selectRelationship]
   );
 
-  // Handle pane click (deselect)
+  // Handle pane click (deselect or exit isolation mode)
   const handlePaneClick = useCallback(() => {
-    selectNode(null);
-    selectRelationship(null);
-  }, [selectNode, selectRelationship]);
+    // If in isolation mode, exit it
+    if (isIsolationMode) {
+      exitIsolationMode();
+    } else {
+      // Otherwise, deselect nodes and relationships
+      selectNode(null);
+      selectRelationship(null);
+    }
+  }, [isIsolationMode, exitIsolationMode, selectNode, selectRelationship]);
 
   // Container styles - ensure explicit dimensions for React Flow
   const containerStyle: React.CSSProperties = {

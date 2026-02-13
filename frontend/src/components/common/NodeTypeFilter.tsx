@@ -214,9 +214,6 @@ export function NodeTypeFilter({
       />
       <span className="filter-type-label">
         {type.label}
-        {type.color && (
-          <span className="sr-only"> (color: {type.color})</span>
-        )}
       </span>
     </label>
   ), [selectedTypes, handleToggle, handleCheckboxKeyDown]);

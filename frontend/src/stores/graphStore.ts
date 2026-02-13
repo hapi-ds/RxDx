@@ -177,6 +177,16 @@ export interface GraphState {
   /** Whether edge bundling is enabled */
   edgeBundlingEnabled: boolean;
 
+  // Isolation mode state
+  /** Whether isolation mode is active */
+  isIsolationMode: boolean;
+  /** ID of the isolated node */
+  isolatedNodeId: string | null;
+  /** Depth of neighbor traversal */
+  isolationDepth: number;
+  /** Set of visible node IDs (isolated node + neighbors) */
+  visibleNodeIds: Set<string>;
+
   // State synchronization between 2D and 3D views
   /** Node position mappings for synchronization between views */
   nodePositions: Map<string, NodePositionMap>;
@@ -228,6 +238,14 @@ export interface GraphActions {
   toggleEdgeBundling: () => void;
   /** Set edge bundling state */
   setEdgeBundling: (enabled: boolean) => void;
+
+  // Isolation mode operations
+  /** Enter isolation mode for a specific node */
+  enterIsolationMode: (nodeId: string) => void;
+  /** Exit isolation mode and restore full graph */
+  exitIsolationMode: () => void;
+  /** Update isolation depth and recalculate visible neighbors */
+  updateIsolationDepth: (depth: number) => void;
 
   // Error handling
   clearError: () => void;
@@ -384,6 +402,11 @@ const initialState: GraphState = {
   layoutDistance: loadLayoutDistance(),
   // Edge bundling state
   edgeBundlingEnabled: loadEdgeBundlingEnabled(),
+  // Isolation mode state
+  isIsolationMode: false,
+  isolatedNodeId: null,
+  isolationDepth: 2,
+  visibleNodeIds: new Set(),
   // State synchronization
   nodePositions: new Map(),
   viewport: { ...defaultViewport },
@@ -499,6 +522,73 @@ const transformEdge = (edge: GraphEdge): Edge => ({
     weight: edge.weight,  // Pass weight for thickness calculation
   },
 });
+
+/**
+ * Calculate neighbors of a node up to a specified depth using breadth-first search
+ * Handles both directed and undirected edges
+ * 
+ * @param nodeId - The starting node ID
+ * @param nodes - Array of all nodes in the graph
+ * @param edges - Array of all edges in the graph
+ * @param depth - Maximum depth to traverse (1 = direct neighbors only)
+ * @returns Array of neighbor node IDs (excluding the starting node)
+ */
+const calculateNeighbors = (
+  nodeId: string,
+  edges: Edge[],
+  depth: number
+): string[] => {
+  const distances = new Map<string, number>();
+  const queue: Array<{ id: string; level: number }> = [{ id: nodeId, level: 0 }];
+  
+  distances.set(nodeId, 0);
+  
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    
+    // Skip if we've already processed this node at a shorter distance
+    if (distances.get(current.id)! < current.level) {
+      continue;
+    }
+    
+    // Skip if we've reached the depth limit
+    if (current.level >= depth) continue;
+    
+    const nextLevel = current.level + 1;
+    
+    // Find all connected nodes (both directions for undirected graph behavior)
+    edges.forEach(edge => {
+      // Check if current node is the source
+      if (edge.source === current.id) {
+        const existingDistance = distances.get(edge.target);
+        // Only process if this would be a shorter path and within depth
+        if (nextLevel <= depth && (existingDistance === undefined || existingDistance > nextLevel)) {
+          distances.set(edge.target, nextLevel);
+          queue.push({ id: edge.target, level: nextLevel });
+        }
+      }
+      // Check if current node is the target (undirected behavior)
+      if (edge.target === current.id) {
+        const existingDistance = distances.get(edge.source);
+        // Only process if this would be a shorter path and within depth
+        if (nextLevel <= depth && (existingDistance === undefined || existingDistance > nextLevel)) {
+          distances.set(edge.source, nextLevel);
+          queue.push({ id: edge.source, level: nextLevel });
+        }
+      }
+    });
+  }
+  
+  // Return all nodes within depth, excluding the starting node
+  const neighbors: string[] = [];
+  distances.forEach((distance, id) => {
+    if (id !== nodeId && distance > 0 && distance <= depth) {
+      neighbors.push(id);
+    }
+  });
+  
+  return neighbors;
+};
 
 export const useGraphStore = create<GraphStore>()((set, get) => ({
   ...initialState,
@@ -861,6 +951,63 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     } catch (error) {
       console.error('Failed to persist edge bundling preference:', error);
     }
+  },
+
+  // ============================================================================
+  // Isolation Mode Methods
+  // ============================================================================
+
+  /**
+   * Enter isolation mode for a specific node
+   * Calculates and displays only the isolated node and its neighbors up to the current depth
+   */
+  enterIsolationMode: (nodeId: string): void => {
+    const state = get();
+    const depth = state.depth;
+    
+    // Calculate neighbors up to depth
+    const neighbors = calculateNeighbors(nodeId, state.edges, depth);
+    const visibleIds = new Set([nodeId, ...neighbors]);
+    
+    set({
+      isIsolationMode: true,
+      isolatedNodeId: nodeId,
+      isolationDepth: depth,
+      visibleNodeIds: visibleIds,
+    });
+  },
+
+  /**
+   * Exit isolation mode and restore full graph view
+   */
+  exitIsolationMode: (): void => {
+    set({
+      isIsolationMode: false,
+      isolatedNodeId: null,
+      visibleNodeIds: new Set(),
+    });
+  },
+
+  /**
+   * Update isolation depth and recalculate visible neighbors
+   * Only has effect when isolation mode is active
+   */
+  updateIsolationDepth: (depth: number): void => {
+    const state = get();
+    if (!state.isIsolationMode || !state.isolatedNodeId) return;
+    
+    // Recalculate neighbors with new depth
+    const neighbors = calculateNeighbors(
+      state.isolatedNodeId,
+      state.edges,
+      depth
+    );
+    const visibleIds = new Set([state.isolatedNodeId, ...neighbors]);
+    
+    set({
+      isolationDepth: depth,
+      visibleNodeIds: visibleIds,
+    });
   },
 
   clearError: (): void => {

@@ -18,3 +18,4 @@ export { ViewModeToggle, type ViewModeToggleProps } from './ViewModeToggle';
 export { GraphEmptyState, type GraphEmptyStateProps } from './GraphEmptyState';
 export { LayoutSelector, type LayoutSelectorProps } from './LayoutSelector';
 export { DistanceControl, type DistanceControlProps } from './DistanceControl';
+export { IsolationIndicator, type IsolationIndicatorProps } from './IsolationIndicator';

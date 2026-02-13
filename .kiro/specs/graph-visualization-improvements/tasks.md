@@ -145,58 +145,58 @@
 
 ## Phase 3: Progress Calculation System
 
-- [ ] 18. Create ProgressCalculator service
-  - [ ] 18.1 Implement ProgressCalculator interface
-  - [ ] 18.2 Implement calculateNodeProgress for leaf nodes
-  - [ ] 18.3 Implement calculateHierarchicalProgress for container nodes
-  - [ ] 18.4 Add progress caching with 30-second TTL
-  - [ ] 18.5 Implement cache invalidation for node and ancestors
-  - [ ] 18.6 Write unit tests for ProgressCalculator
-  - [ ] 18.7 Write property test: task completion mapping (done → 100%, not done → 0%)
-  - [ ] 18.8 Write property test: hierarchical progress aggregation (sum/N)
-  - [ ] 18.9 Write property test: cache validity within 30 seconds
+- [x] 18. Create ProgressCalculator service
+  - [x] 18.1 Implement ProgressCalculator interface
+  - [x] 18.2 Implement calculateNodeProgress for leaf nodes
+  - [x] 18.3 Implement calculateHierarchicalProgress for container nodes
+  - [x] 18.4 Add progress caching with 30-second TTL
+  - [x] 18.5 Implement cache invalidation for node and ancestors
+  - [x] 18.6 Write unit tests for ProgressCalculator
+  - [x] 18.7 Write property test: task completion mapping (done → 100%, not done → 0%)
+  - [x] 18.8 Write property test: hierarchical progress aggregation (sum/N)
+  - [x] 18.9 Write property test: cache validity within 30 seconds
 
-- [ ] 19. Create React hooks for progress
-  - [ ] 19.1 Implement useNodeProgress hook for leaf nodes
-  - [ ] 19.2 Implement useHierarchicalProgress hook for container nodes
-  - [ ] 19.3 Integrate with ProgressCalculator service
-  - [ ] 19.4 Add automatic cache invalidation on data changes
-  - [ ] 19.5 Write unit tests for progress hooks
-  - [ ] 19.6 Write property test: cache invalidation on child change
+- [x] 19. Create React hooks for progress
+  - [x] 19.1 Implement useNodeProgress hook for leaf nodes
+  - [x] 19.2 Implement useHierarchicalProgress hook for container nodes
+  - [x] 19.3 Integrate with ProgressCalculator service
+  - [x] 19.4 Add automatic cache invalidation on data changes
+  - [x] 19.5 Write unit tests for progress hooks
+  - [x] 19.6 Write property test: cache invalidation on child change
 
-- [ ] 20. Add mini pie chart tooltip component
-  - [ ] 20.1 Create tooltip component for mini pie chart
-  - [ ] 20.2 Display label, value, and range
-  - [ ] 20.3 Format values with appropriate precision
-  - [ ] 20.4 Add hover trigger
-  - [ ] 20.5 Write component tests for mini pie chart
-  - [ ] 20.6 Write property test: tooltip accuracy
+- [x] 20. Add mini pie chart tooltip component
+  - [x] 20.1 Create tooltip component for mini pie chart
+  - [x] 20.2 Display label, value, and range
+  - [x] 20.3 Format values with appropriate precision
+  - [x] 20.4 Add hover trigger
+  - [x] 20.5 Write component tests for mini pie chart
+  - [x] 20.6 Write property test: tooltip accuracy
 
 ## Phase 4: Enhanced Edge Rendering
 
-- [ ] 21. Implement curved edge component
-  - [ ] 21.1 Create CurvedEdge component with Bezier curve path
-  - [ ] 21.2 Implement calculateControlPoint utility for quadratic Bezier
-  - [ ] 21.3 Add support for multiple edges between same nodes (offset curves)
-  - [ ] 21.4 Implement edge label rendering at midpoint
-  - [ ] 21.5 Write component tests for CurvedEdge
-  - [ ] 21.6 Write property test: edge connection point accuracy
+- [x] 21. Implement straight edge component
+  - [x] 21.1 Create StraightEdge component with direct line path
+  - [x] 21.2 Implement calculateNodeBoundaryIntersection utility for rounded rectangle nodes
+  - [x] 21.3 Calculate intersection by finding which rectangle edge (top/bottom/left/right) the line hits first
+  - [x] 21.4 Implement edge label rendering at midpoint
+  - [x] 21.5 Write component tests for StraightEdge
+  - [x] 21.6 Write property test: edge connection point accuracy on rectangle perimeter
 
-- [ ] 22. Implement edge connection point calculation
-  - [ ] 22.1 Create utility to calculate circle perimeter intersection
-  - [ ] 22.2 Create utility to calculate rectangle perimeter intersection
-  - [ ] 22.3 Create utility to calculate polygon perimeter intersection
-  - [ ] 22.4 Integrate with all node shape components
-  - [ ] 22.5 Write unit tests for connection point calculations
-  - [ ] 22.6 Write property test: connection points on node perimeter
+- [x] 22. Implement edge connection point calculation
+  - [x] 22.1 Create utility to calculate rounded rectangle perimeter intersection
+  - [x] 22.2 Calculate which edge (top, bottom, left, right) the line intersects first
+  - [x] 22.3 Handle edge case when source and target are at same position
+  - [x] 22.4 Integrate with StraightEdge component
+  - [x] 22.5 Write unit tests for connection point calculations
+  - [x] 22.6 Write property test: connection points exactly on rectangle perimeter (150px × 60px)
 
-- [ ] 23. Add directional arrows to edges
-  - [ ] 23.1 Create arrow marker SVG definition
-  - [ ] 23.2 Position arrow 10 pixels from target node
-  - [ ] 23.3 Orient arrow tangent to edge curve
-  - [ ] 23.4 Add 8-pixel arrow size
-  - [ ] 23.5 Update arrow color on edge selection
-  - [ ] 23.6 Write component tests for edge arrows
+- [x] 23. Add directional arrows to edges
+  - [x] 23.1 Create arrow marker SVG definition
+  - [x] 23.2 Position arrow exactly at target node boundary intersection
+  - [x] 23.3 Orient arrow along line direction (from source to target)
+  - [x] 23.4 Add 8-pixel arrow size
+  - [x] 23.5 Update arrow color on edge selection
+  - [x] 23.6 Write component tests for edge arrows
 
 - [ ] 24. Implement edge thickness based on weight
   - [ ] 24.1 Add weight property to edge data model

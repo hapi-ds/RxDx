@@ -29,6 +29,7 @@ import {
   type OnEdgesChange,
   type NodeMouseHandler,
   type NodeTypes,
+  type EdgeTypes,
   type Viewport,
   BackgroundVariant,
   type Connection,
@@ -59,6 +60,8 @@ import {
   EntityNode,
   MilestoneNode,
 } from './nodes';
+import { CurvedEdge } from './edges/CurvedEdge';
+import { StraightEdge } from './edges/StraightEdge';
 
 // Node styling constants
 const NODE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
@@ -98,6 +101,13 @@ const nodeTypes: NodeTypes = {
   entity: EntityNode,
   milestone: MilestoneNode,
   default: TaskNode, // Use TaskNode as default fallback
+};
+
+// Register custom edge types
+const edgeTypes: EdgeTypes = {
+  curved: CurvedEdge,
+  straight: StraightEdge,
+  default: StraightEdge, // Use StraightEdge as default
 };
 
 // MiniMap node color function
@@ -256,7 +266,15 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
 
   useEffect(() => {
     console.log('[GraphView2D] Syncing storeEdges to flowEdges:', storeEdges.length);
-    setFlowEdges(storeEdges);
+    // Add totalEdgeCount to each edge for density detection
+    const edgesWithCount = storeEdges.map(edge => ({
+      ...edge,
+      data: {
+        ...edge.data,
+        totalEdgeCount: storeEdges.length,
+      },
+    }));
+    setFlowEdges(edgesWithCount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [storeEdgesJson, setFlowEdges]);
 
@@ -618,11 +636,12 @@ const GraphView2DInner: React.FC<GraphView2DProps> = ({
           }
         }}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
-          type: 'smoothstep',
+          type: 'straight',
           animated: false,
           style: { stroke: '#9e9e9e', strokeWidth: 2 },
         }}

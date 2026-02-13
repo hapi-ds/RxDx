@@ -171,6 +171,10 @@ export interface GraphState {
   /** Selected layout algorithm */
   layoutAlgorithm: LayoutAlgorithm;
 
+  // Edge bundling state
+  /** Whether edge bundling is enabled */
+  edgeBundlingEnabled: boolean;
+
   // State synchronization between 2D and 3D views
   /** Node position mappings for synchronization between views */
   nodePositions: Map<string, NodePositionMap>;
@@ -214,6 +218,12 @@ export interface GraphActions {
   // Layout operations
   /** Set the layout algorithm */
   setLayoutAlgorithm: (algorithm: LayoutAlgorithm) => void;
+
+  // Edge bundling operations
+  /** Toggle edge bundling on/off */
+  toggleEdgeBundling: () => void;
+  /** Set edge bundling state */
+  setEdgeBundling: (enabled: boolean) => void;
 
   // Error handling
   clearError: () => void;
@@ -312,6 +322,21 @@ const loadLayoutAlgorithm = (): LayoutAlgorithm => {
   return 'force'; // Default
 };
 
+/**
+ * Load edge bundling preference from local storage
+ */
+const loadEdgeBundlingEnabled = (): boolean => {
+  try {
+    const stored = localStorage.getItem('graph-edge-bundling-enabled');
+    if (stored !== null) {
+      return stored === 'true';
+    }
+  } catch (error) {
+    console.error('Failed to load edge bundling preference from storage:', error);
+  }
+  return false; // Default: disabled
+};
+
 const initialState: GraphState = {
   nodes: [],
   edges: [],
@@ -333,6 +358,8 @@ const initialState: GraphState = {
   depth: 2,
   // Layout state
   layoutAlgorithm: loadLayoutAlgorithm(),
+  // Edge bundling state
+  edgeBundlingEnabled: loadEdgeBundlingEnabled(),
   // State synchronization
   nodePositions: new Map(),
   viewport: { ...defaultViewport },
@@ -440,11 +467,12 @@ const transformEdge = (edge: GraphEdge): Edge => ({
   id: edge.id,
   source: edge.source,
   target: edge.target,
-  type: edge.type,
+  type: 'straight', // Use straight edge type for proper node boundary connections
   label: edge.label,
   data: {
     ...edge.properties,
     age_id: edge.age_id,  // Preserve AGE ID for updates/deletes
+    weight: edge.weight,  // Pass weight for thickness calculation
   },
 });
 
@@ -772,6 +800,27 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
       localStorage.setItem('graph-layout-algorithm', algorithm);
     } catch (error) {
       console.error('Failed to persist layout algorithm:', error);
+    }
+  },
+
+  toggleEdgeBundling: (): void => {
+    const newValue = !get().edgeBundlingEnabled;
+    set({ edgeBundlingEnabled: newValue });
+    // Persist to local storage
+    try {
+      localStorage.setItem('graph-edge-bundling-enabled', String(newValue));
+    } catch (error) {
+      console.error('Failed to persist edge bundling preference:', error);
+    }
+  },
+
+  setEdgeBundling: (enabled: boolean): void => {
+    set({ edgeBundlingEnabled: enabled });
+    // Persist to local storage
+    try {
+      localStorage.setItem('graph-edge-bundling-enabled', String(enabled));
+    } catch (error) {
+      console.error('Failed to persist edge bundling preference:', error);
     }
   },
 

@@ -25,6 +25,7 @@ export interface GraphEdge {
   label?: string;
   properties?: Record<string, unknown>;
   age_id?: number;  // AGE database relationship ID for updates/deletes
+  weight?: number;  // Edge weight for thickness calculation (1-5, default: 1)
 }
 
 export interface GraphData {

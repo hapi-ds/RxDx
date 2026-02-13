@@ -903,46 +903,53 @@ const PriorityBadge: React.FC<PriorityBadgeProps> = ({ priority }) => {
 
 ### 5. Enhanced Edge Components
 
-Custom edge components for curved rendering and bundling.
+Custom edge components for straight-line rendering with proper boundary intersection.
 
-#### Curved Edge
+#### Straight Edge
 
 ```typescript
-interface CurvedEdgeProps extends EdgeProps {
+interface StraightEdgeProps extends EdgeProps {
   sourceX: number;
   sourceY: number;
   targetX: number;
   targetY: number;
-  sourcePosition: Position;
-  targetPosition: Position;
+  sourceNode: Node;
+  targetNode: Node;
   style?: React.CSSProperties;
   markerEnd?: string;
   label?: string;
 }
 
-const CurvedEdge: React.FC<CurvedEdgeProps> = ({
+const StraightEdge: React.FC<StraightEdgeProps> = ({
   sourceX,
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
+  sourceNode,
+  targetNode,
   style,
   markerEnd,
   label,
 }) => {
-  // Calculate control point for Bezier curve
-  const [controlX, controlY] = calculateControlPoint(
+  // Calculate intersection points at node boundaries
+  const sourceIntersection = calculateNodeBoundaryIntersection(
     sourceX,
     sourceY,
     targetX,
     targetY,
-    sourcePosition,
-    targetPosition
+    sourceNode
   );
   
-  // Create path
-  const path = `M ${sourceX},${sourceY} Q ${controlX},${controlY} ${targetX},${targetY}`;
+  const targetIntersection = calculateNodeBoundaryIntersection(
+    targetX,
+    targetY,
+    sourceX,
+    sourceY,
+    targetNode
+  );
+  
+  // Create straight line path from boundary to boundary
+  const path = `M ${sourceIntersection.x},${sourceIntersection.y} L ${targetIntersection.x},${targetIntersection.y}`;
   
   return (
     <>
@@ -956,8 +963,8 @@ const CurvedEdge: React.FC<CurvedEdgeProps> = ({
       
       {label && (
         <EdgeLabel
-          x={(sourceX + targetX) / 2}
-          y={(sourceY + targetY) / 2}
+          x={(sourceIntersection.x + targetIntersection.x) / 2}
+          y={(sourceIntersection.y + targetIntersection.y) / 2}
           label={label}
         />
       )}
@@ -966,35 +973,57 @@ const CurvedEdge: React.FC<CurvedEdgeProps> = ({
 };
 
 /**
- * Calculate control point for quadratic Bezier curve
+ * Calculate intersection point of line with node boundary
+ * Line goes from (centerX, centerY) towards (targetX, targetY)
+ * Returns point on the rounded rectangle's perimeter
  */
-function calculateControlPoint(
-  sourceX: number,
-  sourceY: number,
+function calculateNodeBoundaryIntersection(
+  centerX: number,
+  centerY: number,
   targetX: number,
   targetY: number,
-  sourcePosition: Position,
-  targetPosition: Position
-): [number, number] {
-  // Midpoint
-  const midX = (sourceX + targetX) / 2;
-  const midY = (sourceY + targetY) / 2;
-  
-  // Direction vector
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
+  node: Node
+): { x: number; y: number } {
+  // Direction vector from center to target
+  const dx = targetX - centerX;
+  const dy = targetY - centerY;
   const length = Math.sqrt(dx * dx + dy * dy);
   
-  // Perpendicular offset (20% of edge length)
-  const offset = length * 0.2;
-  const perpX = -dy / length;
-  const perpY = dx / length;
+  if (length === 0) {
+    return { x: centerX, y: centerY };
+  }
   
-  // Control point offset from midpoint
-  const controlX = midX + perpX * offset;
-  const controlY = midY + perpY * offset;
+  // Normalized direction
+  const dirX = dx / length;
+  const dirY = dy / length;
   
-  return [controlX, controlY];
+  // Node dimensions (unified node has rounded rectangle content box)
+  const boxWidth = 150;
+  const boxHeight = 60;
+  const halfWidth = boxWidth / 2;
+  const halfHeight = boxHeight / 2;
+  
+  // Calculate intersection with rectangle
+  // Find which edge of the rectangle the line intersects
+  let intersectionX: number;
+  let intersectionY: number;
+  
+  // Calculate t values for intersection with each edge
+  const tRight = dirX > 0 ? halfWidth / dirX : Infinity;
+  const tLeft = dirX < 0 ? -halfWidth / dirX : Infinity;
+  const tBottom = dirY > 0 ? halfHeight / dirY : Infinity;
+  const tTop = dirY < 0 ? -halfHeight / dirY : Infinity;
+  
+  // Find the smallest positive t (closest intersection)
+  const t = Math.min(tRight, tLeft, tBottom, tTop);
+  
+  intersectionX = centerX + dirX * t;
+  intersectionY = centerY + dirY * t;
+  
+  return {
+    x: intersectionX,
+    y: intersectionY,
+  };
 }
 ```
 
@@ -1343,14 +1372,22 @@ Property 19: Dial gauge configuration
 ### Edge Rendering Properties
 
 Property 18: Edge connection point accuracy
-*For any* edge connecting two nodes, the connection points should lie on the perimeter of the source and target node shapes, not inside or outside the boundaries.
-**Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+*For any* edge connecting two nodes with rounded rectangle boundaries (150px × 60px), the edge start and end points should lie exactly on the rectangle perimeter, calculated by finding which edge (top, bottom, left, right) the line from center intersects first.
+**Validates: Requirements 7.1, 7.2**
 
-Property 19: Edge thickness from weight
+Property 19: Straight line rendering
+*For any* edge connecting two nodes, the edge path should be a straight line from the source node boundary intersection point to the target node boundary intersection point.
+**Validates: Requirements 6.1, 6.2, 6.3, 6.4**
+
+Property 20: Arrow positioning
+*For any* edge with a directional arrow, the arrow should be positioned exactly at the target node boundary intersection point, oriented along the line direction.
+**Validates: Requirements 8.1, 8.2, 8.3**
+
+Property 21: Edge thickness from weight
 *For any* edge with a weight property W, the edge thickness should be 2 + (W - 1) pixels, clamped to a maximum of 6 pixels.
 **Validates: Requirements 9.1, 9.2**
 
-Property 20: Edge bundling similarity threshold
+Property 22: Edge bundling similarity threshold
 *For any* two edges in a bundle, the angular difference between their paths should be less than 15 degrees (π/12 radians).
 **Validates: Requirements 10.2**
 

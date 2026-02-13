@@ -80,7 +80,7 @@ describe('DialGauge', () => {
       expect(valuePath.getAttribute('stroke')).toBe('#388e3c');
     });
 
-    it('should render tooltip with label and value', () => {
+    it('should render with GaugeTooltip wrapper', () => {
       const { container } = render(
         <svg>
           <DialGauge
@@ -99,10 +99,13 @@ describe('DialGauge', () => {
         </svg>
       );
 
-      const title = container.querySelector('title');
-      expect(title).toBeTruthy();
-      expect(title?.textContent).toContain('Completion');
-      expect(title?.textContent).toContain('80');
+      // Should have GaugeTooltip wrapper
+      const wrapper = container.querySelector('.gauge-tooltip-wrapper');
+      expect(wrapper).toBeTruthy();
+      
+      // Should have the gauge group inside
+      const gauge = container.querySelector('.dial-gauge');
+      expect(gauge).toBeTruthy();
     });
   });
 

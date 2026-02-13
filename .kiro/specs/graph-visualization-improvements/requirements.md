@@ -121,29 +121,27 @@ The current implementation uses @xyflow/react for 2D visualization with a basic 
 8. THE type icon SHALL use colors matching the node type color scheme
 9. THE type text label SHALL be displayed in a readable font size (12px minimum) below the type icon
 
-### Requirement 6: Curved Edge Rendering
+### Requirement 6: Straight Edge Rendering
 
-**User Story:** As a user, I want edges to be rendered as smooth curves, so that I can more easily follow relationships in dense graphs.
+**User Story:** As a user, I want edges to be rendered as clean straight lines from node center to node center, so that I can clearly see direct relationships between nodes.
 
 #### Acceptance Criteria
 
-1. WHEN rendering edges, THE Graph_Visualization_System SHALL use quadratic Bezier curves instead of straight lines
-2. WHEN two nodes are connected by multiple edges, THE Graph_Visualization_System SHALL offset the curves to prevent overlap
-3. THE Graph_Visualization_System SHALL calculate control points for Bezier curves at the midpoint perpendicular to the direct line between nodes
-4. WHEN edges would overlap with nodes, THE Graph_Visualization_System SHALL adjust curve control points to route around them
-5. THE Graph_Visualization_System SHALL maintain smooth curve rendering at all zoom levels
+1. WHEN rendering edges, THE Graph_Visualization_System SHALL use straight lines from source node center to target node center
+2. THE Graph_Visualization_System SHALL calculate the intersection point where the line crosses the source node boundary (circular perimeter)
+3. THE Graph_Visualization_System SHALL calculate the intersection point where the line crosses the target node boundary (circular perimeter)
+4. THE edge line SHALL start exactly at the source boundary intersection point and end exactly at the target boundary intersection point
+5. THE Graph_Visualization_System SHALL maintain crisp line rendering at all zoom levels
 
 ### Requirement 7: Edge Connection Points
 
-**User Story:** As a user, I want edges to connect to the visual center of nodes, so that the graph appears more polished and professional.
+**User Story:** As a user, I want edges to connect exactly at the node boundaries, so that the graph appears polished and professional.
 
 #### Acceptance Criteria
 
-1. WHEN rendering an edge, THE Graph_Visualization_System SHALL calculate the connection point at the intersection of the edge path and the node boundary
-2. WHEN a node has a circular shape, THE Graph_Visualization_System SHALL connect edges to points on the circle perimeter
-3. WHEN a node has a rectangular shape, THE Graph_Visualization_System SHALL connect edges to the nearest point on the rectangle perimeter
-4. WHEN a node has a polygonal shape, THE Graph_Visualization_System SHALL connect edges to the nearest point on the polygon perimeter
-5. THE Graph_Visualization_System SHALL update edge connection points when nodes are dragged or repositioned
+1. WHEN rendering an edge, THE Graph_Visualization_System SHALL calculate the connection point at the intersection of the straight line and the node's rounded rectangle boundary
+2. WHEN a node has a rounded rectangle content box (150px × 60px), THE Graph_Visualization_System SHALL connect edges to points on the rectangle perimeter by calculating which edge (top, bottom, left, right) the line intersects first
+3. THE Graph_Visualization_System SHALL update edge connection points when nodes are dragged or repositioned
 
 ### Requirement 8: Directional Edge Arrows
 
@@ -152,8 +150,8 @@ The current implementation uses @xyflow/react for 2D visualization with a basic 
 #### Acceptance Criteria
 
 1. WHEN rendering an edge, THE Graph_Visualization_System SHALL display an arrow at the target end
-2. THE arrow SHALL be positioned 10 pixels from the target node boundary
-3. THE arrow SHALL be oriented tangent to the edge curve at its position
+2. THE arrow SHALL be positioned exactly at the target node boundary intersection point
+3. THE arrow SHALL be oriented along the line direction (from source to target)
 4. THE arrow SHALL have a size of 8 pixels and use the same color as the edge
 5. WHEN an edge is selected, THE arrow SHALL change color to match the selected edge color
 

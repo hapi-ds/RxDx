@@ -80,3 +80,9 @@ export type {
   StepExecutionStatus,
   TestStep,
 } from './testService';
+
+export { progressCalculator } from './progressCalculator';
+export type {
+  ProgressData,
+  ProgressCalculator,
+} from './progressCalculator';

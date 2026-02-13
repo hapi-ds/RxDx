@@ -6,6 +6,7 @@
 
 import React from 'react';
 import type { GaugeDefinition } from './types';
+import { GaugeTooltip } from './GaugeTooltip';
 
 export interface DialGaugeProps extends GaugeDefinition {
   /** Circle radius in pixels */
@@ -73,54 +74,61 @@ export const DialGauge: React.FC<DialGaugeProps> = ({
   `;
 
   return (
-    <g className="dial-gauge" data-gauge-id={id}>
-      {/* Background arc (unfilled portion) */}
-      <path
-        d={backgroundPath}
-        fill="none"
-        stroke={backgroundColor}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        opacity={0.6}
-      />
+    <GaugeTooltip
+      id={id}
+      label={label}
+      value={value}
+      min={min}
+      max={max}
+      radius={radius}
+      strokeWidth={strokeWidth}
+      startAngle={startAngle}
+      endAngle={endAngle}
+    >
+      <g className="dial-gauge" data-gauge-id={id}>
+        {/* Background arc (unfilled portion) */}
+        <path
+          d={backgroundPath}
+          fill="none"
+          stroke={backgroundColor}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          opacity={0.6}
+        />
 
-      {/* Value arc (filled portion) */}
-      <path
-        d={valuePath}
-        fill="none"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        opacity={1.0}
-        style={{
-          transition: animated ? 'd 300ms ease-in-out' : 'none',
-        }}
-      />
-
-      {/* Value text (if enabled) */}
-      {showValue && (
-        <text
-          x={valueX * 1.15}
-          y={valueY * 1.15}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fontSize={10}
-          fill={color}
-          fontWeight="bold"
+        {/* Value arc (filled portion) */}
+        <path
+          d={valuePath}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          opacity={1.0}
           style={{
-            pointerEvents: 'none',
-            userSelect: 'none',
+            transition: animated ? 'd 300ms ease-in-out' : 'none',
           }}
-        >
-          {value.toFixed(0)}
-        </text>
-      )}
+        />
 
-      {/* Tooltip */}
-      <title>
-        {label}: {value.toFixed(1)} ({min}-{max})
-      </title>
-    </g>
+        {/* Value text (if enabled) */}
+        {showValue && (
+          <text
+            x={valueX * 1.15}
+            y={valueY * 1.15}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize={10}
+            fill={color}
+            fontWeight="bold"
+            style={{
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}
+          >
+            {value.toFixed(0)}
+          </text>
+        )}
+      </g>
+    </GaugeTooltip>
   );
 };
 

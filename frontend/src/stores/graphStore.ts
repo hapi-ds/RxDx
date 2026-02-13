@@ -791,11 +791,6 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
     try {
       const results = await graphService.search(query);
       
-      console.log('[GraphStore] Search returned nodes:', results);
-      if (results.length > 0) {
-        console.log('[GraphStore] First search result:', results[0]);
-      }
-      
       // Transform GraphNode results to SearchResult format
       const searchResults: SearchResult[] = results.map((node) => ({
         id: node.id,
@@ -803,11 +798,6 @@ export const useGraphStore = create<GraphStore>()((set, get) => ({
         label: node.label,
         properties: node.properties,
       }));
-
-      console.log('[GraphStore] Transformed search results:', searchResults);
-      if (searchResults.length > 0) {
-        console.log('[GraphStore] First transformed result:', searchResults[0]);
-      }
 
       set({ searchResults, isSearching: false });
     } catch (error) {

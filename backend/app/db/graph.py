@@ -1992,33 +1992,57 @@ class GraphService:
         if len(seen_nodes) > 1:
             # Build a query to get relationships between the found nodes
             node_ids_str = "', '".join(seen_nodes)
+            
+            # AGE returns multiple columns as an array, so we need to return them as a map
+            # or handle the array indexing properly
             rel_query = f"""
             MATCH (a)-[r{rel_filter}]->(b)
             WHERE a.id IN ['{node_ids_str}'] AND b.id IN ['{node_ids_str}']
-            RETURN {{rel: r, start_id: a.id, end_id: b.id, rel_type: type(r), id: id(r)}}
+            RETURN r
             LIMIT {limit * 2}
             """
 
+            print(f"[GraphService] Relationship query: {rel_query}")
             rel_results = await self.execute_query(rel_query)
+            print(f"[GraphService] Relationship query returned {len(rel_results)} results")
+            
+            if rel_results:
+                print(f"[GraphService] First relationship result: {rel_results[0]}")
+            
             seen_edges = set()
 
             for result in rel_results:
                 if result:
+                    print(f"[GraphService] Processing relationship result: {result}")
+                    
+                    # AGE returns edge as: {"id": ..., "label": "REL_TYPE", "start_id": ..., "end_id": ..., "properties": {...}}
                     edge_data = {}
-                    if 'rel' in result and result['rel']:
-                        if isinstance(result['rel'], dict):
-                            edge_data = result['rel'].copy()
-                    edge_data['start_id'] = result.get('start_id')
-                    edge_data['end_id'] = result.get('end_id')
-                    edge_data['type'] = result.get('rel_type', 'RELATED')
-                    edge_data['id'] = result.get('id')  # Store AGE relationship ID
+                    
+                    # Extract from the edge object
+                    if isinstance(result, dict):
+                        # Copy properties if present
+                        if 'properties' in result and result['properties']:
+                            edge_data.update(result['properties'])
+                        
+                        # Set required fields from edge structure
+                        edge_data['id'] = result.get('id')  # AGE internal ID
+                        edge_data['start_id'] = result.get('start_id')
+                        edge_data['end_id'] = result.get('end_id')
+                        edge_data['type'] = result.get('label', 'RELATED')  # AGE uses 'label' for relationship type
+                    
+                    print(f"[GraphService] Extracted edge_data: {edge_data}")
 
                     if edge_data.get('start_id') and edge_data.get('end_id'):
                         edge_key = f"{edge_data['start_id']}-{edge_data['end_id']}-{edge_data['type']}"
                         if edge_key not in seen_edges:
                             edges.append(edge_data)
                             seen_edges.add(edge_key)
+                            print(f"[GraphService] Added edge: {edge_data['start_id']} -[{edge_data['type']}]-> {edge_data['end_id']}")
+                    else:
+                        print(f"[GraphService] Skipped edge - missing IDs: start_id={edge_data.get('start_id')}, end_id={edge_data.get('end_id')}")
+                        print(f"[GraphService] Full result was: {result}")
 
+        print(f"[GraphService] Returning {len(nodes)} nodes and {len(edges)} edges")
         return nodes, edges
 
     async def _get_full_graph(

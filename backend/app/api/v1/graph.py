@@ -8,6 +8,7 @@ from app.api.deps import get_current_user
 from app.core.security import Permission, require_permission
 from app.db.graph import GraphService, get_graph_service
 from app.models.user import User
+from app.schemas.graph import SearchResponse
 
 router = APIRouter()
 
@@ -48,7 +49,7 @@ async def get_graph_visualization(
         valid_types = [
             "WorkItem", "Requirement", "Task", "Test", "Risk",
             "Failure", "Document", "Entity", "User",
-            "Project", "Phase", "Workpackage", "Resource", 
+            "Project", "Phase", "Workpackage", "Resource",
             "Company", "Department", "Milestone", "Sprint", "Backlog"
         ]
         invalid_types = [t for t in node_types if t not in valid_types]
@@ -176,7 +177,7 @@ async def get_node_details(
         )
 
 
-@router.get("/search")
+@router.get("/search", response_model=SearchResponse)
 @require_permission(Permission.READ_WORKITEM)
 async def search_graph(
     query: str = Query(..., min_length=1, description="Search query"),
@@ -184,9 +185,12 @@ async def search_graph(
     limit: int = Query(50, ge=1, le=200, description="Maximum results to return"),
     current_user: User = Depends(get_current_user),
     graph_service: GraphService = Depends(get_graph_service)
-) -> dict[str, Any]:
+) -> SearchResponse:
     """
     Search nodes in the graph by text content (case-insensitive)
+
+    Returns nodes in the same format as the visualization endpoint for consistency.
+    All nodes have a 'label' field (not 'title') and include reactFlow/r3f data.
 
     Args:
         query: Text to search for in node titles and descriptions
@@ -194,7 +198,7 @@ async def search_graph(
         limit: Maximum number of results (1-200)
 
     Returns:
-        Search results with matching nodes
+        SearchResponse with formatted nodes matching the query
     """
     try:
         # Validate and sanitize query
@@ -207,7 +211,7 @@ async def search_graph(
             }
 
         query_text = query.strip()
-        
+
         # Log search request
         print(f"[GraphAPI] Search request: query='{query_text}', node_types={node_types}, limit={limit}")
 
@@ -249,15 +253,24 @@ async def search_graph(
         if truncated:
             all_results = all_results[:limit]
 
-        print(f"[GraphAPI] Returning {len(all_results)} total results (truncated: {truncated})")
+        print(f"[GraphAPI] Formatting {len(all_results)} results for consistent output")
 
-        # Return consistent response format
-        return {
-            "query": query_text,
-            "results": all_results,
-            "total_found": len(all_results),
-            "truncated": truncated
-        }
+        # Format results consistently using the same format as visualization endpoint
+        formatted_results = []
+        for node in all_results:
+            formatted = graph_service._format_node_for_visualization(node)
+            if formatted:
+                formatted_results.append(formatted)
+
+        print(f"[GraphAPI] Returning {len(formatted_results)} formatted results (truncated: {truncated})")
+
+        # Return consistent response format (same as visualization endpoint)
+        return SearchResponse(
+            query=query_text,
+            results=formatted_results,
+            total_found=len(formatted_results),
+            truncated=truncated
+        )
 
     except ValueError as e:
         # Handle validation errors

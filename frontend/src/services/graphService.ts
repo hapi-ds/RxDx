@@ -187,18 +187,14 @@ function transformBackendNode(backendNode: BackendNode): GraphNode | null {
     };
   }
 
-  // Provide default label if missing
-  // Try multiple fields: label, title (top-level), properties.title, properties.name (in that order)
-  const label = backendNode.label || 
-                (backendNode as any).title ||  // Search results have title at top level
-                backendNode.properties?.title || 
-                backendNode.properties?.name || 
-                `Node ${backendNode.id.substring(0, 8)}`;
+  // Backend now always returns 'label' field (standardized format)
+  // No need for multiple fallbacks anymore
+  const label = backendNode.label || `Node ${backendNode.id.substring(0, 8)}`;
 
   return {
     id: backendNode.id,
     type: backendNode.type?.toLowerCase() ?? 'default',
-    label: String(label),
+    label,
     properties: {
       ...backendNode.properties,
       status: backendNode.status,

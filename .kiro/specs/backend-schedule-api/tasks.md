@@ -11,14 +11,89 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 - ✅ SchedulePage frontend (basic list view)
 
 **Remaining Schedule-Specific Features:**
+- Phase NEXT relationships and sequential ordering
+- New scheduling attributes (minimal_duration, calculated/manual dates, progress)
+- Resource inheritance algorithm
+- BEFORE dependency relationships
+- Date priority handling in Gantt chart
+- Skills-based resource allocation
 - Critical path calculation
 - Sprint management (service + API + UI)
 - Backlog management (service + API + UI)
-- Skills-based resource allocation
 - Velocity tracking and burndown charts
-- Gantt chart visualization
+- Gantt chart visualization enhancements
 - Kanban board schedule integration
 - Milestone dependency management
+
+---
+
+## Phase 0: Data Model Updates
+
+### Task 0.1: Phase NEXT Relationship Implementation
+- [ ] Create NEXT edge label in AGE graph database
+- [ ] Add NEXT relationship support to PhaseService
+- [ ] Implement create_next_relationship method
+- [ ] Implement remove_next_relationship method
+- [ ] Implement get_next_phase method
+- [ ] Implement get_previous_phase method
+- [ ] Add validation: NEXT relationships form linear sequence (no cycles, no branches)
+- [ ] Update get_phases_for_project to order by NEXT relationship chain
+- [ ] Write unit tests for NEXT relationship operations
+- [ ] Write property test: NEXT relationships form valid linear sequence
+
+**Requirements: 16A.1-16A.7**
+
+### Task 0.2: Add New Scheduling Attributes to Schemas
+- [ ] Add minimal_duration to PhaseCreate, PhaseUpdate, PhaseResponse schemas
+- [ ] Add minimal_duration to WorkpackageCreate, WorkpackageUpdate, WorkpackageResponse schemas
+- [ ] Add duration and effort to TaskCreate, TaskUpdate, TaskResponse schemas (replace estimated_hours)
+- [ ] Add calculated_start_date and calculated_end_date to all entity response schemas
+- [ ] Add start_date and due_date to all entity create/update schemas (optional)
+- [ ] Add start_date_is and progress to all entity update/response schemas
+- [ ] Add skills to TaskCreate, TaskUpdate, TaskResponse schemas (array of strings)
+- [ ] Add field validators for new attributes (positive numbers, progress 0-100)
+- [ ] Write unit tests for schema validation
+
+**Requirements: 16A.8-16A.45**
+
+### Task 0.3: Update Graph Node Properties
+- [ ] Add minimal_duration property to Phase nodes
+- [ ] Add minimal_duration property to Workpackage nodes
+- [ ] Add duration and effort properties to Task nodes
+- [ ] Add calculated_start_date and calculated_end_date to all entity nodes
+- [ ] Add start_date and due_date to all entity nodes (optional)
+- [ ] Add start_date_is and progress to all entity nodes
+- [ ] Add skills property to Task nodes (array of strings)
+- [ ] Update node creation methods to include new properties
+- [ ] Update node update methods to handle new properties
+- [ ] Write migration script to add new properties to existing nodes
+
+**Requirements: 16A.8-16A.45**
+
+### Task 0.4: BEFORE Relationship Implementation
+- [ ] Create BEFORE edge label in AGE graph database
+- [ ] Add BEFORE relationship support to WorkpackageService
+- [ ] Add BEFORE relationship support to TaskService (WorkItemService)
+- [ ] Add BEFORE relationship support to MilestoneService
+- [ ] Implement create_before_relationship method with dependency_type and lag
+- [ ] Implement remove_before_relationship method
+- [ ] Implement get_before_dependencies method
+- [ ] Add validation: BEFORE relationships don't create cycles
+- [ ] Write unit tests for BEFORE relationship operations
+- [ ] Write property test: BEFORE relationships don't create cycles
+
+**Requirements: 16B.8-16B.21**
+
+### Task 0.5: Resource Inheritance Data Model
+- [ ] Update ALLOCATED_TO relationship to support Project, Workpackage, and Task targets
+- [ ] Add allocation_percentage, lead, start_date, end_date properties to ALLOCATED_TO
+- [ ] Update ResourceService to handle allocations at all three levels
+- [ ] Implement get_effective_resources_for_task method (inheritance algorithm)
+- [ ] Write unit tests for resource inheritance
+- [ ] Write property test: Most specific allocation wins
+- [ ] Write property test: Union of resources from all levels
+
+**Requirements: 16B.1-16B.27**
 
 ---
 
@@ -90,7 +165,143 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 
 ---
 
+## Phase 1A: Date Priority and Progress Tracking
+
+### Task 1A.1: Date Priority Algorithm Implementation
+- [ ] Implement get_display_dates_for_entity function (manual dates > calculated dates)
+- [ ] Implement get_progress_indicator function (variance calculation)
+- [ ] Update SchedulerService to store calculated dates separately from manual dates
+- [ ] Update schedule calculation to respect start_date as earliest start constraint
+- [ ] Update schedule calculation to respect due_date as deadline constraint
+- [ ] Write unit tests for date priority logic
+- [ ] Write property test: Manual dates always override calculated dates in display
+- [ ] Write property test: Calculated dates used when manual dates not set
+
+**Requirements: 16A.22-16A.40**
+
+### Task 1A.2: Progress Tracking Integration
+- [ ] Add progress update endpoint: PATCH /api/v1/workitems/{id} with progress field
+- [ ] Add start_date_is update endpoint: PATCH /api/v1/workitems/{id} with start_date_is field
+- [ ] Implement progress calculation for workpackages (aggregate from tasks)
+- [ ] Implement progress calculation for phases (aggregate from workpackages)
+- [ ] Implement progress calculation for projects (aggregate from phases)
+- [ ] Add variance calculation (actual vs. planned start dates)
+- [ ] Write unit tests for progress tracking
+- [ ] Write property test: Progress is always between 0 and 100
+- [ ] Write property test: Aggregated progress matches child entity progress
+
+**Requirements: 16A.27-16A.31**
+
+### Task 1A.3: Minimal Duration Enforcement
+- [ ] Implement enforce_minimal_duration function
+- [ ] Implement calculate_phase_duration function (with minimal_duration fallback)
+- [ ] Implement calculate_workpackage_duration function (with minimal_duration fallback)
+- [ ] Update schedule calculation to use minimal_duration when no task data available
+- [ ] Update schedule calculation to extend duration if calculated < minimal_duration
+- [ ] Write unit tests for minimal duration enforcement
+- [ ] Write property test: Calculated duration >= minimal_duration
+
+**Requirements: 16A.8-16A.12**
+
+### Task 1A.4: Phase NEXT Relationship API Endpoints
+- [ ] POST /api/v1/phases/{id}/next/{next_id} - Create NEXT relationship
+- [ ] DELETE /api/v1/phases/{id}/next - Remove NEXT relationship
+- [ ] GET /api/v1/phases/{id}/next - Get next phase
+- [ ] GET /api/v1/phases/{id}/previous - Get previous phase
+- [ ] Update GET /api/v1/projects/{id}/phases to order by NEXT chain
+- [ ] Add validation: NEXT relationships form linear sequence
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for phase ordering
+
+**Requirements: 16A.1-16A.7, 18.1-18.18**
+
+### Task 1A.5: BEFORE Dependency API Endpoints
+- [ ] POST /api/v1/workpackages/{id}/before/{target_id} - Create BEFORE relationship
+- [ ] DELETE /api/v1/workpackages/{id}/before/{target_id} - Remove BEFORE relationship
+- [ ] GET /api/v1/workpackages/{id}/dependencies - List BEFORE relationships
+- [ ] POST /api/v1/workitems/{id}/before/{target_id} - Create BEFORE for tasks
+- [ ] POST /api/v1/milestones/{id}/before/{target_id} - Create BEFORE for milestones
+- [ ] Add dependency_type and lag parameters
+- [ ] Add cycle detection validation
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for BEFORE dependencies
+
+**Requirements: 16B.8-16B.21, 18.34-18.37**
+
+---
+
+## Phase 1B: Resource Inheritance and Skills Matching
+
+### Task 1B.1: Resource Inheritance Algorithm
+- [ ] Implement get_effective_resources_for_task function (3-level inheritance)
+- [ ] Query task-level allocations (highest priority)
+- [ ] Query workpackage-level allocations (inherited)
+- [ ] Query project-level allocations (inherited)
+- [ ] Combine resources with priority: task > workpackage > project
+- [ ] Handle allocation percentage overrides at different levels
+- [ ] Write unit tests for resource inheritance
+- [ ] Write property test: Most specific allocation wins
+- [ ] Write property test: Union of resources from all levels
+
+**Requirements: 16B.1-16B.27**
+
+### Task 1B.2: Skills-Based Resource Matching
+- [ ] Implement match_resources_by_skills function (set intersection)
+- [ ] Update get_matching_resources_for_task to use skills matching
+- [ ] Prioritize resources with matching skills in allocation
+- [ ] Prioritize lead resources (lead=true) in allocation
+- [ ] Update schedule calculation to use skills-based matching
+- [ ] Add GET /api/v1/resources?skills=Python,FastAPI endpoint for filtering
+- [ ] Write unit tests for skills matching
+- [ ] Write property test: Allocated resources have required skills
+- [ ] Write property test: Lead resources allocated before non-lead
+
+**Requirements: 16A.41-16A.45, 16B.22-16B.27**
+
+### Task 1B.3: Resource Allocation API Updates
+- [ ] Update POST /api/v1/resources/{id}/allocate to support project/workpackage/task targets
+- [ ] Add lead parameter to allocation requests
+- [ ] Add start_date and end_date parameters to allocation requests
+- [ ] Update GET /api/v1/resources/{id} to show allocations at all levels
+- [ ] Add GET /api/v1/tasks/{id}/effective-resources endpoint (shows inherited resources)
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for resource allocation
+
+**Requirements: 16B.1-16B.27, 19.1-19.20**
+
+---
+
+## Phase 1C: Gantt Chart Data Model Updates
+
+### Task 1C.1: Gantt Chart Data Preparation
+- [ ] Implement prepare_gantt_data function with date priority logic
+- [ ] Include calculated_start_date and calculated_end_date in response
+- [ ] Include start_date and due_date (manual) in response
+- [ ] Include start_date_is and progress in response
+- [ ] Calculate variance (actual vs. planned start dates)
+- [ ] Add is_delayed flag based on variance
+- [ ] Include minimal_duration for phases/workpackages
+- [ ] Write unit tests for Gantt data preparation
+- [ ] Write property test: Display dates follow priority rules
+
+**Requirements: 16A.32-16A.36, 3.1-3.13**
+
+### Task 1C.2: Update Gantt Chart API Endpoint
+- [ ] Update GET /api/v1/schedule/{project_id}/gantt response schema
+- [ ] Include all new date fields in GanttItem schema
+- [ ] Include progress and variance fields
+- [ ] Include minimal_duration for phases/workpackages
+- [ ] Include skills and resource allocations
+- [ ] Add authentication and authorization
+- [ ] Write integration tests for Gantt endpoint
+
+**Requirements: 3.1-3.13**
+
+---
+
 ## Phase 2: Sprint Management
+
+**Requirements: 1.8-1.9, 16.51-16.53**
 
 ### Task 2.1: Sprint Graph Nodes and Relationships
 - [x] Create Sprint vertex label in AGE (if not exists)

@@ -36,10 +36,11 @@ Additionally, this specification extends the existing project management entitie
 - **User**: An authenticated application user stored in PostgreSQL (for authentication/authorization only, NOT used in project management)
 - **Project_Manager**: A user role responsible for project planning and scheduling
 - **Project**: A container for organizing related work items, phases, workpackages, and resources
-- **Phase**: A high-level stage within a project in the classic methodology (e.g., Planning, Development, Testing, Deployment)
+- **Phase**: A high-level stage within a project in the classic methodology (e.g., Planning, Development, Testing, Deployment), with sequential ordering via NEXT relationships
 - **Workpackage**: A logical grouping of related tasks within a phase in the classic methodology
-- **Milestone**: A significant checkpoint or deliverable in a project, represented as a special WorkItem or graph node
+- **Milestone**: A significant checkpoint or deliverable in a project, represented as a separate graph node
 - **Department**: An organizational unit for grouping resources by function or team
+- **Company**: The root organizational entity containing departments
 - **Backlog**: A container for unscheduled work items awaiting prioritization and sprint assignment
 - **Sprint**: A time-boxed iteration (typically 1-4 weeks) in the agile methodology, stored as a graph node
 - **Sprint_Goal**: The objective or deliverable target for a sprint
@@ -48,6 +49,11 @@ Additionally, this specification extends the existing project management entitie
 - **Story_Points**: A relative measure of effort or complexity for agile work items
 - **Task_Status**: Status of a task - "draft" (not ready), "ready" (ready to start), "active" (in progress), "completed" (done), "blocked" (cannot proceed)
 - **Task_Journal**: Time-stamped log entries recording task progress, decisions, and changes
+- **Calculated_Dates**: Start and end dates computed by the scheduling algorithm (calculated_start_date, calculated_end_date)
+- **Manual_Dates**: User-specified start and due dates that override calculated dates (start_date, due_date)
+- **Minimal_Duration**: Minimum time duration for phases and workpackages when no other information is available
+- **Progress**: Percentage completion (0-100) for tracking actual progress vs. planned schedule
+- **Resource_Inheritance**: Pattern where resources allocated at project level are available to workpackages and tasks below
 - **AGE**: Apache AGE (A Graph Extension) - PostgreSQL extension for graph database capabilities
 - **Graph_Node**: An entity stored in the AGE graph database within PostgreSQL
 - **Graph_Relationship**: A directed connection between two graph nodes
@@ -428,6 +434,129 @@ Additionally, this specification extends the existing project management entitie
 77. WHEN a Resource is deleted, THE System SHALL validate no active task assignments exist before deletion
 78. WHEN a Department is deleted, THE System SHALL validate no Resources are assigned to it before deletion
 
+### Requirement 16A: Phase Sequential Relationships and New Scheduling Attributes
+
+**User Story:** As a project manager, I want phases to have sequential ordering and entities to track both calculated and manual dates with progress, so that I can manage project flow and monitor actual progress against planned schedules.
+
+#### Acceptance Criteria
+
+**Phase Sequential Relationships:**
+
+1. WHEN a Phase is created, THE System SHALL support creating a NEXT relationship to another Phase node
+2. THE System SHALL enforce that Phase NEXT relationships form a linear sequence (no cycles, no branches)
+3. WHEN retrieving phases for a project, THE System SHALL return them ordered by the NEXT relationship chain
+4. WHEN a Phase is deleted, THE System SHALL update NEXT relationships to maintain sequence continuity
+5. THE System SHALL validate that all phases in a project form a single connected sequence via NEXT relationships
+6. THE System SHALL support querying the next phase for any given phase through graph traversal
+7. THE System SHALL support querying the previous phase for any given phase through graph traversal
+
+**Minimal Duration Attributes:**
+
+8. WHEN a Phase is created, THE System SHALL support a minimal_duration property (in calendar days)
+9. WHEN a Workpackage is created, THE System SHALL support a minimal_duration property (in calendar days)
+10. WHEN calculating schedules, THE System SHALL use minimal_duration as the minimum time for phases/workpackages when no task data is available
+11. WHEN calculated duration is less than minimal_duration, THE System SHALL use minimal_duration instead
+12. THE System SHALL validate that minimal_duration is a positive number
+
+**Task Duration and Effort Attributes:**
+
+13. WHEN a Task is created, THE System SHALL support a duration property (in calendar days)
+14. WHEN a Task is created, THE System SHALL support an effort property (in hours)
+15. THE System SHALL use duration for calendar-based scheduling (Gantt chart display)
+16. THE System SHALL use effort for resource capacity calculations
+17. THE System SHALL validate that duration and effort are positive numbers
+
+**Calculated Date Attributes:**
+
+18. WHEN a schedule is calculated, THE System SHALL store calculated_start_date on Task, Workpackage, Phase, Project, and Milestone nodes
+19. WHEN a schedule is calculated, THE System SHALL store calculated_end_date on Task, Workpackage, Phase, Project, and Milestone nodes
+20. THE System SHALL update calculated dates whenever the schedule is recalculated
+21. THE System SHALL preserve calculated dates as historical data when creating new schedule versions
+
+**Manual Date Attributes:**
+
+22. THE System SHALL support start_date property on Task, Workpackage, Phase, Project, and Milestone nodes (optional, user-specified)
+23. THE System SHALL support due_date property on Task, Workpackage, Phase, Project, and Milestone nodes (optional, user-specified)
+24. WHEN start_date is set, THE System SHALL use it as a constraint in schedule calculations (earliest start)
+25. WHEN due_date is set, THE System SHALL use it as a constraint in schedule calculations (deadline)
+26. WHEN both start_date and due_date are set, THE System SHALL validate that due_date is after start_date
+
+**Progress Tracking Attributes:**
+
+27. THE System SHALL support start_date_is property on Task, Workpackage, Phase, Project, and Milestone nodes (actual start date when work begins)
+28. THE System SHALL support progress property on Task, Workpackage, Phase, Project, and Milestone nodes (percentage 0-100)
+29. WHEN start_date_is is set, THE System SHALL use it to override calculated_start_date in progress calculations
+30. WHEN progress is set, THE System SHALL use it to calculate actual completion vs. planned schedule
+31. THE System SHALL validate that progress is between 0 and 100
+
+**Gantt Chart Display Priority Rules:**
+
+32. WHEN displaying dates in Gantt chart, THE System SHALL prioritize start_date over calculated_start_date if start_date is set
+33. WHEN displaying dates in Gantt chart, THE System SHALL prioritize due_date over calculated_end_date if due_date is set
+34. WHEN displaying dates in Gantt chart, THE System SHALL use calculated dates when manual dates are not set
+35. WHEN displaying progress in Gantt chart, THE System SHALL show progress percentage as a filled portion of the task bar
+36. WHEN start_date_is is set and differs from start_date, THE System SHALL visually indicate the variance in Gantt chart
+
+**Scheduling Priority Rules:**
+
+37. WHEN calculating schedules, THE System SHALL respect start_date as earliest start constraint
+38. WHEN calculating schedules, THE System SHALL respect due_date as deadline constraint
+39. WHEN start_date_is and progress indicate work has started, THE System SHALL adjust remaining work calculations accordingly
+40. WHEN progress is 100%, THE System SHALL treat the entity as completed regardless of calculated dates
+
+**Skills Attribute for Resource Matching:**
+
+41. WHEN a Task is created, THE System SHALL support a skills property (array of strings) for required skills
+42. WHEN allocating resources to tasks, THE System SHALL match Resource skills with Task skills
+43. THE System SHALL prioritize resources whose skills array intersects with task skills array
+44. THE System SHALL support querying tasks by required skills
+45. THE System SHALL support filtering resources by skills for assignment recommendations
+
+### Requirement 16B: Resource Inheritance and Dependency Relationships
+
+**User Story:** As a project manager, I want resources to be inherited from project to workpackage to task levels, and I want flexible dependency relationships between entities, so that resource allocation is efficient and project dependencies are clearly defined.
+
+#### Acceptance Criteria
+
+**Resource Inheritance Pattern:**
+
+1. WHEN a Resource is allocated to a Project, THE System SHALL make that resource available to all Workpackages and Tasks within the project
+2. WHEN a Resource is allocated to a Workpackage, THE System SHALL make that resource available to all Tasks within the workpackage
+3. WHEN a Resource is explicitly allocated to a Task, THE System SHALL use that allocation regardless of parent allocations
+4. THE System SHALL support querying inherited resources for any Task through graph traversal (task → workpackage → project)
+5. THE System SHALL calculate resource availability considering all inheritance levels
+6. WHEN scheduling tasks, THE System SHALL consider inherited resources from parent entities
+7. THE System SHALL support overriding inherited resource allocations at lower levels
+
+**Before Dependency Relationships:**
+
+8. THE System SHALL support BEFORE relationships between Workpackage nodes (workpackage A must complete before workpackage B starts)
+9. THE System SHALL support BEFORE relationships between Task nodes (task A must complete before task B starts)
+10. THE System SHALL support BEFORE relationships between Milestone nodes (milestone A must be achieved before milestone B)
+11. THE System SHALL support BEFORE relationships from Workpackage to Task (workpackage must complete before task starts)
+12. THE System SHALL support BEFORE relationships from Task to Milestone (task must complete before milestone)
+13. WHEN creating BEFORE relationships, THE System SHALL validate no dependency cycles are created
+14. WHEN calculating schedules, THE System SHALL respect all BEFORE relationships as ordering constraints
+15. THE System SHALL support querying all entities that must complete before a given entity
+16. THE System SHALL support querying all entities that depend on a given entity completing
+
+**Dependency Relationship Properties:**
+
+17. WHEN creating a BEFORE relationship, THE System SHALL support an optional lag property (days to wait after predecessor completes)
+18. WHEN creating a BEFORE relationship, THE System SHALL support an optional dependency_type property (finish-to-start, start-to-start, finish-to-finish)
+19. THE System SHALL default dependency_type to "finish-to-start" if not specified
+20. WHEN calculating schedules, THE System SHALL apply lag days to dependency constraints
+21. WHEN calculating schedules, THE System SHALL respect dependency_type for constraint formulation
+
+**Resource Inheritance Algorithm:**
+
+22. WHEN a Task needs resource allocation, THE System SHALL first check for explicit Task-level allocations
+23. IF no Task-level allocation exists, THE System SHALL check Workpackage-level allocations
+24. IF no Workpackage-level allocation exists, THE System SHALL check Project-level allocations
+25. THE System SHALL combine resources from all inheritance levels (union of available resources)
+26. WHEN multiple allocation percentages exist for the same resource, THE System SHALL use the most specific (Task > Workpackage > Project)
+27. THE System SHALL support querying the effective resource allocation for any task considering inheritance
+
 ### Requirement 17: Project Management API
 
 **User Story:** As a project manager, I want to manage projects through the API, so that I can organize work into projects with phases and track project metadata.
@@ -447,30 +576,55 @@ Additionally, this specification extends the existing project management entitie
 
 ### Requirement 18: Phase and Workpackage Management API
 
-**User Story:** As a project manager, I want to organize projects into phases and workpackages, so that I can structure work into logical stages and groupings, and track progress at multiple hierarchical levels.
+**User Story:** As a project manager, I want to organize projects into sequentially ordered phases and workpackages, so that I can structure work into logical stages and groupings, track progress at multiple hierarchical levels, and ensure phases flow in the correct order.
 
 #### Acceptance Criteria
 
+**Phase Management:**
+
 1. WHEN a POST request is made to /api/v1/projects/{project_id}/phases with phase data, THE System SHALL create a new Phase node
-2. WHEN a GET request is made to /api/v1/projects/{project_id}/phases, THE System SHALL return all phases for the project ordered by sequence
-3. WHEN a PATCH request is made to /api/v1/phases/{phase_id}, THE System SHALL update the phase properties
-4. WHEN a DELETE request is made to /api/v1/phases/{phase_id}, THE System SHALL delete the phase and cascade delete related Workpackages
-5. WHEN creating a phase, THE System SHALL require a name and order number
-6. WHEN creating a phase, THE System SHALL validate the phase belongs to an existing project
-7. WHEN retrieving phases, THE System SHALL include workpackage counts and completion percentages
-8. THE System SHALL support reordering phases by updating order numbers
-9. THE System SHALL validate phase date ranges are within the project date range
-10. WHEN a POST request is made to /api/v1/phases/{phase_id}/workpackages with workpackage data, THE System SHALL create a new Workpackage node
-11. WHEN a GET request is made to /api/v1/phases/{phase_id}/workpackages, THE System SHALL return all workpackages for the phase ordered by sequence
-12. WHEN a GET request is made to /api/v1/workpackages/{workpackage_id}, THE System SHALL return workpackage details including tasks
-13. WHEN a PATCH request is made to /api/v1/workpackages/{workpackage_id}, THE System SHALL update the workpackage properties
-14. WHEN a DELETE request is made to /api/v1/workpackages/{workpackage_id}, THE System SHALL delete the workpackage and update Task relationships
-15. WHEN creating a workpackage, THE System SHALL require a name and order number
-16. WHEN creating a workpackage, THE System SHALL validate the workpackage belongs to an existing phase
-17. WHEN assigning a Task to a workpackage, THE System SHALL create a BELONGS_TO relationship
-18. WHEN retrieving workpackages, THE System SHALL include task counts and completion percentages
-19. THE System SHALL support reordering workpackages within a phase by updating order numbers
-20. THE System SHALL validate workpackage date ranges are within the phase date range
+2. WHEN creating a phase, THE System SHALL support minimal_duration property (calendar days)
+3. WHEN creating a phase, THE System SHALL support creating a NEXT relationship to another phase
+4. WHEN a GET request is made to /api/v1/projects/{project_id}/phases, THE System SHALL return all phases for the project ordered by NEXT relationship sequence
+5. WHEN a PATCH request is made to /api/v1/phases/{phase_id}, THE System SHALL update the phase properties including minimal_duration
+6. WHEN a DELETE request is made to /api/v1/phases/{phase_id}, THE System SHALL delete the phase and cascade delete related Workpackages
+7. WHEN deleting a phase, THE System SHALL update NEXT relationships to maintain sequence continuity
+8. WHEN creating a phase, THE System SHALL require a name
+9. WHEN creating a phase, THE System SHALL validate the phase belongs to an existing project
+10. WHEN retrieving phases, THE System SHALL include workpackage counts and completion percentages
+11. THE System SHALL support reordering phases by updating NEXT relationships
+12. THE System SHALL validate phase date ranges are within the project date range
+13. WHEN a phase has calculated_start_date and calculated_end_date, THE System SHALL return them in the response
+14. WHEN a phase has start_date and due_date (manual), THE System SHALL return them in the response
+15. WHEN a phase has start_date_is and progress, THE System SHALL return them in the response
+16. THE System SHALL support POST /api/v1/phases/{phase_id}/next/{next_phase_id} to create NEXT relationship
+17. THE System SHALL support DELETE /api/v1/phases/{phase_id}/next to remove NEXT relationship
+18. THE System SHALL validate that NEXT relationships form a linear sequence (no cycles, no branches)
+
+**Workpackage Management:**
+
+19. WHEN a POST request is made to /api/v1/phases/{phase_id}/workpackages with workpackage data, THE System SHALL create a new Workpackage node
+20. WHEN creating a workpackage, THE System SHALL support minimal_duration property (calendar days)
+21. WHEN a GET request is made to /api/v1/phases/{phase_id}/workpackages, THE System SHALL return all workpackages for the phase ordered by sequence
+22. WHEN a GET request is made to /api/v1/workpackages/{workpackage_id}, THE System SHALL return workpackage details including tasks
+23. WHEN a PATCH request is made to /api/v1/workpackages/{workpackage_id}, THE System SHALL update the workpackage properties including minimal_duration
+24. WHEN a DELETE request is made to /api/v1/workpackages/{workpackage_id}, THE System SHALL delete the workpackage and update Task relationships
+25. WHEN creating a workpackage, THE System SHALL require a name and order number
+26. WHEN creating a workpackage, THE System SHALL validate the workpackage belongs to an existing phase
+27. WHEN assigning a Task to a workpackage, THE System SHALL create a BELONGS_TO relationship
+28. WHEN retrieving workpackages, THE System SHALL include task counts and completion percentages
+29. THE System SHALL support reordering workpackages within a phase by updating order numbers
+30. THE System SHALL validate workpackage date ranges are within the phase date range
+31. WHEN a workpackage has calculated_start_date and calculated_end_date, THE System SHALL return them in the response
+32. WHEN a workpackage has start_date and due_date (manual), THE System SHALL return them in the response
+33. WHEN a workpackage has start_date_is and progress, THE System SHALL return them in the response
+
+**Dependency Management:**
+
+34. THE System SHALL support POST /api/v1/workpackages/{id}/before/{target_id} to create BEFORE relationship
+35. THE System SHALL support DELETE /api/v1/workpackages/{id}/before/{target_id} to remove BEFORE relationship
+36. THE System SHALL support GET /api/v1/workpackages/{id}/dependencies to list all BEFORE relationships
+37. WHEN creating BEFORE relationships, THE System SHALL validate no dependency cycles are created
 
 ### Requirement 19: Resource Management API
 

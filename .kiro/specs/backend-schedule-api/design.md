@@ -418,7 +418,7 @@ RESOURCE ALLOCATION PATTERNS:
 }
 ```
 
-#### 2.2.4 Project Node
+#### 2.2.4 Project Node (UPDATED)
 ```python
 {
     "label": "Project",
@@ -427,8 +427,12 @@ RESOURCE ALLOCATION PATTERNS:
         "name": "string",
         "description": "string",
         "status": "active|completed|archived",
-        "start_date": "ISO8601 datetime",
-        "end_date": "ISO8601 datetime",
+        "start_date": "ISO8601 datetime",  # Manual start date (optional)
+        "due_date": "ISO8601 datetime",  # Manual due date (optional)
+        "calculated_start_date": "ISO8601 datetime",  # Calculated by scheduler
+        "calculated_end_date": "ISO8601 datetime",  # Calculated by scheduler
+        "start_date_is": "ISO8601 datetime",  # Actual start date
+        "progress": "integer (0-100)",  # Completion percentage
         "created_at": "ISO8601 datetime",
         "updated_at": "ISO8601 datetime",
         "created_by_user_id": "UUID"  # PostgreSQL user reference
@@ -436,7 +440,13 @@ RESOURCE ALLOCATION PATTERNS:
 }
 ```
 
-#### 2.2.5 Phase Node
+**New Attributes**:
+- `due_date`: Renamed from `end_date` for consistency (manual due date)
+- `calculated_start_date`, `calculated_end_date`: Scheduler output
+- `start_date_is`: Actual start date for progress tracking
+- `progress`: Percentage completion (0-100)
+
+#### 2.2.5 Phase Node (UPDATED)
 ```python
 {
     "label": "Phase",
@@ -444,16 +454,23 @@ RESOURCE ALLOCATION PATTERNS:
         "id": "UUID",
         "name": "string",
         "description": "string",
-        "order": "integer",  # Sequence within project
-        "start_date": "ISO8601 datetime",
-        "end_date": "ISO8601 datetime",
+        "order": "integer",  # Sequence within project (deprecated, use NEXT relationships)
+        "minimal_duration": "integer",  # Minimum calendar days for this phase
+        "start_date": "ISO8601 datetime",  # Manual start date (optional, user-specified)
+        "due_date": "ISO8601 datetime",  # Manual due date (optional, user-specified)
+        "calculated_start_date": "ISO8601 datetime",  # Calculated by scheduler
+        "calculated_end_date": "ISO8601 datetime",  # Calculated by scheduler
+        "start_date_is": "ISO8601 datetime",  # Actual start date when work began
+        "progress": "integer (0-100)",  # Completion percentage
         "project_id": "UUID",  # For quick lookup
         "created_at": "ISO8601 datetime"
     }
 }
 ```
 
-#### 2.2.6 Workpackage Node
+**Note**: The `order` property is deprecated in favor of NEXT relationships for sequential ordering.
+
+#### 2.2.6 Workpackage Node (UPDATED)
 ```python
 {
     "label": "Workpackage",
@@ -462,8 +479,13 @@ RESOURCE ALLOCATION PATTERNS:
         "name": "string",
         "description": "string",
         "order": "integer",  # Sequence within phase
-        "start_date": "ISO8601 datetime",
-        "end_date": "ISO8601 datetime",
+        "minimal_duration": "integer",  # Minimum calendar days for this workpackage
+        "start_date": "ISO8601 datetime",  # Manual start date (optional, user-specified)
+        "due_date": "ISO8601 datetime",  # Manual due date (optional, user-specified)
+        "calculated_start_date": "ISO8601 datetime",  # Calculated by scheduler
+        "calculated_end_date": "ISO8601 datetime",  # Calculated by scheduler
+        "start_date_is": "ISO8601 datetime",  # Actual start date when work began
+        "progress": "integer (0-100)",  # Completion percentage
         "phase_id": "UUID",  # For quick lookup
         "created_at": "ISO8601 datetime"
     }
@@ -480,14 +502,19 @@ RESOURCE ALLOCATION PATTERNS:
         "description": "string",
         "status": "draft|ready|active|completed|blocked",
         "priority": "integer (1-5)",
-        "estimated_hours": "float",
+        "duration": "integer",  # Calendar days for scheduling
+        "effort": "float",  # Hours for resource capacity calculations
+        "estimated_hours": "float",  # Deprecated, use effort instead
         "actual_hours": "float",
         "story_points": "integer",
-        "skills_needed": "array[string]",  # NEW: for resource matching
+        "skills": "array[string]",  # Required skills for resource matching
         "done": "boolean",  # Completion flag
-        "start_date": "ISO8601 datetime",  # From schedule
-        "end_date": "ISO8601 datetime",  # From schedule
-        "due_date": "ISO8601 datetime",  # Deadline constraint
+        "start_date": "ISO8601 datetime",  # Manual start date (optional, user-specified)
+        "due_date": "ISO8601 datetime",  # Manual due date (optional, deadline constraint)
+        "calculated_start_date": "ISO8601 datetime",  # Calculated by scheduler
+        "calculated_end_date": "ISO8601 datetime",  # Calculated by scheduler
+        "start_date_is": "ISO8601 datetime",  # Actual start date when work began
+        "progress": "integer (0-100)",  # Completion percentage
         "workpackage_id": "UUID",  # For quick lookup
         "version": "string",
         "created_by": "UUID",
@@ -500,6 +527,15 @@ RESOURCE ALLOCATION PATTERNS:
 
 **Note**: Task is a separate node type (label="Task"), not a WorkItem with type="task". This maintains compatibility with existing code while providing clearer graph semantics. The WorkItem service can query Task nodes using `MATCH (t:Task)` instead of `MATCH (w:WorkItem WHERE w.type='task')`.
 
+**New Attributes**:
+- `duration`: Calendar days for Gantt chart display and scheduling
+- `effort`: Hours for resource capacity calculations
+- `skills`: Array of required skills for resource matching
+- `start_date`, `due_date`: Manual dates (user-specified constraints)
+- `calculated_start_date`, `calculated_end_date`: Scheduler output
+- `start_date_is`: Actual start date for progress tracking
+- `progress`: Percentage completion (0-100)
+
 #### 2.2.8 Milestone Node (UPDATED - Separate from WorkItem)
 ```python
 {
@@ -508,7 +544,14 @@ RESOURCE ALLOCATION PATTERNS:
         "id": "UUID",
         "title": "string",
         "description": "string",
-        "target_date": "ISO8601 datetime",
+        "target_date": "ISO8601 datetime",  # Manual target date (if is_manual_constraint=true)
+        "calculated_date": "ISO8601 datetime",  # Calculated from dependencies (if is_manual_constraint=false)
+        "start_date": "ISO8601 datetime",  # Manual start date (optional)
+        "due_date": "ISO8601 datetime",  # Manual due date (optional)
+        "calculated_start_date": "ISO8601 datetime",  # Calculated by scheduler
+        "calculated_end_date": "ISO8601 datetime",  # Calculated by scheduler
+        "start_date_is": "ISO8601 datetime",  # Actual achievement date
+        "progress": "integer (0-100)",  # Completion percentage
         "is_manual_constraint": "boolean",  # true = use target_date as constraint
         "completion_criteria": "string",
         "status": "draft|active|completed",
@@ -522,6 +565,13 @@ RESOURCE ALLOCATION PATTERNS:
 ```
 
 **Note**: Milestone is a separate node type (label="Milestone"), not a WorkItem with type="milestone". This provides clearer graph semantics and better query performance.
+
+**New Attributes**:
+- `calculated_date`: Date calculated from dependent tasks (automatic mode)
+- `start_date`, `due_date`: Manual dates (optional)
+- `calculated_start_date`, `calculated_end_date`: Scheduler output
+- `start_date_is`: Actual achievement date
+- `progress`: Percentage completion (0-100)
 
 #### 2.2.9 Backlog Node
 ```python
@@ -568,7 +618,29 @@ RESOURCE ALLOCATION PATTERNS:
 - **Properties**: None
 - **Purpose**: Hierarchical structure
 
-#### 2.3.2 DEPENDS_ON
+#### 2.3.2 NEXT (NEW)
+- **From**: Phase
+- **To**: Phase
+- **Properties**: None
+- **Purpose**: Sequential ordering of phases within a project
+- **Constraint**: Must form a linear sequence (no cycles, no branches)
+- **Usage**: Defines the order in which phases should be executed
+
+#### 2.3.3 BEFORE (NEW)
+- **From**: Workpackage, Task, Milestone
+- **To**: Workpackage, Task, Milestone
+- **Properties**:
+  ```python
+  {
+      "dependency_type": "finish-to-start|start-to-start|finish-to-finish",
+      "lag": "integer (days)"  # Optional delay after predecessor completes
+  }
+  ```
+- **Purpose**: Flexible dependency relationships between entities
+- **Constraint**: Must not create cycles
+- **Usage**: Defines that one entity must complete before another can start
+
+#### 2.3.4 DEPENDS_ON
 - **From**: Task, Milestone
 - **To**: Task
 - **Properties**: 
@@ -580,13 +652,13 @@ RESOURCE ALLOCATION PATTERNS:
   ```
 - **Purpose**: Task dependencies and milestone dependencies
 
-#### 2.3.3 BLOCKS
+#### 2.3.5 BLOCKS
 - **From**: Task
 - **To**: Milestone
 - **Properties**: None
 - **Purpose**: Inverse of DEPENDS_ON for milestone tracking
 
-#### 2.3.4 IN_BACKLOG (UPDATED)
+#### 2.3.6 IN_BACKLOG (UPDATED)
 - **From**: Task
 - **To**: Backlog
 - **Properties**:
@@ -600,7 +672,7 @@ RESOURCE ALLOCATION PATTERNS:
 - **Constraint**: A task can have IN_BACKLOG OR ASSIGNED_TO_SPRINT, never both
 - **Behavior**: Automatic creation when task status="ready", removed when assigned to sprint
 
-#### 2.3.5 ASSIGNED_TO_SPRINT (UPDATED)
+#### 2.3.7 ASSIGNED_TO_SPRINT (UPDATED)
 - **From**: Task
 - **To**: Sprint
 - **Properties**:
@@ -614,7 +686,7 @@ RESOURCE ALLOCATION PATTERNS:
 - **Constraint**: A task can have ASSIGNED_TO_SPRINT OR IN_BACKLOG, never both
 - **Behavior**: Manual assignment, removes IN_BACKLOG relationship
 
-#### 2.3.6 ASSIGNED_TO (Deprecated - Use ALLOCATED_TO)
+#### 2.3.8 ASSIGNED_TO (Deprecated - Use ALLOCATED_TO)
 - **From**: Task
 - **To**: Resource
 - **Properties**:
@@ -626,49 +698,51 @@ RESOURCE ALLOCATION PATTERNS:
   ```
 - **Purpose**: Resource assignment to tasks (legacy, use ALLOCATED_TO instead)
 
-#### 2.3.7 ALLOCATED_TO (UPDATED)
+#### 2.3.9 ALLOCATED_TO (UPDATED)
 - **From**: Resource
-- **To**: Project OR Task
+- **To**: Project OR Workpackage OR Task
 - **Properties**:
   ```python
   {
       "allocation_percentage": "float",
-      "lead": "boolean",  # NEW: true = lead/primary, false = supporting
+      "lead": "boolean",  # true = lead/primary, false = supporting
       "start_date": "ISO8601 datetime",
       "end_date": "ISO8601 datetime"
   }
   ```
-- **Purpose**: Resource allocation with lead designation
+- **Purpose**: Resource allocation with lead designation and inheritance support
 - **Patterns**:
-  - **Project-level**: Resource available to all tasks, scheduler assigns based on skills
+  - **Project-level**: Resource available to all workpackages and tasks (inherited)
+  - **Workpackage-level**: Resource available to all tasks in workpackage (inherited)
   - **Task-level**: Resource explicitly assigned, lead = primary owner
   - **Lead flag**: Identifies primary responsible resource vs. supporting resources
+- **Inheritance**: Resources allocated at higher levels are inherited by lower levels
 
-#### 2.3.8 PARENT_OF
+#### 2.3.10 PARENT_OF
 - **From**: Department, Company
 - **To**: Department
 - **Properties**: None
 - **Purpose**: Hierarchical department structure and company-department relationship
 
-#### 2.3.9 LINKED_TO_DEPARTMENT (NEW)
+#### 2.3.11 LINKED_TO_DEPARTMENT
 - **From**: Workpackage
 - **To**: Department
 - **Properties**: None
 - **Purpose**: Link workpackage to department for resource allocation
 
-#### 2.3.10 has_risk (NEW)
+#### 2.3.12 has_risk
 - **From**: Task
 - **To**: Risk (WorkItem)
 - **Properties**: None
 - **Purpose**: Task has associated risk
 
-#### 2.3.11 implements (NEW)
+#### 2.3.13 implements
 - **From**: Task
 - **To**: Requirement (WorkItem)
 - **Properties**: None
 - **Purpose**: Task implements requirement
 
-#### 2.3.12 NEXT_VERSION
+#### 2.3.14 NEXT_VERSION
 - **From**: WorkItem, Task, Milestone
 - **To**: WorkItem, Task, Milestone (same node, different version)
 - **Properties**:
@@ -1187,6 +1261,381 @@ async def calculate_burndown(
 - **Actual Line**: Real progress based on task completion
 - **Scope Change**: Track added/removed work during sprint
 - **Trend**: On track, ahead, or behind schedule
+
+
+
+### 3.7 Resource Inheritance Algorithm
+
+Resources allocated at project or workpackage level are inherited by child entities.
+
+**Algorithm: Hierarchical Resource Lookup**
+
+```python
+async def get_effective_resources_for_task(
+    task_id: UUID,
+    graph_service: GraphService
+) -> list[ResourceAllocation]:
+    """
+    Get all resources available to a task through inheritance.
+    
+    Args:
+        task_id: Task UUID
+        graph_service: Graph service instance
+    
+    Returns:
+        List of resource allocations with effective allocation percentages
+    """
+    # 1. Get task-level allocations (highest priority)
+    task_resources = await graph_service.execute_query(f"""
+        MATCH (r:Resource)-[alloc:ALLOCATED_TO]->(t:Task {{id: '{task_id}'}})
+        RETURN r.id as resource_id, 
+               r.name as resource_name,
+               r.skills as skills,
+               alloc.allocation_percentage as allocation,
+               alloc.lead as lead,
+               'task' as level
+    """)
+    
+    # 2. Get workpackage-level allocations (inherited)
+    workpackage_resources = await graph_service.execute_query(f"""
+        MATCH (t:Task {{id: '{task_id}'}})-[:BELONGS_TO]->(wp:Workpackage)
+        MATCH (r:Resource)-[alloc:ALLOCATED_TO]->(wp)
+        RETURN r.id as resource_id,
+               r.name as resource_name,
+               r.skills as skills,
+               alloc.allocation_percentage as allocation,
+               alloc.lead as lead,
+               'workpackage' as level
+    """)
+    
+    # 3. Get project-level allocations (inherited)
+    project_resources = await graph_service.execute_query(f"""
+        MATCH (t:Task {{id: '{task_id}'}})-[:BELONGS_TO]->(wp:Workpackage)
+        MATCH (wp)-[:BELONGS_TO]->(ph:Phase)
+        MATCH (ph)-[:BELONGS_TO]->(p:Project)
+        MATCH (r:Resource)-[alloc:ALLOCATED_TO]->(p)
+        RETURN r.id as resource_id,
+               r.name as resource_name,
+               r.skills as skills,
+               alloc.allocation_percentage as allocation,
+               alloc.lead as lead,
+               'project' as level
+    """)
+    
+    # 4. Combine resources with priority: task > workpackage > project
+    resource_map = {}
+    
+    # Add project-level resources first (lowest priority)
+    for res in project_resources:
+        resource_map[res["resource_id"]] = ResourceAllocation(
+            resource_id=res["resource_id"],
+            resource_name=res["resource_name"],
+            skills=res["skills"],
+            allocation_percentage=res["allocation"],
+            lead=res["lead"],
+            source_level=res["level"]
+        )
+    
+    # Override with workpackage-level resources (medium priority)
+    for res in workpackage_resources:
+        resource_map[res["resource_id"]] = ResourceAllocation(
+            resource_id=res["resource_id"],
+            resource_name=res["resource_name"],
+            skills=res["skills"],
+            allocation_percentage=res["allocation"],
+            lead=res["lead"],
+            source_level=res["level"]
+        )
+    
+    # Override with task-level resources (highest priority)
+    for res in task_resources:
+        resource_map[res["resource_id"]] = ResourceAllocation(
+            resource_id=res["resource_id"],
+            resource_name=res["resource_name"],
+            skills=res["skills"],
+            allocation_percentage=res["allocation"],
+            lead=res["lead"],
+            source_level=res["level"]
+        )
+    
+    return list(resource_map.values())
+```
+
+**Inheritance Rules**:
+1. **Task-level allocations** have highest priority (explicit assignment)
+2. **Workpackage-level allocations** are inherited by all tasks in the workpackage
+3. **Project-level allocations** are inherited by all workpackages and tasks
+4. **Most specific wins**: If a resource is allocated at multiple levels, use the most specific allocation percentage
+5. **Union of resources**: A task has access to all resources from all levels (combined set)
+
+**Usage in Scheduling**:
+- When scheduling a task, query effective resources using this algorithm
+- Match task skills with resource skills from the effective resource set
+- Prioritize lead resources (lead=true) for primary assignment
+- Consider allocation percentages for capacity calculations
+
+
+
+### 3.8 Date Priority and Gantt Display Algorithm
+
+Manual dates override calculated dates for display and constraints.
+
+**Algorithm: Date Selection for Gantt Chart**
+
+```python
+def get_display_dates_for_entity(
+    entity: Task | Workpackage | Phase | Project | Milestone
+) -> tuple[datetime, datetime]:
+    """
+    Get start and end dates for Gantt chart display.
+    Prioritizes manual dates over calculated dates.
+    
+    Args:
+        entity: Entity with date attributes
+    
+    Returns:
+        Tuple of (display_start_date, display_end_date)
+    """
+    # Priority 1: Manual dates (user-specified)
+    start_date = entity.start_date if entity.start_date else entity.calculated_start_date
+    end_date = entity.due_date if entity.due_date else entity.calculated_end_date
+    
+    # Fallback to calculated dates if manual dates not set
+    if not start_date:
+        start_date = entity.calculated_start_date
+    if not end_date:
+        end_date = entity.calculated_end_date
+    
+    return (start_date, end_date)
+
+
+def get_progress_indicator(
+    entity: Task | Workpackage | Phase | Project | Milestone
+) -> dict:
+    """
+    Get progress information for Gantt chart display.
+    
+    Args:
+        entity: Entity with progress attributes
+    
+    Returns:
+        Dictionary with progress information
+    """
+    progress_info = {
+        "progress_percentage": entity.progress or 0,
+        "actual_start_date": entity.start_date_is,
+        "planned_start_date": entity.start_date or entity.calculated_start_date,
+        "is_started": entity.start_date_is is not None,
+        "is_delayed": False,
+        "variance_days": 0
+    }
+    
+    # Calculate variance if work has started
+    if entity.start_date_is and progress_info["planned_start_date"]:
+        variance = (entity.start_date_is - progress_info["planned_start_date"]).days
+        progress_info["variance_days"] = variance
+        progress_info["is_delayed"] = variance > 0
+    
+    return progress_info
+
+
+async def prepare_gantt_data(
+    project_id: UUID,
+    graph_service: GraphService
+) -> GanttChartData:
+    """
+    Prepare complete Gantt chart data with date priorities.
+    
+    Args:
+        project_id: Project UUID
+        graph_service: Graph service instance
+    
+    Returns:
+        Gantt chart data structure
+    """
+    # Get all entities for the project
+    tasks = await get_project_tasks(project_id, graph_service)
+    workpackages = await get_project_workpackages(project_id, graph_service)
+    phases = await get_project_phases(project_id, graph_service)
+    milestones = await get_project_milestones(project_id, graph_service)
+    
+    gantt_items = []
+    
+    # Process tasks
+    for task in tasks:
+        start, end = get_display_dates_for_entity(task)
+        progress = get_progress_indicator(task)
+        
+        gantt_items.append(GanttItem(
+            id=task.id,
+            type="task",
+            title=task.title,
+            start_date=start,
+            end_date=end,
+            progress=progress["progress_percentage"],
+            actual_start=progress["actual_start_date"],
+            is_delayed=progress["is_delayed"],
+            variance_days=progress["variance_days"],
+            is_critical=task.is_critical,
+            dependencies=await get_task_dependencies(task.id, graph_service)
+        ))
+    
+    # Process workpackages
+    for wp in workpackages:
+        start, end = get_display_dates_for_entity(wp)
+        progress = get_progress_indicator(wp)
+        
+        gantt_items.append(GanttItem(
+            id=wp.id,
+            type="workpackage",
+            title=wp.name,
+            start_date=start,
+            end_date=end,
+            progress=progress["progress_percentage"],
+            actual_start=progress["actual_start_date"],
+            is_delayed=progress["is_delayed"],
+            variance_days=progress["variance_days"]
+        ))
+    
+    # Process phases
+    for phase in phases:
+        start, end = get_display_dates_for_entity(phase)
+        progress = get_progress_indicator(phase)
+        
+        gantt_items.append(GanttItem(
+            id=phase.id,
+            type="phase",
+            title=phase.name,
+            start_date=start,
+            end_date=end,
+            progress=progress["progress_percentage"],
+            actual_start=progress["actual_start_date"],
+            is_delayed=progress["is_delayed"],
+            variance_days=progress["variance_days"]
+        ))
+    
+    # Process milestones
+    for milestone in milestones:
+        # For milestones, use target_date or calculated_date
+        date = milestone.target_date if milestone.is_manual_constraint else milestone.calculated_date
+        
+        gantt_items.append(GanttItem(
+            id=milestone.id,
+            type="milestone",
+            title=milestone.title,
+            date=date,
+            is_achieved=milestone.status == "completed",
+            actual_date=milestone.start_date_is
+        ))
+    
+    return GanttChartData(
+        project_id=project_id,
+        items=gantt_items,
+        dependencies=await get_all_dependencies(project_id, graph_service)
+    )
+```
+
+**Display Priority Rules**:
+1. **Start Date**: `start_date` (manual) > `calculated_start_date` (scheduler)
+2. **End Date**: `due_date` (manual) > `calculated_end_date` (scheduler)
+3. **Progress**: Show `progress` percentage as filled portion of bar
+4. **Variance**: If `start_date_is` differs from planned start, show visual indicator
+5. **Delays**: Highlight items where `start_date_is` > `start_date`
+
+**Scheduling Constraint Rules**:
+1. **Manual start_date**: Used as "earliest start" constraint in scheduler
+2. **Manual due_date**: Used as "deadline" constraint in scheduler
+3. **Progress override**: If `progress` = 100%, treat as completed regardless of dates
+4. **Actual start override**: If `start_date_is` is set, adjust remaining work calculations
+
+
+
+### 3.9 Minimal Duration Enforcement
+
+Ensure phases and workpackages meet minimum duration requirements.
+
+**Algorithm: Duration Validation and Adjustment**
+
+```python
+def enforce_minimal_duration(
+    entity: Phase | Workpackage,
+    calculated_duration_days: int
+) -> int:
+    """
+    Enforce minimal duration for phases and workpackages.
+    
+    Args:
+        entity: Phase or Workpackage with minimal_duration property
+        calculated_duration_days: Duration calculated from tasks
+    
+    Returns:
+        Adjusted duration (max of calculated and minimal)
+    """
+    if not entity.minimal_duration:
+        return calculated_duration_days
+    
+    # Use the larger of calculated duration and minimal duration
+    return max(calculated_duration_days, entity.minimal_duration)
+
+
+async def calculate_phase_duration(
+    phase_id: UUID,
+    graph_service: GraphService
+) -> int:
+    """
+    Calculate phase duration from workpackages and tasks.
+    
+    Args:
+        phase_id: Phase UUID
+        graph_service: Graph service instance
+    
+    Returns:
+        Phase duration in calendar days
+    """
+    # Get phase
+    phase = await graph_service.get_node(str(phase_id))
+    
+    # Get all workpackages in phase
+    workpackages = await graph_service.execute_query(f"""
+        MATCH (wp:Workpackage)-[:BELONGS_TO]->(ph:Phase {{id: '{phase_id}'}})
+        RETURN wp
+    """)
+    
+    if not workpackages:
+        # No workpackages, use minimal_duration
+        return phase.get("minimal_duration", 0)
+    
+    # Calculate duration from workpackages
+    total_duration = 0
+    for wp_data in workpackages:
+        wp = wp_data["wp"]
+        
+        # Get tasks in workpackage
+        tasks = await graph_service.execute_query(f"""
+            MATCH (t:Task)-[:BELONGS_TO]->(wp:Workpackage {{id: '{wp["id"]}'}})
+            RETURN t.duration as duration
+        """)
+        
+        if tasks:
+            # Sum task durations
+            wp_duration = sum(t["duration"] or 0 for t in tasks)
+        else:
+            # No tasks, use workpackage minimal_duration
+            wp_duration = wp.get("minimal_duration", 0)
+        
+        # Enforce workpackage minimal_duration
+        wp_duration = max(wp_duration, wp.get("minimal_duration", 0))
+        
+        total_duration += wp_duration
+    
+    # Enforce phase minimal_duration
+    return max(total_duration, phase.get("minimal_duration", 0))
+```
+
+**Usage**:
+- When calculating schedules, use minimal_duration as fallback when no task data exists
+- When calculated duration < minimal_duration, extend the schedule to meet minimum
+- Useful for Gantt chart display when detailed task breakdown is not yet available
 
 
 

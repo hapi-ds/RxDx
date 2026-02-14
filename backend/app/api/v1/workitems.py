@@ -1382,3 +1382,77 @@ async def get_task_dependencies(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving task dependencies: {str(e)}"
         )
+
+
+# ============================================================================
+# Resource Allocation Endpoints
+# ============================================================================
+
+@router.get("/tasks/{task_id}/effective-resources")
+async def get_task_effective_resources(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Get effective resources for a task using inheritance algorithm.
+    
+    Resources are inherited from three levels (priority order):
+    1. Task-level allocations (highest priority)
+    2. Workpackage-level allocations (inherited)
+    3. Project-level allocations (inherited)
+    
+    Most specific allocation wins. Returns union of resources from all levels.
+
+    Args:
+        task_id: Task UUID
+        current_user: Authenticated user
+        graph_service: Graph service
+        audit_service: Audit service
+
+    Returns:
+        List of effective resource allocations with inheritance information
+
+    Raises:
+        HTTPException: 404 if task not found
+        HTTPException: 403 if not authorized
+    """
+    # Check read permission
+    if not has_permission(current_user.role, Permission.READ_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to read task resources"
+        )
+    
+    try:
+        # Import ResourceService here to avoid circular imports
+        from app.services.resource_service import ResourceService
+        resource_service = ResourceService(graph_service)
+        
+        effective_resources = await resource_service.get_effective_resources_for_task(task_id)
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="READ",
+            entity_type="Task",
+            entity_id=task_id,
+            details={
+                "action_type": "get_effective_resources",
+                "resource_count": len(effective_resources)
+            }
+        )
+        
+        return effective_resources
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving effective resources: {str(e)}"
+        )

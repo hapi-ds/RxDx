@@ -166,16 +166,16 @@ class ResourceAllocationCreate(ResourceAllocationBase):
     """Schema for creating a Resource Allocation"""
 
     resource_id: UUID = Field(..., description="Resource UUID")
-    target_id: UUID = Field(..., description="Project or Task UUID")
+    target_id: UUID = Field(..., description="Project, Workpackage, or Task UUID")
     target_type: str = Field(
-        ..., description="Target type: project or task"
+        ..., description="Target type: project, workpackage, or task"
     )
 
     @field_validator("target_type")
     @classmethod
     def validate_target_type(cls, v: str) -> str:
         """Validate target type is one of the allowed values"""
-        allowed_types = ["project", "task"]
+        allowed_types = ["project", "workpackage", "task"]
         if v.lower() not in allowed_types:
             raise ValueError(
                 f"Target type must be one of: {', '.join(allowed_types)}"

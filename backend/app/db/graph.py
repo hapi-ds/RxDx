@@ -1017,6 +1017,70 @@ class GraphService:
             properties=properties
         )
 
+    async def allocate_resource_to_workpackage(
+        self,
+        resource_id: str,
+        workpackage_id: str,
+        allocation_percentage: float,
+        lead: bool = False,
+        start_date: str | None = None,
+        end_date: str | None = None
+    ) -> dict[str, Any]:
+        """
+        Allocate a resource to a workpackage with ALLOCATED_TO relationship.
+
+        Args:
+            resource_id: Resource UUID
+            workpackage_id: Workpackage UUID
+            allocation_percentage: Percentage of resource capacity (0-100)
+            lead: Whether this is a lead/primary resource (default False)
+            start_date: Optional allocation start date (ISO format)
+            end_date: Optional allocation end date (ISO format)
+
+        Returns:
+            Created relationship
+
+        Raises:
+            ValueError: If resource or workpackage doesn't exist
+        """
+        # Verify resource exists
+        resource_query = f"MATCH (r:Resource {{id: '{resource_id}'}}) RETURN r"
+        resource_results = await self.execute_query(resource_query)
+        if not resource_results:
+            raise ValueError(f"Resource {resource_id} not found")
+
+        # Verify workpackage exists
+        workpackage_query = f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        workpackage_results = await self.execute_query(workpackage_query)
+        if not workpackage_results:
+            raise ValueError(f"Workpackage {workpackage_id} not found")
+
+        # Note: Multi-level allocations are allowed (project + workpackage + task)
+        # The most specific allocation takes precedence in the inheritance algorithm
+
+        # Validate allocation percentage
+        if not 0 <= allocation_percentage <= 100:
+            raise ValueError("Allocation percentage must be between 0 and 100")
+
+        # Build relationship properties
+        properties = {
+            "allocation_percentage": allocation_percentage,
+            "lead": lead
+        }
+
+        if start_date:
+            properties["start_date"] = start_date
+        if end_date:
+            properties["end_date"] = end_date
+
+        # Create the ALLOCATED_TO relationship
+        return await self.create_relationship(
+            from_id=resource_id,
+            to_id=workpackage_id,
+            rel_type="ALLOCATED_TO",
+            properties=properties
+        )
+
     async def allocate_resource_to_task(
         self,
         resource_id: str,

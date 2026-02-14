@@ -233,39 +233,39 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 1B: Resource Inheritance and Skills Matching
 
 ### Task 1B.1: Resource Inheritance Algorithm
-- [ ] Implement get_effective_resources_for_task function (3-level inheritance)
-- [ ] Query task-level allocations (highest priority)
-- [ ] Query workpackage-level allocations (inherited)
-- [ ] Query project-level allocations (inherited)
-- [ ] Combine resources with priority: task > workpackage > project
-- [ ] Handle allocation percentage overrides at different levels
-- [ ] Write unit tests for resource inheritance
-- [ ] Write property test: Most specific allocation wins
-- [ ] Write property test: Union of resources from all levels
+- [x] Implement get_effective_resources_for_task function (3-level inheritance)
+- [x] Query task-level allocations (highest priority)
+- [x] Query workpackage-level allocations (inherited)
+- [x] Query project-level allocations (inherited)
+- [x] Combine resources with priority: task > workpackage > project
+- [x] Handle allocation percentage overrides at different levels
+- [x] Write unit tests for resource inheritance
+- [x] Write property test: Most specific allocation wins
+- [x] Write property test: Union of resources from all levels
 
 **Requirements: 16B.1-16B.27**
 
 ### Task 1B.2: Skills-Based Resource Matching
-- [ ] Implement match_resources_by_skills function (set intersection)
-- [ ] Update get_matching_resources_for_task to use skills matching
-- [ ] Prioritize resources with matching skills in allocation
-- [ ] Prioritize lead resources (lead=true) in allocation
-- [ ] Update schedule calculation to use skills-based matching
-- [ ] Add GET /api/v1/resources?skills=Python,FastAPI endpoint for filtering
-- [ ] Write unit tests for skills matching
-- [ ] Write property test: Allocated resources have required skills
-- [ ] Write property test: Lead resources allocated before non-lead
+- [x] Implement match_resources_by_skills function (set intersection)
+- [x] Update get_matching_resources_for_task to use skills matching
+- [x] Prioritize resources with matching skills in allocation
+- [x] Prioritize lead resources (lead=true) in allocation
+- [x] Update schedule calculation to use skills-based matching
+- [x] Add GET /api/v1/resources?skills=Python,FastAPI endpoint for filtering
+- [x] Write unit tests for skills matching
+- [x] Write property test: Allocated resources have required skills
+- [x] Write property test: Lead resources allocated before non-lead
 
 **Requirements: 16A.41-16A.45, 16B.22-16B.27**
 
 ### Task 1B.3: Resource Allocation API Updates
-- [ ] Update POST /api/v1/resources/{id}/allocate to support project/workpackage/task targets
-- [ ] Add lead parameter to allocation requests
-- [ ] Add start_date and end_date parameters to allocation requests
-- [ ] Update GET /api/v1/resources/{id} to show allocations at all levels
-- [ ] Add GET /api/v1/tasks/{id}/effective-resources endpoint (shows inherited resources)
-- [ ] Add authentication and authorization
-- [ ] Write integration tests for resource allocation
+- [x] Update POST /api/v1/resources/{id}/allocate to support project/workpackage/task targets
+- [x] Add lead parameter to allocation requests
+- [x] Add start_date and end_date parameters to allocation requests
+- [x] Update GET /api/v1/resources/{id} to show allocations at all levels
+- [x] Add GET /api/v1/tasks/{id}/effective-resources endpoint (shows inherited resources)
+- [x] Add authentication and authorization
+- [x] Write integration tests for resource allocation
 
 **Requirements: 16B.1-16B.27, 19.1-19.20**
 

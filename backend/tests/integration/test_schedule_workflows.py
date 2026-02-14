@@ -53,6 +53,7 @@ async def test_create_sprint_assign_tasks_start_complete_workflow(
         "goal": "Complete initial features",
         "start_date": datetime.now(UTC).isoformat(),
         "end_date": (datetime.now(UTC) + timedelta(days=14)).isoformat(),
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(
@@ -127,6 +128,7 @@ async def test_task_ready_backlog_sprint_complete_workflow(
     backlog_data = {
         "name": "Product Backlog",
         "description": "Main backlog for the project",
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(
@@ -181,6 +183,7 @@ async def test_task_ready_backlog_sprint_complete_workflow(
         "goal": "Complete task",
         "start_date": datetime.now(UTC).isoformat(),
         "end_date": (datetime.now(UTC) + timedelta(days=14)).isoformat(),
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(
@@ -619,6 +622,7 @@ async def test_sprint_capacity_calculation(
         "goal": "Test capacity calculation",
         "start_date": datetime.now(UTC).isoformat(),
         "end_date": (datetime.now(UTC) + timedelta(days=14)).isoformat(),
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(
@@ -685,6 +689,7 @@ async def test_velocity_tracking_across_multiple_sprints(
             "goal": f"Sprint {sprint_num + 1} goal",
             "start_date": (datetime.now(UTC) + timedelta(days=sprint_num * 14)).isoformat(),
             "end_date": (datetime.now(UTC) + timedelta(days=(sprint_num + 1) * 14)).isoformat(),
+            "project_id": project_id,  # Required in request body
         }
         
         response = await client.post(
@@ -796,6 +801,7 @@ async def test_burndown_chart_data_generation(
         "goal": "Test burndown",
         "start_date": sprint_start.isoformat(),
         "end_date": sprint_end.isoformat(),
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(
@@ -936,6 +942,7 @@ async def test_complete_project_workflow_with_all_features(
     backlog_data = {
         "name": "Product Backlog",
         "description": "Main backlog",
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(
@@ -978,6 +985,7 @@ async def test_complete_project_workflow_with_all_features(
         "goal": "Complete initial tasks",
         "start_date": datetime.now(UTC).isoformat(),
         "end_date": (datetime.now(UTC) + timedelta(days=14)).isoformat(),
+        "project_id": project_id,  # Required in request body
     }
     
     response = await client.post(

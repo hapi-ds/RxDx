@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { backlogService, Backlog } from '../../services/backlogService';
+import { backlogService, type Backlog } from '../../services/backlogService';
 import { Button, Spinner, ErrorMessage, EmptyState } from '../common';
 
 interface BacklogListProps {
@@ -51,7 +51,7 @@ export function BacklogList({
     return (
       <EmptyState
         title="No backlogs found"
-        description="Create a backlog to start managing your tasks."
+        message="Create a backlog to start managing your tasks."
         action={
           onCreateBacklog ? (
             <Button onClick={onCreateBacklog}>Create Backlog</Button>

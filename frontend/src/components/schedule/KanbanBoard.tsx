@@ -38,6 +38,12 @@ export interface KanbanBoardProps {
   showPriority?: boolean;
   /** Show assigned user */
   showAssignee?: boolean;
+  /** Show sprint information */
+  showSprint?: boolean;
+  /** Show backlog indicator */
+  showBacklog?: boolean;
+  /** Show estimated hours */
+  showEstimatedHours?: boolean;
   /** Custom CSS class */
   className?: string;
 }
@@ -61,6 +67,9 @@ export function KanbanBoard({
   readOnly = false,
   showPriority = true,
   showAssignee = true,
+  showSprint = true,
+  showBacklog = true,
+  showEstimatedHours = true,
   className = '',
 }: KanbanBoardProps): React.ReactElement {
   const [dragState, setDragState] = useState<DragState>({
@@ -265,6 +274,27 @@ export function KanbanBoard({
           {showAssignee && task.assigned_to && (
             <span className="card-assignee" title={`Assigned to: ${task.assigned_to}`}>
               👤 {task.assigned_to}
+            </span>
+          )}
+
+          {/* Sprint indicator */}
+          {showSprint && (task as any).sprint_name && (
+            <span className="card-sprint" title={`Sprint: ${(task as any).sprint_name}`}>
+              🏃 {(task as any).sprint_name}
+            </span>
+          )}
+
+          {/* Backlog indicator */}
+          {showBacklog && (task as any).in_backlog && (
+            <span className="card-backlog" title="In backlog">
+              📋 Backlog
+            </span>
+          )}
+
+          {/* Estimated hours */}
+          {showEstimatedHours && (task as any).estimated_hours && (
+            <span className="card-hours" title={`Estimated: ${(task as any).estimated_hours} hours`}>
+              ⏱️ {(task as any).estimated_hours}h
             </span>
           )}
 
@@ -582,6 +612,42 @@ const styles = `
   .card-assignee {
     font-size: 0.75rem;
     color: #6b7280;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .card-sprint {
+    padding: 0.125rem 0.5rem;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .card-backlog {
+    padding: 0.125rem 0.5rem;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .card-hours {
+    padding: 0.125rem 0.5rem;
+    background: #f3e8ff;
+    color: #6b21a8;
+    border-radius: 4px;
+    font-size: 0.625rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.25rem;

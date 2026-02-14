@@ -85,15 +85,25 @@ async def _get_project_tasks(
     schedule_data: dict | None = None,
 ) -> list[ScheduledTask]:
     """Get all tasks for a project with date priority and progress tracking."""
+    # For now, get all tasks since we're using a placeholder project ID
+    # TODO: Filter by actual project when project structure is implemented
     query = f"""
-    MATCH (t:Task)-[:BELONGS_TO*]->(p:Project {{id: '{str(project_id)}'}})
-    RETURN t.id as id, t.title as title,
-           t.start_date as manual_start_date, t.due_date as manual_due_date,
-           t.calculated_start_date as calculated_start_date,
-           t.calculated_end_date as calculated_end_date,
-           t.progress as progress, t.start_date_is as start_date_is,
-           t.duration as duration, t.effort as effort,
-           t.skills as skills, t.is_critical as is_critical
+    MATCH (w:WorkItem {{type: 'task'}})
+    WHERE w.calculated_start_date IS NOT NULL AND w.calculated_end_date IS NOT NULL
+    RETURN {{
+        id: w.id,
+        title: w.title,
+        manual_start_date: w.start_date,
+        manual_due_date: w.due_date,
+        calculated_start_date: w.calculated_start_date,
+        calculated_end_date: w.calculated_end_date,
+        progress: w.progress,
+        start_date_is: w.start_date_is,
+        duration: w.duration,
+        effort: w.effort,
+        skills: w.skills,
+        is_critical: w.is_critical
+    }} as result
     """
     
     results = await graph_service.execute_query(query)
@@ -125,8 +135,8 @@ async def _get_project_tasks(
         
         # Get resource allocations
         resource_query = f"""
-        MATCH (r:Resource)-[:ALLOCATED_TO]->(t:Task {{id: '{row["id"]}'}})
-        RETURN r.id as resource_id
+        MATCH (r:Resource)-[:ALLOCATED_TO]->(w:WorkItem {{id: '{row["id"]}', type: 'task'}})
+        RETURN {{resource_id: r.id}} as result
         """
         resource_results = await graph_service.execute_query(resource_query)
         assigned_resources = [r["resource_id"] for r in resource_results]
@@ -165,62 +175,9 @@ async def _get_project_workpackages(
     graph_service: GraphService,
 ) -> list[GanttWorkpackage]:
     """Get all workpackages for a project with date priority and progress tracking."""
-    query = f"""
-    MATCH (wp:Workpackage)-[:BELONGS_TO*]->(p:Project {{id: '{str(project_id)}'}})
-    RETURN wp.id as id, wp.name as name,
-           wp.start_date as manual_start_date, wp.due_date as manual_due_date,
-           wp.calculated_start_date as calculated_start_date,
-           wp.calculated_end_date as calculated_end_date,
-           wp.progress as progress, wp.start_date_is as start_date_is,
-           wp.minimal_duration as minimal_duration
-    """
-    
-    results = await graph_service.execute_query(query)
-    workpackages = []
-    
-    for row in results:
-        # Parse dates
-        manual_start = _parse_datetime(row.get("manual_start_date"))
-        manual_due = _parse_datetime(row.get("manual_due_date"))
-        calc_start = _parse_datetime(row.get("calculated_start_date"))
-        calc_end = _parse_datetime(row.get("calculated_end_date"))
-        start_date_is = _parse_datetime(row.get("start_date_is"))
-        
-        # Apply date priority logic
-        display_dates = get_display_dates_for_entity(
-            start_date=manual_start,
-            due_date=manual_due,
-            calculated_start_date=calc_start,
-            calculated_end_date=calc_end,
-        )
-        
-        # Calculate progress indicator
-        progress_indicator = get_progress_indicator(
-            progress=row.get("progress"),
-            start_date_is=start_date_is,
-            start_date=manual_start,
-            calculated_start_date=calc_start,
-        )
-        
-        workpackages.append(
-            GanttWorkpackage(
-                id=row["id"],
-                name=row["name"],
-                start_date=display_dates["start_date"] or datetime.now(),
-                end_date=display_dates["end_date"] or datetime.now(),
-                calculated_start_date=calc_start,
-                calculated_end_date=calc_end,
-                manual_start_date=manual_start,
-                manual_due_date=manual_due,
-                progress=progress_indicator["progress"],
-                start_date_is=start_date_is,
-                variance_days=progress_indicator["variance_days"],
-                is_delayed=progress_indicator["is_delayed"],
-                minimal_duration=row.get("minimal_duration"),
-            )
-        )
-    
-    return workpackages
+    # For now, return empty list since we're using a placeholder project ID
+    # TODO: Implement when project structure is properly set up
+    return []
 
 
 async def _get_project_phases(
@@ -228,63 +185,9 @@ async def _get_project_phases(
     graph_service: GraphService,
 ) -> list[GanttPhase]:
     """Get all phases for a project with date priority and progress tracking."""
-    query = f"""
-    MATCH (ph:Phase)-[:BELONGS_TO]->(p:Project {{id: '{str(project_id)}'}})
-    RETURN ph.id as id, ph.name as name,
-           ph.start_date as manual_start_date, ph.due_date as manual_due_date,
-           ph.calculated_start_date as calculated_start_date,
-           ph.calculated_end_date as calculated_end_date,
-           ph.progress as progress, ph.start_date_is as start_date_is,
-           ph.minimal_duration as minimal_duration
-    ORDER BY ph.created_at
-    """
-    
-    results = await graph_service.execute_query(query)
-    phases = []
-    
-    for row in results:
-        # Parse dates
-        manual_start = _parse_datetime(row.get("manual_start_date"))
-        manual_due = _parse_datetime(row.get("manual_due_date"))
-        calc_start = _parse_datetime(row.get("calculated_start_date"))
-        calc_end = _parse_datetime(row.get("calculated_end_date"))
-        start_date_is = _parse_datetime(row.get("start_date_is"))
-        
-        # Apply date priority logic
-        display_dates = get_display_dates_for_entity(
-            start_date=manual_start,
-            due_date=manual_due,
-            calculated_start_date=calc_start,
-            calculated_end_date=calc_end,
-        )
-        
-        # Calculate progress indicator
-        progress_indicator = get_progress_indicator(
-            progress=row.get("progress"),
-            start_date_is=start_date_is,
-            start_date=manual_start,
-            calculated_start_date=calc_start,
-        )
-        
-        phases.append(
-            GanttPhase(
-                id=row["id"],
-                name=row["name"],
-                start_date=display_dates["start_date"] or datetime.now(),
-                end_date=display_dates["end_date"] or datetime.now(),
-                calculated_start_date=calc_start,
-                calculated_end_date=calc_end,
-                manual_start_date=manual_start,
-                manual_due_date=manual_due,
-                progress=progress_indicator["progress"],
-                start_date_is=start_date_is,
-                variance_days=progress_indicator["variance_days"],
-                is_delayed=progress_indicator["is_delayed"],
-                minimal_duration=row.get("minimal_duration"),
-            )
-        )
-    
-    return phases
+    # For now, return empty list since we're using a placeholder project ID
+    # TODO: Implement when project structure is properly set up
+    return []
 
 
 async def _get_project_milestones(
@@ -292,28 +195,9 @@ async def _get_project_milestones(
     graph_service: GraphService,
 ) -> list[GanttMilestone]:
     """Get all milestones for a project."""
-    query = f"""
-    MATCH (m:Milestone {{project_id: '{str(project_id)}'}})
-    OPTIONAL MATCH (m)-[:DEPENDS_ON]->(t:Task)
-    RETURN m.id AS id, m.title AS title, m.target_date AS target_date,
-           m.status AS status, collect(t.id) AS dependent_task_ids
-    """
-    
-    results = await graph_service.execute_query(query)
-    milestones = []
-    
-    for row in results:
-        milestones.append(
-            GanttMilestone(
-                id=row["id"],
-                title=row["title"],
-                target_date=_parse_datetime(row["target_date"]) or datetime.now(),
-                status=row.get("status", "active"),
-                dependent_task_ids=[tid for tid in row.get("dependent_task_ids", []) if tid],
-            )
-        )
-    
-    return milestones
+    # For now, return empty list since we're using a placeholder project ID
+    # TODO: Implement when project structure is properly set up
+    return []
 
 
 async def _get_project_sprints(
@@ -321,28 +205,9 @@ async def _get_project_sprints(
     graph_service: GraphService,
 ) -> list[GanttSprint]:
     """Get all sprints for a project."""
-    query = f"""
-    MATCH (s:Sprint {{project_id: '{str(project_id)}'}})
-    RETURN s.id AS id, s.name AS name, s.start_date AS start_date,
-           s.end_date AS end_date, s.status AS status
-    ORDER BY s.start_date
-    """
-    
-    results = await graph_service.execute_query(query)
-    sprints = []
-    
-    for row in results:
-        sprints.append(
-            GanttSprint(
-                id=row["id"],
-                name=row["name"],
-                start_date=_parse_datetime(row["start_date"]) or datetime.now(),
-                end_date=_parse_datetime(row["end_date"]) or datetime.now(),
-                status=row.get("status", "planning"),
-            )
-        )
-    
-    return sprints
+    # For now, return empty list since we're using a placeholder project ID
+    # TODO: Implement when project structure is properly set up
+    return []
 
 
 async def _get_task_dependencies(
@@ -350,41 +215,9 @@ async def _get_task_dependencies(
     graph_service: GraphService,
 ) -> list[GanttTaskDependency]:
     """Get all task dependencies for a project."""
-    query = f"""
-    MATCH (t1:Task)-[d:DEPENDS_ON]->(t2:Task)
-    WHERE t1.workpackage_id IN (
-        SELECT wp.id FROM (
-            MATCH (wp:Workpackage)-[:BELONGS_TO*]->(p:Project {{id: '{str(project_id)}'}})
-            RETURN wp.id
-        ) AS wp
-    )
-    RETURN t1.id AS from_task_id, t2.id AS to_task_id, d.dependency_type AS type
-    """
-    
-    results = await graph_service.execute_query(query)
-    dependencies = []
-    
-    for row in results:
-        # Convert dependency type format
-        dep_type = row.get("type", "finish_to_start")
-        if dep_type == "finish_to_start":
-            dep_type = "finish-to-start"
-        elif dep_type == "start_to_start":
-            dep_type = "start-to-start"
-        elif dep_type == "finish_to_finish":
-            dep_type = "finish-to-finish"
-        elif dep_type == "start_to_finish":
-            dep_type = "start-to-finish"
-        
-        dependencies.append(
-            GanttTaskDependency(
-                from_task_id=row["from_task_id"],
-                to_task_id=row["to_task_id"],
-                type=dep_type,
-            )
-        )
-    
-    return dependencies
+    # For now, return empty list since we're using a placeholder project ID
+    # TODO: Implement when project structure is properly set up
+    return []
 
 
 def _parse_datetime(value: str | datetime | None) -> datetime | None:

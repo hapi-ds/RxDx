@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { backlogService, Backlog, BacklogTask, ReorderRequest } from '../../services/backlogService';
-import { sprintService, Sprint } from '../../services/sprintService';
+import { backlogService, type Backlog, type BacklogTask, type ReorderRequest } from '../../services/backlogService';
+import { sprintService, type Sprint } from '../../services/sprintService';
 import { Button, Spinner, ErrorMessage, Input } from '../common';
 
 interface BacklogDetailProps {

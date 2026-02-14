@@ -12,6 +12,7 @@ from app.api.v1 import (
     email,
     graph,
     health,
+    kanban,
     llm,
     milestones,
     phases,
@@ -100,3 +101,6 @@ api_router.include_router(templates.router, tags=["templates"])
 
 # Include workpackage routes
 api_router.include_router(workpackages.router, tags=["workpackages"])
+
+# Include kanban routes
+api_router.include_router(kanban.router, prefix="/kanban", tags=["kanban"])

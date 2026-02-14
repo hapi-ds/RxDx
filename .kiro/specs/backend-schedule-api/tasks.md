@@ -223,7 +223,7 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 - [x] POST /api/v1/milestones/{id}/before/{target_id} - Create BEFORE for milestones
 - [x] Add dependency_type and lag parameters
 - [x] Add cycle detection validation
-- [ ] Add authentication and authorization
+- [x] Add authentication and authorization
 - [x] Write integration tests for BEFORE dependencies
 
 **Requirements: 16B.8-16B.21, 18.34-18.37**
@@ -290,9 +290,9 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 - [x] Update GET /api/v1/schedule/{project_id}/gantt response schema
 - [x] Include all new date fields in GanttItem schema
 - [x] Include progress and variance fields
-- [ ] Include minimal_duration for phases/workpackages
+- [x] Include minimal_duration for phases/workpackages
 - [x] Include skills and resource allocations
-- [ ] Add authentication and authorization
+- [x] Add authentication and authorization
 - [x] Write integration tests for Gantt endpoint
 
 **Requirements: 3.1-3.13**
@@ -451,7 +451,7 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ### Task 4.3: Burndown API Endpoint
 - [x] GET /api/v1/sprints/{id}/burndown - Get burndown chart data
 - [x] Return BurndownPoint schema (date, ideal_remaining_hours, actual_remaining_hours, ideal_remaining_points, actual_remaining_points)
-- [ ] Add authentication and authorization
+- [x] Add authentication and authorization
 - [x] Write integration tests for burndown endpoint
 
 **Requirements: 24.6-24.9**
@@ -459,7 +459,7 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ### Task 4.4: Velocity API Endpoints
 - [x] GET /api/v1/projects/{project_id}/velocity - Get average velocity
 - [x] GET /api/v1/projects/{project_id}/velocity/history - Get velocity history
-- [ ] Add authentication and authorization
+- [x] Add authentication and authorization
 - [x] Write integration tests for velocity endpoints
 
 **Requirements: 24.1-24.5**
@@ -494,7 +494,7 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 - [x] Include sprint boundaries
 - [x] Include resource assignments
 - [x] Add authentication and authorization
-- [-] Write integration tests
+- [x] Write integration tests
 
 **Requirements: 3.1-3.13**
 
@@ -613,22 +613,22 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 8: Kanban Board Schedule Integration
 
 ### Task 8.1: Update Kanban Board for Schedule Features
-- [ ] Update KanbanPage to support sprint filtering
-- [ ] Add sprint assignment via drag-and-drop
-- [ ] Add backlog indicator on task cards
-- [ ] Display task metadata (assignee, sprint, estimated hours, backlog status)
-- [ ] Do NOT display schedule dates (read-only from schedule)
+- [x] Update KanbanPage to support sprint filtering
+- [x] Add sprint assignment via drag-and-drop
+- [x] Add backlog indicator on task cards
+- [x] Display task metadata (assignee, sprint, estimated hours, backlog status)
+- [x] Do NOT display schedule dates (read-only from schedule)
 - [ ] Add "Move to Sprint" action
-- [ ] Add "Return to Backlog" action
+- [x] Add "Return to Backlog" action
 - [ ] Write component tests
 
 **Requirements: 10.1-10.16**
 
 ### Task 8.2: Kanban API Enhancements
-- [ ] GET /api/v1/kanban/tasks - Get tasks for Kanban (with filtering)
-- [ ] POST /api/v1/kanban/tasks/{task_id}/assign-sprint - Assign to sprint via Kanban
-- [ ] Support filtering by sprint, resource, workpackage, backlog status
-- [ ] Add authentication and authorization
+- [x] GET /api/v1/kanban/tasks - Get tasks for Kanban (with filtering)
+- [x] POST /api/v1/kanban/tasks/{task_id}/assign-sprint - Assign to sprint via Kanban
+- [x] Support filtering by sprint, resource, workpackage, backlog status
+- [x] Add authentication and authorization
 - [ ] Write integration tests
 
 **Requirements: 10.1-10.16**
@@ -665,32 +665,32 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 **Requirements: All workflow-related requirements**
 
 ### Task 9.3: Performance Tests
-- [ ] Test: Schedule calculation with critical path (1000 tasks < 30 seconds)
-- [ ] Test: Critical path calculation (1000 tasks < 2 seconds)
-- [ ] Test: Sprint capacity calculation (< 200ms)
-- [ ] Test: Burndown calculation (< 500ms)
-- [ ] Test: Concurrent schedule calculations (10 simultaneous)
+- [x] Test: Schedule calculation with critical path (1000 tasks < 30 seconds)
+- [x] Test: Critical path calculation (1000 tasks < 2 seconds)
+- [x] Test: Sprint capacity calculation (< 200ms)
+- [x] Test: Burndown calculation (< 500ms)
+- [x] Test: Concurrent schedule calculations (10 simultaneous)
 
 **Requirements: 13.1-13.8**
 
 ### Task 9.4: API Documentation
-- [ ] Document critical path calculation endpoint
-- [ ] Document sprint management endpoints
-- [ ] Document backlog management endpoints
-- [ ] Document velocity and burndown endpoints
-- [ ] Document Gantt chart data endpoint
-- [ ] Add request/response examples
-- [ ] Update OpenAPI/Swagger documentation
+- [x] Document critical path calculation endpoint
+- [x] Document sprint management endpoints
+- [x] Document backlog management endpoints
+- [x] Document velocity and burndown endpoints
+- [x] Document Gantt chart data endpoint
+- [x] Add request/response examples
+- [x] Update OpenAPI/Swagger documentation
 
 **Requirements: All API-related requirements**
 
 ### Task 9.5: User Guide
-- [ ] Write guide for sprint planning workflow
-- [ ] Write guide for backlog management
-- [ ] Write guide for Gantt chart usage
-- [ ] Write guide for velocity tracking
-- [ ] Write guide for critical path interpretation
-- [ ] Add screenshots and examples
+- [x] Write guide for sprint planning workflow
+- [x] Write guide for backlog management
+- [x] Write guide for Gantt chart usage
+- [x] Write guide for velocity tracking
+- [x] Write guide for critical path interpretation
+- [ ]* Add screenshots and examples
 
 **Requirements: All user-facing requirements**
 

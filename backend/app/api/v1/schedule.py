@@ -214,14 +214,25 @@ async def get_gantt_chart_data(
     - **project_end_date**: Overall project end date
     - **completion_percentage**: Percentage of completed tasks
 
-    Raises 404 if no schedule exists for the project.
+    Returns empty data structure if no schedule exists for the project.
     """
     gantt_data = await scheduler_service.get_gantt_chart_data(project_id)
 
     if not gantt_data:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No schedule found for project {project_id}"
+        # Return empty Gantt chart data instead of 404
+        from datetime import datetime
+        return GanttChartData(
+            project_id=project_id,
+            tasks=[],
+            workpackages=[],
+            phases=[],
+            dependencies=[],
+            critical_path=[],
+            milestones=[],
+            sprints=[],
+            project_start_date=datetime.now(),
+            project_end_date=datetime.now(),
+            completion_percentage=0.0,
         )
 
     return gantt_data

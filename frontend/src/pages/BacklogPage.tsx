@@ -8,7 +8,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { BacklogList } from '../components/backlogs/BacklogList';
 import { BacklogDetail } from '../components/backlogs/BacklogDetail';
 import { Modal, Button, Input } from '../components/common';
-import { backlogService, Backlog, BacklogCreate } from '../services/backlogService';
+import { backlogService, type Backlog, type BacklogCreate } from '../services/backlogService';
 
 type ViewMode = 'list' | 'detail';
 
@@ -109,7 +109,7 @@ export function BacklogPage(): React.ReactElement {
         isOpen={showCreateModal}
         onClose={handleCloseCreateModal}
         title="Create Backlog"
-        size="medium"
+        size="md"
       >
         <form onSubmit={handleCreateSubmit}>
           <div className="form-group">

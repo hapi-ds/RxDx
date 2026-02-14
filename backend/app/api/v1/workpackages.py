@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import get_current_user
+from app.core.security import Permission, require_permission
 from app.db.graph import GraphService, get_graph_service
 from app.models.user import User
 from app.schemas.department import DepartmentResponse
@@ -346,6 +347,7 @@ async def get_workpackage_available_resources(
     "/workpackages/{workpackage_id}/before/{target_id}",
     status_code=status.HTTP_200_OK,
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def create_before_dependency(
     workpackage_id: UUID,
     target_id: UUID,
@@ -407,6 +409,7 @@ async def create_before_dependency(
     "/workpackages/{workpackage_id}/before/{target_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
+@require_permission(Permission.WRITE_WORKITEM)
 async def remove_before_dependency(
     workpackage_id: UUID,
     target_id: UUID,
@@ -449,6 +452,7 @@ async def remove_before_dependency(
 
 
 @router.get("/workpackages/{workpackage_id}/dependencies")
+@require_permission(Permission.READ_WORKITEM)
 async def get_workpackage_dependencies(
     workpackage_id: UUID,
     current_user: User = Depends(get_current_user),

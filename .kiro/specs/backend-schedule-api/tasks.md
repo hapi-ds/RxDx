@@ -274,26 +274,26 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 1C: Gantt Chart Data Model Updates
 
 ### Task 1C.1: Gantt Chart Data Preparation
-- [ ] Implement prepare_gantt_data function with date priority logic
-- [ ] Include calculated_start_date and calculated_end_date in response
-- [ ] Include start_date and due_date (manual) in response
-- [ ] Include start_date_is and progress in response
-- [ ] Calculate variance (actual vs. planned start dates)
-- [ ] Add is_delayed flag based on variance
-- [ ] Include minimal_duration for phases/workpackages
-- [ ] Write unit tests for Gantt data preparation
-- [ ] Write property test: Display dates follow priority rules
+- [x] Implement prepare_gantt_data function with date priority logic
+- [x] Include calculated_start_date and calculated_end_date in response
+- [x] Include start_date and due_date (manual) in response
+- [x] Include start_date_is and progress in response
+- [x] Calculate variance (actual vs. planned start dates)
+- [x] Add is_delayed flag based on variance
+- [x] Include minimal_duration for phases/workpackages
+- [x] Write unit tests for Gantt data preparation
+- [x] Write property test: Display dates follow priority rules
 
 **Requirements: 16A.32-16A.36, 3.1-3.13**
 
 ### Task 1C.2: Update Gantt Chart API Endpoint
-- [ ] Update GET /api/v1/schedule/{project_id}/gantt response schema
-- [ ] Include all new date fields in GanttItem schema
-- [ ] Include progress and variance fields
+- [x] Update GET /api/v1/schedule/{project_id}/gantt response schema
+- [x] Include all new date fields in GanttItem schema
+- [x] Include progress and variance fields
 - [ ] Include minimal_duration for phases/workpackages
-- [ ] Include skills and resource allocations
+- [x] Include skills and resource allocations
 - [ ] Add authentication and authorization
-- [ ] Write integration tests for Gantt endpoint
+- [x] Write integration tests for Gantt endpoint
 
 **Requirements: 3.1-3.13**
 

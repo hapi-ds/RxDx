@@ -141,12 +141,29 @@ class ScheduleTaskCreate(ScheduleTaskBase):
 
 
 class ScheduledTask(BaseModel):
-    """Schema for a scheduled task result"""
+    """Schema for a scheduled task result with date priority and progress tracking"""
 
     task_id: str = Field(..., description="Task identifier")
     task_title: str = Field(..., description="Task title")
-    start_date: datetime = Field(..., description="Scheduled start date")
-    end_date: datetime = Field(..., description="Scheduled end date")
+
+    # Display dates (following priority rules: manual > calculated)
+    start_date: datetime = Field(..., description="Display start date (manual or calculated)")
+    end_date: datetime = Field(..., description="Display end date (manual or calculated)")
+
+    # Calculated dates from scheduler
+    calculated_start_date: datetime | None = Field(None, description="Calculated start date from scheduler")
+    calculated_end_date: datetime | None = Field(None, description="Calculated end date from scheduler")
+
+    # Manual dates (user-specified)
+    manual_start_date: datetime | None = Field(None, description="Manual start date (user-specified)")
+    manual_due_date: datetime | None = Field(None, description="Manual due date (user-specified)")
+
+    # Progress tracking
+    progress: int = Field(default=0, ge=0, le=100, description="Completion percentage (0-100)")
+    start_date_is: datetime | None = Field(None, description="Actual start date when work began")
+    variance_days: int | None = Field(None, description="Variance in days (positive=delayed, negative=ahead)")
+    is_delayed: bool = Field(default=False, description="Whether task started later than planned")
+
     duration_hours: int = Field(..., description="Duration in hours")
     assigned_resources: list[str] = Field(
         default_factory=list, description="Assigned resource IDs"
@@ -154,6 +171,13 @@ class ScheduledTask(BaseModel):
     is_critical: bool = Field(
         default=False, description="Whether this task is on the critical path"
     )
+
+    # Skills and resource matching
+    skills: list[str] = Field(
+        default_factory=list, description="Required skills for this task"
+    )
+
+
 
 
 class ScheduledMilestone(BaseModel):
@@ -306,6 +330,42 @@ class GanttTaskDependency(BaseModel):
     ] = Field(..., description="Dependency type")
 
 
+class GanttWorkpackage(BaseModel):
+    """Schema for workpackage in Gantt chart"""
+    
+    id: str = Field(..., description="Workpackage ID")
+    name: str = Field(..., description="Workpackage name")
+    start_date: datetime = Field(..., description="Display start date")
+    end_date: datetime = Field(..., description="Display end date")
+    calculated_start_date: datetime | None = Field(None, description="Calculated start date")
+    calculated_end_date: datetime | None = Field(None, description="Calculated end date")
+    manual_start_date: datetime | None = Field(None, description="Manual start date")
+    manual_due_date: datetime | None = Field(None, description="Manual due date")
+    progress: int = Field(default=0, ge=0, le=100, description="Completion percentage")
+    start_date_is: datetime | None = Field(None, description="Actual start date")
+    variance_days: int | None = Field(None, description="Variance in days")
+    is_delayed: bool = Field(default=False, description="Whether delayed")
+    minimal_duration: int | None = Field(None, description="Minimal duration in days")
+
+
+class GanttPhase(BaseModel):
+    """Schema for phase in Gantt chart"""
+    
+    id: str = Field(..., description="Phase ID")
+    name: str = Field(..., description="Phase name")
+    start_date: datetime = Field(..., description="Display start date")
+    end_date: datetime = Field(..., description="Display end date")
+    calculated_start_date: datetime | None = Field(None, description="Calculated start date")
+    calculated_end_date: datetime | None = Field(None, description="Calculated end date")
+    manual_start_date: datetime | None = Field(None, description="Manual start date")
+    manual_due_date: datetime | None = Field(None, description="Manual due date")
+    progress: int = Field(default=0, ge=0, le=100, description="Completion percentage")
+    start_date_is: datetime | None = Field(None, description="Actual start date")
+    variance_days: int | None = Field(None, description="Variance in days")
+    is_delayed: bool = Field(default=False, description="Whether delayed")
+    minimal_duration: int | None = Field(None, description="Minimal duration in days")
+
+
 class GanttMilestone(BaseModel):
     """Schema for milestone in Gantt chart"""
 
@@ -337,6 +397,12 @@ class GanttChartData(BaseModel):
 
     project_id: UUID = Field(..., description="Project identifier")
     tasks: list[ScheduledTask] = Field(..., description="Scheduled tasks")
+    workpackages: list[GanttWorkpackage] = Field(
+        default_factory=list, description="Project workpackages"
+    )
+    phases: list[GanttPhase] = Field(
+        default_factory=list, description="Project phases"
+    )
     dependencies: list[GanttTaskDependency] = Field(
         default_factory=list, description="Task dependencies"
     )

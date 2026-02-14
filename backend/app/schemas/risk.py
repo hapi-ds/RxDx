@@ -210,8 +210,8 @@ class RiskNodeResponse(RiskNodeBase):
     version: str = Field(..., description="Risk version")
     rpn: int = Field(..., description="Risk Priority Number (severity × occurrence × detection)")
 
-    # Metadata
-    created_by: UUID = Field(..., description="User who created the risk")
+    # Metadata - created_by is optional for backward compatibility with existing data
+    created_by: UUID | None = Field(None, description="User who created the risk")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
     is_signed: bool = Field(default=False, description="Whether this risk has valid signatures")
@@ -243,9 +243,10 @@ class RiskNodeResponse(RiskNodeBase):
     def calculate_rpn(cls, data: Any) -> Any:
         """Calculate RPN from severity, occurrence, and detection."""
         if isinstance(data, dict):
-            severity = data.get('severity', 1)
-            occurrence = data.get('occurrence', 1)
-            detection = data.get('detection', 1)
+            # Convert to int, handling both string and numeric values from graph database
+            severity = int(data.get('severity', 1)) if data.get('severity') is not None else 1
+            occurrence = int(data.get('occurrence', 1)) if data.get('occurrence') is not None else 1
+            detection = int(data.get('detection', 1)) if data.get('detection') is not None else 1
             data['rpn'] = severity * occurrence * detection
         return data
 

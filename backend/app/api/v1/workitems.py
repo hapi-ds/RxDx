@@ -1172,3 +1172,213 @@ async def get_task_requirements(
             status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error retrieving task requirements: {str(e)}"
         )
+
+
+# ============================================================================
+# BEFORE Dependency Relationship Endpoints for Tasks (Task 1A.5)
+# ============================================================================
+
+@router.post("/workitems/{workitem_id}/before/{target_id}", status_code=http_status.HTTP_200_OK)
+async def create_task_before_dependency(
+    workitem_id: UUID,
+    target_id: UUID,
+    dependency_type: str = "finish-to-start",
+    lag: int = 0,
+    current_user: User = Depends(get_current_user),
+    workitem_service: WorkItemService = Depends(get_workitem_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Create a BEFORE dependency relationship between two tasks.
+    
+    This establishes that the source task must complete before the target
+    task can start (or other dependency types).
+
+    Args:
+        workitem_id: Source task UUID (predecessor)
+        target_id: Target task UUID (successor)
+        dependency_type: Type of dependency (finish-to-start, start-to-start, finish-to-finish)
+        lag: Optional delay in days after predecessor completes
+        current_user: Authenticated user
+        workitem_service: WorkItem service
+        audit_service: Audit service
+
+    Returns:
+        Dependency relationship information
+
+    Raises:
+        HTTPException: 400 if validation fails or cycle detected
+        HTTPException: 404 if either task not found
+        HTTPException: 403 if not authorized
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to create task dependencies"
+        )
+    
+    try:
+        result = await workitem_service.create_before_relationship(
+            workitem_id, target_id, dependency_type, lag
+        )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="CREATE",
+            entity_type="TaskDependency",
+            entity_id=workitem_id,
+            details={
+                "action_type": "create_before_dependency",
+                "from_task_id": str(workitem_id),
+                "to_task_id": str(target_id),
+                "dependency_type": dependency_type,
+                "lag": lag
+            }
+        )
+        
+        return {
+            "message": "BEFORE dependency created successfully",
+            "from_task_id": str(result["from_task_id"]),
+            "to_task_id": str(result["to_task_id"]),
+            "dependency_type": result["dependency_type"],
+            "lag": result["lag"],
+            "created_at": result["created_at"].isoformat(),
+        }
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating BEFORE dependency: {str(e)}"
+        )
+
+
+@router.delete("/workitems/{workitem_id}/before/{target_id}", status_code=http_status.HTTP_204_NO_CONTENT)
+async def remove_task_before_dependency(
+    workitem_id: UUID,
+    target_id: UUID,
+    current_user: User = Depends(get_current_user),
+    workitem_service: WorkItemService = Depends(get_workitem_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Remove a BEFORE dependency relationship between two tasks.
+
+    Args:
+        workitem_id: Source task UUID (predecessor)
+        target_id: Target task UUID (successor)
+        current_user: Authenticated user
+        workitem_service: WorkItem service
+        audit_service: Audit service
+
+    Raises:
+        HTTPException: 404 if relationship not found
+        HTTPException: 403 if not authorized
+    """
+    # Check write permission
+    if not has_permission(current_user.role, Permission.WRITE_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to remove task dependencies"
+        )
+    
+    try:
+        success = await workitem_service.remove_before_relationship(workitem_id, target_id)
+        if not success:
+            raise HTTPException(
+                status_code=http_status.HTTP_404_NOT_FOUND,
+                detail=f"BEFORE dependency from {workitem_id} to {target_id} not found"
+            )
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="DELETE",
+            entity_type="TaskDependency",
+            entity_id=workitem_id,
+            details={
+                "action_type": "remove_before_dependency",
+                "from_task_id": str(workitem_id),
+                "to_task_id": str(target_id)
+            }
+        )
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error removing BEFORE dependency: {str(e)}"
+        )
+
+
+@router.get("/workitems/{workitem_id}/dependencies")
+async def get_task_dependencies(
+    workitem_id: UUID,
+    current_user: User = Depends(get_current_user),
+    workitem_service: WorkItemService = Depends(get_workitem_service),
+    audit_service: AuditService = Depends(get_audit_service),
+):
+    """
+    Get all BEFORE dependency relationships for a task.
+    
+    Returns both predecessors (tasks that must complete before this one)
+    and successors (tasks that depend on this one).
+
+    Args:
+        workitem_id: Task UUID
+        current_user: Authenticated user
+        workitem_service: WorkItem service
+        audit_service: Audit service
+
+    Returns:
+        Dictionary with predecessors and successors lists
+
+    Raises:
+        HTTPException: 404 if task not found
+        HTTPException: 403 if not authorized
+    """
+    # Check read permission
+    if not has_permission(current_user.role, Permission.READ_WORKITEM):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to read task dependencies"
+        )
+    
+    try:
+        dependencies = await workitem_service.get_before_dependencies(workitem_id)
+        
+        # Log audit event
+        await audit_service.log(
+            user_id=current_user.id,
+            action="READ",
+            entity_type="Task",
+            entity_id=workitem_id,
+            details={
+                "action_type": "get_dependencies",
+                "predecessor_count": len(dependencies.get("predecessors", [])),
+                "successor_count": len(dependencies.get("successors", []))
+            }
+        )
+        
+        return dependencies
+    
+    except ValueError as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=http_status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error retrieving task dependencies: {str(e)}"
+        )

@@ -168,63 +168,63 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 1A: Date Priority and Progress Tracking
 
 ### Task 1A.1: Date Priority Algorithm Implementation
-- [ ] Implement get_display_dates_for_entity function (manual dates > calculated dates)
-- [ ] Implement get_progress_indicator function (variance calculation)
-- [ ] Update SchedulerService to store calculated dates separately from manual dates
-- [ ] Update schedule calculation to respect start_date as earliest start constraint
-- [ ] Update schedule calculation to respect due_date as deadline constraint
-- [ ] Write unit tests for date priority logic
-- [ ] Write property test: Manual dates always override calculated dates in display
-- [ ] Write property test: Calculated dates used when manual dates not set
+- [x] Implement get_display_dates_for_entity function (manual dates > calculated dates)
+- [x] Implement get_progress_indicator function (variance calculation)
+- [x] Update SchedulerService to store calculated dates separately from manual dates
+- [x] Update schedule calculation to respect start_date as earliest start constraint
+- [x] Update schedule calculation to respect due_date as deadline constraint
+- [x] Write unit tests for date priority logic
+- [x] Write property test: Manual dates always override calculated dates in display
+- [x] Write property test: Calculated dates used when manual dates not set
 
 **Requirements: 16A.22-16A.40**
 
 ### Task 1A.2: Progress Tracking Integration
-- [ ] Add progress update endpoint: PATCH /api/v1/workitems/{id} with progress field
-- [ ] Add start_date_is update endpoint: PATCH /api/v1/workitems/{id} with start_date_is field
-- [ ] Implement progress calculation for workpackages (aggregate from tasks)
-- [ ] Implement progress calculation for phases (aggregate from workpackages)
-- [ ] Implement progress calculation for projects (aggregate from phases)
-- [ ] Add variance calculation (actual vs. planned start dates)
-- [ ] Write unit tests for progress tracking
-- [ ] Write property test: Progress is always between 0 and 100
-- [ ] Write property test: Aggregated progress matches child entity progress
+- [x] Add progress update endpoint: PATCH /api/v1/workitems/{id} with progress field
+- [x] Add start_date_is update endpoint: PATCH /api/v1/workitems/{id} with start_date_is field
+- [x] Implement progress calculation for workpackages (aggregate from tasks)
+- [x] Implement progress calculation for phases (aggregate from workpackages)
+- [x] Implement progress calculation for projects (aggregate from phases)
+- [x] Add variance calculation (actual vs. planned start dates)
+- [x] Write unit tests for progress tracking
+- [x] Write property test: Progress is always between 0 and 100
+- [x] Write property test: Aggregated progress matches child entity progress
 
 **Requirements: 16A.27-16A.31**
 
 ### Task 1A.3: Minimal Duration Enforcement
-- [ ] Implement enforce_minimal_duration function
-- [ ] Implement calculate_phase_duration function (with minimal_duration fallback)
-- [ ] Implement calculate_workpackage_duration function (with minimal_duration fallback)
-- [ ] Update schedule calculation to use minimal_duration when no task data available
-- [ ] Update schedule calculation to extend duration if calculated < minimal_duration
-- [ ] Write unit tests for minimal duration enforcement
-- [ ] Write property test: Calculated duration >= minimal_duration
+- [x] Implement enforce_minimal_duration function
+- [x] Implement calculate_phase_duration function (with minimal_duration fallback)
+- [x] Implement calculate_workpackage_duration function (with minimal_duration fallback)
+- [x] Update schedule calculation to use minimal_duration when no task data available
+- [x] Update schedule calculation to extend duration if calculated < minimal_duration
+- [x] Write unit tests for minimal duration enforcement
+- [x] Write property test: Calculated duration >= minimal_duration
 
 **Requirements: 16A.8-16A.12**
 
 ### Task 1A.4: Phase NEXT Relationship API Endpoints
-- [ ] POST /api/v1/phases/{id}/next/{next_id} - Create NEXT relationship
-- [ ] DELETE /api/v1/phases/{id}/next - Remove NEXT relationship
-- [ ] GET /api/v1/phases/{id}/next - Get next phase
-- [ ] GET /api/v1/phases/{id}/previous - Get previous phase
-- [ ] Update GET /api/v1/projects/{id}/phases to order by NEXT chain
-- [ ] Add validation: NEXT relationships form linear sequence
-- [ ] Add authentication and authorization
-- [ ] Write integration tests for phase ordering
+- [x] POST /api/v1/phases/{id}/next/{next_id} - Create NEXT relationship
+- [x] DELETE /api/v1/phases/{id}/next - Remove NEXT relationship
+- [x] GET /api/v1/phases/{id}/next - Get next phase
+- [x] GET /api/v1/phases/{id}/previous - Get previous phase
+- [x] Update GET /api/v1/projects/{id}/phases to order by NEXT chain
+- [x] Add validation: NEXT relationships form linear sequence
+- [x] Add authentication and authorization
+- [x] Write integration tests for phase ordering
 
 **Requirements: 16A.1-16A.7, 18.1-18.18**
 
 ### Task 1A.5: BEFORE Dependency API Endpoints
-- [ ] POST /api/v1/workpackages/{id}/before/{target_id} - Create BEFORE relationship
-- [ ] DELETE /api/v1/workpackages/{id}/before/{target_id} - Remove BEFORE relationship
-- [ ] GET /api/v1/workpackages/{id}/dependencies - List BEFORE relationships
-- [ ] POST /api/v1/workitems/{id}/before/{target_id} - Create BEFORE for tasks
-- [ ] POST /api/v1/milestones/{id}/before/{target_id} - Create BEFORE for milestones
-- [ ] Add dependency_type and lag parameters
-- [ ] Add cycle detection validation
+- [x] POST /api/v1/workpackages/{id}/before/{target_id} - Create BEFORE relationship
+- [x] DELETE /api/v1/workpackages/{id}/before/{target_id} - Remove BEFORE relationship
+- [x] GET /api/v1/workpackages/{id}/dependencies - List BEFORE relationships
+- [x] POST /api/v1/workitems/{id}/before/{target_id} - Create BEFORE for tasks
+- [x] POST /api/v1/milestones/{id}/before/{target_id} - Create BEFORE for milestones
+- [x] Add dependency_type and lag parameters
+- [x] Add cycle detection validation
 - [ ] Add authentication and authorization
-- [ ] Write integration tests for BEFORE dependencies
+- [x] Write integration tests for BEFORE dependencies
 
 **Requirements: 16B.8-16B.21, 18.34-18.37**
 

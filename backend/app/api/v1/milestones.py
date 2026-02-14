@@ -377,3 +377,182 @@ async def get_milestone_dependencies(
     )
 
     return dependencies
+
+
+# ============================================================================
+# BEFORE Dependency Relationship Endpoints for Milestones (Task 1A.5)
+# ============================================================================
+
+@router.post(
+    "/{milestone_id}/before/{target_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Create BEFORE dependency for milestone",
+    description="Create a BEFORE dependency relationship between two milestones"
+)
+@require_permission(Permission.WRITE_WORKITEM)
+async def create_milestone_before_dependency(
+    milestone_id: UUID,
+    target_id: UUID,
+    dependency_type: str = "finish-to-start",
+    lag: int = 0,
+    current_user: User = Depends(get_current_user),
+    service: MilestoneService = Depends(get_milestone_service)
+) -> dict:
+    """
+    Create a BEFORE dependency relationship between two milestones.
+    
+    This establishes that the source milestone must be completed before the target
+    milestone can be reached (or other dependency types).
+
+    Args:
+        milestone_id: Source milestone UUID (predecessor)
+        target_id: Target milestone UUID (successor)
+        dependency_type: Type of dependency (finish-to-start, start-to-start, finish-to-finish)
+        lag: Optional delay in days after predecessor completes
+        current_user: Authenticated user
+        service: Milestone service
+
+    Returns:
+        Dependency relationship information
+
+    Raises:
+        HTTPException: 400 if validation fails or cycle detected
+        HTTPException: 404 if either milestone not found
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        result = await service.create_before_relationship(
+            milestone_id, target_id, dependency_type, lag
+        )
+        
+        logger.info(
+            f"User {current_user.id} created BEFORE dependency: "
+            f"{milestone_id} -> {target_id} (type={dependency_type}, lag={lag})"
+        )
+        
+        return {
+            "message": "BEFORE dependency created successfully",
+            "from_milestone_id": str(result["from_milestone_id"]),
+            "to_milestone_id": str(result["to_milestone_id"]),
+            "dependency_type": result["dependency_type"],
+            "lag": result["lag"],
+            "created_at": result["created_at"].isoformat(),
+        }
+    
+    except ValueError as e:
+        logger.error(f"Failed to create BEFORE dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error creating BEFORE dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create BEFORE dependency"
+        )
+
+
+@router.delete(
+    "/{milestone_id}/before/{target_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove BEFORE dependency for milestone",
+    description="Remove a BEFORE dependency relationship between two milestones"
+)
+@require_permission(Permission.WRITE_WORKITEM)
+async def remove_milestone_before_dependency(
+    milestone_id: UUID,
+    target_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: MilestoneService = Depends(get_milestone_service)
+) -> None:
+    """
+    Remove a BEFORE dependency relationship between two milestones.
+
+    Args:
+        milestone_id: Source milestone UUID (predecessor)
+        target_id: Target milestone UUID (successor)
+        current_user: Authenticated user
+        service: Milestone service
+
+    Raises:
+        HTTPException: 404 if relationship not found
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        success = await service.remove_before_relationship(milestone_id, target_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"BEFORE dependency from {milestone_id} to {target_id} not found"
+            )
+        
+        logger.info(
+            f"User {current_user.id} removed BEFORE dependency: "
+            f"{milestone_id} -> {target_id}"
+        )
+    
+    except ValueError as e:
+        logger.error(f"Failed to remove BEFORE dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error removing BEFORE dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove BEFORE dependency"
+        )
+
+
+@router.get(
+    "/{milestone_id}/before-dependencies",
+    summary="Get BEFORE dependencies for milestone",
+    description="Get all BEFORE dependency relationships for a milestone"
+)
+@require_permission(Permission.READ_WORKITEM)
+async def get_milestone_before_dependencies(
+    milestone_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: MilestoneService = Depends(get_milestone_service)
+) -> dict:
+    """
+    Get all BEFORE dependency relationships for a milestone.
+    
+    Returns both predecessors (milestones that must complete before this one)
+    and successors (milestones that depend on this one).
+
+    Args:
+        milestone_id: Milestone UUID
+        current_user: Authenticated user
+        service: Milestone service
+
+    Returns:
+        Dictionary with predecessors and successors lists
+
+    Raises:
+        HTTPException: 404 if milestone not found
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        dependencies = await service.get_before_dependencies(milestone_id)
+        
+        logger.info(
+            f"User {current_user.id} retrieved BEFORE dependencies for milestone {milestone_id}"
+        )
+        
+        return dependencies
+    
+    except ValueError as e:
+        logger.error(f"Failed to get milestone BEFORE dependencies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.exception(f"Unexpected error getting milestone BEFORE dependencies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get milestone BEFORE dependencies"
+        )

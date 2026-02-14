@@ -1171,6 +1171,10 @@ class SchedulerService:
     ) -> list[ScheduleTaskCreate]:
         """
         Query WorkItem nodes with type='task' from the graph database.
+        
+        Maps manual dates to scheduling constraints (Requirements 16A.24-16A.25):
+        - start_date (manual) → earliest_start constraint
+        - due_date (manual) → deadline constraint
 
         Args:
             project_id: Project UUID to filter tasks
@@ -1215,6 +1219,32 @@ class SchedulerService:
                 if not isinstance(skills_needed, list):
                     skills_needed = []
 
+                # Get manual dates and map to constraints (Requirements 16A.24-16A.25)
+                start_date = workitem.get("start_date")  # Manual start date
+                due_date = workitem.get("due_date")  # Manual due date
+                
+                # Parse datetime strings if present
+                earliest_start = None
+                deadline = None
+                
+                if start_date:
+                    try:
+                        if isinstance(start_date, str):
+                            earliest_start = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                        elif isinstance(start_date, datetime):
+                            earliest_start = start_date
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Failed to parse start_date for task {task_id}: {e}")
+                
+                if due_date:
+                    try:
+                        if isinstance(due_date, str):
+                            deadline = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
+                        elif isinstance(due_date, datetime):
+                            deadline = due_date
+                    except (ValueError, AttributeError) as e:
+                        logger.warning(f"Failed to parse due_date for task {task_id}: {e}")
+
                 # Get dependencies (if any) - for now, empty list
                 # In future, could query DEPENDS_ON relationships
                 dependencies = []
@@ -1227,6 +1257,8 @@ class SchedulerService:
                     dependencies=dependencies,
                     required_resources=[],  # Will be matched by skills
                     skills_needed=skills_needed,
+                    earliest_start=earliest_start,  # Manual start_date as constraint
+                    deadline=deadline,  # Manual due_date as constraint
                 )
 
                 tasks.append(task)
@@ -1245,6 +1277,12 @@ class SchedulerService:
     ) -> None:
         """
         Update WorkItem nodes (type='task') with calculated schedule dates.
+        
+        Stores calculated dates separately from manual dates (Requirements 16A.18-16A.21):
+        - calculated_start_date: Scheduler output
+        - calculated_end_date: Scheduler output
+        - start_date: Manual user-specified start (preserved, not overwritten)
+        - due_date: Manual user-specified deadline (preserved, not overwritten)
 
         Args:
             scheduled_tasks: List of scheduled tasks with calculated dates
@@ -1255,11 +1293,12 @@ class SchedulerService:
 
         for task in scheduled_tasks:
             try:
-                # Update WorkItem node with start_date and end_date
+                # Update WorkItem node with calculated dates only
+                # Do NOT overwrite manual start_date or due_date
                 query = f"""
                 MATCH (w:WorkItem {{id: '{task.task_id}', type: 'task'}})
-                SET w.start_date = '{task.start_date.isoformat()}',
-                    w.end_date = '{task.end_date.isoformat()}',
+                SET w.calculated_start_date = '{task.start_date.isoformat()}',
+                    w.calculated_end_date = '{task.end_date.isoformat()}',
                     w.updated_at = '{datetime.now(UTC).isoformat()}'
                 RETURN w
                 """
@@ -1268,7 +1307,7 @@ class SchedulerService:
 
                 if result:
                     logger.info(
-                        f"Updated WorkItem task {task.task_id} with dates: "
+                        f"Updated WorkItem task {task.task_id} with calculated dates: "
                         f"{task.start_date} to {task.end_date}"
                     )
                 else:

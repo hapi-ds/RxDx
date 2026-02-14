@@ -336,3 +336,151 @@ async def get_workpackage_available_resources(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get available resources",
         )
+
+
+# ============================================================================
+# BEFORE Dependency Relationship Endpoints (Task 1A.5)
+# ============================================================================
+
+@router.post(
+    "/workpackages/{workpackage_id}/before/{target_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def create_before_dependency(
+    workpackage_id: UUID,
+    target_id: UUID,
+    dependency_type: str = "finish-to-start",
+    lag: int = 0,
+    current_user: User = Depends(get_current_user),
+    service: WorkpackageService = Depends(get_workpackage_service),
+) -> dict:
+    """
+    Create a BEFORE dependency relationship between two workpackages.
+    
+    This establishes that the source workpackage must complete before the target
+    workpackage can start (or other dependency types).
+
+    Args:
+        workpackage_id: Source workpackage UUID (predecessor)
+        target_id: Target workpackage UUID (successor)
+        dependency_type: Type of dependency (finish-to-start, start-to-start, finish-to-finish)
+        lag: Optional delay in days after predecessor completes
+        current_user: Authenticated user
+        service: Workpackage service
+
+    Returns:
+        Dependency relationship information
+
+    Raises:
+        HTTPException: 400 if validation fails or cycle detected
+        HTTPException: 404 if either workpackage not found
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        logger.info(
+            f"User {current_user.id} creating BEFORE dependency: "
+            f"{workpackage_id} -> {target_id} (type={dependency_type}, lag={lag})"
+        )
+        result = await service.create_before_relationship(
+            workpackage_id, target_id, dependency_type, lag
+        )
+        return {
+            "message": "BEFORE dependency created successfully",
+            "from_workpackage_id": str(result["from_workpackage_id"]),
+            "to_workpackage_id": str(result["to_workpackage_id"]),
+            "dependency_type": result["dependency_type"],
+            "lag": result["lag"],
+            "created_at": result["created_at"].isoformat(),
+        }
+    except ValueError as e:
+        logger.error(f"Failed to create BEFORE dependency: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error creating BEFORE dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create BEFORE dependency",
+        )
+
+
+@router.delete(
+    "/workpackages/{workpackage_id}/before/{target_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_before_dependency(
+    workpackage_id: UUID,
+    target_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: WorkpackageService = Depends(get_workpackage_service),
+) -> None:
+    """
+    Remove a BEFORE dependency relationship between two workpackages.
+
+    Args:
+        workpackage_id: Source workpackage UUID (predecessor)
+        target_id: Target workpackage UUID (successor)
+        current_user: Authenticated user
+        service: Workpackage service
+
+    Raises:
+        HTTPException: 404 if relationship not found
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        logger.info(
+            f"User {current_user.id} removing BEFORE dependency: "
+            f"{workpackage_id} -> {target_id}"
+        )
+        success = await service.remove_before_relationship(workpackage_id, target_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"BEFORE dependency from {workpackage_id} to {target_id} not found",
+            )
+    except ValueError as e:
+        logger.error(f"Failed to remove BEFORE dependency: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error removing BEFORE dependency: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remove BEFORE dependency",
+        )
+
+
+@router.get("/workpackages/{workpackage_id}/dependencies")
+async def get_workpackage_dependencies(
+    workpackage_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: WorkpackageService = Depends(get_workpackage_service),
+) -> dict:
+    """
+    Get all BEFORE dependency relationships for a workpackage.
+    
+    Returns both predecessors (workpackages that must complete before this one)
+    and successors (workpackages that depend on this one).
+
+    Args:
+        workpackage_id: Workpackage UUID
+        current_user: Authenticated user
+        service: Workpackage service
+
+    Returns:
+        Dictionary with predecessors and successors lists
+
+    Raises:
+        HTTPException: 404 if workpackage not found
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        dependencies = await service.get_before_dependencies(workpackage_id)
+        return dependencies
+    except ValueError as e:
+        logger.error(f"Failed to get workpackage dependencies: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.error(f"Unexpected error getting workpackage dependencies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get workpackage dependencies",
+        )

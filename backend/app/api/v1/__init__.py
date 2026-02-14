@@ -14,6 +14,7 @@ from app.api.v1 import (
     health,
     llm,
     milestones,
+    phases,
     requirements,
     resources,
     risks,
@@ -76,6 +77,9 @@ api_router.include_router(llm.router, prefix="/llm", tags=["llm"])
 
 # Include milestone routes
 api_router.include_router(milestones.router, tags=["milestones"])
+
+# Include phase routes
+api_router.include_router(phases.router, tags=["phases"])
 
 # Include schedule routes
 api_router.include_router(schedule.router, prefix="/schedule", tags=["schedule"])

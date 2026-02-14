@@ -512,51 +512,51 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 6: Frontend - Sprint Management UI
 
 ### Task 6.1: Sprint TypeScript Interfaces
-- [ ] Add Sprint interface in frontend/src/services/types.ts
-- [ ] Add SprintCreate interface
-- [ ] Add SprintVelocity interface
-- [ ] Add BurndownPoint interface
-- [ ] Write type tests
+- [x] Add Sprint interface in frontend/src/services/types.ts
+- [x] Add SprintCreate interface
+- [x] Add SprintVelocity interface
+- [x] Add BurndownPoint interface
+- [x] Write type tests
 
 **Requirements: 22.1-22.23**
 
 ### Task 6.2: Sprint API Service
-- [ ] Create sprintService in frontend/src/services/sprintService.ts
-- [ ] Implement createSprint method
-- [ ] Implement getSprints method
-- [ ] Implement getSprint method
-- [ ] Implement updateSprint method
-- [ ] Implement deleteSprint method
-- [ ] Implement assignTaskToSprint method
-- [ ] Implement removeTaskFromSprint method
-- [ ] Implement startSprint method
-- [ ] Implement completeSprint method
-- [ ] Implement getSprintVelocity method
-- [ ] Implement getSprintBurndown method
-- [ ] Write unit tests
+- [x] Create sprintService in frontend/src/services/sprintService.ts
+- [x] Implement createSprint method
+- [x] Implement getSprints method
+- [x] Implement getSprint method
+- [x] Implement updateSprint method
+- [x] Implement deleteSprint method
+- [x] Implement assignTaskToSprint method
+- [x] Implement removeTaskFromSprint method
+- [x] Implement startSprint method
+- [x] Implement completeSprint method
+- [x] Implement getSprintVelocity method
+- [x] Implement getSprintBurndown method
+- [x] Write unit tests
 
 **Requirements: 22.1-22.23**
 
 ### Task 6.3: Sprint Management Components
-- [ ] Create SprintList component
-- [ ] Create SprintForm component (create/edit)
-- [ ] Create SprintDetail component (with capacity and velocity)
-- [ ] Create SprintBurndown component (chart)
-- [ ] Add task assignment to sprint (from backlog)
-- [ ] Add sprint start/complete actions
-- [ ] Display velocity metrics and trends
-- [ ] Write component tests
+- [x] Create SprintList component
+- [x] Create SprintForm component (create/edit)
+- [x] Create SprintDetail component (with capacity and velocity)
+- [x] Create SprintBurndown component (chart)
+- [x] Add task assignment to sprint (from backlog)
+- [x] Add sprint start/complete actions
+- [x] Display velocity metrics and trends
+- [x] Write component tests
 
 **Requirements: 22.1-22.23, 24.1-24.14**
 
 ### Task 6.4: Sprint Page
-- [ ] Create SprintPage component
-- [ ] Add sprint list view
-- [ ] Add sprint detail view
-- [ ] Add sprint creation form
-- [ ] Add burndown chart view
-- [ ] Add velocity history view
-- [ ] Write component tests
+- [x] Create SprintPage component
+- [x] Add sprint list view
+- [x] Add sprint detail view
+- [x] Add sprint creation form
+- [x] Add burndown chart view
+- [x] Add velocity history view
+- [x] Write component tests
 
 **Requirements: 22.1-22.23, 24.1-24.14**
 
@@ -565,46 +565,46 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 7: Frontend - Backlog Management UI
 
 ### Task 7.1: Backlog TypeScript Interfaces
-- [ ] Add Backlog interface in frontend/src/services/types.ts
-- [ ] Add BacklogCreate interface
-- [ ] Add BacklogTask interface with priority_order
+- [x] Add Backlog interface in frontend/src/services/types.ts
+- [x] Add BacklogCreate interface
+- [x] Add BacklogTask interface with priority_order
 - [ ] Write type tests
 
 **Requirements: 21.1-21.16**
 
 ### Task 7.2: Backlog API Service
-- [ ] Create backlogService in frontend/src/services/backlogService.ts
-- [ ] Implement createBacklog method
-- [ ] Implement getBacklogs method
-- [ ] Implement getBacklog method
-- [ ] Implement updateBacklog method
-- [ ] Implement deleteBacklog method
-- [ ] Implement getBacklogTasks method
-- [ ] Implement addTaskToBacklog method
-- [ ] Implement removeTaskFromBacklog method
-- [ ] Implement reorderBacklogTasks method
+- [x] Create backlogService in frontend/src/services/backlogService.ts
+- [x] Implement createBacklog method
+- [x] Implement getBacklogs method
+- [x] Implement getBacklog method
+- [x] Implement updateBacklog method
+- [x] Implement deleteBacklog method
+- [x] Implement getBacklogTasks method
+- [x] Implement addTaskToBacklog method
+- [x] Implement removeTaskFromBacklog method
+- [x] Implement reorderBacklogTasks method
 - [ ] Write unit tests
 
 **Requirements: 21.1-21.16**
 
 ### Task 7.3: Backlog Management Components
-- [ ] Create BacklogList component
-- [ ] Create BacklogDetail component (with tasks)
-- [ ] Add task reordering (drag-and-drop)
-- [ ] Add task filtering and search
-- [ ] Display total estimated effort
-- [ ] Add "Move to Sprint" action
+- [x] Create BacklogList component
+- [x] Create BacklogDetail component (with tasks)
+- [x] Add task reordering (drag-and-drop)
+- [x] Add task filtering and search
+- [x] Display total estimated effort
+- [x] Add "Move to Sprint" action
 - [ ] Write component tests
 
 **Requirements: 21.1-21.16**
 
 ### Task 7.4: Backlog Page
-- [ ] Create BacklogPage component
-- [ ] Add backlog list view
-- [ ] Add backlog detail view with tasks
-- [ ] Add task reordering UI
-- [ ] Add sprint assignment UI
-- [ ] Write component tests
+- [x] Create BacklogPage component
+- [x] Add backlog list view
+- [x] Add backlog detail view with tasks
+- [x] Add task reordering UI
+- [x] Add sprint assignment UI
+- [x] Write component tests
 
 **Requirements: 21.1-21.16**
 

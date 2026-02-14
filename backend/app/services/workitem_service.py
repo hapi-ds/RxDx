@@ -1,5 +1,6 @@
 """WorkItem service for CRUD operations and business logic"""
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -81,6 +82,11 @@ class WorkItemService:
             if skills is not None:
                 # Store as JSON array in graph database
                 properties["skills_needed"] = skills
+        if hasattr(workitem_data, 'skills'):
+            skills = getattr(workitem_data, 'skills', None)
+            if skills is not None:
+                # Store as JSON array in graph database (alternative field name)
+                properties["skills"] = skills
         if hasattr(workitem_data, 'workpackage_id'):
             wp_id = getattr(workitem_data, 'workpackage_id', None)
             if wp_id is not None:
@@ -89,14 +95,36 @@ class WorkItemService:
             properties["story_points"] = workitem_data.story_points
         if hasattr(workitem_data, 'done'):
             properties["done"] = workitem_data.done
+        
+        # Duration and effort for scheduling (Task-specific)
+        if hasattr(workitem_data, 'duration'):
+            duration = getattr(workitem_data, 'duration', None)
+            if duration is not None:
+                properties["duration"] = duration
+        if hasattr(workitem_data, 'effort'):
+            effort = getattr(workitem_data, 'effort', None)
+            if effort is not None:
+                properties["effort"] = effort
+        
+        # Manual dates (user-specified constraints)
         if hasattr(workitem_data, 'start_date'):
             start_date_attr = getattr(workitem_data, 'start_date', None)
             if start_date_attr is not None:
                 properties["start_date"] = start_date_attr.isoformat()
+        if hasattr(workitem_data, 'due_date'):
+            due_date_attr = getattr(workitem_data, 'due_date', None)
+            if due_date_attr is not None:
+                properties["due_date"] = due_date_attr.isoformat()
+        
+        # Legacy end_date field (deprecated, use due_date)
         if hasattr(workitem_data, 'end_date'):
             end_date_attr = getattr(workitem_data, 'end_date', None)
             if end_date_attr is not None:
                 properties["end_date"] = end_date_attr.isoformat()
+        
+        # Progress tracking (initialized to 0 for new tasks)
+        if workitem_data.type == "task":
+            properties["progress"] = 0
         
         if hasattr(workitem_data, 'test_type'):
             properties["test_type"] = workitem_data.test_type
@@ -333,16 +361,42 @@ class WorkItemService:
         # Task-specific updates
         if hasattr(updates, 'skills_needed') and updates.skills_needed is not None:
             update_data["skills_needed"] = updates.skills_needed
+        if hasattr(updates, 'skills') and updates.skills is not None:
+            update_data["skills"] = updates.skills
         if hasattr(updates, 'workpackage_id') and updates.workpackage_id is not None:
             update_data["workpackage_id"] = str(updates.workpackage_id)
         if hasattr(updates, 'story_points') and updates.story_points is not None:
             update_data["story_points"] = updates.story_points
         if hasattr(updates, 'done') and updates.done is not None:
             update_data["done"] = updates.done
+        
+        # Duration and effort for scheduling
+        if hasattr(updates, 'duration') and updates.duration is not None:
+            update_data["duration"] = updates.duration
+        if hasattr(updates, 'effort') and updates.effort is not None:
+            update_data["effort"] = updates.effort
+        
+        # Manual dates (user-specified constraints)
         if hasattr(updates, 'start_date') and updates.start_date is not None:
             update_data["start_date"] = updates.start_date.isoformat()
+        if hasattr(updates, 'due_date') and updates.due_date is not None:
+            update_data["due_date"] = updates.due_date.isoformat()
+        
+        # Legacy end_date field (deprecated, use due_date)
         if hasattr(updates, 'end_date') and updates.end_date is not None:
             update_data["end_date"] = updates.end_date.isoformat()
+        
+        # Calculated dates (set by scheduler)
+        if hasattr(updates, 'calculated_start_date') and updates.calculated_start_date is not None:
+            update_data["calculated_start_date"] = updates.calculated_start_date.isoformat()
+        if hasattr(updates, 'calculated_end_date') and updates.calculated_end_date is not None:
+            update_data["calculated_end_date"] = updates.calculated_end_date.isoformat()
+        
+        # Actual start date and progress
+        if hasattr(updates, 'start_date_is') and updates.start_date_is is not None:
+            update_data["start_date_is"] = updates.start_date_is.isoformat()
+        if hasattr(updates, 'progress') and updates.progress is not None:
+            update_data["progress"] = updates.progress
         
         if hasattr(updates, 'test_type') and updates.test_type is not None:
             update_data["test_type"] = updates.test_type
@@ -719,6 +773,198 @@ class WorkItemService:
 
         return updated_items, failed_items
 
+    async def create_before_relationship(
+        self,
+        from_task_id: UUID,
+        to_task_id: UUID,
+        dependency_type: str = "finish-to-start",
+        lag: int = 0
+    ) -> dict:
+        """
+        Create a BEFORE relationship between two tasks.
+        
+        Args:
+            from_task_id: Source task UUID (must complete before)
+            to_task_id: Target task UUID (depends on source)
+            dependency_type: Type of dependency (finish-to-start, start-to-start, finish-to-finish)
+            lag: Optional delay in days after predecessor completes
+        
+        Returns:
+            Relationship information
+        
+        Raises:
+            ValueError: If tasks don't exist, not type='task', or cycle would be created
+        """
+        # Validate tasks exist and are type='task'
+        from_task = await self.get_workitem(from_task_id)
+        if not from_task or from_task.type != 'task':
+            raise ValueError(f"Task {from_task_id} not found or not a task")
+        
+        to_task = await self.get_workitem(to_task_id)
+        if not to_task or to_task.type != 'task':
+            raise ValueError(f"Task {to_task_id} not found or not a task")
+        
+        # Check for cycles
+        if await self._would_create_cycle_before(from_task_id, to_task_id):
+            raise ValueError(
+                f"Adding BEFORE relationship from {from_task_id} to {to_task_id} "
+                "would create a cycle"
+            )
+        
+        # Validate dependency_type
+        valid_types = ["finish-to-start", "start-to-start", "finish-to-finish"]
+        if dependency_type not in valid_types:
+            raise ValueError(f"Invalid dependency_type. Must be one of: {valid_types}")
+        
+        # Create BEFORE relationship with properties
+        query = f"""
+        MATCH (from:WorkItem {{id: '{str(from_task_id)}', type: 'task'}}),
+              (to:WorkItem {{id: '{str(to_task_id)}', type: 'task'}})
+        MERGE (from)-[r:BEFORE]->(to)
+        SET r.dependency_type = '{dependency_type}',
+            r.lag = {lag},
+            r.created_at = '{datetime.now(UTC).isoformat()}'
+        RETURN r
+        """
+        
+        await self.graph_service.execute_query(query)
+        
+        logger = logging.getLogger(__name__)
+        logger.info(
+            f"Created BEFORE relationship: {from_task_id} -> {to_task_id} "
+            f"(type={dependency_type}, lag={lag})"
+        )
+        
+        return {
+            "from_task_id": from_task_id,
+            "to_task_id": to_task_id,
+            "dependency_type": dependency_type,
+            "lag": lag,
+            "created_at": datetime.now(UTC)
+        }
+    
+    async def remove_before_relationship(
+        self,
+        from_task_id: UUID,
+        to_task_id: UUID
+    ) -> bool:
+        """
+        Remove a BEFORE relationship between two tasks.
+        
+        Args:
+            from_task_id: Source task UUID
+            to_task_id: Target task UUID
+        
+        Returns:
+            True if relationship was removed, False if not found
+        """
+        query = f"""
+        MATCH (from:WorkItem {{id: '{str(from_task_id)}', type: 'task'}})-[r:BEFORE]->(to:WorkItem {{id: '{str(to_task_id)}', type: 'task'}})
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+        
+        results = await self.graph_service.execute_query(query)
+        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        
+        if deleted_count > 0:
+            logger = logging.getLogger(__name__)
+            logger.info(
+                f"Removed BEFORE relationship: {from_task_id} -> {to_task_id}"
+            )
+            return True
+        
+        return False
+    
+    async def get_before_dependencies(
+        self,
+        task_id: UUID
+    ) -> dict:
+        """
+        Get all BEFORE dependencies for a task.
+        Returns both predecessors (tasks that must complete before this one)
+        and successors (tasks that depend on this one).
+        
+        Args:
+            task_id: Task UUID
+        
+        Returns:
+            Dictionary with 'predecessors' and 'successors' lists
+        """
+        # Get predecessors (tasks that must complete before this one)
+        predecessors_query = f"""
+        MATCH (pred:WorkItem {{type: 'task'}})-[r:BEFORE]->(t:WorkItem {{id: '{str(task_id)}', type: 'task'}})
+        RETURN pred.id as id, pred.title as title, pred.status as status,
+               r.dependency_type as dependency_type, r.lag as lag
+        ORDER BY pred.title
+        """
+        
+        pred_results = await self.graph_service.execute_query(predecessors_query)
+        
+        predecessors = []
+        for result in pred_results:
+            predecessors.append({
+                'id': result.get('id'),
+                'title': result.get('title'),
+                'status': result.get('status'),
+                'dependency_type': result.get('dependency_type', 'finish-to-start'),
+                'lag': result.get('lag', 0)
+            })
+        
+        # Get successors (tasks that depend on this one)
+        successors_query = f"""
+        MATCH (t:WorkItem {{id: '{str(task_id)}', type: 'task'}})-[r:BEFORE]->(succ:WorkItem {{type: 'task'}})
+        RETURN succ.id as id, succ.title as title, succ.status as status,
+               r.dependency_type as dependency_type, r.lag as lag
+        ORDER BY succ.title
+        """
+        
+        succ_results = await self.graph_service.execute_query(successors_query)
+        
+        successors = []
+        for result in succ_results:
+            successors.append({
+                'id': result.get('id'),
+                'title': result.get('title'),
+                'status': result.get('status'),
+                'dependency_type': result.get('dependency_type', 'finish-to-start'),
+                'lag': result.get('lag', 0)
+            })
+        
+        return {
+            'predecessors': predecessors,
+            'successors': successors
+        }
+    
+    async def _would_create_cycle_before(
+        self,
+        from_task_id: UUID,
+        to_task_id: UUID
+    ) -> bool:
+        """
+        Check if adding a BEFORE relationship would create a cycle.
+        
+        Args:
+            from_task_id: Source task UUID
+            to_task_id: Target task UUID
+        
+        Returns:
+            True if adding relationship would create a cycle
+        """
+        # Check if there's already a path from 'to' to 'from'
+        # If yes, adding 'from' -> 'to' would create a cycle
+        query = f"""
+        MATCH path = (to:WorkItem {{id: '{str(to_task_id)}', type: 'task'}})-[:BEFORE*]->(from:WorkItem {{id: '{str(from_task_id)}', type: 'task'}})
+        RETURN count(path) as cycle_count
+        """
+        
+        results = await self.graph_service.execute_query(query)
+        
+        if results and results[0].get('cycle_count', 0) > 0:
+            return True
+        
+        return False
+
     def _graph_data_to_response(self, graph_data: dict[str, Any]) -> WorkItemResponse | None:
         """
         Convert graph database data to WorkItemResponse
@@ -763,7 +1009,6 @@ class WorkItemService:
             print(f"Error converting graph data to WorkItemResponse: {e}")
             print(f"Graph data keys: {graph_data.keys() if isinstance(graph_data, dict) else 'not a dict'}")
             print(f"Graph data: {graph_data}")
-            return None
             return None
 
 

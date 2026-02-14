@@ -453,6 +453,197 @@ class MilestoneService:
         return False
 
 
+    async def create_before_relationship(
+        self,
+        from_milestone_id: UUID,
+        to_milestone_id: UUID,
+        dependency_type: str = "finish-to-start",
+        lag: int = 0
+    ) -> dict:
+        """
+        Create a BEFORE relationship between two milestones.
+        
+        Args:
+            from_milestone_id: Source milestone UUID (must complete before)
+            to_milestone_id: Target milestone UUID (depends on source)
+            dependency_type: Type of dependency (finish-to-start, start-to-start, finish-to-finish)
+            lag: Optional delay in days after predecessor completes
+        
+        Returns:
+            Relationship information
+        
+        Raises:
+            ValueError: If milestones don't exist or cycle would be created
+        """
+        # Validate milestones exist
+        from_milestone = await self.get_milestone(from_milestone_id)
+        if not from_milestone:
+            raise ValueError(f"Milestone {from_milestone_id} not found")
+        
+        to_milestone = await self.get_milestone(to_milestone_id)
+        if not to_milestone:
+            raise ValueError(f"Milestone {to_milestone_id} not found")
+        
+        # Check for cycles
+        if await self._would_create_cycle_before(from_milestone_id, to_milestone_id):
+            raise ValueError(
+                f"Adding BEFORE relationship from {from_milestone_id} to {to_milestone_id} "
+                "would create a cycle"
+            )
+        
+        # Validate dependency_type
+        valid_types = ["finish-to-start", "start-to-start", "finish-to-finish"]
+        if dependency_type not in valid_types:
+            raise ValueError(f"Invalid dependency_type. Must be one of: {valid_types}")
+        
+        # Create BEFORE relationship with properties
+        query = f"""
+        MATCH (from:Milestone {{id: '{str(from_milestone_id)}'}}),
+              (to:Milestone {{id: '{str(to_milestone_id)}'}})
+        MERGE (from)-[r:BEFORE]->(to)
+        SET r.dependency_type = '{dependency_type}',
+            r.lag = {lag},
+            r.created_at = '{datetime.now(UTC).isoformat()}'
+        RETURN r
+        """
+        
+        await self.graph_service.execute_query(query)
+        
+        logger.info(
+            f"Created BEFORE relationship: {from_milestone_id} -> {to_milestone_id} "
+            f"(type={dependency_type}, lag={lag})"
+        )
+        
+        return {
+            "from_milestone_id": from_milestone_id,
+            "to_milestone_id": to_milestone_id,
+            "dependency_type": dependency_type,
+            "lag": lag,
+            "created_at": datetime.now(UTC)
+        }
+    
+    async def remove_before_relationship(
+        self,
+        from_milestone_id: UUID,
+        to_milestone_id: UUID
+    ) -> bool:
+        """
+        Remove a BEFORE relationship between two milestones.
+        
+        Args:
+            from_milestone_id: Source milestone UUID
+            to_milestone_id: Target milestone UUID
+        
+        Returns:
+            True if relationship was removed, False if not found
+        """
+        query = f"""
+        MATCH (from:Milestone {{id: '{str(from_milestone_id)}'}})-[r:BEFORE]->(to:Milestone {{id: '{str(to_milestone_id)}'}})
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+        
+        results = await self.graph_service.execute_query(query)
+        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        
+        if deleted_count > 0:
+            logger.info(
+                f"Removed BEFORE relationship: {from_milestone_id} -> {to_milestone_id}"
+            )
+            return True
+        
+        return False
+    
+    async def get_before_dependencies(
+        self,
+        milestone_id: UUID
+    ) -> dict:
+        """
+        Get all BEFORE dependencies for a milestone.
+        Returns both predecessors (milestones that must complete before this one)
+        and successors (milestones that depend on this one).
+        
+        Args:
+            milestone_id: Milestone UUID
+        
+        Returns:
+            Dictionary with 'predecessors' and 'successors' lists
+        """
+        # Get predecessors (milestones that must complete before this one)
+        predecessors_query = f"""
+        MATCH (pred:Milestone)-[r:BEFORE]->(m:Milestone {{id: '{str(milestone_id)}'}})
+        RETURN pred.id as id, pred.title as title, pred.status as status,
+               r.dependency_type as dependency_type, r.lag as lag
+        ORDER BY pred.title
+        """
+        
+        pred_results = await self.graph_service.execute_query(predecessors_query)
+        
+        predecessors = []
+        for result in pred_results:
+            predecessors.append({
+                'id': result.get('id'),
+                'title': result.get('title'),
+                'status': result.get('status'),
+                'dependency_type': result.get('dependency_type', 'finish-to-start'),
+                'lag': result.get('lag', 0)
+            })
+        
+        # Get successors (milestones that depend on this one)
+        successors_query = f"""
+        MATCH (m:Milestone {{id: '{str(milestone_id)}'}})-[r:BEFORE]->(succ:Milestone)
+        RETURN succ.id as id, succ.title as title, succ.status as status,
+               r.dependency_type as dependency_type, r.lag as lag
+        ORDER BY succ.title
+        """
+        
+        succ_results = await self.graph_service.execute_query(successors_query)
+        
+        successors = []
+        for result in succ_results:
+            successors.append({
+                'id': result.get('id'),
+                'title': result.get('title'),
+                'status': result.get('status'),
+                'dependency_type': result.get('dependency_type', 'finish-to-start'),
+                'lag': result.get('lag', 0)
+            })
+        
+        return {
+            'predecessors': predecessors,
+            'successors': successors
+        }
+    
+    async def _would_create_cycle_before(
+        self,
+        from_milestone_id: UUID,
+        to_milestone_id: UUID
+    ) -> bool:
+        """
+        Check if adding a BEFORE relationship would create a cycle.
+        
+        Args:
+            from_milestone_id: Source milestone UUID
+            to_milestone_id: Target milestone UUID
+        
+        Returns:
+            True if adding relationship would create a cycle
+        """
+        # Check if there's already a path from 'to' to 'from'
+        # If yes, adding 'from' -> 'to' would create a cycle
+        query = f"""
+        MATCH path = (to:Milestone {{id: '{str(to_milestone_id)}'}})-[:BEFORE*]->(from:Milestone {{id: '{str(from_milestone_id)}'}})
+        RETURN count(path) as cycle_count
+        """
+        
+        results = await self.graph_service.execute_query(query)
+        
+        if results and results[0].get('cycle_count', 0) > 0:
+            return True
+        
+        return False
+
+
     def _graph_data_to_response(self, data: dict) -> MilestoneResponse | None:
         """
         Convert graph data to MilestoneResponse

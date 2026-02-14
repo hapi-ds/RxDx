@@ -915,3 +915,231 @@ class TestTaskSchemaTaskSpecificProperties:
         assert task.start_date is None
         assert task.end_date is None
         assert task.due_date is None
+
+
+
+class TestTaskSchemaNewSchedulingAttributes:
+    """Test Task schema with new scheduling attributes (duration, effort, progress, calculated dates)"""
+
+    def test_task_with_duration_and_effort(self):
+        """Test TaskCreate with duration and effort"""
+        data = {
+            "title": "Implement feature X",
+            "status": "draft",
+            "duration": 5,  # 5 calendar days
+            "effort": 20.0,  # 20 hours of work
+        }
+        task = TaskCreate(**data)
+        
+        assert task.duration == 5
+        assert task.effort == 20.0
+
+    def test_task_duration_validation(self):
+        """Test duration validation (must be >= 1)"""
+        # Valid duration
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "duration": 1,
+        }
+        task = TaskCreate(**data)
+        assert task.duration == 1
+
+        # Zero duration should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(
+                title="Test Task Title",
+                status="draft",
+                duration=0,
+            )
+        # Pydantic Field constraint message
+        assert "greater than or equal to 1" in str(exc_info.value)
+
+        # Negative duration should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(
+                title="Test Task Title",
+                status="draft",
+                duration=-1,
+            )
+        assert "greater than or equal to 1" in str(exc_info.value)
+
+    def test_task_effort_validation(self):
+        """Test effort validation (must be >= 0)"""
+        # Valid effort
+        for effort_value in [0.0, 1.0, 8.0, 40.0, 100.5]:
+            data = {
+                "title": "Test Task Title",
+                "status": "draft",
+                "effort": effort_value,
+            }
+            task = TaskCreate(**data)
+            assert task.effort == effort_value
+
+        # Negative effort should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskCreate(
+                title="Test Task Title",
+                status="draft",
+                effort=-1.0,
+            )
+        # Pydantic Field constraint message
+        assert "greater than or equal to 0" in str(exc_info.value)
+
+    def test_task_backward_compatibility_estimated_hours(self):
+        """Test that estimated_hours is still supported for backward compatibility"""
+        data = {
+            "title": "Test Task Title",
+            "status": "draft",
+            "estimated_hours": 16.0,
+        }
+        task = TaskCreate(**data)
+        
+        assert task.estimated_hours == 16.0
+
+    def test_task_update_with_duration_and_effort(self):
+        """Test TaskUpdate with duration and effort"""
+        data = {
+            "duration": 10,
+            "effort": 40.0,
+        }
+        task_update = TaskUpdate(**data)
+        
+        assert task_update.duration == 10
+        assert task_update.effort == 40.0
+
+    def test_task_update_progress_validation(self):
+        """Test progress validation in TaskUpdate (must be 0-100)"""
+        # Valid progress values
+        for progress_value in [0, 25, 50, 75, 100]:
+            data = {
+                "progress": progress_value,
+            }
+            task_update = TaskUpdate(**data)
+            assert task_update.progress == progress_value
+
+        # Progress > 100 should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskUpdate(progress=101)
+        # Pydantic Field constraint message
+        assert "less than or equal to 100" in str(exc_info.value)
+
+        # Negative progress should fail
+        with pytest.raises(ValidationError) as exc_info:
+            TaskUpdate(progress=-1)
+        assert "greater than or equal to 0" in str(exc_info.value)
+
+    def test_task_update_with_start_date_is(self):
+        """Test TaskUpdate with start_date_is (actual start date)"""
+        from datetime import UTC
+        
+        now = datetime.now(UTC)
+        
+        data = {
+            "start_date_is": now,
+            "progress": 50,
+        }
+        task_update = TaskUpdate(**data)
+        
+        assert task_update.start_date_is == now
+        assert task_update.progress == 50
+
+    def test_task_response_with_calculated_dates(self):
+        """Test TaskResponse with calculated scheduling dates"""
+        from datetime import UTC
+        
+        task_id = uuid4()
+        user_id = uuid4()
+        now = datetime.now(UTC)
+        
+        data = {
+            "id": task_id,
+            "type": "task",
+            "title": "Test Task Title",
+            "status": "active",
+            "version": "1.0",
+            "created_by": user_id,
+            "created_at": now,
+            "updated_at": now,
+            "is_signed": False,
+            "duration": 5,
+            "effort": 20.0,
+            "start_date": now,
+            "due_date": now,
+            "calculated_start_date": now,
+            "calculated_end_date": now,
+            "start_date_is": now,
+            "progress": 60,
+        }
+        task_response = TaskResponse(**data)
+        
+        assert task_response.duration == 5
+        assert task_response.effort == 20.0
+        assert task_response.calculated_start_date == now
+        assert task_response.calculated_end_date == now
+        assert task_response.start_date_is == now
+        assert task_response.progress == 60
+
+    def test_task_response_calculated_dates_optional(self):
+        """Test that calculated dates are optional in TaskResponse"""
+        from datetime import UTC
+        
+        task_id = uuid4()
+        user_id = uuid4()
+        now = datetime.now(UTC)
+        
+        data = {
+            "id": task_id,
+            "type": "task",
+            "title": "Test Task Title",
+            "status": "draft",
+            "version": "1.0",
+            "created_by": user_id,
+            "created_at": now,
+            "updated_at": now,
+            "is_signed": False,
+        }
+        task_response = TaskResponse(**data)
+        
+        # Calculated dates should be None when not provided
+        assert task_response.calculated_start_date is None
+        assert task_response.calculated_end_date is None
+        assert task_response.start_date_is is None
+        assert task_response.progress is None
+
+    def test_task_with_all_new_scheduling_attributes(self):
+        """Test TaskCreate with all new scheduling attributes"""
+        from datetime import UTC
+        
+        now = datetime.now(UTC)
+        workpackage_id = uuid4()
+        
+        data = {
+            "title": "Complete feature implementation",
+            "description": "Implement and test feature X",
+            "status": "active",
+            "priority": 4,
+            "duration": 7,
+            "effort": 35.0,
+            "estimated_hours": 35.0,  # Backward compatibility
+            "actual_hours": 10.0,
+            "start_date": now,
+            "due_date": now,
+            "skills_needed": ["Python", "FastAPI", "PostgreSQL"],
+            "workpackage_id": workpackage_id,
+            "story_points": 8,
+            "done": False,
+        }
+        task = TaskCreate(**data)
+        
+        assert task.title == "Complete feature implementation"
+        assert task.duration == 7
+        assert task.effort == 35.0
+        assert task.estimated_hours == 35.0
+        assert task.actual_hours == 10.0
+        assert task.start_date == now
+        assert task.due_date == now
+        assert task.skills_needed == ["Python", "FastAPI", "PostgreSQL"]
+        assert task.workpackage_id == workpackage_id
+        assert task.story_points == 8
+        assert task.done is False

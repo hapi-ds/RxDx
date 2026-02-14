@@ -11,16 +11,12 @@ class WorkItemBase(BaseModel):
     """Base WorkItem schema with common fields"""
 
     title: str = Field(..., min_length=1, max_length=500, description="WorkItem title")
-    description: str | None = Field(None, description="Detailed description of the WorkItem")
-    status: str = Field(
-        ...,
-        description="Current status of the WorkItem"
+    description: str | None = Field(
+        None, description="Detailed description of the WorkItem"
     )
+    status: str = Field(..., description="Current status of the WorkItem")
     priority: int | None = Field(
-        None,
-        ge=1,
-        le=5,
-        description="Priority level (1=lowest, 5=highest)"
+        None, ge=1, le=5, description="Priority level (1=lowest, 5=highest)"
     )
     assigned_to: UUID | None = Field(None, description="UUID of assigned user")
 
@@ -32,11 +28,21 @@ class WorkItemBase(BaseModel):
         # - Requirements/Tasks/Tests/Documents: draft, active, completed, archived, rejected
         # - Risks: draft, identified, assessed, mitigated, accepted, closed, archived
         allowed_statuses = {
-            "draft", "active", "completed", "archived", "rejected",
-            "identified", "assessed", "mitigated", "accepted", "closed"
+            "draft",
+            "active",
+            "completed",
+            "archived",
+            "rejected",
+            "identified",
+            "assessed",
+            "mitigated",
+            "accepted",
+            "closed",
         }
         if v.lower() not in allowed_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
+            raise ValueError(
+                f"Status must be one of: {', '.join(sorted(allowed_statuses))}"
+            )
         return v.lower()
 
     @field_validator("title")
@@ -63,10 +69,7 @@ class WorkItemBase(BaseModel):
 class WorkItemCreate(WorkItemBase):
     """Schema for creating a new WorkItem"""
 
-    type: str = Field(
-        ...,
-        description="Type of WorkItem"
-    )
+    type: str = Field(..., description="Type of WorkItem")
 
     @field_validator("type")
     @classmethod
@@ -95,11 +98,21 @@ class WorkItemUpdate(BaseModel):
             return v
         # Combined statuses from all workitem types
         allowed_statuses = {
-            "draft", "active", "completed", "archived", "rejected",
-            "identified", "assessed", "mitigated", "accepted", "closed"
+            "draft",
+            "active",
+            "completed",
+            "archived",
+            "rejected",
+            "identified",
+            "assessed",
+            "mitigated",
+            "accepted",
+            "closed",
         }
         if v.lower() not in allowed_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(sorted(allowed_statuses))}")
+            raise ValueError(
+                f"Status must be one of: {', '.join(sorted(allowed_statuses))}"
+            )
         return v.lower()
 
     @field_validator("title")
@@ -122,20 +135,29 @@ class WorkItemResponse(WorkItemBase):
     created_by: UUID
     created_at: datetime
     updated_at: datetime
-    is_signed: bool = Field(default=False, description="Whether this WorkItem has valid digital signatures")
+    is_signed: bool = Field(
+        default=False, description="Whether this WorkItem has valid digital signatures"
+    )
 
     model_config = {"from_attributes": True}
 
 
 # Specialized WorkItem schemas for different types
 
+
 class RequirementBase(WorkItemBase):
     """Base schema for Requirement WorkItems"""
 
     # Additional fields specific to requirements
-    acceptance_criteria: str | None = Field(None, description="Acceptance criteria for the requirement")
-    business_value: str | None = Field(None, description="Business value or justification")
-    source: str | None = Field(None, description="Source of the requirement (e.g., stakeholder, regulation)")
+    acceptance_criteria: str | None = Field(
+        None, description="Acceptance criteria for the requirement"
+    )
+    business_value: str | None = Field(
+        None, description="Business value or justification"
+    )
+    source: str | None = Field(
+        None, description="Source of the requirement (e.g., stakeholder, regulation)"
+    )
 
     @field_validator("acceptance_criteria")
     @classmethod
@@ -155,7 +177,16 @@ class RequirementBase(WorkItemBase):
             raise ValueError("Acceptance criteria cannot exceed 2000 characters")
 
         # Check for structured format keywords
-        structured_keywords = ["given", "when", "then", "and", "but", "should", "must", "shall"]
+        structured_keywords = [
+            "given",
+            "when",
+            "then",
+            "and",
+            "but",
+            "should",
+            "must",
+            "shall",
+        ]
         v_lower = v.lower()
         has_structure = any(keyword in v_lower for keyword in structured_keywords)
 
@@ -170,7 +201,9 @@ class RequirementBase(WorkItemBase):
         v_upper = v.upper()
         for pattern in prohibited_patterns:
             if pattern in v_upper:
-                raise ValueError(f"Acceptance criteria cannot contain placeholder text: {pattern}")
+                raise ValueError(
+                    f"Acceptance criteria cannot contain placeholder text: {pattern}"
+                )
 
         return v
 
@@ -200,7 +233,9 @@ class RequirementBase(WorkItemBase):
         v_upper = v.upper()
         for pattern in prohibited_patterns:
             if pattern in v_upper:
-                raise ValueError(f"Business value cannot contain placeholder text: {pattern}")
+                raise ValueError(
+                    f"Business value cannot contain placeholder text: {pattern}"
+                )
 
         return v
 
@@ -216,9 +251,17 @@ class RequirementBase(WorkItemBase):
             return None
 
         valid_sources = {
-            "stakeholder", "regulation", "standard", "user_story",
-            "business_rule", "technical_constraint", "compliance",
-            "security", "performance", "usability", "other"
+            "stakeholder",
+            "regulation",
+            "standard",
+            "user_story",
+            "business_rule",
+            "technical_constraint",
+            "compliance",
+            "security",
+            "performance",
+            "usability",
+            "other",
         }
 
         v_lower = v.lower()
@@ -256,7 +299,9 @@ class RequirementUpdate(BaseModel):
             return v
         valid_statuses = {"draft", "active", "completed", "archived", "rejected"}
         if v.lower() not in valid_statuses:
-            raise ValueError(f"Status must be one of: {', '.join(sorted(valid_statuses))}")
+            raise ValueError(
+                f"Status must be one of: {', '.join(sorted(valid_statuses))}"
+            )
         return v.lower()
 
     @field_validator("title")
@@ -283,7 +328,9 @@ class RequirementUpdate(BaseModel):
         title_upper = title.upper()
         for pattern in prohibited_patterns:
             if pattern in title_upper:
-                raise ValueError(f"Requirement title cannot contain placeholder text: {pattern}")
+                raise ValueError(
+                    f"Requirement title cannot contain placeholder text: {pattern}"
+                )
 
         return title
 
@@ -296,17 +343,23 @@ class RequirementUpdate(BaseModel):
         if v:  # Only validate if not empty string
             description = v.strip()
             if len(description) < 20:
-                raise ValueError("Requirement description must be at least 20 characters long if provided")
+                raise ValueError(
+                    "Requirement description must be at least 20 characters long if provided"
+                )
 
             if len(description) > 5000:
-                raise ValueError("Requirement description cannot exceed 5000 characters")
+                raise ValueError(
+                    "Requirement description cannot exceed 5000 characters"
+                )
 
             # Check for prohibited placeholder text
             prohibited_patterns = ["TODO", "TBD", "FIXME", "XXX", "Lorem ipsum"]
             description_upper = description.upper()
             for pattern in prohibited_patterns:
                 if pattern in description_upper:
-                    raise ValueError(f"Requirement description cannot contain placeholder text: {pattern}")
+                    raise ValueError(
+                        f"Requirement description cannot contain placeholder text: {pattern}"
+                    )
 
             return description
 
@@ -321,15 +374,28 @@ class RequirementUpdate(BaseModel):
         if v:  # Only validate if not empty string
             criteria = v.strip()
             if len(criteria) < 20:
-                raise ValueError("Acceptance criteria must be at least 20 characters long")
+                raise ValueError(
+                    "Acceptance criteria must be at least 20 characters long"
+                )
 
             if len(criteria) > 2000:
                 raise ValueError("Acceptance criteria cannot exceed 2000 characters")
 
             # Check for structured format keywords
-            structured_keywords = ["given", "when", "then", "and", "but", "should", "must", "shall"]
+            structured_keywords = [
+                "given",
+                "when",
+                "then",
+                "and",
+                "but",
+                "should",
+                "must",
+                "shall",
+            ]
             criteria_lower = criteria.lower()
-            has_structure = any(keyword in criteria_lower for keyword in structured_keywords)
+            has_structure = any(
+                keyword in criteria_lower for keyword in structured_keywords
+            )
 
             if not has_structure:
                 raise ValueError(
@@ -342,7 +408,9 @@ class RequirementUpdate(BaseModel):
             criteria_upper = criteria.upper()
             for pattern in prohibited_patterns:
                 if pattern in criteria_upper:
-                    raise ValueError(f"Acceptance criteria cannot contain placeholder text: {pattern}")
+                    raise ValueError(
+                        f"Acceptance criteria cannot contain placeholder text: {pattern}"
+                    )
 
             return criteria
 
@@ -371,7 +439,9 @@ class RequirementUpdate(BaseModel):
             value_upper = value.upper()
             for pattern in prohibited_patterns:
                 if pattern in value_upper:
-                    raise ValueError(f"Business value cannot contain placeholder text: {pattern}")
+                    raise ValueError(
+                        f"Business value cannot contain placeholder text: {pattern}"
+                    )
 
             return value
 
@@ -386,9 +456,17 @@ class RequirementUpdate(BaseModel):
         if v:  # Only validate if not empty string
             source = v.strip()
             valid_sources = {
-                "stakeholder", "regulation", "standard", "user_story",
-                "business_rule", "technical_constraint", "compliance",
-                "security", "performance", "usability", "other"
+                "stakeholder",
+                "regulation",
+                "standard",
+                "user_story",
+                "business_rule",
+                "technical_constraint",
+                "compliance",
+                "security",
+                "performance",
+                "usability",
+                "other",
             }
 
             source_lower = source.lower()
@@ -420,43 +498,83 @@ class RequirementResponse(RequirementBase):
 class TaskBase(WorkItemBase):
     """Base schema for Task WorkItems"""
 
-    estimated_hours: float | None = Field(None, ge=0, description="Estimated hours to complete")
+    # Legacy field - kept for backward compatibility
+    estimated_hours: float | None = Field(
+        None, ge=0, description="Estimated hours to complete (deprecated, use effort)"
+    )
     actual_hours: float | None = Field(None, ge=0, description="Actual hours spent")
-    due_date: datetime | None = Field(None, description="Due date for the task")
-    
+
+    # New scheduling attributes
+    duration: int | None = Field(
+        None, ge=1, description="Calendar days for scheduling (Gantt chart display)"
+    )
+    effort: float | None = Field(
+        None, ge=0, description="Hours for resource capacity calculations"
+    )
+    due_date: datetime | None = Field(
+        None, description="Manual due date (deadline constraint)"
+    )
+
     # Task-specific properties for scheduling and resource matching
-    skills_needed: list[str] | None = Field(None, description="Skills required for this task (for resource matching)")
-    workpackage_id: UUID | None = Field(None, description="ID of the workpackage this task belongs to (for quick lookup)")
-    story_points: int | None = Field(None, ge=0, le=100, description="Story points for agile estimation")
+    skills_needed: list[str] | None = Field(
+        None, description="Skills required for this task (for resource matching)"
+    )
+    workpackage_id: UUID | None = Field(
+        None,
+        description="ID of the workpackage this task belongs to (for quick lookup)",
+    )
+    story_points: int | None = Field(
+        None, ge=0, le=100, description="Story points for agile estimation"
+    )
     done: bool = Field(default=False, description="Whether the task is completed")
-    start_date: datetime | None = Field(None, description="Scheduled start date")
-    end_date: datetime | None = Field(None, description="Scheduled end date")
-    
+    start_date: datetime | None = Field(
+        None, description="Manual start date (optional, user-specified)"
+    )
+    end_date: datetime | None = Field(
+        None, description="Scheduled end date (deprecated, use calculated_end_date)"
+    )
+
+    @field_validator("duration")
+    @classmethod
+    def validate_duration(cls, v: int | None) -> int | None:
+        """Validate duration is positive"""
+        if v is not None and v < 1:
+            raise ValueError("Duration must be at least 1 day")
+        return v
+
+    @field_validator("effort")
+    @classmethod
+    def validate_effort(cls, v: float | None) -> float | None:
+        """Validate effort is non-negative"""
+        if v is not None and v < 0:
+            raise ValueError("Effort cannot be negative")
+        return v
+
     @field_validator("skills_needed")
     @classmethod
     def validate_skills_needed(cls, v: list[str] | None) -> list[str] | None:
         """Validate skills_needed is always an array of non-empty strings"""
         if v is None:
             return v
-        
+
         if not isinstance(v, list):
             raise ValueError("skills_needed must be an array")
-        
+
         # Filter out empty strings and validate
         valid_skills = []
         for skill in v:
             if not isinstance(skill, str):
                 raise ValueError("All skills must be strings")
-            
+
             skill_clean = skill.strip()
             if not skill_clean:
                 raise ValueError("Skills cannot be empty strings")
-            
+
             if len(skill_clean) > 100:
                 raise ValueError("Skill name cannot exceed 100 characters")
-            
+
             valid_skills.append(skill_clean)
-        
+
         # Remove duplicates while preserving order
         seen = set()
         unique_skills = []
@@ -465,35 +583,37 @@ class TaskBase(WorkItemBase):
             if skill_lower not in seen:
                 seen.add(skill_lower)
                 unique_skills.append(skill)
-        
+
         return unique_skills if unique_skills else None
-    
+
     @field_validator("story_points")
     @classmethod
     def validate_story_points(cls, v: int | None) -> int | None:
         """Validate story points are reasonable"""
         if v is None:
             return v
-        
+
         if v < 0:
             raise ValueError("Story points cannot be negative")
-        
+
         if v > 100:
-            raise ValueError("Story points cannot exceed 100 (consider breaking down the task)")
-        
+            raise ValueError(
+                "Story points cannot exceed 100 (consider breaking down the task)"
+            )
+
         return v
-    
+
     @field_validator("start_date", "end_date")
     @classmethod
     def validate_dates(cls, v: datetime | None) -> datetime | None:
         """Validate dates are reasonable"""
         if v is None:
             return v
-        
+
         # Ensure timezone-aware datetime
         if v.tzinfo is None:
             raise ValueError("Dates must be timezone-aware")
-        
+
         return v
 
 
@@ -511,17 +631,39 @@ class TaskUpdate(BaseModel):
     status: str | None = Field(None, description="Current status of the WorkItem")
     priority: int | None = Field(None, ge=1, le=5)
     assigned_to: UUID | None = None
-    estimated_hours: float | None = Field(None, ge=0)
+
+    # Legacy field - kept for backward compatibility
+    estimated_hours: float | None = Field(
+        None, ge=0, description="Estimated hours (deprecated, use effort)"
+    )
     actual_hours: float | None = Field(None, ge=0)
-    due_date: datetime | None = None
-    
+
+    # New scheduling attributes
+    duration: int | None = Field(None, ge=1, description="Calendar days for scheduling")
+    effort: float | None = Field(
+        None, ge=0, description="Hours for resource capacity calculations"
+    )
+    due_date: datetime | None = Field(
+        None, description="Manual due date (deadline constraint)"
+    )
+    start_date_is: datetime | None = Field(
+        None, description="Actual start date when work began"
+    )
+    progress: int | None = Field(
+        None, ge=0, le=100, description="Completion percentage (0-100)"
+    )
+
     # Task-specific properties
     skills_needed: list[str] | None = None
     workpackage_id: UUID | None = None
     story_points: int | None = Field(None, ge=0, le=100)
     done: bool | None = None
-    start_date: datetime | None = None
-    end_date: datetime | None = None
+    start_date: datetime | None = Field(
+        None, description="Manual start date (optional, user-specified)"
+    )
+    end_date: datetime | None = Field(
+        None, description="Scheduled end date (deprecated)"
+    )
 
     @field_validator("status")
     @classmethod
@@ -541,32 +683,56 @@ class TaskUpdate(BaseModel):
         if not v.strip():
             raise ValueError("Title cannot be empty or only whitespace")
         return v.strip()
-    
+
+    @field_validator("duration")
+    @classmethod
+    def validate_duration(cls, v: int | None) -> int | None:
+        """Validate duration is positive"""
+        if v is not None and v < 1:
+            raise ValueError("Duration must be at least 1 day")
+        return v
+
+    @field_validator("effort")
+    @classmethod
+    def validate_effort(cls, v: float | None) -> float | None:
+        """Validate effort is non-negative"""
+        if v is not None and v < 0:
+            raise ValueError("Effort cannot be negative")
+        return v
+
+    @field_validator("progress")
+    @classmethod
+    def validate_progress(cls, v: int | None) -> int | None:
+        """Validate progress is between 0 and 100"""
+        if v is not None and (v < 0 or v > 100):
+            raise ValueError("Progress must be between 0 and 100")
+        return v
+
     @field_validator("skills_needed")
     @classmethod
     def validate_skills_needed(cls, v: list[str] | None) -> list[str] | None:
         """Validate skills_needed if provided"""
         if v is None:
             return v
-        
+
         if not isinstance(v, list):
             raise ValueError("skills_needed must be an array")
-        
+
         # Filter out empty strings and validate
         valid_skills = []
         for skill in v:
             if not isinstance(skill, str):
                 raise ValueError("All skills must be strings")
-            
+
             skill_clean = skill.strip()
             if not skill_clean:
                 raise ValueError("Skills cannot be empty strings")
-            
+
             if len(skill_clean) > 100:
                 raise ValueError("Skill name cannot exceed 100 characters")
-            
+
             valid_skills.append(skill_clean)
-        
+
         # Remove duplicates while preserving order
         seen = set()
         unique_skills = []
@@ -575,7 +741,7 @@ class TaskUpdate(BaseModel):
             if skill_lower not in seen:
                 seen.add(skill_lower)
                 unique_skills.append(skill)
-        
+
         return unique_skills if unique_skills else None
 
 
@@ -590,20 +756,33 @@ class TaskResponse(TaskBase):
     updated_at: datetime
     is_signed: bool = False
 
+    # Calculated scheduling attributes
+    calculated_start_date: datetime | None = Field(
+        None, description="Calculated by scheduler"
+    )
+    calculated_end_date: datetime | None = Field(
+        None, description="Calculated by scheduler"
+    )
+    start_date_is: datetime | None = Field(
+        None, description="Actual start date when work began"
+    )
+    progress: int | None = Field(
+        None, ge=0, le=100, description="Completion percentage (0-100)"
+    )
+
     model_config = {"from_attributes": True}
 
 
 class SpecBase(WorkItemBase):
     """Base schema for Test WorkItems"""
 
-    test_type: str | None = Field(None, description="Type of test (unit, integration, system, acceptance)")
+    test_type: str | None = Field(
+        None, description="Type of test (unit, integration, system, acceptance)"
+    )
     test_steps: str | None = Field(None, description="Detailed test steps")
     expected_result: str | None = Field(None, description="Expected test result")
     actual_result: str | None = Field(None, description="Actual test result")
-    test_status: str | None = Field(
-        None,
-        description="Test execution status"
-    )
+    test_status: str | None = Field(None, description="Test execution status")
 
 
 class SpecCreate(SpecBase):
@@ -618,7 +797,9 @@ class SpecCreate(SpecBase):
             return v
         allowed_statuses = {"not_run", "passed", "failed", "blocked"}
         if v.lower() not in allowed_statuses:
-            raise ValueError(f"Test status must be one of: {', '.join(allowed_statuses)}")
+            raise ValueError(
+                f"Test status must be one of: {', '.join(allowed_statuses)}"
+            )
         return v.lower()
 
 
@@ -653,7 +834,9 @@ class SpecUpdate(BaseModel):
             return v
         allowed_statuses = {"not_run", "passed", "failed", "blocked"}
         if v.lower() not in allowed_statuses:
-            raise ValueError(f"Test status must be one of: {', '.join(allowed_statuses)}")
+            raise ValueError(
+                f"Test status must be one of: {', '.join(allowed_statuses)}"
+            )
         return v.lower()
 
     @field_validator("title")
@@ -679,6 +862,7 @@ class SpecResponse(SpecBase):
 
     model_config = {"from_attributes": True}
 
+
 # Keep the old names for backward compatibility
 TestBase = SpecBase
 TestSpecCreate = SpecCreate
@@ -693,8 +877,12 @@ class RiskBase(WorkItemBase):
     occurrence: int = Field(..., ge=1, le=10, description="Occurrence rating (1-10)")
     detection: int = Field(..., ge=1, le=10, description="Detection rating (1-10)")
     rpn: int | None = Field(None, description="Risk Priority Number (calculated)")
-    mitigation_actions: str | None = Field(None, description="Planned mitigation actions")
-    risk_owner: UUID | None = Field(None, description="Person responsible for risk management")
+    mitigation_actions: str | None = Field(
+        None, description="Planned mitigation actions"
+    )
+    risk_owner: UUID | None = Field(
+        None, description="Person responsible for risk management"
+    )
 
 
 class RiskCreate(RiskBase):
@@ -754,11 +942,15 @@ class RiskResponse(RiskBase):
 class DocumentBase(WorkItemBase):
     """Base schema for Document WorkItems"""
 
-    document_type: str | None = Field(None, description="Type of document (specification, manual, report)")
+    document_type: str | None = Field(
+        None, description="Type of document (specification, manual, report)"
+    )
     file_path: str | None = Field(None, description="Path to the document file")
     file_size: int | None = Field(None, ge=0, description="File size in bytes")
     mime_type: str | None = Field(None, description="MIME type of the document")
-    checksum: str | None = Field(None, description="File checksum for integrity verification")
+    checksum: str | None = Field(
+        None, description="File checksum for integrity verification"
+    )
 
 
 class DocumentCreate(DocumentBase):
@@ -817,6 +1009,7 @@ class DocumentResponse(DocumentBase):
 
 # Comment schemas for requirement comments
 
+
 class CommentBase(BaseModel):
     """Base schema for comments"""
 
@@ -849,13 +1042,16 @@ class CommentBase(BaseModel):
 
 class CommentCreate(CommentBase):
     """Schema for creating a new comment"""
+
     pass
 
 
 class CommentUpdate(BaseModel):
     """Schema for updating a comment"""
 
-    comment: str = Field(..., min_length=1, max_length=2000, description="Updated comment text")
+    comment: str = Field(
+        ..., min_length=1, max_length=2000, description="Updated comment text"
+    )
 
     @field_validator("comment")
     @classmethod
@@ -886,15 +1082,29 @@ class CommentResponse(CommentBase):
     """Schema for comment response with metadata"""
 
     id: UUID = Field(..., description="Unique comment identifier")
-    requirement_id: UUID = Field(..., description="ID of the requirement this comment belongs to")
+    requirement_id: UUID = Field(
+        ..., description="ID of the requirement this comment belongs to"
+    )
     user_id: UUID = Field(..., description="ID of the user who created the comment")
-    user_name: str | None = Field(None, description="Full name of the user who created the comment")
-    user_email: str | None = Field(None, description="Email of the user who created the comment")
+    user_name: str | None = Field(
+        None, description="Full name of the user who created the comment"
+    )
+    user_email: str | None = Field(
+        None, description="Email of the user who created the comment"
+    )
     created_at: datetime = Field(..., description="When the comment was created")
-    updated_at: datetime | None = Field(None, description="When the comment was last updated")
-    version: str = Field(..., description="Version of the requirement when comment was added")
-    is_edited: bool = Field(default=False, description="Whether the comment has been edited")
-    edit_count: int = Field(default=0, description="Number of times the comment has been edited")
+    updated_at: datetime | None = Field(
+        None, description="When the comment was last updated"
+    )
+    version: str = Field(
+        ..., description="Version of the requirement when comment was added"
+    )
+    is_edited: bool = Field(
+        default=False, description="Whether the comment has been edited"
+    )
+    edit_count: int = Field(
+        default=0, description="Number of times the comment has been edited"
+    )
 
     model_config = {"from_attributes": True}
 
@@ -902,7 +1112,9 @@ class CommentResponse(CommentBase):
 class CommentWithUserInfo(CommentResponse):
     """Extended comment response with full user information"""
 
-    user_role: str | None = Field(None, description="Role of the user who created the comment")
+    user_role: str | None = Field(
+        None, description="Role of the user who created the comment"
+    )
     user_avatar: str | None = Field(None, description="Avatar URL of the user")
 
 
@@ -919,10 +1131,13 @@ class CommentListResponse(BaseModel):
 
 # Bulk Update Schemas
 
+
 class BulkUpdateRequest(BaseModel):
     """Schema for bulk update request"""
 
-    ids: list[UUID] = Field(..., min_length=1, description="List of WorkItem IDs to update")
+    ids: list[UUID] = Field(
+        ..., min_length=1, description="List of WorkItem IDs to update"
+    )
     data: WorkItemUpdate = Field(..., description="Update data to apply to all items")
 
     @field_validator("ids")
@@ -942,14 +1157,22 @@ class BulkUpdateFailure(BaseModel):
     """Schema for a failed bulk update item"""
 
     id: UUID = Field(..., description="WorkItem ID that failed to update")
-    error: str = Field(..., description="Error message describing why the update failed")
+    error: str = Field(
+        ..., description="Error message describing why the update failed"
+    )
 
 
 class BulkUpdateResponse(BaseModel):
     """Schema for bulk update response"""
 
-    updated: list[WorkItemResponse] = Field(..., description="Successfully updated WorkItems")
-    failed: list[BulkUpdateFailure] = Field(..., description="WorkItems that failed to update")
-    total_requested: int = Field(..., description="Total number of items requested for update")
+    updated: list[WorkItemResponse] = Field(
+        ..., description="Successfully updated WorkItems"
+    )
+    failed: list[BulkUpdateFailure] = Field(
+        ..., description="WorkItems that failed to update"
+    )
+    total_requested: int = Field(
+        ..., description="Total number of items requested for update"
+    )
     total_updated: int = Field(..., description="Number of items successfully updated")
     total_failed: int = Field(..., description="Number of items that failed to update")

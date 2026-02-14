@@ -57,10 +57,19 @@ class WorkpackageService:
 
         if workpackage_data.description:
             properties["description"] = workpackage_data.description
+        
+        # Manual dates (user-specified constraints)
         if workpackage_data.start_date:
             properties["start_date"] = workpackage_data.start_date.isoformat()
-        if workpackage_data.end_date:
-            properties["end_date"] = workpackage_data.end_date.isoformat()
+        if workpackage_data.due_date:
+            properties["due_date"] = workpackage_data.due_date.isoformat()
+        
+        # Minimal duration (minimum calendar days)
+        if hasattr(workpackage_data, 'minimal_duration') and workpackage_data.minimal_duration is not None:
+            properties["minimal_duration"] = workpackage_data.minimal_duration
+        
+        # Progress tracking (initialized to 0)
+        properties["progress"] = 0
 
         try:
             logger.info(
@@ -129,16 +138,33 @@ class WorkpackageService:
                 name=workpackage_data["name"],
                 description=workpackage_data.get("description"),
                 order=workpackage_data["order"],
+                minimal_duration=workpackage_data.get("minimal_duration"),
                 start_date=(
                     datetime.fromisoformat(workpackage_data["start_date"])
                     if workpackage_data.get("start_date")
                     else None
                 ),
-                end_date=(
-                    datetime.fromisoformat(workpackage_data["end_date"])
-                    if workpackage_data.get("end_date")
+                due_date=(
+                    datetime.fromisoformat(workpackage_data["due_date"])
+                    if workpackage_data.get("due_date")
                     else None
                 ),
+                calculated_start_date=(
+                    datetime.fromisoformat(workpackage_data["calculated_start_date"])
+                    if workpackage_data.get("calculated_start_date")
+                    else None
+                ),
+                calculated_end_date=(
+                    datetime.fromisoformat(workpackage_data["calculated_end_date"])
+                    if workpackage_data.get("calculated_end_date")
+                    else None
+                ),
+                start_date_is=(
+                    datetime.fromisoformat(workpackage_data["start_date_is"])
+                    if workpackage_data.get("start_date_is")
+                    else None
+                ),
+                progress=workpackage_data.get("progress", 0),
                 phase_id=UUID(workpackage_data["phase_id"]),
                 created_at=datetime.fromisoformat(workpackage_data["created_at"]),
                 task_count=task_count,
@@ -202,10 +228,28 @@ class WorkpackageService:
             update_props["description"] = updates.description
         if updates.order is not None:
             update_props["order"] = updates.order
+        
+        # Manual dates (user-specified constraints)
         if updates.start_date is not None:
             update_props["start_date"] = updates.start_date.isoformat()
-        if updates.end_date is not None:
-            update_props["end_date"] = updates.end_date.isoformat()
+        if updates.due_date is not None:
+            update_props["due_date"] = updates.due_date.isoformat()
+        
+        # Minimal duration
+        if hasattr(updates, 'minimal_duration') and updates.minimal_duration is not None:
+            update_props["minimal_duration"] = updates.minimal_duration
+        
+        # Calculated dates (set by scheduler)
+        if hasattr(updates, 'calculated_start_date') and updates.calculated_start_date is not None:
+            update_props["calculated_start_date"] = updates.calculated_start_date.isoformat()
+        if hasattr(updates, 'calculated_end_date') and updates.calculated_end_date is not None:
+            update_props["calculated_end_date"] = updates.calculated_end_date.isoformat()
+        
+        # Actual start date and progress
+        if hasattr(updates, 'start_date_is') and updates.start_date_is is not None:
+            update_props["start_date_is"] = updates.start_date_is.isoformat()
+        if hasattr(updates, 'progress') and updates.progress is not None:
+            update_props["progress"] = updates.progress
 
         # Handle phase_id update (requires relationship update)
         if updates.phase_id is not None and updates.phase_id != existing.phase_id:
@@ -326,16 +370,33 @@ class WorkpackageService:
                         name=workpackage_data["name"],
                         description=workpackage_data.get("description"),
                         order=workpackage_data["order"],
+                        minimal_duration=workpackage_data.get("minimal_duration"),
                         start_date=(
                             datetime.fromisoformat(workpackage_data["start_date"])
                             if workpackage_data.get("start_date")
                             else None
                         ),
-                        end_date=(
-                            datetime.fromisoformat(workpackage_data["end_date"])
-                            if workpackage_data.get("end_date")
+                        due_date=(
+                            datetime.fromisoformat(workpackage_data["due_date"])
+                            if workpackage_data.get("due_date")
                             else None
                         ),
+                        calculated_start_date=(
+                            datetime.fromisoformat(workpackage_data["calculated_start_date"])
+                            if workpackage_data.get("calculated_start_date")
+                            else None
+                        ),
+                        calculated_end_date=(
+                            datetime.fromisoformat(workpackage_data["calculated_end_date"])
+                            if workpackage_data.get("calculated_end_date")
+                            else None
+                        ),
+                        start_date_is=(
+                            datetime.fromisoformat(workpackage_data["start_date_is"])
+                            if workpackage_data.get("start_date_is")
+                            else None
+                        ),
+                        progress=workpackage_data.get("progress", 0),
                         phase_id=UUID(workpackage_data["phase_id"]),
                         created_at=datetime.fromisoformat(
                             workpackage_data["created_at"]
@@ -483,3 +544,193 @@ class WorkpackageService:
                 f"Failed to get available resources for workpackage {workpackage_id}: {e}"
             )
             return []
+
+    async def create_before_relationship(
+        self,
+        from_workpackage_id: UUID,
+        to_workpackage_id: UUID,
+        dependency_type: str = "finish-to-start",
+        lag: int = 0
+    ) -> dict:
+        """
+        Create a BEFORE relationship between two workpackages.
+        
+        Args:
+            from_workpackage_id: Source workpackage UUID (must complete before)
+            to_workpackage_id: Target workpackage UUID (depends on source)
+            dependency_type: Type of dependency (finish-to-start, start-to-start, finish-to-finish)
+            lag: Optional delay in days after predecessor completes
+        
+        Returns:
+            Relationship information
+        
+        Raises:
+            ValueError: If workpackages don't exist or cycle would be created
+        """
+        # Validate workpackages exist
+        from_wp = await self.get_workpackage(from_workpackage_id)
+        if not from_wp:
+            raise ValueError(f"Workpackage {from_workpackage_id} not found")
+        
+        to_wp = await self.get_workpackage(to_workpackage_id)
+        if not to_wp:
+            raise ValueError(f"Workpackage {to_workpackage_id} not found")
+        
+        # Check for cycles
+        if await self._would_create_cycle_before(from_workpackage_id, to_workpackage_id):
+            raise ValueError(
+                f"Adding BEFORE relationship from {from_workpackage_id} to {to_workpackage_id} "
+                "would create a cycle"
+            )
+        
+        # Validate dependency_type
+        valid_types = ["finish-to-start", "start-to-start", "finish-to-finish"]
+        if dependency_type not in valid_types:
+            raise ValueError(f"Invalid dependency_type. Must be one of: {valid_types}")
+        
+        # Create BEFORE relationship with properties
+        query = f"""
+        MATCH (from:Workpackage {{id: '{str(from_workpackage_id)}'}}),
+              (to:Workpackage {{id: '{str(to_workpackage_id)}'}})
+        MERGE (from)-[r:BEFORE]->(to)
+        SET r.dependency_type = '{dependency_type}',
+            r.lag = {lag},
+            r.created_at = '{datetime.now(UTC).isoformat()}'
+        RETURN r
+        """
+        
+        await self.graph_service.execute_query(query)
+        
+        logger.info(
+            f"Created BEFORE relationship: {from_workpackage_id} -> {to_workpackage_id} "
+            f"(type={dependency_type}, lag={lag})"
+        )
+        
+        return {
+            "from_workpackage_id": from_workpackage_id,
+            "to_workpackage_id": to_workpackage_id,
+            "dependency_type": dependency_type,
+            "lag": lag,
+            "created_at": datetime.now(UTC)
+        }
+    
+    async def remove_before_relationship(
+        self,
+        from_workpackage_id: UUID,
+        to_workpackage_id: UUID
+    ) -> bool:
+        """
+        Remove a BEFORE relationship between two workpackages.
+        
+        Args:
+            from_workpackage_id: Source workpackage UUID
+            to_workpackage_id: Target workpackage UUID
+        
+        Returns:
+            True if relationship was removed, False if not found
+        """
+        query = f"""
+        MATCH (from:Workpackage {{id: '{str(from_workpackage_id)}'}})-[r:BEFORE]->(to:Workpackage {{id: '{str(to_workpackage_id)}'}})
+        DELETE r
+        RETURN count(r) as deleted_count
+        """
+        
+        results = await self.graph_service.execute_query(query)
+        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        
+        if deleted_count > 0:
+            logger.info(
+                f"Removed BEFORE relationship: {from_workpackage_id} -> {to_workpackage_id}"
+            )
+            return True
+        
+        return False
+    
+    async def get_before_dependencies(
+        self,
+        workpackage_id: UUID
+    ) -> list[dict]:
+        """
+        Get all BEFORE dependencies for a workpackage.
+        Returns both predecessors (workpackages that must complete before this one)
+        and successors (workpackages that depend on this one).
+        
+        Args:
+            workpackage_id: Workpackage UUID
+        
+        Returns:
+            Dictionary with 'predecessors' and 'successors' lists
+        """
+        # Get predecessors (workpackages that must complete before this one)
+        predecessors_query = f"""
+        MATCH (pred:Workpackage)-[r:BEFORE]->(wp:Workpackage {{id: '{str(workpackage_id)}'}})
+        RETURN pred.id as id, pred.name as name, pred.order as order,
+               r.dependency_type as dependency_type, r.lag as lag
+        ORDER BY pred.order
+        """
+        
+        pred_results = await self.graph_service.execute_query(predecessors_query)
+        
+        predecessors = []
+        for result in pred_results:
+            predecessors.append({
+                'id': result.get('id'),
+                'name': result.get('name'),
+                'order': result.get('order'),
+                'dependency_type': result.get('dependency_type', 'finish-to-start'),
+                'lag': result.get('lag', 0)
+            })
+        
+        # Get successors (workpackages that depend on this one)
+        successors_query = f"""
+        MATCH (wp:Workpackage {{id: '{str(workpackage_id)}'}})-[r:BEFORE]->(succ:Workpackage)
+        RETURN succ.id as id, succ.name as name, succ.order as order,
+               r.dependency_type as dependency_type, r.lag as lag
+        ORDER BY succ.order
+        """
+        
+        succ_results = await self.graph_service.execute_query(successors_query)
+        
+        successors = []
+        for result in succ_results:
+            successors.append({
+                'id': result.get('id'),
+                'name': result.get('name'),
+                'order': result.get('order'),
+                'dependency_type': result.get('dependency_type', 'finish-to-start'),
+                'lag': result.get('lag', 0)
+            })
+        
+        return {
+            'predecessors': predecessors,
+            'successors': successors
+        }
+    
+    async def _would_create_cycle_before(
+        self,
+        from_workpackage_id: UUID,
+        to_workpackage_id: UUID
+    ) -> bool:
+        """
+        Check if adding a BEFORE relationship would create a cycle.
+        
+        Args:
+            from_workpackage_id: Source workpackage UUID
+            to_workpackage_id: Target workpackage UUID
+        
+        Returns:
+            True if adding relationship would create a cycle
+        """
+        # Check if there's already a path from 'to' to 'from'
+        # If yes, adding 'from' -> 'to' would create a cycle
+        query = f"""
+        MATCH path = (to:Workpackage {{id: '{str(to_workpackage_id)}'}})-[:BEFORE*]->(from:Workpackage {{id: '{str(from_workpackage_id)}'}})
+        RETURN count(path) as cycle_count
+        """
+        
+        results = await self.graph_service.execute_query(query)
+        
+        if results and results[0].get('cycle_count', 0) > 0:
+            return True
+        
+        return False

@@ -977,7 +977,7 @@ class GraphService:
             Created relationship
 
         Raises:
-            ValueError: If resource or project doesn't exist, or if resource is already allocated to a task
+            ValueError: If resource or project doesn't exist
         """
         # Verify resource exists
         resource_query = f"MATCH (r:Resource {{id: '{resource_id}'}}) RETURN r"
@@ -991,17 +991,8 @@ class GraphService:
         if not project_results:
             raise ValueError(f"Project {project_id} not found")
 
-        # Check if resource is already allocated to a task (mutually exclusive)
-        task_allocation_query = f"""
-        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(t:WorkItem {{type: 'task'}})
-        RETURN {{task_allocations: count(rel)}} as result
-        """
-        task_allocation_results = await self.execute_query(task_allocation_query)
-        if task_allocation_results and task_allocation_results[0].get('task_allocations', 0) > 0:
-            raise ValueError(
-                f"Resource {resource_id} is already allocated to a task. "
-                "A resource cannot be allocated to both a project and a task."
-            )
+        # Note: Multi-level allocations are allowed (project + workpackage + task)
+        # The most specific allocation takes precedence in the inheritance algorithm
 
         # Validate allocation percentage
         if not 0 <= allocation_percentage <= 100:
@@ -1050,7 +1041,7 @@ class GraphService:
             Created relationship
 
         Raises:
-            ValueError: If resource or task doesn't exist, or if resource is already allocated to a project
+            ValueError: If resource or task doesn't exist
         """
         # Verify resource exists
         resource_query = f"MATCH (r:Resource {{id: '{resource_id}'}}) RETURN r"
@@ -1064,17 +1055,8 @@ class GraphService:
         if not task_results:
             raise ValueError(f"Task {task_id} not found or is not of type 'task'")
 
-        # Check if resource is already allocated to a project (mutually exclusive)
-        project_allocation_query = f"""
-        MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(p:Project)
-        RETURN {{project_allocations: count(rel)}} as result
-        """
-        project_allocation_results = await self.execute_query(project_allocation_query)
-        if project_allocation_results and project_allocation_results[0].get('project_allocations', 0) > 0:
-            raise ValueError(
-                f"Resource {resource_id} is already allocated to a project. "
-                "A resource cannot be allocated to both a project and a task."
-            )
+        # Note: Multi-level allocations are allowed (project + workpackage + task)
+        # The most specific allocation takes precedence in the inheritance algorithm
 
         # Validate allocation percentage
         if not 0 <= allocation_percentage <= 100:

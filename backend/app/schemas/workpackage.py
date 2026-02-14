@@ -14,8 +14,15 @@ class WorkpackageBase(BaseModel):
         None, max_length=2000, description="Workpackage description"
     )
     order: int = Field(..., ge=1, description="Sequence order within phase")
-    start_date: datetime | None = Field(None, description="Planned start date")
-    end_date: datetime | None = Field(None, description="Planned end date")
+    minimal_duration: int | None = Field(
+        None, ge=1, description="Minimum calendar days for this workpackage"
+    )
+    start_date: datetime | None = Field(
+        None, description="Manual start date (optional, user-specified)"
+    )
+    due_date: datetime | None = Field(
+        None, description="Manual due date (optional, user-specified)"
+    )
     phase_id: UUID = Field(..., description="Phase ID this workpackage belongs to")
 
     @field_validator("name")
@@ -26,13 +33,13 @@ class WorkpackageBase(BaseModel):
             raise ValueError("Workpackage name cannot be empty or whitespace-only")
         return v
 
-    @field_validator("end_date")
+    @field_validator("due_date")
     @classmethod
     def validate_dates(cls, v: datetime | None, info) -> datetime | None:
-        """Validate end_date is after start_date"""
+        """Validate due_date is after start_date"""
         if v is not None and info.data.get("start_date") is not None:
             if v <= info.data["start_date"]:
-                raise ValueError("end_date must be after start_date")
+                raise ValueError("due_date must be after start_date")
         return v
 
 
@@ -52,8 +59,21 @@ class WorkpackageUpdate(BaseModel):
         None, max_length=2000, description="Workpackage description"
     )
     order: int | None = Field(None, ge=1, description="Sequence order within phase")
-    start_date: datetime | None = Field(None, description="Planned start date")
-    end_date: datetime | None = Field(None, description="Planned end date")
+    minimal_duration: int | None = Field(
+        None, ge=1, description="Minimum calendar days for this workpackage"
+    )
+    start_date: datetime | None = Field(
+        None, description="Manual start date (optional, user-specified)"
+    )
+    due_date: datetime | None = Field(
+        None, description="Manual due date (optional, user-specified)"
+    )
+    start_date_is: datetime | None = Field(
+        None, description="Actual start date when work began"
+    )
+    progress: int | None = Field(
+        None, ge=0, le=100, description="Completion percentage (0-100)"
+    )
     phase_id: UUID | None = Field(
         None, description="Phase ID this workpackage belongs to"
     )
@@ -72,6 +92,18 @@ class WorkpackageResponse(WorkpackageBase):
 
     id: UUID
     created_at: datetime
+    calculated_start_date: datetime | None = Field(
+        None, description="Calculated by scheduler"
+    )
+    calculated_end_date: datetime | None = Field(
+        None, description="Calculated by scheduler"
+    )
+    start_date_is: datetime | None = Field(
+        None, description="Actual start date when work began"
+    )
+    progress: int | None = Field(
+        None, ge=0, le=100, description="Completion percentage (0-100)"
+    )
     task_count: int | None = Field(None, description="Number of tasks in workpackage")
     completion_percentage: float | None = Field(
         None, description="Completion percentage (0-100)"

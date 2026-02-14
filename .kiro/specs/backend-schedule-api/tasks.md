@@ -30,68 +30,68 @@ This task list focuses ONLY on schedule-specific features that are NOT yet imple
 ## Phase 0: Data Model Updates
 
 ### Task 0.1: Phase NEXT Relationship Implementation
-- [ ] Create NEXT edge label in AGE graph database
-- [ ] Add NEXT relationship support to PhaseService
-- [ ] Implement create_next_relationship method
-- [ ] Implement remove_next_relationship method
-- [ ] Implement get_next_phase method
-- [ ] Implement get_previous_phase method
-- [ ] Add validation: NEXT relationships form linear sequence (no cycles, no branches)
-- [ ] Update get_phases_for_project to order by NEXT relationship chain
-- [ ] Write unit tests for NEXT relationship operations
-- [ ] Write property test: NEXT relationships form valid linear sequence
+- [x] Create NEXT edge label in AGE graph database
+- [x] Add NEXT relationship support to PhaseService
+- [x] Implement create_next_relationship method
+- [x] Implement remove_next_relationship method
+- [x] Implement get_next_phase method
+- [x] Implement get_previous_phase method
+- [x] Add validation: NEXT relationships form linear sequence (no cycles, no branches)
+- [x] Update get_phases_for_project to order by NEXT relationship chain
+- [x] Write unit tests for NEXT relationship operations
+- [x] Write property test: NEXT relationships form valid linear sequence
 
 **Requirements: 16A.1-16A.7**
 
 ### Task 0.2: Add New Scheduling Attributes to Schemas
-- [ ] Add minimal_duration to PhaseCreate, PhaseUpdate, PhaseResponse schemas
-- [ ] Add minimal_duration to WorkpackageCreate, WorkpackageUpdate, WorkpackageResponse schemas
-- [ ] Add duration and effort to TaskCreate, TaskUpdate, TaskResponse schemas (replace estimated_hours)
-- [ ] Add calculated_start_date and calculated_end_date to all entity response schemas
-- [ ] Add start_date and due_date to all entity create/update schemas (optional)
-- [ ] Add start_date_is and progress to all entity update/response schemas
-- [ ] Add skills to TaskCreate, TaskUpdate, TaskResponse schemas (array of strings)
-- [ ] Add field validators for new attributes (positive numbers, progress 0-100)
-- [ ] Write unit tests for schema validation
+- [x] Add minimal_duration to PhaseCreate, PhaseUpdate, PhaseResponse schemas
+- [x] Add minimal_duration to WorkpackageCreate, WorkpackageUpdate, WorkpackageResponse schemas
+- [x] Add duration and effort to TaskCreate, TaskUpdate, TaskResponse schemas (replace estimated_hours)
+- [x] Add calculated_start_date and calculated_end_date to all entity response schemas
+- [x] Add start_date and due_date to all entity create/update schemas (optional)
+- [x] Add start_date_is and progress to all entity update/response schemas
+- [x] Add skills to TaskCreate, TaskUpdate, TaskResponse schemas (array of strings)
+- [x] Add field validators for new attributes (positive numbers, progress 0-100)
+- [x] Write unit tests for schema validation
 
 **Requirements: 16A.8-16A.45**
 
 ### Task 0.3: Update Graph Node Properties
-- [ ] Add minimal_duration property to Phase nodes
-- [ ] Add minimal_duration property to Workpackage nodes
-- [ ] Add duration and effort properties to Task nodes
-- [ ] Add calculated_start_date and calculated_end_date to all entity nodes
-- [ ] Add start_date and due_date to all entity nodes (optional)
-- [ ] Add start_date_is and progress to all entity nodes
-- [ ] Add skills property to Task nodes (array of strings)
-- [ ] Update node creation methods to include new properties
-- [ ] Update node update methods to handle new properties
-- [ ] Write migration script to add new properties to existing nodes
+- [x] Add minimal_duration property to Phase nodes
+- [x] Add minimal_duration property to Workpackage nodes
+- [x] Add duration and effort properties to Task nodes
+- [x] Add calculated_start_date and calculated_end_date to all entity nodes
+- [x] Add start_date and due_date to all entity nodes (optional)
+- [x] Add start_date_is and progress to all entity nodes
+- [x] Add skills property to Task nodes (array of strings)
+- [x] Update node creation methods to include new properties
+- [x] Update node update methods to handle new properties
+- [x] Write migration script to add new properties to existing nodes
 
 **Requirements: 16A.8-16A.45**
 
 ### Task 0.4: BEFORE Relationship Implementation
-- [ ] Create BEFORE edge label in AGE graph database
-- [ ] Add BEFORE relationship support to WorkpackageService
-- [ ] Add BEFORE relationship support to TaskService (WorkItemService)
-- [ ] Add BEFORE relationship support to MilestoneService
-- [ ] Implement create_before_relationship method with dependency_type and lag
-- [ ] Implement remove_before_relationship method
-- [ ] Implement get_before_dependencies method
-- [ ] Add validation: BEFORE relationships don't create cycles
-- [ ] Write unit tests for BEFORE relationship operations
-- [ ] Write property test: BEFORE relationships don't create cycles
+- [x] Create BEFORE edge label in AGE graph database
+- [x] Add BEFORE relationship support to WorkpackageService
+- [x] Add BEFORE relationship support to TaskService (WorkItemService)
+- [x] Add BEFORE relationship support to MilestoneService
+- [x] Implement create_before_relationship method with dependency_type and lag
+- [x] Implement remove_before_relationship method
+- [x] Implement get_before_dependencies method
+- [x] Add validation: BEFORE relationships don't create cycles
+- [x] Write unit tests for BEFORE relationship operations
+- [x] Write property test: BEFORE relationships don't create cycles
 
 **Requirements: 16B.8-16B.21**
 
 ### Task 0.5: Resource Inheritance Data Model
-- [ ] Update ALLOCATED_TO relationship to support Project, Workpackage, and Task targets
-- [ ] Add allocation_percentage, lead, start_date, end_date properties to ALLOCATED_TO
-- [ ] Update ResourceService to handle allocations at all three levels
-- [ ] Implement get_effective_resources_for_task method (inheritance algorithm)
-- [ ] Write unit tests for resource inheritance
-- [ ] Write property test: Most specific allocation wins
-- [ ] Write property test: Union of resources from all levels
+- [x] Update ALLOCATED_TO relationship to support Project, Workpackage, and Task targets
+- [x] Add allocation_percentage, lead, start_date, end_date properties to ALLOCATED_TO
+- [x] Update ResourceService to handle allocations at all three levels
+- [x] Implement get_effective_resources_for_task method (inheritance algorithm)
+- [x] Write unit tests for resource inheritance
+- [x] Write property test: Most specific allocation wins
+- [x] Write property test: Union of resources from all levels
 
 **Requirements: 16B.1-16B.27**
 

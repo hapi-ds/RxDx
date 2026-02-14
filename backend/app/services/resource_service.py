@@ -308,7 +308,7 @@ class ResourceService:
         self, allocation_data: ResourceAllocationCreate
     ) -> ResourceAllocationResponse:
         """
-        Allocate a resource to a project or task
+        Allocate a resource to a project, workpackage, or task
 
         Args:
             allocation_data: Allocation creation data
@@ -324,6 +324,16 @@ class ResourceService:
                 await self.graph_service.allocate_resource_to_project(
                     resource_id=str(allocation_data.resource_id),
                     project_id=str(allocation_data.target_id),
+                    allocation_percentage=allocation_data.allocation_percentage,
+                    lead=allocation_data.lead,
+                    start_date=allocation_data.start_date.isoformat() if allocation_data.start_date else None,
+                    end_date=allocation_data.end_date.isoformat() if allocation_data.end_date else None,
+                )
+            elif allocation_data.target_type == "workpackage":
+                # Allocate to workpackage
+                await self.graph_service.allocate_resource_to_workpackage(
+                    resource_id=str(allocation_data.resource_id),
+                    workpackage_id=str(allocation_data.target_id),
                     allocation_percentage=allocation_data.allocation_percentage,
                     lead=allocation_data.lead,
                     start_date=allocation_data.start_date.isoformat() if allocation_data.start_date else None,
@@ -686,6 +696,245 @@ class ResourceService:
         except Exception as e:
             logger.error(f"Failed to match resources to task: {e}")
             return []
+
+    async def get_effective_resources_for_task(
+        self, task_id: UUID
+    ) -> list[dict]:
+        """
+        Get effective resources for a task using inheritance algorithm.
+        
+        Resources are inherited from three levels (priority order):
+        1. Task-level allocations (highest priority)
+        2. Workpackage-level allocations (inherited)
+        3. Project-level allocations (inherited)
+        
+        Most specific allocation wins. Returns union of resources from all levels.
+        
+        Args:
+            task_id: Task UUID
+        
+        Returns:
+            List of resource allocations with inheritance information
+            Each dict contains: resource (ResourceResponse), allocation_percentage (float),
+            lead (bool), source_level (str), source_id (UUID)
+        """
+        try:
+            # Collect allocations from all three levels
+            effective_allocations = {}  # resource_id -> allocation dict
+            
+            # Get task, workpackage, phase, and project in one query using properties
+            hierarchy_query = f"""
+            MATCH (t:WorkItem {{id: '{str(task_id)}', type: 'task'}})
+            OPTIONAL MATCH (wp:Workpackage {{id: t.workpackage_id}})
+            OPTIONAL MATCH (p:Phase {{id: wp.phase_id}})
+            RETURN {{
+                workpackage_id: t.workpackage_id,
+                phase_id: wp.phase_id,
+                project_id: p.project_id
+            }} as result
+            """
+            hierarchy_results = await self.graph_service.execute_query(hierarchy_query)
+            
+            workpackage_id = None
+            project_id = None
+            
+            if hierarchy_results and isinstance(hierarchy_results, list):
+                for row in hierarchy_results:
+                    if isinstance(row, dict):
+                        result = row.get('result', row)
+                        if isinstance(result, dict):
+                            workpackage_id = result.get('workpackage_id')
+                            project_id = result.get('project_id')
+                            break
+            
+            # Level 3: Project-level allocations (lowest priority)
+            if project_id:
+                project_allocations = await self._get_project_level_allocations(UUID(project_id))
+                for alloc in project_allocations:
+                    resource_id = str(alloc['resource'].id)
+                    effective_allocations[resource_id] = alloc
+            
+            # Level 2: Workpackage-level allocations (medium priority, overrides project)
+            if workpackage_id:
+                wp_allocations = await self._get_workpackage_level_allocations(UUID(workpackage_id))
+                for alloc in wp_allocations:
+                    resource_id = str(alloc['resource'].id)
+                    effective_allocations[resource_id] = alloc  # Override project allocation
+            
+            # Level 1: Task-level allocations (highest priority, overrides all)
+            task_allocations = await self._get_task_level_allocations(task_id)
+            for alloc in task_allocations:
+                resource_id = str(alloc['resource'].id)
+                effective_allocations[resource_id] = alloc  # Override workpackage/project allocation
+            
+            # Return as list, sorted by lead status (leads first) then by name
+            result = list(effective_allocations.values())
+            result.sort(key=lambda x: (not x['lead'], x['resource'].name))
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get effective resources for task {task_id}: {e}")
+            return []
+    
+    async def _get_task_level_allocations(self, task_id: UUID) -> list[dict]:
+        """Get resources allocated directly to a task"""
+        query = f"""
+        MATCH (r:Resource)-[a:ALLOCATED_TO]->(t:WorkItem {{id: '{str(task_id)}', type: 'task'}})
+        RETURN {{
+            resource: r,
+            allocation_percentage: a.allocation_percentage,
+            lead: a.lead,
+            start_date: a.start_date,
+            end_date: a.end_date
+        }} as result
+        """
+        results = await self.graph_service.execute_query(query)
+        
+        allocations = []
+        for row in results:
+            # Extract the result object
+            if not isinstance(row, dict):
+                continue
+            
+            result = row.get('result', row)
+            if not isinstance(result, dict):
+                continue
+            
+            # Extract resource data
+            res_data = result.get('resource')
+            if not res_data or not isinstance(res_data, dict):
+                continue
+            
+            if 'properties' in res_data:
+                res_data = res_data['properties']
+            
+            allocations.append({
+                'resource': ResourceResponse(
+                    id=UUID(res_data['id']),
+                    name=res_data['name'],
+                    type=res_data.get('resource_type', res_data.get('type', 'person')),
+                    capacity=res_data['capacity'],
+                    department_id=UUID(res_data['department_id']),
+                    skills=res_data.get('skills'),
+                    availability=res_data.get('availability', 'available'),
+                    created_at=datetime.fromisoformat(res_data['created_at']),
+                ),
+                'allocation_percentage': result.get('allocation_percentage', 100.0),
+                'lead': result.get('lead', False),
+                'start_date': datetime.fromisoformat(result['start_date']) if result.get('start_date') else None,
+                'end_date': datetime.fromisoformat(result['end_date']) if result.get('end_date') else None,
+                'source_level': 'task',
+                'source_id': task_id
+            })
+        
+        return allocations
+    
+    async def _get_workpackage_level_allocations(self, workpackage_id: UUID) -> list[dict]:
+        """Get resources allocated to a workpackage"""
+        query = f"""
+        MATCH (r:Resource)-[a:ALLOCATED_TO]->(wp:Workpackage {{id: '{str(workpackage_id)}'}})
+        RETURN {{
+            resource: r,
+            allocation_percentage: a.allocation_percentage,
+            lead: a.lead,
+            start_date: a.start_date,
+            end_date: a.end_date
+        }} as result
+        """
+        results = await self.graph_service.execute_query(query)
+        
+        allocations = []
+        for row in results:
+            # Extract the result object
+            if not isinstance(row, dict):
+                continue
+            
+            result = row.get('result', row)
+            if not isinstance(result, dict):
+                continue
+            
+            # Extract resource data
+            res_data = result.get('resource')
+            if not res_data or not isinstance(res_data, dict):
+                continue
+            
+            if 'properties' in res_data:
+                res_data = res_data['properties']
+            
+            allocations.append({
+                'resource': ResourceResponse(
+                    id=UUID(res_data['id']),
+                    name=res_data['name'],
+                    type=res_data.get('resource_type', res_data.get('type', 'person')),
+                    capacity=res_data['capacity'],
+                    department_id=UUID(res_data['department_id']),
+                    skills=res_data.get('skills'),
+                    availability=res_data.get('availability', 'available'),
+                    created_at=datetime.fromisoformat(res_data['created_at']),
+                ),
+                'allocation_percentage': result.get('allocation_percentage', 100.0),
+                'lead': result.get('lead', False),
+                'start_date': datetime.fromisoformat(result['start_date']) if result.get('start_date') else None,
+                'end_date': datetime.fromisoformat(result['end_date']) if result.get('end_date') else None,
+                'source_level': 'workpackage',
+                'source_id': workpackage_id
+            })
+        
+        return allocations
+    
+    async def _get_project_level_allocations(self, project_id: UUID) -> list[dict]:
+        """Get resources allocated to a project"""
+        query = f"""
+        MATCH (r:Resource)-[a:ALLOCATED_TO]->(p:Project {{id: '{str(project_id)}'}})
+        RETURN {{
+            resource: r,
+            allocation_percentage: a.allocation_percentage,
+            lead: a.lead,
+            start_date: a.start_date,
+            end_date: a.end_date
+        }} as result
+        """
+        results = await self.graph_service.execute_query(query)
+        
+        allocations = []
+        for row in results:
+            # Extract the result object
+            if not isinstance(row, dict):
+                continue
+            
+            result = row.get('result', row)
+            if not isinstance(result, dict):
+                continue
+            
+            # Extract resource data
+            res_data = result.get('resource')
+            if not res_data or not isinstance(res_data, dict):
+                continue
+            
+            if 'properties' in res_data:
+                res_data = res_data['properties']
+            
+            allocations.append({
+                'resource': ResourceResponse(
+                    id=UUID(res_data['id']),
+                    name=res_data['name'],
+                    type=res_data.get('resource_type', res_data.get('type', 'person')),
+                    capacity=res_data['capacity'],
+                    department_id=UUID(res_data['department_id']),
+                    skills=res_data.get('skills'),
+                    availability=res_data.get('availability', 'available'),
+                    created_at=datetime.fromisoformat(res_data['created_at']),
+                ),
+                'allocation_percentage': result.get('allocation_percentage', 100.0),
+                'lead': result.get('lead', False),
+                'start_date': datetime.fromisoformat(result['start_date']) if result.get('start_date') else None,
+                'end_date': datetime.fromisoformat(result['end_date']) if result.get('end_date') else None,
+                'source_level': 'project',
+                'source_id': project_id
+            })
+        
+        return allocations
 
 
 async def get_resource_service(

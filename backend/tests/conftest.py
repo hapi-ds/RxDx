@@ -130,10 +130,434 @@ class MockGraphService:
 
     async def execute_query(self, query, params=None):
         # Mock query results based on query content
-        if "MATCH (m:Milestone)" in query:
+        
+        # Handle cycle detection queries for BEFORE relationships
+        if "[:BEFORE*]" in query and "cycle_count" in query:
+            import re
+            # Extract the from and to IDs
+            ids = re.findall(r"id: '([^']+)'", query)
+            if len(ids) >= 2:
+                to_id = ids[0]  # First ID in query is 'to'
+                from_id = ids[1]  # Second ID in query is 'from'
+                
+                # Initialize relationships if not exists
+                if not hasattr(self, 'relationships'):
+                    self.relationships = []
+                
+                # Check if there's a path from 'to' to 'from' using BFS
+                def has_path(start, end):
+                    if start == end:
+                        return True
+                    
+                    visited = set()
+                    queue = [start]
+                    
+                    while queue:
+                        current = queue.pop(0)
+                        if current in visited:
+                            continue
+                        visited.add(current)
+                        
+                        # Find all nodes that current points to via BEFORE
+                        for rel in self.relationships:
+                            if rel.get('from_id') == current and rel.get('type') == 'BEFORE':
+                                next_node = rel.get('to_id')
+                                if next_node == end:
+                                    return True
+                                if next_node not in visited:
+                                    queue.append(next_node)
+                    
+                    return False
+                
+                # Check if adding 'from' -> 'to' would create a cycle
+                # This happens if there's already a path from 'to' to 'from'
+                cycle_exists = has_path(to_id, from_id)
+                
+                return [{"cycle_count": 1 if cycle_exists else 0}]
+        
+        if "MATCH (wp:Workpackage" in query or "MATCH (pred:Workpackage" in query or "MATCH (succ:Workpackage" in query:
+            # Handle Workpackage queries
+            workpackages = [item for item in self.workitems.values()
+                           if item.get('label') == 'Workpackage']
+            
+            # Handle get_before_dependencies queries for predecessors
+            if "MATCH (pred:Workpackage)-[r:BEFORE]->(wp:Workpackage" in query:
+                import re
+                # Extract target workpackage ID
+                id_match = re.search(r"wp:Workpackage \{id: '([^']+)'\}", query)
+                if id_match:
+                    target_id = id_match.group(1)
+                    
+                    # Initialize relationships if not exists
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    # Find all BEFORE relationships pointing to target
+                    results = []
+                    for rel in self.relationships:
+                        if (rel.get('to_id') == target_id and 
+                            rel.get('type') == 'BEFORE'):
+                            # Get predecessor workpackage
+                            pred_id = rel.get('from_id')
+                            if pred_id in self.workitems:
+                                pred = self.workitems[pred_id]
+                                pred_props = pred.get('properties', pred)
+                                results.append({
+                                    'id': pred_props.get('id'),
+                                    'name': pred_props.get('name'),
+                                    'order': pred_props.get('order'),
+                                    'dependency_type': rel.get('dependency_type', 'finish-to-start'),
+                                    'lag': rel.get('lag', 0)
+                                })
+                    return results
+            
+            # Handle get_before_dependencies queries for successors
+            if "MATCH (wp:Workpackage" in query and ")-[r:BEFORE]->(succ:Workpackage)" in query:
+                import re
+                # Extract source workpackage ID
+                id_match = re.search(r"wp:Workpackage \{id: '([^']+)'\}", query)
+                if id_match:
+                    source_id = id_match.group(1)
+                    
+                    # Initialize relationships if not exists
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    # Find all BEFORE relationships from source
+                    results = []
+                    for rel in self.relationships:
+                        if (rel.get('from_id') == source_id and 
+                            rel.get('type') == 'BEFORE'):
+                            # Get successor workpackage
+                            succ_id = rel.get('to_id')
+                            if succ_id in self.workitems:
+                                succ = self.workitems[succ_id]
+                                succ_props = succ.get('properties', succ)
+                                results.append({
+                                    'id': succ_props.get('id'),
+                                    'name': succ_props.get('name'),
+                                    'order': succ_props.get('order'),
+                                    'dependency_type': rel.get('dependency_type', 'finish-to-start'),
+                                    'lag': rel.get('lag', 0)
+                                })
+                    return results
+            
+            # Apply filters from inline in MATCH clause: MATCH (wp:Workpackage {id: 'xxx'})
+            if "{id: '" in query:
+                import re
+                id_match = re.search(r"\{id: '([^']+)'\}", query)
+                if id_match:
+                    workpackage_id = id_match.group(1)
+                    # Filter workpackages by ID (compare as strings)
+                    workpackages = [wp for wp in workpackages 
+                                   if str(wp.get('id')) == str(workpackage_id) or 
+                                      str(wp.get('properties', {}).get('id')) == str(workpackage_id)]
+            
+            # Handle DELETE queries for BEFORE relationships
+            if "DELETE r" in query and "BEFORE" in query:
+                import re
+                # Extract IDs from query
+                ids = re.findall(r"id: '([^']+)'", query)
+                if len(ids) >= 2:
+                    from_id = ids[0]
+                    to_id = ids[1]
+                    
+                    # Initialize relationships if not exists
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    # Remove the BEFORE relationship
+                    initial_count = len(self.relationships)
+                    self.relationships = [
+                        rel for rel in self.relationships
+                        if not (rel.get('from_id') == from_id and 
+                               rel.get('to_id') == to_id and 
+                               rel.get('type') == 'BEFORE')
+                    ]
+                    deleted_count = initial_count - len(self.relationships)
+                    
+                    return [{"deleted_count": deleted_count}]
+            
+            # Handle MERGE queries for BEFORE relationships
+            if "MERGE" in query and "BEFORE" in query:
+                import re
+                # Extract IDs and properties from query
+                ids = re.findall(r"id: '([^']+)'", query)
+                if len(ids) >= 2:
+                    from_id = ids[0]
+                    to_id = ids[1]
+                    
+                    # Extract dependency_type and lag from SET clause
+                    dependency_type = "finish-to-start"  # default
+                    lag = 0  # default
+                    
+                    dep_type_match = re.search(r"r\.dependency_type = '([^']+)'", query)
+                    if dep_type_match:
+                        dependency_type = dep_type_match.group(1)
+                    
+                    lag_match = re.search(r"r\.lag = (\d+)", query)
+                    if lag_match:
+                        lag = int(lag_match.group(1))
+                    
+                    # Initialize relationships if not exists
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    # Create or update the BEFORE relationship
+                    rel = {
+                        'from_id': from_id,
+                        'to_id': to_id,
+                        'type': 'BEFORE',
+                        'dependency_type': dependency_type,
+                        'lag': lag,
+                    }
+                    self.relationships.append(rel)
+                    
+                    return [{"r": rel}]
+            
+            # Return workpackages in expected format
+            # Check if query has "RETURN wp" to determine format
+            if "RETURN wp" in query:
+                # Return workpackages directly (not wrapped in dict)
+                # The service expects results[0] to be the workpackage data
+                results = []
+                for wp in workpackages:
+                    if 'properties' in wp:
+                        results.append(wp['properties'])
+                    else:
+                        results.append(wp)
+                return results
+            else:
+                # Return as-is
+                return workpackages
+        elif "MATCH (from:WorkItem" in query and "to:WorkItem" in query and "BEFORE" in query:
+            # Handle WorkItem (Task) BEFORE relationship queries
+            import re
+            
+            # Handle DELETE queries for BEFORE relationships
+            if "DELETE r" in query:
+                ids = re.findall(r"id: '([^']+)'", query)
+                if len(ids) >= 2:
+                    from_id = ids[0]
+                    to_id = ids[1]
+                    
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    # Remove the BEFORE relationship
+                    initial_count = len(self.relationships)
+                    self.relationships = [
+                        rel for rel in self.relationships
+                        if not (rel.get('from_id') == from_id and 
+                               rel.get('to_id') == to_id and 
+                               rel.get('type') == 'BEFORE')
+                    ]
+                    deleted_count = initial_count - len(self.relationships)
+                    
+                    return [{"deleted_count": deleted_count}]
+            
+            # Handle MERGE queries for BEFORE relationships
+            if "MERGE" in query:
+                ids = re.findall(r"id: '([^']+)'", query)
+                if len(ids) >= 2:
+                    from_id = ids[0]
+                    to_id = ids[1]
+                    
+                    # Extract dependency_type and lag
+                    dependency_type = "finish-to-start"
+                    lag = 0
+                    
+                    dep_type_match = re.search(r"r\.dependency_type = '([^']+)'", query)
+                    if dep_type_match:
+                        dependency_type = dep_type_match.group(1)
+                    
+                    lag_match = re.search(r"r\.lag = (\d+)", query)
+                    if lag_match:
+                        lag = int(lag_match.group(1))
+                    
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    rel = {
+                        'from_id': from_id,
+                        'to_id': to_id,
+                        'type': 'BEFORE',
+                        'dependency_type': dependency_type,
+                        'lag': lag,
+                    }
+                    self.relationships.append(rel)
+                    
+                    return [{"r": rel}]
+            
+            return []
+        elif "MATCH (pred:WorkItem" in query and ")-[r:BEFORE]->(t:WorkItem" in query:
+            # Handle get_before_dependencies queries for task predecessors
+            import re
+            id_match = re.search(r"t:WorkItem \{id: '([^']+)'", query)
+            if id_match:
+                target_id = id_match.group(1)
+                
+                if not hasattr(self, 'relationships'):
+                    self.relationships = []
+                
+                results = []
+                for rel in self.relationships:
+                    if (rel.get('to_id') == target_id and 
+                        rel.get('type') == 'BEFORE'):
+                        pred_id = rel.get('from_id')
+                        if pred_id in self.workitems:
+                            pred = self.workitems[pred_id]
+                            pred_props = pred.get('properties', pred)
+                            results.append({
+                                'id': pred_props.get('id'),
+                                'title': pred_props.get('title'),
+                                'status': pred_props.get('status'),
+                                'dependency_type': rel.get('dependency_type', 'finish-to-start'),
+                                'lag': rel.get('lag', 0)
+                            })
+                return results
+        elif "MATCH (t:WorkItem" in query and ")-[r:BEFORE]->(succ:WorkItem" in query:
+            # Handle get_before_dependencies queries for task successors
+            import re
+            id_match = re.search(r"t:WorkItem \{id: '([^']+)'", query)
+            if id_match:
+                source_id = id_match.group(1)
+                
+                if not hasattr(self, 'relationships'):
+                    self.relationships = []
+                
+                results = []
+                for rel in self.relationships:
+                    if (rel.get('from_id') == source_id and 
+                        rel.get('type') == 'BEFORE'):
+                        succ_id = rel.get('to_id')
+                        if succ_id in self.workitems:
+                            succ = self.workitems[succ_id]
+                            succ_props = succ.get('properties', succ)
+                            results.append({
+                                'id': succ_props.get('id'),
+                                'title': succ_props.get('title'),
+                                'status': succ_props.get('status'),
+                                'dependency_type': rel.get('dependency_type', 'finish-to-start'),
+                                'lag': rel.get('lag', 0)
+                            })
+                return results
+        elif "MATCH (m:Milestone" in query or "MATCH (from:Milestone" in query or "MATCH (pred:Milestone" in query:
             # Handle Milestone queries
             milestones = [item for item in self.workitems.values()
                          if item.get('label') == 'Milestone']
+            
+            # Handle get_before_dependencies queries for milestone predecessors
+            if "MATCH (pred:Milestone)-[r:BEFORE]->(m:Milestone" in query:
+                import re
+                id_match = re.search(r"m:Milestone \{id: '([^']+)'\}", query)
+                if id_match:
+                    target_id = id_match.group(1)
+                    
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    results = []
+                    for rel in self.relationships:
+                        if (rel.get('to_id') == target_id and 
+                            rel.get('type') == 'BEFORE'):
+                            pred_id = rel.get('from_id')
+                            if pred_id in self.workitems:
+                                pred = self.workitems[pred_id]
+                                pred_props = pred.get('properties', pred)
+                                results.append({
+                                    'id': pred_props.get('id'),
+                                    'title': pred_props.get('title'),
+                                    'status': pred_props.get('status'),
+                                    'dependency_type': rel.get('dependency_type', 'finish-to-start'),
+                                    'lag': rel.get('lag', 0)
+                                })
+                    return results
+            
+            # Handle get_before_dependencies queries for milestone successors
+            if "MATCH (m:Milestone" in query and ")-[r:BEFORE]->(succ:Milestone)" in query:
+                import re
+                id_match = re.search(r"m:Milestone \{id: '([^']+)'\}", query)
+                if id_match:
+                    source_id = id_match.group(1)
+                    
+                    if not hasattr(self, 'relationships'):
+                        self.relationships = []
+                    
+                    results = []
+                    for rel in self.relationships:
+                        if (rel.get('from_id') == source_id and 
+                            rel.get('type') == 'BEFORE'):
+                            succ_id = rel.get('to_id')
+                            if succ_id in self.workitems:
+                                succ = self.workitems[succ_id]
+                                succ_props = succ.get('properties', succ)
+                                results.append({
+                                    'id': succ_props.get('id'),
+                                    'title': succ_props.get('title'),
+                                    'status': succ_props.get('status'),
+                                    'dependency_type': rel.get('dependency_type', 'finish-to-start'),
+                                    'lag': rel.get('lag', 0)
+                                })
+                    return results
+            
+            # Handle BEFORE relationship queries
+            if "BEFORE" in query:
+                import re
+                
+                # Handle DELETE queries for BEFORE relationships
+                if "DELETE r" in query:
+                    ids = re.findall(r"id: '([^']+)'", query)
+                    if len(ids) >= 2:
+                        from_id = ids[0]
+                        to_id = ids[1]
+                        
+                        if not hasattr(self, 'relationships'):
+                            self.relationships = []
+                        
+                        initial_count = len(self.relationships)
+                        self.relationships = [
+                            rel for rel in self.relationships
+                            if not (rel.get('from_id') == from_id and 
+                                   rel.get('to_id') == to_id and 
+                                   rel.get('type') == 'BEFORE')
+                        ]
+                        deleted_count = initial_count - len(self.relationships)
+                        
+                        return [{"deleted_count": deleted_count}]
+                
+                # Handle MERGE queries for BEFORE relationships
+                if "MERGE" in query:
+                    ids = re.findall(r"id: '([^']+)'", query)
+                    if len(ids) >= 2:
+                        from_id = ids[0]
+                        to_id = ids[1]
+                        
+                        # Extract dependency_type and lag
+                        dependency_type = "finish-to-start"
+                        lag = 0
+                        
+                        dep_type_match = re.search(r"r\.dependency_type = '([^']+)'", query)
+                        if dep_type_match:
+                            dependency_type = dep_type_match.group(1)
+                        
+                        lag_match = re.search(r"r\.lag = (\d+)", query)
+                        if lag_match:
+                            lag = int(lag_match.group(1))
+                        
+                        if not hasattr(self, 'relationships'):
+                            self.relationships = []
+                        
+                        rel = {
+                            'from_id': from_id,
+                            'to_id': to_id,
+                            'type': 'BEFORE',
+                            'dependency_type': dependency_type,
+                            'lag': lag,
+                        }
+                        self.relationships.append(rel)
+                        
+                        return [{"r": rel}]
             
             # Apply filters from WHERE clause or inline in MATCH
             # Check for inline id filter in MATCH clause: MATCH (m:Milestone {id: 'xxx'})
@@ -142,9 +566,10 @@ class MockGraphService:
                 id_match = re.search(r"\{id: '([^']+)'\}", query)
                 if id_match:
                     milestone_id = id_match.group(1)
+                    # Filter milestones by ID (compare as strings)
                     milestones = [m for m in milestones 
-                                if m.get('id') == milestone_id or 
-                                   m.get('properties', {}).get('id') == milestone_id]
+                                if str(m.get('id')) == str(milestone_id) or 
+                                   str(m.get('properties', {}).get('id')) == str(milestone_id)]
             
             if "WHERE" in query:
                 # Extract project_id filter

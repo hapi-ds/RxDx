@@ -3,14 +3,13 @@
 ## 1. System Overview
 
 ### 1.1 Purpose
-This document specifies the technical design for RxDx, a web-based project management system tailored for regulated industries (medtech, GxP, automotive). The system provides comprehensive project management with strict compliance tracking, digital signatures, versioned requirements management, offline scheduling, and local LLM integration.
+This document specifies the technical design for RxDx, a web-based project management system tailored for regulated industries (medtech, GxP, automotive). The system provides comprehensive project management with strict compliance tracking, digital signatures, versioned requirements management, scheduling, and local LLM integration.
 
 ### 1.2 Architecture Philosophy
 The system follows a modern, scalable architecture with:
 - **Backend**: Python 3.11+ with FastAPI for high-performance async API
 - **Frontend**: Dual interface approach - standard React web UI and immersive WebXR 3D/VR interface
 - **Data Layer**: PostgreSQL for relational data, Apache AGE for graph database
-- **Offline-First**: Support for offline operation with synchronization
 - **Privacy-First**: Local LLM integration (no external AI services)
 - **Compliance-First**: Immutable audit trails and digital signatures
 
@@ -28,11 +27,7 @@ The system follows a modern, scalable architecture with:
 - **Rationale**: Regulatory compliance requires data privacy; no external AI services allowed
 - **Trade-off**: Limited model capabilities vs. complete data sovereignty
 
-**Decision 4: Offline-First Architecture**
-- **Rationale**: Project managers need to work without constant connectivity
-- **Trade-off**: Synchronization complexity vs. user productivity
-
-**Decision 5: Email-Based Work Instructions**
+**Decision 4: Email-Based Work Instructions**
 - **Rationale**: Reduce friction for team members who prefer email over web interfaces
 - **Trade-off**: Parsing complexity vs. improved adoption
 
@@ -2903,197 +2898,373 @@ class CacheService:
 ```
 
 
-## 13. Offline Operation Design
+## 13. Time Tracking System Design
 
-### 13.1 Offline Data Synchronization
+### 13.1 Time Tracking Data Model
 
-```typescript
-// Frontend offline service
-import Dexie, { Table } from 'dexie';
+The time tracking system uses graph database nodes and relationships to track work performed on tasks.
 
-interface OfflineWorkItem {
-  id: string;
-  data: any;
-  lastModified: number;
-  syncStatus: 'pending' | 'synced' | 'conflict';
-}
+#### Worked Node Schema
 
-class OfflineDatabase extends Dexie {
-  workitems!: Table<OfflineWorkItem>;
-  
-  constructor() {
-    super('RegulatedPMOffline');
-    this.version(1).stores({
-      workitems: 'id, lastModified, syncStatus'
-    });
-  }
-}
+```cypher
+// Worked Node - represents a time entry
+CREATE (:Worked {
+    id: 'uuid',
+    resource: 'user_id',      // UUID of the user who performed the work
+    date: 'YYYY-MM-DD',        // Date of work
+    from: 'HH:MM:SS',          // Start time
+    to: 'HH:MM:SS',            // End time
+    duration: integer,         // Duration in minutes (calculated)
+    description: 'string',     // Optional description of work performed
+    created_at: 'timestamp',
+    updated_at: 'timestamp'
+})
 
-const offlineDb = new OfflineDatabase();
-
-export class OfflineService {
-  async saveWorkItemOffline(workitem: any): Promise<void> {
-    await offlineDb.workitems.put({
-      id: workitem.id,
-      data: workitem,
-      lastModified: Date.now(),
-      syncStatus: 'pending'
-    });
-  }
-  
-  async syncWithServer(): Promise<void> {
-    const pendingItems = await offlineDb.workitems
-      .where('syncStatus')
-      .equals('pending')
-      .toArray();
-      
-    for (const item of pendingItems) {
-      try {
-        const response = await fetch(`/api/v1/workitems/${item.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(item.data)
-        });
-        
-        if (response.ok) {
-          await offlineDb.workitems.update(item.id, {
-            syncStatus: 'synced'
-          });
-        } else if (response.status === 409) {
-          // Conflict detected
-          await offlineDb.workitems.update(item.id, {
-            syncStatus: 'conflict'
-          });
-        }
-      } catch (error) {
-        console.error('Sync failed:', error);
-      }
-    }
-  }
-  
-  async resolveConflict(
-    workitemId: string,
-    resolution: 'local' | 'server'
-  ): Promise<void> {
-    const item = await offlineDb.workitems.get(workitemId);
-    if (!item) return;
-    
-    if (resolution === 'local') {
-      // Force push local version
-      await fetch(`/api/v1/workitems/${workitemId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item.data)
-      });
-    } else {
-      // Fetch server version
-      const response = await fetch(`/api/v1/workitems/${workitemId}`);
-      const serverData = await response.json();
-      await offlineDb.workitems.update(workitemId, {
-        data: serverData,
-        syncStatus: 'synced'
-      });
-    }
-  }
-}
+// Worked_On Relationship - links work to task
+(:Worked)-[:WORKED_ON]->(:Task)
 ```
 
-### 13.2 Offline Scheduling
+#### Task Worked Sum
+
+Each task maintains a calculated `worked_sum` property that aggregates all linked worked nodes:
+
+```cypher
+// Query to calculate worked_sum for a task
+MATCH (w:Worked)-[:WORKED_ON]->(t:Task {id: $task_id})
+RETURN t.id, SUM(w.duration) as worked_sum
+```
+
+### 13.2 Time Tracking Service
 
 ```python
-# Backend service for offline schedule calculation
-class OfflineSchedulerService:
-    async def export_project_data(
+from datetime import datetime, time
+from uuid import UUID
+
+class TimeTrackingService:
+    def __init__(self, graph_service: GraphService):
+        self.graph_service = graph_service
+        
+    async def start_time_tracking(
         self,
-        project_id: UUID
+        task_id: UUID,
+        user_id: UUID
     ) -> dict:
-        """Export all data needed for offline scheduling"""
-        tasks = await self.get_project_tasks(project_id)
-        resources = await self.get_project_resources(project_id)
-        dependencies = await self.get_task_dependencies(project_id)
+        """Start time tracking for a task"""
+        # Check if user already has active tracking
+        active = await self.get_active_tracking(user_id)
+        if active:
+            raise ValueError("User already has active time tracking")
+            
+        # Create worked node
+        worked_id = uuid4()
+        now = datetime.utcnow()
         
-        return {
-            'project_id': str(project_id),
-            'tasks': [self._serialize_task(t) for t in tasks],
-            'resources': [self._serialize_resource(r) for r in resources],
-            'dependencies': dependencies,
-            'exported_at': datetime.utcnow().isoformat()
+        worked_data = {
+            'id': str(worked_id),
+            'resource': str(user_id),
+            'date': now.date().isoformat(),
+            'from': now.time().isoformat(),
+            'to': None,  # Not set until stopped
+            'duration': None,
+            'description': None,
+            'created_at': now.isoformat(),
+            'updated_at': now.isoformat()
         }
         
-    async def import_schedule(
-        self,
-        project_id: UUID,
-        schedule_data: dict
-    ):
-        """Import schedule calculated offline"""
-        # Validate schedule
-        if not self._validate_schedule(schedule_data):
-            raise ValueError("Invalid schedule data")
-            
-        # Check for conflicts with server state
-        conflicts = await self._detect_conflicts(project_id, schedule_data)
-        if conflicts:
-            return {'status': 'conflict', 'conflicts': conflicts}
-            
-        # Apply schedule
-        for task_schedule in schedule_data['schedule']:
-            await self.update_task_schedule(
-                task_schedule['task_id'],
-                task_schedule['start_date'],
-                task_schedule['end_date']
-            )
-            
-        return {'status': 'success'}
-```
-
-### 13.3 Offline Signature Queue
-
-```python
-class OfflineSignatureService:
-    async def queue_signature_for_validation(
-        self,
-        signature_data: dict
-    ) -> UUID:
-        """Queue signature created offline for server validation"""
-        # Store in pending signatures table
-        pending_sig = PendingSignature(
-            workitem_id=signature_data['workitem_id'],
-            workitem_version=signature_data['workitem_version'],
-            user_id=signature_data['user_id'],
-            signature_hash=signature_data['signature_hash'],
-            content_hash=signature_data['content_hash'],
-            signed_at=signature_data['signed_at'],
-            status='pending_validation'
+        # Create node and relationship
+        await self.graph_service.create_node('Worked', worked_data)
+        await self.graph_service.create_relationship(
+            from_id=str(worked_id),
+            to_id=str(task_id),
+            rel_type='WORKED_ON'
         )
         
-        self.db.add(pending_sig)
-        await self.db.commit()
+        return worked_data
         
-        return pending_sig.id
-        
-    async def validate_pending_signatures(self):
-        """Validate all pending signatures"""
-        pending = await self.db.query(PendingSignature).filter(
-            PendingSignature.status == 'pending_validation'
-        ).all()
-        
-        for sig in pending:
-            # Verify signature
-            is_valid = await self.signature_service.verify_signature_data(
-                sig.workitem_id,
-                sig.workitem_version,
-                sig.content_hash,
-                sig.signature_hash
-            )
+    async def stop_time_tracking(
+        self,
+        worked_id: UUID,
+        user_id: UUID
+    ) -> dict:
+        """Stop active time tracking"""
+        # Get worked node
+        worked = await self.graph_service.get_node('Worked', str(worked_id))
+        if not worked:
+            raise ValueError("Worked entry not found")
             
-            if is_valid:
-                # Create official signature
-                await self.signature_service.create_signature_from_pending(sig)
-                sig.status = 'validated'
-            else:
-                sig.status = 'invalid'
-                
-        await self.db.commit()
+        if worked['resource'] != str(user_id):
+            raise PermissionError("Cannot stop another user's time tracking")
+            
+        if worked['to'] is not None:
+            raise ValueError("Time tracking already stopped")
+            
+        # Calculate duration
+        now = datetime.utcnow()
+        start_time = datetime.fromisoformat(f"{worked['date']}T{worked['from']}")
+        duration_minutes = int((now - start_time).total_seconds() / 60)
+        
+        # Update worked node
+        updates = {
+            'to': now.time().isoformat(),
+            'duration': duration_minutes,
+            'updated_at': now.isoformat()
+        }
+        
+        await self.graph_service.update_node('Worked', str(worked_id), updates)
+        
+        # Update task worked_sum
+        task_id = await self._get_task_for_worked(worked_id)
+        await self._update_task_worked_sum(task_id)
+        
+        return {**worked, **updates}
+        
+    async def add_time_entry(
+        self,
+        task_id: UUID,
+        user_id: UUID,
+        date: str,
+        from_time: str,
+        to_time: str,
+        description: str | None = None
+    ) -> dict:
+        """Manually add a completed time entry"""
+        # Validate times
+        start = datetime.fromisoformat(f"{date}T{from_time}")
+        end = datetime.fromisoformat(f"{date}T{to_time}")
+        
+        if end <= start:
+            raise ValueError("End time must be after start time")
+            
+        duration_minutes = int((end - start).total_seconds() / 60)
+        
+        # Create worked node
+        worked_id = uuid4()
+        worked_data = {
+            'id': str(worked_id),
+            'resource': str(user_id),
+            'date': date,
+            'from': from_time,
+            'to': to_time,
+            'duration': duration_minutes,
+            'description': description,
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        
+        await self.graph_service.create_node('Worked', worked_data)
+        await self.graph_service.create_relationship(
+            from_id=str(worked_id),
+            to_id=str(task_id),
+            rel_type='WORKED_ON'
+        )
+        
+        # Update task worked_sum
+        await self._update_task_worked_sum(task_id)
+        
+        return worked_data
+        
+    async def get_active_tracking(self, user_id: UUID) -> dict | None:
+        """Get user's currently active time tracking"""
+        query = """
+        MATCH (w:Worked {resource: $user_id})
+        WHERE w.to IS NULL
+        RETURN w
+        """
+        result = await self.graph_service.execute_query(
+            query,
+            {'user_id': str(user_id)}
+        )
+        return result[0] if result else None
+        
+    async def get_task_time_entries(self, task_id: UUID) -> list[dict]:
+        """Get all time entries for a task"""
+        query = """
+        MATCH (w:Worked)-[:WORKED_ON]->(t:Task {id: $task_id})
+        RETURN w
+        ORDER BY w.date DESC, w.from DESC
+        """
+        return await self.graph_service.execute_query(
+            query,
+            {'task_id': str(task_id)}
+        )
+        
+    async def _update_task_worked_sum(self, task_id: UUID):
+        """Update the worked_sum property on a task"""
+        query = """
+        MATCH (w:Worked)-[:WORKED_ON]->(t:Task {id: $task_id})
+        WHERE w.duration IS NOT NULL
+        WITH t, SUM(w.duration) as total_minutes
+        SET t.worked_sum = total_minutes
+        RETURN t.worked_sum
+        """
+        await self.graph_service.execute_query(
+            query,
+            {'task_id': str(task_id)}
+        )
+        
+    async def _get_task_for_worked(self, worked_id: UUID) -> UUID:
+        """Get the task ID for a worked entry"""
+        query = """
+        MATCH (w:Worked {id: $worked_id})-[:WORKED_ON]->(t:Task)
+        RETURN t.id
+        """
+        result = await self.graph_service.execute_query(
+            query,
+            {'worked_id': str(worked_id)}
+        )
+        return UUID(result[0]['id']) if result else None
+```
+
+### 13.3 Task List Sorting
+
+Tasks are sorted to prioritize user's active work:
+
+```python
+async def get_sorted_tasks_for_user(
+    self,
+    user_id: UUID,
+    project_id: UUID | None = None
+) -> list[dict]:
+    """
+    Get tasks sorted by:
+    1. Tasks with active tracking by this user
+    2. Tasks scheduled next (by start date)
+    3. All other tasks
+    """
+    query = """
+    MATCH (t:Task)
+    WHERE $project_id IS NULL OR t.project_id = $project_id
+    OPTIONAL MATCH (w:Worked {resource: $user_id})-[:WORKED_ON]->(t)
+    WHERE w.to IS NULL
+    WITH t, 
+         CASE WHEN w IS NOT NULL THEN 1 ELSE 0 END as has_active,
+         COALESCE(t.scheduled_start, '9999-12-31') as scheduled
+    ORDER BY has_active DESC, scheduled ASC, t.title ASC
+    RETURN t
+    """
+    return await self.graph_service.execute_query(
+        query,
+        {
+            'user_id': str(user_id),
+            'project_id': str(project_id) if project_id else None
+        }
+    )
+```
+
+### 13.4 Time Tracking API Endpoints
+
+```python
+@router.post("/time-tracking/start")
+async def start_tracking(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: TimeTrackingService = Depends(get_time_tracking_service)
+):
+    """Start time tracking for a task"""
+    return await service.start_time_tracking(task_id, current_user.id)
+
+@router.post("/time-tracking/stop")
+async def stop_tracking(
+    worked_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: TimeTrackingService = Depends(get_time_tracking_service)
+):
+    """Stop active time tracking"""
+    return await service.stop_time_tracking(worked_id, current_user.id)
+
+@router.get("/time-tracking/active")
+async def get_active(
+    current_user: User = Depends(get_current_user),
+    service: TimeTrackingService = Depends(get_time_tracking_service)
+):
+    """Get user's active time tracking"""
+    return await service.get_active_tracking(current_user.id)
+
+@router.get("/time-tracking/task/{task_id}")
+async def get_task_entries(
+    task_id: UUID,
+    service: TimeTrackingService = Depends(get_time_tracking_service)
+):
+    """Get all time entries for a task"""
+    return await service.get_task_time_entries(task_id)
+```
+
+### 13.5 Frontend Time Tracking Components
+
+```typescript
+// Time Tracking Store
+interface TimeTrackingState {
+  activeEntry: WorkedEntry | null;
+  isTracking: boolean;
+  startTracking: (taskId: string) => Promise<void>;
+  stopTracking: () => Promise<void>;
+  loadActive: () => Promise<void>;
+}
+
+export const useTimeTrackingStore = create<TimeTrackingState>((set, get) => ({
+  activeEntry: null,
+  isTracking: false,
+  
+  startTracking: async (taskId: string) => {
+    const entry = await timeTrackingService.start(taskId);
+    set({ activeEntry: entry, isTracking: true });
+  },
+  
+  stopTracking: async () => {
+    const { activeEntry } = get();
+    if (!activeEntry) return;
+    
+    await timeTrackingService.stop(activeEntry.id);
+    set({ activeEntry: null, isTracking: false });
+  },
+  
+  loadActive: async () => {
+    const entry = await timeTrackingService.getActive();
+    set({ 
+      activeEntry: entry, 
+      isTracking: entry !== null 
+    });
+  },
+}));
+
+// Time Tracking Widget Component
+export function TimeTrackingWidget({ taskId }: { taskId: string }) {
+  const { activeEntry, isTracking, startTracking, stopTracking } = 
+    useTimeTrackingStore();
+  const [elapsed, setElapsed] = useState(0);
+  
+  useEffect(() => {
+    if (!isTracking || !activeEntry) return;
+    
+    const interval = setInterval(() => {
+      const start = new Date(`${activeEntry.date}T${activeEntry.from}`);
+      const now = new Date();
+      setElapsed(Math.floor((now.getTime() - start.getTime()) / 1000));
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isTracking, activeEntry]);
+  
+  const formatTime = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+  
+  return (
+    <div className="time-tracking-widget">
+      {isTracking && activeEntry ? (
+        <>
+          <div className="timer">{formatTime(elapsed)}</div>
+          <button onClick={stopTracking}>Stop</button>
+        </>
+      ) : (
+        <button onClick={() => startTracking(taskId)}>Start</button>
+      )}
+    </div>
+  );
+}
 ```
 
 

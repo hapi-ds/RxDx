@@ -318,7 +318,7 @@
 ## Phase 13: Project Scheduling
 
 ### 13.1 Scheduler Service
-**References:** Requirement 7 (Offline Project Scheduling)
+**References:** Requirement 7 (Project Scheduling)
 - [x] 13.1.1 Create SchedulerService class with ortools
 - [x] 13.1.2 Implement schedule_project method with constraint programming
 - [x] 13.1.3 Implement task dependency constraints (finish-to-start, start-to-start, finish-to-finish)
@@ -329,7 +329,7 @@
 - [x] 13.1.8 Write property-based tests for constraint satisfaction
 
 ### 13.2 Scheduler API Endpoints
-**References:** Requirement 7 (Offline Project Scheduling)
+**References:** Requirement 7 (Project Scheduling)
 - [x] 13.2.1 Create POST /api/v1/schedule/calculate endpoint
 - [x] 13.2.2 Create GET /api/v1/schedule/{project_id} endpoint
 - [x] 13.2.3 Create PATCH /api/v1/schedule/{project_id} endpoint (manual adjustments)
@@ -360,7 +360,7 @@
 ## Phase 15: Time Recording Backend
 
 ### 15.1 Time Entry Models and Service
-**References:** Requirement 4 (Mobile Time Recording)
+**References:** Requirement 5 (Email-Based Work Instructions and Knowledge Capture)
 - [x] 15.1.1 Create TimeEntry Pydantic schema (id, user_id, project_id, task_id, start_time, end_time, duration, description, category)
 - [x] 15.1.2 Create TimeService class
 - [x] 15.1.3 Implement create_time_entry method
@@ -370,13 +370,12 @@
 - [x] 15.1.7 Write unit tests for time tracking
 
 ### 15.2 Time Recording API Endpoints
-**References:** Requirement 4 (Mobile Time Recording)
+**References:** Requirement 4 (Email-Based Work Instructions and Knowledge Capture)
 - [x] 15.2.1 Create POST /api/v1/time-entries endpoint
 - [x] 15.2.2 Create GET /api/v1/time-entries endpoint
 - [x] 15.2.3 Create PATCH /api/v1/time-entries/{id} endpoint
 - [x] 15.2.4 Create DELETE /api/v1/time-entries/{id} endpoint
-- [x] 15.2.5 Create POST /api/v1/time-entries/sync endpoint (for offline sync)
-- [x] 15.2.6 Write integration tests for time entry endpoints
+- [x] 15.2.5 Write integration tests for time entry endpoints
 
 ## Phase 16: Frontend - Core Setup
 
@@ -572,7 +571,7 @@
 ## Phase 24: Frontend - Project Scheduling UI
 
 ### 24.1 Schedule Components
-**References:** Requirement 7 (Offline Project Scheduling)
+**References:** Requirement 7 (Project Scheduling)
 - [x] 24.1.1 Create Schedule page
 - [x] 24.1.2 Create GanttChart component
 - [x] 24.1.3 Create TaskDependencyEditor component
@@ -589,7 +588,7 @@
 - [x] 24.2.5 Write unit tests for project management components
 
 ### 24.3 Connect Frontend to Backend Data
-**References:** Requirement 7 (Offline Project Scheduling), Requirement 10 (Risk Management with FMEA)
+**References:** Requirement 7 (Project Scheduling), Requirement 10 (Risk Management with FMEA)
 - [x] 24.3.1 Fix scheduleService to use /workitems?type=task endpoint instead of /schedule/tasks
 - [x] 24.3.2 Implement statistics calculation in scheduleService from task data
 - [x] 24.3.3 Verify riskService connects to /risks/ endpoint correctly
@@ -667,161 +666,177 @@
 
 ## Phase 26: Mobile Time Recording App
 
-### 26.1 Mobile App Setup
+### 26.1 Time Tracking Data Model
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 26.1.1 Initialize React Native project
-- [ ] 26.1.2 Set up navigation (React Navigation)
-- [ ] 26.1.3 Configure AsyncStorage for local data
-- [ ] 26.1.4 Set up NetInfo for connectivity detection
-- [ ] 26.1.5 Configure build for iOS and Android
+- [ ] 26.1.1 Create "worked" node schema for graph database with fields: resource (user_id), date, from (start_time), to (end_time), description (optional)
+- [ ] 26.1.2 Define "worked_on" relationship type from "worked" node to task node
+- [ ] 26.1.3 Implement GraphService method to create worked nodes and relationships
+- [ ] 26.1.4 Implement GraphService method to calculate worked_sum for tasks (aggregate all linked worked nodes)
+- [ ] 26.1.5 Write unit tests for worked node creation and aggregation
+- [ ] 26.1.6 Write property-based tests for time validation (end time after start time)
 
-### 26.2 Time Entry Screens
+### 26.2 Time Tracking Backend Service
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 26.2.1 Create TimeEntry screen with start/stop timer
-- [ ] 26.2.2 Create TimeList screen
-- [ ] 26.2.3 Create Sync screen with status display
-- [ ] 26.2.4 Create ProjectSelector component
-- [ ] 26.2.5 Create TaskSelector component
-- [ ] 26.2.6 Write unit tests for mobile screens
+- [ ] 26.2.1 Create TimeTrackingService class
+- [ ] 26.2.2 Implement start_time_tracking method (creates worked node with start time)
+- [ ] 26.2.3 Implement stop_time_tracking method (updates worked node with end time)
+- [ ] 26.2.4 Implement get_active_tracking method (get currently running time entries for user)
+- [ ] 26.2.5 Implement get_task_worked_sum method (calculate total time for task)
+- [ ] 26.2.6 Implement add_time_entry method (manually add completed time entry)
+- [ ] 26.2.7 Implement update_time_entry method (edit existing time entry)
+- [ ] 26.2.8 Implement get_sorted_tasks_for_user method (sort: started by user → scheduled next → all others)
+- [ ] 26.2.9 Write unit tests for time tracking service
 
-### 26.3 Offline Sync Service
+### 26.3 Time Tracking API Endpoints
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 26.3.1 Create SyncService class
-- [ ] 26.3.2 Implement local storage for pending entries
-- [ ] 26.3.3 Implement background sync on connectivity restore
-- [ ] 26.3.4 Implement conflict resolution
-- [ ] 26.3.5 Write unit tests for sync service
+- [ ] 26.3.1 Create POST /api/v1/time-tracking/start endpoint (start tracking for task)
+- [ ] 26.3.2 Create POST /api/v1/time-tracking/stop endpoint (stop active tracking)
+- [ ] 26.3.3 Create GET /api/v1/time-tracking/active endpoint (get user's active entries)
+- [ ] 26.3.4 Create GET /api/v1/time-tracking/task/{task_id} endpoint (get all time entries for task)
+- [ ] 26.3.5 Create POST /api/v1/time-tracking/entries endpoint (manually add time entry)
+- [ ] 26.3.6 Create PATCH /api/v1/time-tracking/entries/{id} endpoint (update time entry)
+- [ ] 26.3.7 Create DELETE /api/v1/time-tracking/entries/{id} endpoint (delete time entry)
+- [ ] 26.3.8 Create GET /api/v1/time-tracking/tasks endpoint (get sorted task list for user)
+- [ ] 26.3.9 Write integration tests for time tracking endpoints
 
-## Phase 27: Offline Support
+### 26.4 Mobile App Setup
+**References:** Requirement 4 (Mobile Time Recording)
+- [ ] 26.4.1 Initialize React Native project for time recording app
+- [ ] 26.4.2 Set up navigation (React Navigation)
+- [ ] 26.4.3 Configure AsyncStorage for local data persistence
+- [ ] 26.4.4 Set up API client for backend communication
+- [ ] 26.4.5 Configure build for iOS and Android
+- [ ] 26.4.6 Set up authentication flow (login screen)
 
-### 27.1 Backend Offline Support
-**References:** Requirement 15 (Offline Operation Support)
-- [ ] 27.1.1 Implement data export for offline use (JSON format)
-- [ ] 27.1.2 Create GET /api/v1/offline/download endpoint
-- [ ] 27.1.3 Implement offline change tracking
-- [ ] 27.1.4 Create POST /api/v1/offline/sync endpoint
-- [ ] 27.1.5 Implement conflict detection and resolution
-- [ ] 27.1.6 Write integration tests for offline sync
+### 26.5 Mobile App Time Tracking UI
+**References:** Requirement 4 (Mobile Time Recording)
+- [ ] 26.5.1 Create TaskSelector screen with sorted task list (started → scheduled → all others)
+- [ ] 26.5.2 Implement task search and filtering
+- [ ] 26.5.3 Create TimeTracking screen with start/stop button
+- [ ] 26.5.4 Display active timer with elapsed time
+- [ ] 26.5.5 Add optional description field for time entries
+- [ ] 26.5.6 Display worked_sum on task items
+- [ ] 26.5.7 Create TimeEntryList screen (view history)
+- [ ] 26.5.8 Write unit tests for mobile screens
 
-### 27.2 Frontend Offline Support
-**References:** Requirement 15 (Offline Operation Support)
-- [ ] 27.2.1 Implement service worker for offline caching
-- [ ] 27.2.2 Create offline indicator UI component
-- [ ] 27.2.3 Implement local IndexedDB storage
-- [ ] 27.2.4 Implement offline queue for pending changes
-- [ ] 27.2.5 Implement conflict resolution UI
-- [ ] 27.2.6 Write integration tests for offline features
+### 26.6 Mobile App User Guide
+**References:** Requirement 4 (Mobile Time Recording)
+- [ ] 26.6.1 Create user guide document for mobile time tracking app
+- [ ] 26.6.2 Document how to select tasks and start/stop tracking
+- [ ] 26.6.3 Document task list sorting behavior
+- [ ] 26.6.4 Document how to add descriptions to time entries
+- [ ] 26.6.5 Document how to view time entry history and worked_sum
+- [ ] 26.6.6 Include screenshots and examples
+- [ ] 26.6.7 Add troubleshooting section
 
-## Phase 28: Data Export and Backup
+## Phase 27: Data Export and Backup
 
-### 28.1 Export Service
+### 27.1 Export Service
 **References:** Requirement 14 (Data Export and Backup)
-- [ ] 28.1.1 Create ExportService class
-- [ ] 28.1.2 Implement export_workitems_json method
-- [ ] 28.1.3 Implement export_graph_db method
-- [ ] 28.1.4 Implement export_audit_logs method
-- [ ] 28.1.5 Write unit tests for export service
+- [ ] 27.1.1 Create ExportService class
+- [ ] 27.1.2 Implement export_workitems_json method
+- [ ] 27.1.3 Implement export_graph_db method
+- [ ] 27.1.4 Implement export_audit_logs method
+- [ ] 27.1.5 Write unit tests for export service
 
-### 28.2 Backup Service
+### 27.2 Backup Service
 **References:** Requirement 14 (Data Export and Backup)
-- [ ] 28.2.1 Create BackupService class
-- [ ] 28.2.2 Implement full backup method (WorkItems, Version_History, Digital_Signatures)
-- [ ] 28.2.3 Implement scheduled backup with cron
-- [ ] 28.2.4 Implement backup verification
-- [ ] 28.2.5 Implement restore from backup
-- [ ] 28.2.6 Write integration tests for backup/restore
+- [ ] 27.2.1 Create BackupService class
+- [ ] 27.2.2 Implement full backup method (WorkItems, Version_History, Digital_Signatures)
+- [ ] 27.2.3 Implement scheduled backup with cron
+- [ ] 27.2.4 Implement backup verification
+- [ ] 27.2.5 Implement restore from backup
+- [ ] 27.2.6 Write integration tests for backup/restore
 
-### 28.3 Export API Endpoints
+### 27.3 Export API Endpoints
 **References:** Requirement 14 (Data Export and Backup)
-- [ ] 28.3.1 Create GET /api/v1/export/workitems endpoint
-- [ ] 28.3.2 Create GET /api/v1/export/graph endpoint
-- [ ] 28.3.3 Create GET /api/v1/export/audit-logs endpoint
-- [ ] 28.3.4 Create POST /api/v1/backup/create endpoint
-- [ ] 28.3.5 Create POST /api/v1/backup/restore endpoint
-- [ ] 28.3.6 Write integration tests for export endpoints
+- [ ] 27.3.1 Create GET /api/v1/export/workitems endpoint
+- [ ] 27.3.2 Create GET /api/v1/export/graph endpoint
+- [ ] 27.3.3 Create GET /api/v1/export/audit-logs endpoint
+- [ ] 27.3.4 Create POST /api/v1/backup/create endpoint
+- [ ] 27.3.5 Create POST /api/v1/backup/restore endpoint
+- [ ] 27.3.6 Write integration tests for export endpoints
 
-## Phase 29: Performance Optimization
+## Phase 28: Performance Optimization
 
-### 29.1 Backend Optimization
+### 28.1 Backend Optimization
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 29.1.1 Add database indexes for frequently queried fields
-- [ ] 29.1.2 Implement query result caching with Redis (optional)
-- [ ] 29.1.3 Optimize graph queries (limit results, pagination)
-- [ ] 29.1.4 Implement connection pooling optimization
-- [ ] 29.1.5 Add query performance monitoring
+- [ ] 28.1.1 Add database indexes for frequently queried fields
+- [ ] 28.1.2 Implement query result caching with Redis (optional)
+- [ ] 28.1.3 Optimize graph queries (limit results, pagination)
+- [ ] 28.1.4 Implement connection pooling optimization
+- [ ] 28.1.5 Add query performance monitoring
 
-### 29.2 Frontend Optimization
+### 28.2 Frontend Optimization
 **References:** Requirement 16 (Dual Frontend Interface)
-- [ ] 29.2.1 Implement code splitting and lazy loading
-- [ ] 29.2.2 Optimize 3D rendering (LOD, frustum culling)
-- [ ] 29.2.3 Implement virtual scrolling for large lists
-- [ ] 29.2.4 Optimize bundle size (tree shaking, minification)
-- [ ] 29.2.5 Ensure 72 FPS minimum for VR mode
+- [ ] 28.2.1 Implement code splitting and lazy loading
+- [ ] 28.2.2 Optimize 3D rendering (LOD, frustum culling)
+- [ ] 28.2.3 Implement virtual scrolling for large lists
+- [ ] 28.2.4 Optimize bundle size (tree shaking, minification)
+- [ ] 28.2.5 Ensure 72 FPS minimum for VR mode
 
-## Phase 30: Security Hardening
+## Phase 29: Security Hardening
 
-### 30.1 Security Implementation
+### 29.1 Security Implementation
 **References:** Requirement 1 (User Authentication and Authorization)
-- [ ] 30.1.1 Implement HTTPS enforcement
-- [ ] 30.1.2 Add security headers (HSTS, CSP, X-Frame-Options)
-- [ ] 30.1.3 Implement rate limiting on API endpoints
-- [ ] 30.1.4 Add input sanitization and validation
-- [ ] 30.1.5 Implement CORS configuration
-- [ ] 30.1.6 Add SQL injection prevention checks
-- [ ] 30.1.7 Conduct security audit and penetration testing
+- [ ] 29.1.1 Implement HTTPS enforcement
+- [ ] 29.1.2 Add security headers (HSTS, CSP, X-Frame-Options)
+- [ ] 29.1.3 Implement rate limiting on API endpoints
+- [ ] 29.1.4 Add input sanitization and validation
+- [ ] 29.1.5 Implement CORS configuration
+- [ ] 29.1.6 Add SQL injection prevention checks
+- [ ] 29.1.7 Conduct security audit and penetration testing
 
-## Phase 31: Testing and Quality Assurance
+## Phase 30: Testing and Quality Assurance
 
-### 31.1 Backend Testing
+### 30.1 Backend Testing
 **References:** Requirement 17 (Technology Stack)
-- [ ] 31.1.1 Achieve 80%+ unit test coverage for backend
-- [ ] 31.1.2 Write property-based tests for critical logic
-- [ ] 31.1.3 Write integration tests for all API endpoints
-- [ ] 31.1.4 Implement API contract testing
-- [ ] 31.1.5 Set up continuous integration (CI) pipeline
+- [ ] 30.1.1 Achieve 80%+ unit test coverage for backend
+- [ ] 30.1.2 Write property-based tests for critical logic
+- [ ] 30.1.3 Write integration tests for all API endpoints
+- [ ] 30.1.4 Implement API contract testing
+- [ ] 30.1.5 Set up continuous integration (CI) pipeline
 
-### 31.2 Frontend Testing
+### 30.2 Frontend Testing
 **References:** Requirement 17 (Technology Stack)
-- [ ] 31.2.1 Achieve 80%+ unit test coverage for frontend
-- [ ] 31.2.2 Write integration tests for critical user flows
-- [ ] 31.2.3 Implement E2E tests with Playwright/Cypress
-- [ ] 31.2.4 Test XR features on actual devices
-- [ ] 31.2.5 Perform accessibility testing (WCAG compliance)
+- [ ] 30.2.1 Achieve 80%+ unit test coverage for frontend
+- [ ] 30.2.2 Write integration tests for critical user flows
+- [ ] 30.2.3 Implement E2E tests with Playwright/Cypress
+- [ ] 30.2.4 Test XR features on actual devices
+- [ ] 30.2.5 Perform accessibility testing (WCAG compliance)
 
-### 31.3 Performance Testing
+### 30.3 Performance Testing
 **References:** Requirement 6 (Knowledge Management with Graph Database)
-- [ ] 31.3.1 Load testing for API endpoints
-- [ ] 31.3.2 Stress testing for graph queries
-- [ ] 31.3.3 Performance testing for 3D/VR rendering
-- [ ] 31.3.4 Mobile app performance testing
-- [ ] 31.3.5 Verify 2-second query response time requirement
+- [ ] 30.3.1 Load testing for API endpoints
+- [ ] 30.3.2 Stress testing for graph queries
+- [ ] 30.3.3 Performance testing for 3D/VR rendering
+- [ ] 30.3.4 Verify 2-second query response time requirement
 
-## Phase 32: Documentation and Deployment
+## Phase 31: Documentation and Deployment
 
-### 32.1 API Documentation
+### 31.1 API Documentation
 **References:** Requirement 17 (Technology Stack)
-- [ ] 32.1.1 Generate OpenAPI/Swagger documentation
-- [ ] 32.1.2 Create API usage examples
-- [ ] 32.1.3 Document authentication flow
-- [ ] 32.1.4 Create Postman collection for API testing
+- [ ] 31.1.1 Generate OpenAPI/Swagger documentation
+- [ ] 31.1.2 Create API usage examples
+- [ ] 31.1.3 Document authentication flow
+- [ ] 31.1.4 Create Postman collection for API testing
 
-### 32.2 User Documentation
-- [ ] 32.2.1 Create user manual for web interface
-- [ ] 32.2.2 Create user manual for XR interface
-- [ ] 32.2.3 Create mobile app user guide
-- [ ] 32.2.4 Create administrator guide
-- [ ] 32.2.5 Create compliance documentation
+### 31.2 User Documentation
+- [ ] 31.2.1 Create user manual for web interface
+- [ ] 31.2.2 Create user manual for XR interface
+- [ ] 31.2.3 Create administrator guide
+- [ ] 31.2.4 Create compliance documentation
 
-### 32.3 Deployment Setup
+### 31.3 Deployment Setup
 **References:** Requirement 17 (Technology Stack)
-- [ ] 32.3.1 Create production Docker images
-- [ ] 32.3.2 Set up production docker-compose configuration
-- [ ] 32.3.3 Configure environment variables for production
-- [ ] 32.3.4 Set up SSL/TLS certificates
-- [ ] 32.3.5 Configure database backups in production
-- [ ] 32.3.6 Set up monitoring and logging (optional: Prometheus, Grafana)
-- [ ] 32.3.7 Create deployment runbook
-- [ ] 32.3.8 Perform production deployment and smoke testing
+- [ ] 31.3.1 Create production Docker images
+- [ ] 31.3.2 Set up production docker-compose configuration
+- [ ] 31.3.3 Configure environment variables for production
+- [ ] 31.3.4 Set up SSL/TLS certificates
+- [ ] 31.3.5 Configure database backups in production
+- [ ] 31.3.6 Set up monitoring and logging (optional: Prometheus, Grafana)
+- [ ] 31.3.7 Create deployment runbook
+- [ ] 31.3.8 Perform production deployment and smoke testing
 
 ## Optional Enhancements
 
@@ -863,10 +878,10 @@
 
 - Phase 1-3: Project Setup (2-3 weeks)
 - Phase 4-15: Core Backend (8-10 weeks)
-- Phase 16-23: Core Frontend (8-10 weeks)
-- Phase 24: Mobile App (3-4 weeks)
-- Phase 25-26: Offline & Backup (2-3 weeks)
-- Phase 27-29: Optimization & Testing (3-4 weeks)
-- Phase 30: Documentation & Deployment (2 weeks)
+- Phase 16-25: Core Frontend (8-10 weeks)
+- Phase 26: Mobile Time Recording App (3-4 weeks)
+- Phase 27-28: Export, Backup & Optimization (3-4 weeks)
+- Phase 29-30: Security & Testing (3-4 weeks)
+- Phase 31: Documentation & Deployment (2 weeks)
 
 **Total Estimated Time: 28-36 weeks (7-9 months)**

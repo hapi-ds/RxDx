@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document specifies the requirements for RxDx, a web-based project management system designed for regulated industries including medical technology (medtech), Good Practice (GxP) environments, and automotive sectors. The system provides comprehensive project management capabilities with strict compliance tracking, digital signatures, versioned requirements management, offline scheduling, and local LLM integration for intelligent work instruction processing.
+This document specifies the requirements for RxDx, a web-based project management system designed for regulated industries including medical technology (medtech), Good Practice (GxP) environments, and automotive sectors. The system provides comprehensive project management capabilities with strict compliance tracking, digital signatures, versioned requirements management, scheduling, and local LLM integration for intelligent work instruction processing.
 
 ## Glossary
 
@@ -14,7 +14,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 - **Risk_Node**: A specific risk item linked to design or process elements
 - **TestSpec**: A specification document defining test cases and acceptance criteria
 - **TestRun**: An execution instance of a TestSpec with recorded results
-- **Scheduler**: The offline project scheduling engine using ortools
+- **Scheduler**: The project scheduling engine using ortools
 - **Graph_DB**: The graph database storing project knowledge and relationships
 - **Local_LLM**: A locally-hosted large language model (LM-Studio compatible)
 - **Time_Recording_App**: The mobile-only application for time tracking
@@ -70,17 +70,21 @@ This document specifies the requirements for RxDx, a web-based project managemen
 
 ### Requirement 4: Mobile Time Recording
 
-**User Story:** As a project team member, I want to record time entries from my mobile device, so that I can track work hours accurately regardless of location.
+**User Story:** As a project team member, I want to easily track time spent on tasks from my mobile phone with a simple start/stop interface, so that I can accurately record work hours for project management and invoicing while working on-site or away from my desk.
 
 #### Acceptance Criteria
 
-1. THE Time_Recording_App SHALL run on mobile devices (iOS and Android)
-2. WHEN a user starts a time entry, THE Time_Recording_App SHALL record the start timestamp and associated project
-3. WHEN a user stops a time entry, THE Time_Recording_App SHALL record the end timestamp and calculate duration
-4. THE Time_Recording_App SHALL allow users to add descriptions and categories to time entries
-5. WHEN network connectivity is unavailable, THE Time_Recording_App SHALL store time entries locally
-6. WHEN network connectivity is restored, THE Time_Recording_App SHALL synchronize local entries with the System
-7. THE System SHALL validate and store all time entries with user attribution
+1. THE System SHALL provide a mobile phone application (iOS and Android) for time recording
+2. THE mobile app SHALL provide a simple interface to select a task and start/stop time recording
+3. WHEN a user starts time recording, THE System SHALL create a "worked" node in the graph database linked to the task
+4. THE "worked" node SHALL store the resource (user), date, start time (from), end time (to), and optional description
+5. THE System SHALL create a "worked_on" relationship from the "worked" node to the task node
+6. WHEN displaying a task, THE System SHALL calculate and display the sum of all linked worked items as "worked_sum"
+7. THE mobile app SHALL sort the task list showing: tasks already started by the logged-in user first, then scheduled next tasks, then all other tasks
+8. THE mobile app SHALL allow users to add descriptions to time entries for additional context
+9. THE System SHALL validate that end time is after start time for all time entries
+10. THE mobile app SHALL work on both iOS and Android devices
+11. THE mobile app SHALL synchronize time entries with the backend server in real-time when network is available
 
 ### Requirement 5: Email-Based Work Instructions and Knowledge Capture
 
@@ -115,9 +119,9 @@ This document specifies the requirements for RxDx, a web-based project managemen
 8. WHEN querying the Graph_DB, THE System SHALL return results within 2 seconds for typical queries
 9. THE System SHALL support exporting mind-map views as images or interactive HTML
 
-### Requirement 7: Offline Project Scheduling
+### Requirement 7: Project Scheduling
 
-**User Story:** As a project manager, I want offline project scheduling capabilities, so that I can create and optimize project plans without requiring constant internet connectivity.
+**User Story:** As a project manager, I want project scheduling capabilities, so that I can create and optimize project plans based on dependencies and resource constraints.
 
 #### Acceptance Criteria
 
@@ -126,8 +130,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 3. THE Scheduler SHALL support task dependencies (finish-to-start, start-to-start, finish-to-finish)
 4. THE Scheduler SHALL respect resource availability and capacity constraints
 5. WHEN scheduling conflicts occur, THE Scheduler SHALL identify and report constraint violations
-6. THE Scheduler SHALL operate without network connectivity using locally cached project data
-7. WHEN the schedule is recalculated, THE System SHALL preserve manual adjustments where possible
+6. WHEN the schedule is recalculated, THE System SHALL preserve manual adjustments where possible
 
 ### Requirement 8: Document Generation
 
@@ -235,21 +238,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 6. THE System SHALL support restoring from backup with complete data fidelity
 7. THE System SHALL export audit logs separately from operational data
 
-### Requirement 15: Offline Operation Support
-
-**User Story:** As a project manager, I want offline operation capabilities, so that I can work on project plans without network connectivity.
-
-#### Acceptance Criteria
-
-1. THE System SHALL support downloading project data for offline use
-2. WHEN operating offline, THE System SHALL allow viewing and editing WorkItems locally
-3. WHEN operating offline, THE Scheduler SHALL perform schedule calculations using cached data
-4. WHEN network connectivity is restored, THE System SHALL synchronize local changes with the server
-5. WHEN synchronization conflicts occur, THE System SHALL present conflicts to the user for resolution
-6. THE System SHALL indicate offline mode status clearly in the user interface
-7. THE System SHALL queue Digital_Signatures created offline for server validation upon reconnection
-
-### Requirement 16: Dual Frontend Interface (Web and Immersive XR)
+### Requirement 15: Dual Frontend Interface (Web and Immersive XR)
 
 **User Story:** As a user, I want to access the system through both a standard web interface and an immersive 3D/VR interface, so that I can choose the most appropriate interaction mode for my current task and hardware capabilities.
 
@@ -271,7 +260,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 14. WHEN visualizing project schedules in immersive mode, THE System SHALL render Gantt charts and timelines in 3D space
 15. THE System SHALL provide accessibility features in both standard and immersive interfaces
 
-### Requirement 17: Technology Stack and Implementation Standards
+### Requirement 16: Technology Stack and Implementation Standards
 
 **User Story:** As a development team, we want clearly defined technology standards and implementation patterns, so that we can build a maintainable, scalable, and compliant system with consistent architecture.
 
@@ -298,7 +287,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 19. THE System SHALL use passlib with Argon2id for password hashing, python-jose for JWT tokens, and cryptography library for digital signatures
 20. THE System SHALL use ReportLab for PDF generation, openpyxl for Excel generation, and python-docx-template for Word document generation
 
-### Requirement 18: Template Management UI
+### Requirement 17: Template Management UI
 
 **User Story:** As a project administrator, I want a frontend interface to browse, validate, and apply project templates, so that I can quickly initialize projects with predefined configurations without using command-line tools or APIs directly.
 
@@ -315,7 +304,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 9. WHEN template application fails, THE System SHALL display detailed error messages indicating which entities failed and why
 10. THE System SHALL provide a refresh button to reload the template list from the backend
 
-### Requirement 19: Frontend Navigation and Routing
+### Requirement 18: Frontend Navigation and Routing
 
 **User Story:** As a user, I want comprehensive navigation with links to all application pages, so that I can easily navigate between different sections of the application and access features through direct URLs.
 
@@ -337,7 +326,7 @@ This document specifies the requirements for RxDx, a web-based project managemen
 14. THE Graph Explorer page SHALL load graph data automatically on mount
 15. IF graph data fails to load, THE System SHALL display an error message with retry option
 
-### Requirement 20: Enhanced Version Control User Experience
+### Requirement 19: Enhanced Version Control User Experience
 
 **User Story:** As a user, I want clear visual indicators and previews of versioning behavior, so that I understand the versioning implications of my actions when creating and editing work items.
 

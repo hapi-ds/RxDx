@@ -21,7 +21,9 @@ class GraphService:
         if self.pool is None:
             # Parse DATABASE_URL to get connection parameters
             # Format: postgresql+asyncpg://user:pass@host:port/dbname
-            url = str(settings.DATABASE_URL).replace('postgresql+asyncpg://', 'postgresql://')
+            url = str(settings.DATABASE_URL).replace(
+                "postgresql+asyncpg://", "postgresql://"
+            )
             self.pool = await asyncpg.create_pool(
                 url,
                 min_size=5,
@@ -61,7 +63,9 @@ class GraphService:
 
                 if not result:
                     # Create the graph using the correct function
-                    create_query = f"SELECT ag_catalog.create_graph('{self.graph_name}')"
+                    create_query = (
+                        f"SELECT ag_catalog.create_graph('{self.graph_name}')"
+                    )
                     await conn.fetch(create_query)
                     print(f"Created graph: {self.graph_name}")
 
@@ -69,7 +73,9 @@ class GraphService:
                 print(f"Graph creation error: {e}")
                 # Graph might already exist, continue
 
-    async def execute_query(self, query: str, params: dict[str, Any] | None = None) -> list[dict]:
+    async def execute_query(
+        self, query: str, params: dict[str, Any] | None = None
+    ) -> list[dict]:
         """
         Execute a Cypher query using Apache AGE
 
@@ -107,7 +113,7 @@ class GraphService:
                 # Parse AGE agtype results to Python dicts
                 results = []
                 for row in rows:
-                    result = row['result']
+                    result = row["result"]
                     # AGE returns results as agtype, convert to dict
                     if result:
                         results.append(self._parse_agtype(result))
@@ -120,9 +126,7 @@ class GraphService:
                 raise
 
     async def create_node(
-        self,
-        label: str,
-        properties: dict[str, Any]
+        self, label: str, properties: dict[str, Any]
     ) -> dict[str, Any]:
         """
         Create a node in the graph
@@ -145,7 +149,7 @@ class GraphService:
         from_id: str,
         to_id: str,
         rel_type: str,
-        properties: dict[str, Any] | None = None
+        properties: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Create a relationship between two nodes
@@ -169,11 +173,12 @@ class GraphService:
 
         results = await self.execute_query(query)
         return results[0] if results else {}
+
     async def update_relationship(
         self,
         relationship_id: str,
         new_type: str,
-        properties: dict[str, Any] | None = None
+        properties: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Update a relationship's type and/or properties
@@ -198,11 +203,13 @@ class GraphService:
             raise ValueError(f"Relationship {relationship_id} not found")
 
         result = results[0]
-        source_id = result.get('source', {}).get('id')
-        target_id = result.get('target', {}).get('id')
+        source_id = result.get("source", {}).get("id")
+        target_id = result.get("target", {}).get("id")
 
         if not source_id or not target_id:
-            raise ValueError(f"Could not determine source/target for relationship {relationship_id}")
+            raise ValueError(
+                f"Could not determine source/target for relationship {relationship_id}"
+            )
 
         # Delete old relationship and create new one with updated type
         props_str = self._dict_to_cypher_props(properties) if properties else ""
@@ -222,17 +229,14 @@ class GraphService:
 
         result = results[0]
         return {
-            'id': result.get('rel_id'),
-            'source': result.get('source_id'),
-            'target': result.get('target_id'),
-            'type': new_type,
-            'properties': properties or {}
+            "id": result.get("rel_id"),
+            "source": result.get("source_id"),
+            "target": result.get("target_id"),
+            "type": new_type,
+            "properties": properties or {},
         }
 
-    async def delete_relationship(
-        self,
-        relationship_id: str
-    ) -> bool:
+    async def delete_relationship(self, relationship_id: str) -> bool:
         """
         Delete a relationship by ID
 
@@ -250,13 +254,10 @@ class GraphService:
         """
 
         results = await self.execute_query(query)
-        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        deleted_count = results[0].get("deleted_count", 0) if results else 0
         return deleted_count > 0
 
-    async def get_relationship(
-        self,
-        relationship_id: str
-    ) -> dict[str, Any] | None:
+    async def get_relationship(self, relationship_id: str) -> dict[str, Any] | None:
         """
         Get a relationship by ID
 
@@ -278,13 +279,12 @@ class GraphService:
 
         result = results[0]
         return {
-            'id': relationship_id,
-            'source': result.get('source_id'),
-            'target': result.get('target_id'),
-            'type': result.get('rel_type'),
-            'properties': result.get('r', {})
+            "id": relationship_id,
+            "source": result.get("source_id"),
+            "target": result.get("target_id"),
+            "type": result.get("rel_type"),
+            "properties": result.get("r", {}),
         }
-
 
     async def get_node(self, node_id: str) -> dict[str, Any] | None:
         """Get a node by ID"""
@@ -293,9 +293,7 @@ class GraphService:
         return results[0] if results else None
 
     async def update_node(
-        self,
-        node_id: str,
-        properties: dict[str, Any]
+        self, node_id: str, properties: dict[str, Any]
     ) -> dict[str, Any]:
         """Update node properties"""
         set_clauses = ", ".join([f"n.{k} = '{v}'" for k, v in properties.items()])
@@ -323,7 +321,7 @@ class GraphService:
         node_id: str,
         relationship_type: str | None = None,
         direction: str = "both",
-        depth: int = 1
+        depth: int = 1,
     ) -> list[dict[str, Any]]:
         """
         Find nodes related to a given node
@@ -359,7 +357,7 @@ class GraphService:
         self,
         label: str | None = None,
         properties: dict[str, Any] | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         """
         Search for nodes by label and/or properties
@@ -394,7 +392,7 @@ class GraphService:
         version: str = "1.0",
         created_by: str | None = None,
         assigned_to: str | None = None,
-        **additional_props
+        **additional_props,
     ) -> dict[str, Any]:
         """
         Create a WorkItem node in the graph database
@@ -419,7 +417,7 @@ class GraphService:
             "type": workitem_type,
             "title": title,
             "status": status,
-            "version": version
+            "version": version,
         }
 
         if description:
@@ -448,22 +446,26 @@ class GraphService:
         if results:
             # Extract the node data from the parsed result
             node_data = results[0]
-            if 'properties' in node_data:
-                return node_data['properties']
+            if "properties" in node_data:
+                return node_data["properties"]
             else:
                 return node_data
         return None
 
-    async def get_workitem_version(self, workitem_id: str, version: str) -> dict[str, Any] | None:
+    async def get_workitem_version(
+        self, workitem_id: str, version: str
+    ) -> dict[str, Any] | None:
         """Get a specific version of a WorkItem"""
-        query = f"MATCH (w:WorkItem {{id: '{workitem_id}', version: '{version}'}}) RETURN w"
+        query = (
+            f"MATCH (w:WorkItem {{id: '{workitem_id}', version: '{version}'}}) RETURN w"
+        )
         results = await self.execute_query(query)
 
         if results:
             # Extract the node data from the parsed result
             node_data = results[0]
-            if 'properties' in node_data:
-                return node_data['properties']
+            if "properties" in node_data:
+                return node_data["properties"]
             else:
                 return node_data
         return None
@@ -474,7 +476,7 @@ class GraphService:
         version: str,
         data: dict[str, Any],
         user_id: str,
-        change_description: str
+        change_description: str,
     ) -> dict[str, Any]:
         """
         Create a new version of a WorkItem by updating the existing node.
@@ -484,12 +486,14 @@ class GraphService:
         """
         # Update the data with new version info
         version_data = {**data}
-        version_data.update({
-            "version": version,
-            "updated_by": user_id,
-            "updated_at": datetime.now(UTC).isoformat(),
-            "change_description": change_description
-        })
+        version_data.update(
+            {
+                "version": version,
+                "updated_by": user_id,
+                "updated_at": datetime.now(UTC).isoformat(),
+                "change_description": change_description,
+            }
+        )
 
         # Update the existing WorkItem node
         return await self.update_node(workitem_id, version_data)
@@ -500,7 +504,7 @@ class GraphService:
         workitem_type: str | None = None,
         status: str | None = None,
         assigned_to: str | None = None,
-        limit: int = 100
+        limit: int = 100,
     ) -> list[dict[str, Any]]:
         """
         Search WorkItems with full-text search and filters
@@ -552,8 +556,8 @@ class GraphService:
         # Extract WorkItem data from results
         workitems = []
         for result in results:
-            if 'properties' in result:
-                workitems.append(result['properties'])
+            if "properties" in result:
+                workitems.append(result["properties"])
             else:
                 workitems.append(result)
 
@@ -561,8 +565,7 @@ class GraphService:
         return workitems
 
     async def get_traceability_matrix(
-        self,
-        project_id: str | None = None
+        self, project_id: str | None = None
     ) -> dict[str, list[dict[str, Any]]]:
         """
         Get traceability matrix showing relationships between requirements, tests, and risks
@@ -614,13 +617,11 @@ class GraphService:
         return {
             "requirements": requirements_results,
             "tests": tests_results,
-            "risks": risks_results
+            "risks": risks_results,
         }
 
     async def get_risk_chains(
-        self,
-        risk_id: str | None = None,
-        max_depth: int = 5
+        self, risk_id: str | None = None, max_depth: int = 5
     ) -> list[dict[str, Any]]:
         """
         Get FMEA failure chains showing risk propagation paths
@@ -665,7 +666,7 @@ class GraphService:
                 "chain_length": result.get("chain_length", 0),
                 "total_probability": self._calculate_chain_probability(
                     result.get("probabilities", [])
-                )
+                ),
             }
 
             if "start_risk_id" in result:
@@ -707,62 +708,59 @@ class GraphService:
         """
         # Define supported node types
         node_types = [
-            "WorkItem",      # Base work item (requirements, tasks, tests, etc.)
-            "Requirement",   # Specific requirement nodes
-            "Task",          # Task nodes
-            "Test",          # Test specification nodes
-            "Risk",          # Risk nodes for FMEA
-            "Failure",       # Failure nodes for FMEA chains
-            "Document",      # Document nodes
-            "Entity",        # Entities extracted from emails/meetings
-            "User",          # User nodes for relationships
-            "Company",       # Company nodes
-            "Department",    # Department nodes
-            "Resource",      # Resource nodes
-            "Project",       # Project nodes
-            "Phase",         # Phase nodes
-            "Workpackage",   # Workpackage nodes
-            "Milestone",     # Milestone nodes
-            "Sprint",        # Sprint nodes
-            "Backlog"        # Backlog nodes
+            "WorkItem",  # Base work item (requirements, tasks, tests, etc.)
+            "Requirement",  # Specific requirement nodes
+            "Task",  # Task nodes
+            "Test",  # Test specification nodes
+            "Risk",  # Risk nodes for FMEA
+            "Failure",  # Failure nodes for FMEA chains
+            "Document",  # Document nodes
+            "Entity",  # Entities extracted from emails/meetings
+            "User",  # User nodes for relationships
+            "Company",  # Company nodes
+            "Department",  # Department nodes
+            "Resource",  # Resource nodes
+            "Project",  # Project nodes
+            "Phase",  # Phase nodes
+            "Workpackage",  # Workpackage nodes
+            "Milestone",  # Milestone nodes
+            "Sprint",  # Sprint nodes
+            "Backlog",  # Backlog nodes
+            "Worked",  # Time tracking entries
         ]
 
         # Define supported relationship types
         relationship_types = [
-            "TESTED_BY",     # Requirement -> Test
-            "MITIGATES",     # Requirement -> Risk
-            "DEPENDS_ON",    # WorkItem -> WorkItem (dependencies)
-            "IMPLEMENTS",    # Task -> Requirement
-            "LEADS_TO",      # Risk -> Failure (FMEA chains)
-            "RELATES_TO",    # Entity -> Entity
+            "TESTED_BY",  # Requirement -> Test
+            "MITIGATES",  # Requirement -> Risk
+            "DEPENDS_ON",  # WorkItem -> WorkItem (dependencies)
+            "IMPLEMENTS",  # Task -> Requirement
+            "LEADS_TO",  # Risk -> Failure (FMEA chains)
+            "RELATES_TO",  # Entity -> Entity
             "MENTIONED_IN",  # Entity -> WorkItem
-            "REFERENCES",    # WorkItem -> WorkItem
+            "REFERENCES",  # WorkItem -> WorkItem
             "NEXT_VERSION",  # WorkItem -> WorkItem (version history)
-            "CREATED_BY",    # WorkItem -> User
-            "ASSIGNED_TO",   # WorkItem -> User
-            "PARENT_OF",     # Company -> Department, Department -> Department
-            "BELONGS_TO",    # Phase -> Project, Workpackage -> Phase, Task -> Workpackage, etc.
+            "CREATED_BY",  # WorkItem -> User
+            "ASSIGNED_TO",  # WorkItem -> User
+            "PARENT_OF",  # Company -> Department, Department -> Department
+            "BELONGS_TO",  # Phase -> Project, Workpackage -> Phase, Task -> Workpackage, etc.
             "ALLOCATED_TO",  # Resource -> Project OR Task (with lead property)
             "LINKED_TO_DEPARTMENT",  # Workpackage -> Department
-            "IN_BACKLOG",    # Task -> Backlog
+            "IN_BACKLOG",  # Task -> Backlog
             "ASSIGNED_TO_SPRINT",  # Task -> Sprint
-            "has_risk",      # Task -> Risk
-            "implements",    # Task -> Requirement
-            "BLOCKS"         # Task -> Milestone
+            "has_risk",  # Task -> Risk
+            "implements",  # Task -> Requirement
+            "BLOCKS",  # Task -> Milestone
+            "WORKED_ON",  # Worked -> Task (time tracking)
         ]
 
         # Note: AGE doesn't support CREATE INDEX in Cypher queries like Neo4j
         # Indexes would need to be created using PostgreSQL syntax if needed
 
-        return {
-            "node_types": node_types,
-            "relationship_types": relationship_types
-        }
+        return {"node_types": node_types, "relationship_types": relationship_types}
 
     async def link_workpackage_to_department(
-        self,
-        workpackage_id: str,
-        department_id: str
+        self, workpackage_id: str, department_id: str
     ) -> dict[str, Any]:
         """
         Create LINKED_TO_DEPARTMENT relationship from Workpackage to Department.
@@ -799,7 +797,7 @@ class GraphService:
         existing_results = await self.execute_query(existing_link_query)
 
         if existing_results:
-            existing_dept_id = existing_results[0].get('dept_id')
+            existing_dept_id = existing_results[0].get("dept_id")
             if existing_dept_id and existing_dept_id != department_id:
                 raise ValueError(
                     f"Workpackage {workpackage_id} is already linked to department {existing_dept_id}. "
@@ -807,19 +805,18 @@ class GraphService:
                 )
             elif existing_dept_id == department_id:
                 # Already linked to this department, return existing relationship
-                return {"workpackage_id": workpackage_id, "department_id": department_id}
+                return {
+                    "workpackage_id": workpackage_id,
+                    "department_id": department_id,
+                }
 
         # Create the relationship
         return await self.create_relationship(
-            from_id=workpackage_id,
-            to_id=department_id,
-            rel_type="LINKED_TO_DEPARTMENT"
+            from_id=workpackage_id, to_id=department_id, rel_type="LINKED_TO_DEPARTMENT"
         )
 
     async def unlink_workpackage_from_department(
-        self,
-        workpackage_id: str,
-        department_id: str | None = None
+        self, workpackage_id: str, department_id: str | None = None
     ) -> bool:
         """
         Remove LINKED_TO_DEPARTMENT relationship from Workpackage to Department.
@@ -856,12 +853,11 @@ class GraphService:
             """
 
         results = await self.execute_query(query)
-        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        deleted_count = results[0].get("deleted_count", 0) if results else 0
         return deleted_count > 0
 
     async def get_workpackage_department(
-        self,
-        workpackage_id: str
+        self, workpackage_id: str
     ) -> dict[str, Any] | None:
         """
         Get the department linked to a workpackage.
@@ -892,14 +888,12 @@ class GraphService:
             return None
 
         department_data = results[0]
-        if 'properties' in department_data:
-            return department_data['properties']
+        if "properties" in department_data:
+            return department_data["properties"]
         return department_data
 
     async def get_department_resources_for_workpackage(
-        self,
-        workpackage_id: str,
-        skills_filter: list[str] | None = None
+        self, workpackage_id: str, skills_filter: list[str] | None = None
     ) -> list[dict[str, Any]]:
         """
         Get resources from the department linked to a workpackage.
@@ -931,15 +925,16 @@ class GraphService:
         resources = []
         for result in results:
             resource_data = result
-            if 'properties' in resource_data:
-                resource_data = resource_data['properties']
+            if "properties" in resource_data:
+                resource_data = resource_data["properties"]
 
             # Apply skills filter if provided
             if skills_filter:
-                resource_skills = resource_data.get('skills', [])
+                resource_skills = resource_data.get("skills", [])
                 if isinstance(resource_skills, str):
                     # Handle case where skills might be stored as JSON string
                     import json
+
                     try:
                         resource_skills = json.loads(resource_skills)
                     except json.JSONDecodeError:
@@ -960,7 +955,7 @@ class GraphService:
         allocation_percentage: float,
         lead: bool = False,
         start_date: str | None = None,
-        end_date: str | None = None
+        end_date: str | None = None,
     ) -> dict[str, Any]:
         """
         Allocate a resource to a project with ALLOCATED_TO relationship.
@@ -999,10 +994,7 @@ class GraphService:
             raise ValueError("Allocation percentage must be between 0 and 100")
 
         # Build relationship properties
-        properties = {
-            "allocation_percentage": allocation_percentage,
-            "lead": lead
-        }
+        properties = {"allocation_percentage": allocation_percentage, "lead": lead}
 
         if start_date:
             properties["start_date"] = start_date
@@ -1014,7 +1006,7 @@ class GraphService:
             from_id=resource_id,
             to_id=project_id,
             rel_type="ALLOCATED_TO",
-            properties=properties
+            properties=properties,
         )
 
     async def allocate_resource_to_workpackage(
@@ -1024,7 +1016,7 @@ class GraphService:
         allocation_percentage: float,
         lead: bool = False,
         start_date: str | None = None,
-        end_date: str | None = None
+        end_date: str | None = None,
     ) -> dict[str, Any]:
         """
         Allocate a resource to a workpackage with ALLOCATED_TO relationship.
@@ -1050,7 +1042,9 @@ class GraphService:
             raise ValueError(f"Resource {resource_id} not found")
 
         # Verify workpackage exists
-        workpackage_query = f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        workpackage_query = (
+            f"MATCH (wp:Workpackage {{id: '{workpackage_id}'}}) RETURN wp"
+        )
         workpackage_results = await self.execute_query(workpackage_query)
         if not workpackage_results:
             raise ValueError(f"Workpackage {workpackage_id} not found")
@@ -1063,10 +1057,7 @@ class GraphService:
             raise ValueError("Allocation percentage must be between 0 and 100")
 
         # Build relationship properties
-        properties = {
-            "allocation_percentage": allocation_percentage,
-            "lead": lead
-        }
+        properties = {"allocation_percentage": allocation_percentage, "lead": lead}
 
         if start_date:
             properties["start_date"] = start_date
@@ -1078,7 +1069,7 @@ class GraphService:
             from_id=resource_id,
             to_id=workpackage_id,
             rel_type="ALLOCATED_TO",
-            properties=properties
+            properties=properties,
         )
 
     async def allocate_resource_to_task(
@@ -1088,7 +1079,7 @@ class GraphService:
         allocation_percentage: float,
         lead: bool = False,
         start_date: str | None = None,
-        end_date: str | None = None
+        end_date: str | None = None,
     ) -> dict[str, Any]:
         """
         Allocate a resource to a task with ALLOCATED_TO relationship.
@@ -1127,10 +1118,7 @@ class GraphService:
             raise ValueError("Allocation percentage must be between 0 and 100")
 
         # Build relationship properties
-        properties = {
-            "allocation_percentage": allocation_percentage,
-            "lead": lead
-        }
+        properties = {"allocation_percentage": allocation_percentage, "lead": lead}
 
         if start_date:
             properties["start_date"] = start_date
@@ -1142,7 +1130,7 @@ class GraphService:
             from_id=resource_id,
             to_id=task_id,
             rel_type="ALLOCATED_TO",
-            properties=properties
+            properties=properties,
         )
 
     async def update_resource_allocation(
@@ -1152,7 +1140,7 @@ class GraphService:
         allocation_percentage: float | None = None,
         lead: bool | None = None,
         start_date: str | None = None,
-        end_date: str | None = None
+        end_date: str | None = None,
     ) -> dict[str, Any]:
         """
         Update an existing ALLOCATED_TO relationship.
@@ -1205,16 +1193,14 @@ class GraphService:
         # Update the relationship
         update_query = f"""
         MATCH (r:Resource {{id: '{resource_id}'}})-[rel:ALLOCATED_TO]->(target {{id: '{target_id}'}})
-        SET {', '.join(set_clauses)}
+        SET {", ".join(set_clauses)}
         RETURN rel
         """
         results = await self.execute_query(update_query)
         return results[0] if results else {}
 
     async def remove_resource_allocation(
-        self,
-        resource_id: str,
-        target_id: str
+        self, resource_id: str, target_id: str
     ) -> bool:
         """
         Remove an ALLOCATED_TO relationship.
@@ -1232,13 +1218,10 @@ class GraphService:
         RETURN count(rel) as deleted_count
         """
         results = await self.execute_query(query)
-        deleted_count = results[0].get('deleted_count', 0) if results else 0
+        deleted_count = results[0].get("deleted_count", 0) if results else 0
         return deleted_count > 0
 
-    async def get_resource_allocations(
-        self,
-        resource_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_resource_allocations(self, resource_id: str) -> list[dict[str, Any]]:
         """
         Get all allocations for a resource.
 
@@ -1260,45 +1243,53 @@ class GraphService:
 
         allocations = []
         for result in results:
-            rel_data = result.get('rel', {})
-            target_data = result.get('target', {})
-            target_labels = result.get('target_labels', [])
+            rel_data = result.get("rel", {})
+            target_data = result.get("target", {})
+            target_labels = result.get("target_labels", [])
 
             # Extract properties
-            if 'properties' in rel_data:
-                rel_props = rel_data['properties']
+            if "properties" in rel_data:
+                rel_props = rel_data["properties"]
             else:
                 rel_props = rel_data
 
-            if 'properties' in target_data:
-                target_props = target_data['properties']
+            if "properties" in target_data:
+                target_props = target_data["properties"]
             else:
                 target_props = target_data
 
             # Determine target type
-            target_type = 'Project' if 'Project' in target_labels else 'Task' if 'WorkItem' in target_labels else 'Unknown'
+            target_type = (
+                "Project"
+                if "Project" in target_labels
+                else "Task"
+                if "WorkItem" in target_labels
+                else "Unknown"
+            )
 
             # Get target_id - ensure it exists
-            target_id = target_props.get('id')
+            target_id = target_props.get("id")
             if not target_id:
                 # Skip allocations without valid target_id
                 continue
 
-            allocations.append({
-                'allocation_percentage': rel_props.get('allocation_percentage'),
-                'lead': rel_props.get('lead', False),
-                'start_date': rel_props.get('start_date'),
-                'end_date': rel_props.get('end_date'),
-                'target_id': target_id,
-                'target_type': target_type,
-                'target_name': target_props.get('name') or target_props.get('title'),
-            })
+            allocations.append(
+                {
+                    "allocation_percentage": rel_props.get("allocation_percentage"),
+                    "lead": rel_props.get("lead", False),
+                    "start_date": rel_props.get("start_date"),
+                    "end_date": rel_props.get("end_date"),
+                    "target_id": target_id,
+                    "target_type": target_type,
+                    "target_name": target_props.get("name")
+                    or target_props.get("title"),
+                }
+            )
 
         return allocations
 
     async def get_lead_resources_for_project(
-        self,
-        project_id: str
+        self, project_id: str
     ) -> list[dict[str, Any]]:
         """
         Get all lead resources allocated to a project.
@@ -1318,26 +1309,23 @@ class GraphService:
         resources = []
         for result in results:
             # Result is the resource node directly
-            if 'properties' in result:
-                resource_props = result['properties']
+            if "properties" in result:
+                resource_props = result["properties"]
             else:
                 resource_props = result
 
             # Parse skills if it's a JSON string
-            if 'skills' in resource_props and isinstance(resource_props['skills'], str):
+            if "skills" in resource_props and isinstance(resource_props["skills"], str):
                 try:
-                    resource_props['skills'] = json.loads(resource_props['skills'])
+                    resource_props["skills"] = json.loads(resource_props["skills"])
                 except (json.JSONDecodeError, TypeError):
-                    resource_props['skills'] = []
+                    resource_props["skills"] = []
 
             resources.append(resource_props)
 
         return resources
 
-    async def get_lead_resources_for_task(
-        self,
-        task_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_lead_resources_for_task(self, task_id: str) -> list[dict[str, Any]]:
         """
         Get all lead resources allocated to a task.
 
@@ -1356,26 +1344,23 @@ class GraphService:
         resources = []
         for result in results:
             # Result is the resource node directly
-            if 'properties' in result:
-                resource_props = result['properties']
+            if "properties" in result:
+                resource_props = result["properties"]
             else:
                 resource_props = result
 
             # Parse skills if it's a JSON string
-            if 'skills' in resource_props and isinstance(resource_props['skills'], str):
+            if "skills" in resource_props and isinstance(resource_props["skills"], str):
                 try:
-                    resource_props['skills'] = json.loads(resource_props['skills'])
+                    resource_props["skills"] = json.loads(resource_props["skills"])
                 except (json.JSONDecodeError, TypeError):
-                    resource_props['skills'] = []
+                    resource_props["skills"] = []
 
             resources.append(resource_props)
 
         return resources
 
-    async def check_task_backlog_sprint_status(
-        self,
-        task_id: str
-    ) -> dict[str, Any]:
+    async def check_task_backlog_sprint_status(self, task_id: str) -> dict[str, Any]:
         """
         Check if a task is in backlog or assigned to a sprint.
 
@@ -1413,7 +1398,7 @@ class GraphService:
         if backlog_results:
             result = backlog_results[0]
             if isinstance(result, dict):
-                backlog_id = result.get('backlog_id')
+                backlog_id = result.get("backlog_id")
             elif isinstance(result, str):
                 backlog_id = result
 
@@ -1421,22 +1406,19 @@ class GraphService:
         if sprint_results:
             result = sprint_results[0]
             if isinstance(result, dict):
-                sprint_id = result.get('sprint_id')
+                sprint_id = result.get("sprint_id")
             elif isinstance(result, str):
                 sprint_id = result
 
         return {
-            'in_backlog': len(backlog_results) > 0,
-            'backlog_id': backlog_id,
-            'in_sprint': len(sprint_results) > 0,
-            'sprint_id': sprint_id
+            "in_backlog": len(backlog_results) > 0,
+            "backlog_id": backlog_id,
+            "in_sprint": len(sprint_results) > 0,
+            "sprint_id": sprint_id,
         }
 
     async def move_task_to_backlog(
-        self,
-        task_id: str,
-        backlog_id: str,
-        priority_order: int | None = None
+        self, task_id: str, backlog_id: str, priority_order: int | None = None
     ) -> dict[str, Any]:
         """
         Move a task to backlog, removing any sprint assignment (mutual exclusivity).
@@ -1479,24 +1461,19 @@ class GraphService:
         await self.execute_query(remove_backlog_query)
 
         # Create IN_BACKLOG relationship
-        properties = {
-            'added_at': datetime.now(UTC).isoformat()
-        }
+        properties = {"added_at": datetime.now(UTC).isoformat()}
         if priority_order is not None:
-            properties['priority_order'] = priority_order
+            properties["priority_order"] = priority_order
 
         return await self.create_relationship(
             from_id=task_id,
             to_id=backlog_id,
-            rel_type='IN_BACKLOG',
-            properties=properties
+            rel_type="IN_BACKLOG",
+            properties=properties,
         )
 
     async def move_task_to_sprint(
-        self,
-        task_id: str,
-        sprint_id: str,
-        assigned_by_user_id: str
+        self, task_id: str, sprint_id: str, assigned_by_user_id: str
     ) -> dict[str, Any]:
         """
         Move a task to sprint, removing any backlog assignment (mutual exclusivity).
@@ -1540,15 +1517,15 @@ class GraphService:
 
         # Create ASSIGNED_TO_SPRINT relationship
         properties = {
-            'assigned_at': datetime.now(UTC).isoformat(),
-            'assigned_by_user_id': assigned_by_user_id
+            "assigned_at": datetime.now(UTC).isoformat(),
+            "assigned_by_user_id": assigned_by_user_id,
         }
 
         return await self.create_relationship(
             from_id=task_id,
             to_id=sprint_id,
-            rel_type='ASSIGNED_TO_SPRINT',
-            properties=properties
+            rel_type="ASSIGNED_TO_SPRINT",
+            properties=properties,
         )
 
     async def remove_task_from_sprint(
@@ -1556,7 +1533,7 @@ class GraphService:
         task_id: str,
         sprint_id: str,
         return_to_backlog: bool = True,
-        backlog_id: str | None = None
+        backlog_id: str | None = None,
     ) -> bool:
         """
         Remove a task from a sprint, optionally returning it to backlog.
@@ -1592,33 +1569,31 @@ class GraphService:
         if results:
             result = results[0]
             if isinstance(result, dict):
-                deleted_count = result.get('deleted_count', 0)
+                deleted_count = result.get("deleted_count", 0)
             elif isinstance(result, int):
                 deleted_count = result
 
         # Return to backlog if requested
         if return_to_backlog and deleted_count > 0:
             if not backlog_id:
-                raise ValueError("backlog_id is required when return_to_backlog is True")
+                raise ValueError(
+                    "backlog_id is required when return_to_backlog is True"
+                )
 
             # Check if task status is "ready" before adding to backlog
             task_data = task_results[0]
-            if 'properties' in task_data:
-                task_props = task_data['properties']
+            if "properties" in task_data:
+                task_props = task_data["properties"]
             else:
                 task_props = task_data
 
-            task_status = task_props.get('status')
-            if task_status == 'ready':
+            task_status = task_props.get("status")
+            if task_status == "ready":
                 await self.move_task_to_backlog(task_id, backlog_id)
 
         return deleted_count > 0
 
-    async def link_task_to_risk(
-        self,
-        task_id: str,
-        risk_id: str
-    ) -> dict[str, Any]:
+    async def link_task_to_risk(self, task_id: str, risk_id: str) -> dict[str, Any]:
         """
         Create has_risk relationship from Task to Risk.
 
@@ -1646,16 +1621,10 @@ class GraphService:
 
         # Create has_risk relationship
         return await self.create_relationship(
-            from_id=task_id,
-            to_id=risk_id,
-            rel_type='has_risk'
+            from_id=task_id, to_id=risk_id, rel_type="has_risk"
         )
 
-    async def unlink_task_from_risk(
-        self,
-        task_id: str,
-        risk_id: str
-    ) -> bool:
+    async def unlink_task_from_risk(self, task_id: str, risk_id: str) -> bool:
         """
         Remove has_risk relationship from Task to Risk.
 
@@ -1678,16 +1647,13 @@ class GraphService:
         if results:
             result = results[0]
             if isinstance(result, dict):
-                deleted_count = result.get('deleted_count', 0)
+                deleted_count = result.get("deleted_count", 0)
             elif isinstance(result, int):
                 deleted_count = result
 
         return deleted_count > 0
 
-    async def get_task_risks(
-        self,
-        task_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_task_risks(self, task_id: str) -> list[dict[str, Any]]:
         """
         Get all risks linked to a task.
 
@@ -1716,17 +1682,15 @@ class GraphService:
         risks = []
         for result in results:
             risk_data = result
-            if 'properties' in risk_data:
-                risks.append(risk_data['properties'])
+            if "properties" in risk_data:
+                risks.append(risk_data["properties"])
             else:
                 risks.append(risk_data)
 
         return risks
 
     async def link_task_to_requirement(
-        self,
-        task_id: str,
-        requirement_id: str
+        self, task_id: str, requirement_id: str
     ) -> dict[str, Any]:
         """
         Create implements relationship from Task to Requirement.
@@ -1751,19 +1715,17 @@ class GraphService:
         req_query = f"MATCH (r:WorkItem {{id: '{requirement_id}', type: 'requirement'}}) RETURN r"
         req_results = await self.execute_query(req_query)
         if not req_results:
-            raise ValueError(f"Requirement {requirement_id} not found or is not of type 'requirement'")
+            raise ValueError(
+                f"Requirement {requirement_id} not found or is not of type 'requirement'"
+            )
 
         # Create implements relationship
         return await self.create_relationship(
-            from_id=task_id,
-            to_id=requirement_id,
-            rel_type='implements'
+            from_id=task_id, to_id=requirement_id, rel_type="implements"
         )
 
     async def unlink_task_from_requirement(
-        self,
-        task_id: str,
-        requirement_id: str
+        self, task_id: str, requirement_id: str
     ) -> bool:
         """
         Remove implements relationship from Task to Requirement.
@@ -1787,16 +1749,13 @@ class GraphService:
         if results:
             result = results[0]
             if isinstance(result, dict):
-                deleted_count = result.get('deleted_count', 0)
+                deleted_count = result.get("deleted_count", 0)
             elif isinstance(result, int):
                 deleted_count = result
 
         return deleted_count > 0
 
-    async def get_task_requirements(
-        self,
-        task_id: str
-    ) -> list[dict[str, Any]]:
+    async def get_task_requirements(self, task_id: str) -> list[dict[str, Any]]:
         """
         Get all requirements implemented by a task.
 
@@ -1825,12 +1784,311 @@ class GraphService:
         requirements = []
         for result in results:
             req_data = result
-            if 'properties' in req_data:
-                requirements.append(req_data['properties'])
+            if "properties" in req_data:
+                requirements.append(req_data["properties"])
             else:
                 requirements.append(req_data)
 
         return requirements
+
+    async def create_worked_node(
+        self,
+        worked_id: str,
+        resource_id: str,
+        task_id: str,
+        date: str,
+        start_time: str,
+        end_time: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Create a Worked node for time tracking.
+
+        Args:
+            worked_id: Unique UUID for the worked entry
+            resource_id: User ID (resource) who performed the work
+            task_id: Task UUID that was worked on
+            date: Date of work (ISO format: YYYY-MM-DD)
+            start_time: Start time (ISO format: HH:MM:SS or full datetime)
+            end_time: Optional end time (ISO format: HH:MM:SS or full datetime)
+            description: Optional description of the work performed
+
+        Returns:
+            Created Worked node with properties
+
+        Raises:
+            ValueError: If task doesn't exist or if end_time is before start_time
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+
+        # Validate time ordering if end_time is provided
+        if end_time:
+            # Parse times for validation
+            from datetime import datetime as dt
+
+            try:
+                # Handle both time-only and full datetime formats
+                if "T" in start_time or " " in start_time:
+                    start_dt = dt.fromisoformat(start_time.replace("Z", "+00:00"))
+                else:
+                    start_dt = dt.fromisoformat(f"{date}T{start_time}")
+
+                if "T" in end_time or " " in end_time:
+                    end_dt = dt.fromisoformat(end_time.replace("Z", "+00:00"))
+                else:
+                    end_dt = dt.fromisoformat(f"{date}T{end_time}")
+
+                if end_dt <= start_dt:
+                    raise ValueError("End time must be after start time")
+            except ValueError as e:
+                if "End time must be after start time" in str(e):
+                    raise
+                # If parsing fails, let it continue - validation will happen at service layer
+                pass
+
+        # Create Worked node properties
+        properties = {
+            "id": worked_id,
+            "resource": resource_id,
+            "date": date,
+            "from": start_time,
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+
+        if end_time:
+            properties["to"] = end_time
+
+        if description:
+            properties["description"] = description
+
+        # Create the Worked node
+        worked_node = await self.create_node("Worked", properties)
+
+        # Create WORKED_ON relationship from Worked to Task
+        await self.create_relationship(
+            from_id=worked_id, to_id=task_id, rel_type="WORKED_ON"
+        )
+
+        return worked_node
+
+    async def update_worked_node(
+        self,
+        worked_id: str,
+        end_time: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Update a Worked node (typically to set end time when stopping tracking).
+
+        Args:
+            worked_id: Worked entry UUID
+            end_time: Optional end time to set
+            description: Optional description to update
+
+        Returns:
+            Updated Worked node
+
+        Raises:
+            ValueError: If worked node doesn't exist or if end_time is before start_time
+        """
+        # Get existing worked node
+        worked_query = f"MATCH (w:Worked {{id: '{worked_id}'}}) RETURN w"
+        worked_results = await self.execute_query(worked_query)
+        if not worked_results:
+            raise ValueError(f"Worked entry {worked_id} not found")
+
+        worked_data = worked_results[0]
+        if "properties" in worked_data:
+            worked_props = worked_data["properties"]
+        else:
+            worked_props = worked_data
+
+        # Validate time ordering if end_time is provided
+        if end_time:
+            from datetime import datetime as dt
+
+            try:
+                start_time = worked_props.get("from", "")
+                date = worked_props.get("date", "")
+
+                # Handle both time-only and full datetime formats
+                if "T" in start_time or " " in start_time:
+                    start_dt = dt.fromisoformat(start_time.replace("Z", "+00:00"))
+                else:
+                    start_dt = dt.fromisoformat(f"{date}T{start_time}")
+
+                if "T" in end_time or " " in end_time:
+                    end_dt = dt.fromisoformat(end_time.replace("Z", "+00:00"))
+                else:
+                    end_dt = dt.fromisoformat(f"{date}T{end_time}")
+
+                if end_dt <= start_dt:
+                    raise ValueError("End time must be after start time")
+            except ValueError as e:
+                if "End time must be after start time" in str(e):
+                    raise
+                # If parsing fails, let it continue
+                pass
+
+        # Build update properties
+        update_props = {}
+        if end_time:
+            update_props["to"] = end_time
+        if description is not None:  # Allow empty string to clear description
+            update_props["description"] = description
+
+        if not update_props:
+            return worked_data
+
+        # Update the node
+        return await self.update_node(worked_id, update_props)
+
+    async def get_worked_entries_for_task(self, task_id: str) -> list[dict[str, Any]]:
+        """
+        Get all worked entries for a specific task.
+
+        Args:
+            task_id: Task UUID
+
+        Returns:
+            List of worked entry data
+
+        Raises:
+            ValueError: If task doesn't exist
+        """
+        # Verify task exists
+        task_query = f"MATCH (t:WorkItem {{id: '{task_id}', type: 'task'}}) RETURN t"
+        task_results = await self.execute_query(task_query)
+        if not task_results:
+            raise ValueError(f"Task {task_id} not found or is not of type 'task'")
+
+        # Get all worked entries linked to this task
+        query = f"""
+        MATCH (w:Worked)-[:WORKED_ON]->(t:WorkItem {{id: '{task_id}', type: 'task'}})
+        RETURN w
+        ORDER BY w.date DESC, w.from DESC
+        """
+        results = await self.execute_query(query)
+
+        worked_entries = []
+        for result in results:
+            worked_data = result
+            if "properties" in worked_data:
+                worked_entries.append(worked_data["properties"])
+            else:
+                worked_entries.append(worked_data)
+
+        return worked_entries
+
+    async def get_worked_sum_for_task(self, task_id: str) -> float:
+        """
+        Calculate the total worked time (in hours) for a task.
+
+        Args:
+            task_id: Task UUID
+
+        Returns:
+            Total hours worked (sum of all completed worked entries)
+
+        Raises:
+            ValueError: If task doesn't exist
+        """
+        # Get all worked entries for the task
+        worked_entries = await self.get_worked_entries_for_task(task_id)
+
+        total_hours = 0.0
+        from datetime import datetime as dt
+
+        for entry in worked_entries:
+            # Only count entries with both start and end times
+            if "to" not in entry or not entry["to"]:
+                continue
+
+            try:
+                start_time = entry.get("from", "")
+                end_time = entry.get("to", "")
+                date = entry.get("date", "")
+
+                # Handle both time-only and full datetime formats
+                if "T" in start_time or " " in start_time:
+                    start_dt = dt.fromisoformat(start_time.replace("Z", "+00:00"))
+                else:
+                    start_dt = dt.fromisoformat(f"{date}T{start_time}")
+
+                if "T" in end_time or " " in end_time:
+                    end_dt = dt.fromisoformat(end_time.replace("Z", "+00:00"))
+                else:
+                    end_dt = dt.fromisoformat(f"{date}T{end_time}")
+
+                # Calculate duration in hours
+                duration = (end_dt - start_dt).total_seconds() / 3600
+                total_hours += duration
+
+            except (ValueError, KeyError):
+                # Skip entries with invalid time data
+                continue
+
+        return round(total_hours, 2)
+
+    async def get_worked_entries_for_resource(
+        self,
+        resource_id: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Get all worked entries for a specific resource (user).
+
+        Args:
+            resource_id: User ID (resource)
+            start_date: Optional start date filter (ISO format: YYYY-MM-DD)
+            end_date: Optional end date filter (ISO format: YYYY-MM-DD)
+
+        Returns:
+            List of worked entry data with task information
+        """
+        # Build query with optional date filters
+        where_clauses = [f"w.resource = '{resource_id}'"]
+
+        if start_date:
+            where_clauses.append(f"w.date >= '{start_date}'")
+        if end_date:
+            where_clauses.append(f"w.date <= '{end_date}'")
+
+        where_clause = " AND ".join(where_clauses)
+
+        query = f"""
+        MATCH (w:Worked)-[:WORKED_ON]->(t:WorkItem {{type: 'task'}})
+        WHERE {where_clause}
+        RETURN w, t
+        ORDER BY w.date DESC, w.from DESC
+        """
+        results = await self.execute_query(query)
+
+        worked_entries = []
+        for result in results:
+            worked_data = result.get("w", {})
+            task_data = result.get("t", {})
+
+            if "properties" in worked_data:
+                worked_props = worked_data["properties"]
+            else:
+                worked_props = worked_data
+
+            if "properties" in task_data:
+                task_props = task_data["properties"]
+            else:
+                task_props = task_data
+
+            # Combine worked entry with task info
+            entry = {**worked_props, "task": task_props}
+            worked_entries.append(entry)
+
+        return worked_entries
 
     def _dict_to_cypher_props(self, props: dict[str, Any]) -> str:
         """Convert Python dict to Cypher properties string"""
@@ -1863,7 +2121,7 @@ class GraphService:
         depth: int = 2,
         node_types: list[str] | None = None,
         relationship_types: list[str] | None = None,
-        limit: int = 1000
+        limit: int = 1000,
     ) -> dict[str, Any]:
         """
         Get graph data formatted for visualization in react-flow and R3F
@@ -1918,9 +2176,9 @@ class GraphService:
         # Build mapping from AGE internal ID to UUID for edge conversion
         age_id_to_uuid = {}
         for node in nodes:
-            age_id = node.get('id')
-            if 'properties' in node and node['properties']:
-                uuid = node['properties'].get('id')
+            age_id = node.get("id")
+            if "properties" in node and node["properties"]:
+                uuid = node["properties"].get("id")
                 if age_id and uuid:
                     # Ensure age_id is stored as both int and str for flexible lookup
                     age_id_to_uuid[age_id] = uuid
@@ -1933,10 +2191,11 @@ class GraphService:
         if truncated:
             nodes = nodes[:limit]
             # Filter edges to only include those between remaining nodes
-            node_ids = {node.get('id') for node in nodes}
+            node_ids = {node.get("id") for node in nodes}
             edges = [
-                edge for edge in edges
-                if edge.get('start_id') in node_ids and edge.get('end_id') in node_ids
+                edge
+                for edge in edges
+                if edge.get("start_id") in node_ids and edge.get("end_id") in node_ids
             ]
 
         # Format for visualization libraries
@@ -1956,7 +2215,9 @@ class GraphService:
                 formatted_edges.append(edge_data)
 
         # DEBUG: Log formatted results
-        print(f"[GraphService] Formatted: {len(formatted_nodes)} nodes, {len(formatted_edges)} edges")
+        print(
+            f"[GraphService] Formatted: {len(formatted_nodes)} nodes, {len(formatted_edges)} edges"
+        )
         if formatted_edges:
             print(f"[GraphService] Sample formatted edge: {formatted_edges[0]}")
 
@@ -1972,9 +2233,11 @@ class GraphService:
                 "performance_stats": {
                     "query_limit_applied": limit,
                     "depth_limit_applied": depth,
-                    "nodes_filtered": len(nodes) - len(formatted_nodes) if len(nodes) > len(formatted_nodes) else 0
-                }
-            }
+                    "nodes_filtered": len(nodes) - len(formatted_nodes)
+                    if len(nodes) > len(formatted_nodes)
+                    else 0,
+                },
+            },
         }
 
     async def _get_subgraph_around_node(
@@ -1983,14 +2246,16 @@ class GraphService:
         depth: int,
         node_types: list[str] | None,
         relationship_types: list[str] | None,
-        limit: int
+        limit: int,
     ) -> tuple[list[dict], list[dict]]:
         """Get subgraph around a center node"""
 
         # Build node type filter
         node_filter = ""
         if node_types:
-            type_conditions = " OR ".join([f"n:{node_type}" for node_type in node_types])
+            type_conditions = " OR ".join(
+                [f"n:{node_type}" for node_type in node_types]
+            )
             node_filter = f" AND ({type_conditions})"
 
         # Build relationship type filter
@@ -2024,10 +2289,10 @@ class GraphService:
         for result in node_results:
             if result:
                 node = result
-                if 'properties' in node:
-                    node_id = node['properties'].get('id')
+                if "properties" in node:
+                    node_id = node["properties"].get("id")
                 else:
-                    node_id = node.get('id')
+                    node_id = node.get("id")
 
                 if node_id and node_id not in seen_nodes:
                     nodes.append(node)
@@ -2038,7 +2303,7 @@ class GraphService:
         if len(seen_nodes) > 1:
             # Build a query to get relationships between the found nodes
             node_ids_str = "', '".join(seen_nodes)
-            
+
             # AGE returns multiple columns as an array, so we need to return them as a map
             # or handle the array indexing properly
             rel_query = f"""
@@ -2050,42 +2315,50 @@ class GraphService:
 
             print(f"[GraphService] Relationship query: {rel_query}")
             rel_results = await self.execute_query(rel_query)
-            print(f"[GraphService] Relationship query returned {len(rel_results)} results")
-            
+            print(
+                f"[GraphService] Relationship query returned {len(rel_results)} results"
+            )
+
             if rel_results:
                 print(f"[GraphService] First relationship result: {rel_results[0]}")
-            
+
             seen_edges = set()
 
             for result in rel_results:
                 if result:
                     print(f"[GraphService] Processing relationship result: {result}")
-                    
+
                     # AGE returns edge as: {"id": ..., "label": "REL_TYPE", "start_id": ..., "end_id": ..., "properties": {...}}
                     edge_data = {}
-                    
+
                     # Extract from the edge object
                     if isinstance(result, dict):
                         # Copy properties if present
-                        if 'properties' in result and result['properties']:
-                            edge_data.update(result['properties'])
-                        
+                        if "properties" in result and result["properties"]:
+                            edge_data.update(result["properties"])
+
                         # Set required fields from edge structure
-                        edge_data['id'] = result.get('id')  # AGE internal ID
-                        edge_data['start_id'] = result.get('start_id')
-                        edge_data['end_id'] = result.get('end_id')
-                        edge_data['type'] = result.get('label', 'RELATED')  # AGE uses 'label' for relationship type
-                    
+                        edge_data["id"] = result.get("id")  # AGE internal ID
+                        edge_data["start_id"] = result.get("start_id")
+                        edge_data["end_id"] = result.get("end_id")
+                        edge_data["type"] = result.get(
+                            "label", "RELATED"
+                        )  # AGE uses 'label' for relationship type
+
                     print(f"[GraphService] Extracted edge_data: {edge_data}")
 
-                    if edge_data.get('start_id') and edge_data.get('end_id'):
+                    if edge_data.get("start_id") and edge_data.get("end_id"):
                         edge_key = f"{edge_data['start_id']}-{edge_data['end_id']}-{edge_data['type']}"
                         if edge_key not in seen_edges:
                             edges.append(edge_data)
                             seen_edges.add(edge_key)
-                            print(f"[GraphService] Added edge: {edge_data['start_id']} -[{edge_data['type']}]-> {edge_data['end_id']}")
+                            print(
+                                f"[GraphService] Added edge: {edge_data['start_id']} -[{edge_data['type']}]-> {edge_data['end_id']}"
+                            )
                     else:
-                        print(f"[GraphService] Skipped edge - missing IDs: start_id={edge_data.get('start_id')}, end_id={edge_data.get('end_id')}")
+                        print(
+                            f"[GraphService] Skipped edge - missing IDs: start_id={edge_data.get('start_id')}, end_id={edge_data.get('end_id')}"
+                        )
                         print(f"[GraphService] Full result was: {result}")
 
         print(f"[GraphService] Returning {len(nodes)} nodes and {len(edges)} edges")
@@ -2095,14 +2368,16 @@ class GraphService:
         self,
         node_types: list[str] | None,
         relationship_types: list[str] | None,
-        limit: int
+        limit: int,
     ) -> tuple[list[dict], list[dict]]:
         """Get full graph with optional filters"""
 
         # Build node query with type filter
         node_query = "MATCH (n)"
         if node_types:
-            type_conditions = " OR ".join([f"n:{node_type}" for node_type in node_types])
+            type_conditions = " OR ".join(
+                [f"n:{node_type}" for node_type in node_types]
+            )
             node_query += f" WHERE {type_conditions}"
         node_query += f" RETURN n LIMIT {limit}"
 
@@ -2139,28 +2414,32 @@ class GraphService:
                 edge_data = {}
 
                 # Check if result has the edge structure
-                if 'id' in result and 'label' in result:
+                if "id" in result and "label" in result:
                     # This is the edge itself
-                    edge_data['id'] = result.get('id')  # Store AGE relationship ID
-                    edge_data['start_id'] = result.get('start_id')
-                    edge_data['end_id'] = result.get('end_id')
-                    edge_data['type'] = result.get('label', 'RELATED')
-                    if 'properties' in result and result['properties']:
-                        edge_data.update(result['properties'])
-                elif 'properties' in result:
+                    edge_data["id"] = result.get("id")  # Store AGE relationship ID
+                    edge_data["start_id"] = result.get("start_id")
+                    edge_data["end_id"] = result.get("end_id")
+                    edge_data["type"] = result.get("label", "RELATED")
+                    if "properties" in result and result["properties"]:
+                        edge_data.update(result["properties"])
+                elif "properties" in result:
                     # Nested structure
-                    edge_data = result['properties'].copy() if result['properties'] else {}
-                    edge_data['id'] = result.get('id')  # Store AGE relationship ID
-                    edge_data['start_id'] = result.get('start_id')
-                    edge_data['end_id'] = result.get('end_id')
-                    edge_data['type'] = result.get('label', 'RELATED')
+                    edge_data = (
+                        result["properties"].copy() if result["properties"] else {}
+                    )
+                    edge_data["id"] = result.get("id")  # Store AGE relationship ID
+                    edge_data["start_id"] = result.get("start_id")
+                    edge_data["end_id"] = result.get("end_id")
+                    edge_data["type"] = result.get("label", "RELATED")
                 else:
                     # Fallback - treat whole result as edge data
                     edge_data = result.copy()
 
-                if edge_data.get('start_id') and edge_data.get('end_id'):
+                if edge_data.get("start_id") and edge_data.get("end_id"):
                     edges.append(edge_data)
-                    print(f"[GraphService] Added edge: {edge_data['start_id']} -> {edge_data['end_id']} ({edge_data.get('type', 'UNKNOWN')})")
+                    print(
+                        f"[GraphService] Added edge: {edge_data['start_id']} -> {edge_data['end_id']} ({edge_data.get('type', 'UNKNOWN')})"
+                    )
                 else:
                     print(f"[GraphService] Skipped edge - missing IDs: {edge_data}")
 
@@ -2168,7 +2447,9 @@ class GraphService:
 
         return nodes, edges
 
-    def _format_node_for_visualization(self, node: dict[str, Any]) -> dict[str, Any] | None:
+    def _format_node_for_visualization(
+        self, node: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Format node data for react-flow and R3F visualization with defensive checks"""
 
         # Defensive: Handle None node (but allow empty dict)
@@ -2176,8 +2457,8 @@ class GraphService:
             return None
 
         # Extract node properties with fallbacks
-        if 'properties' in node and node['properties']:
-            props = node['properties']
+        if "properties" in node and node["properties"]:
+            props = node["properties"]
         elif isinstance(node, dict):
             props = node
         else:
@@ -2185,14 +2466,17 @@ class GraphService:
 
         # Defensive: Ensure required fields with defaults
         import uuid
-        node_id = props.get('id') or node.get('id') or str(uuid.uuid4())
-        node_type = props.get('type') or node.get('label') or 'default'
-        title = props.get('title') or props.get('name') or f"{node_type} {str(node_id)[:8]}"
-        description = props.get('description') or ''
-        status = props.get('status') or 'draft'
+
+        node_id = props.get("id") or node.get("id") or str(uuid.uuid4())
+        node_type = props.get("type") or node.get("label") or "default"
+        title = (
+            props.get("title") or props.get("name") or f"{node_type} {str(node_id)[:8]}"
+        )
+        description = props.get("description") or ""
+        status = props.get("status") or "draft"
 
         # Ensure priority is an integer
-        priority = props.get('priority')
+        priority = props.get("priority")
         if priority is None:
             priority = 3
         else:
@@ -2203,18 +2487,58 @@ class GraphService:
 
         # Determine node color based on type and status
         color_map = {
-            'requirement': {'active': '#3B82F6', 'draft': '#93C5FD', 'completed': '#1E40AF', 'archived': '#6B7280'},
-            'task': {'active': '#10B981', 'draft': '#6EE7B7', 'completed': '#047857', 'archived': '#6B7280'},
-            'test': {'active': '#F59E0B', 'draft': '#FCD34D', 'completed': '#D97706', 'archived': '#6B7280'},
-            'risk': {'active': '#EF4444', 'draft': '#FCA5A5', 'completed': '#DC2626', 'archived': '#6B7280'},
-            'document': {'active': '#8B5CF6', 'draft': '#C4B5FD', 'completed': '#7C3AED', 'archived': '#6B7280'},
-            'failure': {'active': '#DC2626', 'draft': '#FCA5A5', 'completed': '#991B1B', 'archived': '#6B7280'},
-            'entity': {'active': '#6B7280', 'draft': '#9CA3AF', 'completed': '#4B5563', 'archived': '#6B7280'},
-            'user': {'active': '#06B6D4', 'draft': '#67E8F9', 'completed': '#0891B2', 'archived': '#6B7280'}
+            "requirement": {
+                "active": "#3B82F6",
+                "draft": "#93C5FD",
+                "completed": "#1E40AF",
+                "archived": "#6B7280",
+            },
+            "task": {
+                "active": "#10B981",
+                "draft": "#6EE7B7",
+                "completed": "#047857",
+                "archived": "#6B7280",
+            },
+            "test": {
+                "active": "#F59E0B",
+                "draft": "#FCD34D",
+                "completed": "#D97706",
+                "archived": "#6B7280",
+            },
+            "risk": {
+                "active": "#EF4444",
+                "draft": "#FCA5A5",
+                "completed": "#DC2626",
+                "archived": "#6B7280",
+            },
+            "document": {
+                "active": "#8B5CF6",
+                "draft": "#C4B5FD",
+                "completed": "#7C3AED",
+                "archived": "#6B7280",
+            },
+            "failure": {
+                "active": "#DC2626",
+                "draft": "#FCA5A5",
+                "completed": "#991B1B",
+                "archived": "#6B7280",
+            },
+            "entity": {
+                "active": "#6B7280",
+                "draft": "#9CA3AF",
+                "completed": "#4B5563",
+                "archived": "#6B7280",
+            },
+            "user": {
+                "active": "#06B6D4",
+                "draft": "#67E8F9",
+                "completed": "#0891B2",
+                "archived": "#6B7280",
+            },
         }
 
-        node_colors = color_map.get(node_type.lower(), color_map['entity'])
-        node_color = node_colors.get(status, node_colors['active'])
+        node_colors = color_map.get(node_type.lower(), color_map["entity"])
+        node_color = node_colors.get(status, node_colors["active"])
 
         # Calculate node size based on priority and connections
         base_size = 50
@@ -2226,83 +2550,89 @@ class GraphService:
 
         # Generate random position for visualization (will be improved by layout algorithms)
         import random
+
         position_x = random.uniform(0, 800)
         position_y = random.uniform(0, 600)
 
         # Format for react-flow (2D)
         react_flow_data = {
-            'id': node_id_str,
-            'type': 'custom',
-            'position': {'x': position_x, 'y': position_y},  # Random position for initial layout
-            'data': {
-                'label': title,
-                'type': node_type,
-                'status': status,
-                'priority': priority,
-                'description': description,
-                'color': node_color,
-                'size': node_size,
-                'properties': props
+            "id": node_id_str,
+            "type": "custom",
+            "position": {
+                "x": position_x,
+                "y": position_y,
+            },  # Random position for initial layout
+            "data": {
+                "label": title,
+                "type": node_type,
+                "status": status,
+                "priority": priority,
+                "description": description,
+                "color": node_color,
+                "size": node_size,
+                "properties": props,
             },
-            'style': {
-                'backgroundColor': node_color,
-                'color': '#FFFFFF',
-                'border': f'2px solid {node_color}',
-                'borderRadius': '8px',
-                'padding': '10px',
-                'fontSize': '12px',
-                'fontWeight': 'bold',
-                'width': node_size * 2,
-                'height': node_size
+            "style": {
+                "backgroundColor": node_color,
+                "color": "#FFFFFF",
+                "border": f"2px solid {node_color}",
+                "borderRadius": "8px",
+                "padding": "10px",
+                "fontSize": "12px",
+                "fontWeight": "bold",
+                "width": node_size * 2,
+                "height": node_size,
             },
-            'className': f'node-{node_type.lower()} node-{status}'
+            "className": f"node-{node_type.lower()} node-{status}",
         }
 
         # Format for R3F (3D)
         r3f_data = {
-            'id': node_id_str,
-            'position': [position_x * 0.02, 0, position_y * 0.02],  # Convert to 3D space
-            'type': node_type,
-            'label': title,
-            'status': status,
-            'priority': priority,
-            'description': description,
-            'color': node_color,
-            'size': node_size / 50.0,  # Normalize for 3D space
-            'geometry': {
-                'type': 'sphere' if node_type in ['user', 'entity'] else 'box',
-                'args': [node_size / 50.0, node_size / 50.0, node_size / 50.0]
+            "id": node_id_str,
+            "position": [
+                position_x * 0.02,
+                0,
+                position_y * 0.02,
+            ],  # Convert to 3D space
+            "type": node_type,
+            "label": title,
+            "status": status,
+            "priority": priority,
+            "description": description,
+            "color": node_color,
+            "size": node_size / 50.0,  # Normalize for 3D space
+            "geometry": {
+                "type": "sphere" if node_type in ["user", "entity"] else "box",
+                "args": [node_size / 50.0, node_size / 50.0, node_size / 50.0],
             },
-            'material': {
-                'color': node_color,
-                'opacity': 0.8,
-                'transparent': True,
-                'roughness': 0.3,
-                'metalness': 0.1
+            "material": {
+                "color": node_color,
+                "opacity": 0.8,
+                "transparent": True,
+                "roughness": 0.3,
+                "metalness": 0.1,
             },
-            'properties': props,
-            'interactions': {
-                'hoverable': True,
-                'clickable': True,
-                'selectable': True
-            }
+            "properties": props,
+            "interactions": {"hoverable": True, "clickable": True, "selectable": True},
         }
 
         return {
-            'id': node_id_str,
-            'type': node_type,
-            'label': title,
-            'status': status,
-            'priority': priority,
-            'description': description,
-            'color': node_color,
-            'size': node_size,
-            'properties': props,
-            'reactFlow': react_flow_data,
-            'r3f': r3f_data
+            "id": node_id_str,
+            "type": node_type,
+            "label": title,
+            "status": status,
+            "priority": priority,
+            "description": description,
+            "color": node_color,
+            "size": node_size,
+            "properties": props,
+            "reactFlow": react_flow_data,
+            "r3f": r3f_data,
         }
 
-    def _format_edge_for_visualization(self, edge: dict[str, Any], age_id_to_uuid: dict[int, str] | None = None) -> dict[str, Any] | None:
+    def _format_edge_for_visualization(
+        self, edge: dict[str, Any], age_id_to_uuid: dict[int, str] | None = None
+    ) -> dict[str, Any] | None:
         """Format edge data for react-flow and R3F visualization with defensive checks
 
         Args:
@@ -2315,23 +2645,23 @@ class GraphService:
             return None
 
         # Extract edge properties with fallbacks
-        if 'properties' in edge and edge['properties']:
-            props = edge['properties']
+        if "properties" in edge and edge["properties"]:
+            props = edge["properties"]
         elif isinstance(edge, dict):
             props = edge
         else:
             props = {}
 
         # Defensive: Validate required fields (source and target IDs)
-        start_age_id = edge.get('start_id') or props.get('start_id')
-        end_age_id = edge.get('end_id') or props.get('end_id')
+        start_age_id = edge.get("start_id") or props.get("start_id")
+        end_age_id = edge.get("end_id") or props.get("end_id")
 
         # Cannot create edge without source and target
         if not start_age_id or not end_age_id:
             return None
 
         # Store the AGE relationship ID for update/delete operations
-        age_relationship_id = edge.get('id')
+        age_relationship_id = edge.get("id")
 
         # Convert AGE internal IDs to UUIDs if mapping provided
         if age_id_to_uuid:
@@ -2341,7 +2671,7 @@ class GraphService:
             start_id = str(start_age_id)
             end_id = str(end_age_id)
 
-        edge_type = edge.get('type') or props.get('type') or 'RELATED'
+        edge_type = edge.get("type") or props.get("type") or "RELATED"
 
         # Generate edge ID - use AGE ID if available, otherwise composite
         if age_relationship_id is not None:
@@ -2351,129 +2681,168 @@ class GraphService:
 
         # Determine edge color, style, and properties based on type
         edge_styles = {
-            'TESTED_BY': {
-                'color': '#F59E0B', 'style': 'solid', 'width': 2,
-                'animated': False, 'label': 'Tested By', 'importance': 'high'
+            "TESTED_BY": {
+                "color": "#F59E0B",
+                "style": "solid",
+                "width": 2,
+                "animated": False,
+                "label": "Tested By",
+                "importance": "high",
             },
-            'MITIGATES': {
-                'color': '#EF4444', 'style': 'dashed', 'width': 3,
-                'animated': False, 'label': 'Mitigates', 'importance': 'critical'
+            "MITIGATES": {
+                "color": "#EF4444",
+                "style": "dashed",
+                "width": 3,
+                "animated": False,
+                "label": "Mitigates",
+                "importance": "critical",
             },
-            'DEPENDS_ON': {
-                'color': '#6B7280', 'style': 'solid', 'width': 2,
-                'animated': False, 'label': 'Depends On', 'importance': 'medium'
+            "DEPENDS_ON": {
+                "color": "#6B7280",
+                "style": "solid",
+                "width": 2,
+                "animated": False,
+                "label": "Depends On",
+                "importance": "medium",
             },
-            'IMPLEMENTS': {
-                'color': '#10B981', 'style': 'solid', 'width': 2,
-                'animated': False, 'label': 'Implements', 'importance': 'high'
+            "IMPLEMENTS": {
+                "color": "#10B981",
+                "style": "solid",
+                "width": 2,
+                "animated": False,
+                "label": "Implements",
+                "importance": "high",
             },
-            'LEADS_TO': {
-                'color': '#DC2626', 'style': 'dotted', 'width': 2,
-                'animated': True, 'label': 'Leads To', 'importance': 'critical'
+            "LEADS_TO": {
+                "color": "#DC2626",
+                "style": "dotted",
+                "width": 2,
+                "animated": True,
+                "label": "Leads To",
+                "importance": "critical",
             },
-            'RELATES_TO': {
-                'color': '#8B5CF6', 'style': 'solid', 'width': 1,
-                'animated': False, 'label': 'Relates To', 'importance': 'low'
+            "RELATES_TO": {
+                "color": "#8B5CF6",
+                "style": "solid",
+                "width": 1,
+                "animated": False,
+                "label": "Relates To",
+                "importance": "low",
             },
-            'NEXT_VERSION': {
-                'color': '#3B82F6', 'style': 'dashed', 'width': 2,
-                'animated': True, 'label': 'Next Version', 'importance': 'medium'
+            "NEXT_VERSION": {
+                "color": "#3B82F6",
+                "style": "dashed",
+                "width": 2,
+                "animated": True,
+                "label": "Next Version",
+                "importance": "medium",
             },
-            'MENTIONED_IN': {
-                'color': '#9CA3AF', 'style': 'dotted', 'width': 1,
-                'animated': False, 'label': 'Mentioned In', 'importance': 'low'
+            "MENTIONED_IN": {
+                "color": "#9CA3AF",
+                "style": "dotted",
+                "width": 1,
+                "animated": False,
+                "label": "Mentioned In",
+                "importance": "low",
             },
-            'REFERENCES': {
-                'color': '#6366F1', 'style': 'solid', 'width': 1,
-                'animated': False, 'label': 'References', 'importance': 'medium'
-            }
+            "REFERENCES": {
+                "color": "#6366F1",
+                "style": "solid",
+                "width": 1,
+                "animated": False,
+                "label": "References",
+                "importance": "medium",
+            },
         }
 
-        style = edge_styles.get(edge_type, {
-            'color': '#6B7280', 'style': 'solid', 'width': 1,
-            'animated': False, 'label': edge_type.replace('_', ' ').title(), 'importance': 'low'
-        })
+        style = edge_styles.get(
+            edge_type,
+            {
+                "color": "#6B7280",
+                "style": "solid",
+                "width": 1,
+                "animated": False,
+                "label": edge_type.replace("_", " ").title(),
+                "importance": "low",
+            },
+        )
 
         # Format for react-flow (2D)
         react_flow_data = {
-            'id': edge_id,
-            'source': start_id,
-            'target': end_id,
-            'type': 'smoothstep',
-            'animated': style['animated'],
-            'style': {
-                'stroke': style['color'],
-                'strokeWidth': style['width'],
-                'strokeDasharray': (
-                    '5,5' if style['style'] == 'dashed' else
-                    '2,2' if style['style'] == 'dotted' else None
-                )
+            "id": edge_id,
+            "source": start_id,
+            "target": end_id,
+            "type": "smoothstep",
+            "animated": style["animated"],
+            "style": {
+                "stroke": style["color"],
+                "strokeWidth": style["width"],
+                "strokeDasharray": (
+                    "5,5"
+                    if style["style"] == "dashed"
+                    else "2,2"
+                    if style["style"] == "dotted"
+                    else None
+                ),
             },
-            'label': style['label'],
-            'labelStyle': {
-                'fontSize': 10,
-                'fontWeight': 'normal',
-                'fill': style['color'],
-                'backgroundColor': 'rgba(255, 255, 255, 0.8)',
-                'padding': '2px 4px',
-                'borderRadius': '3px'
+            "label": style["label"],
+            "labelStyle": {
+                "fontSize": 10,
+                "fontWeight": "normal",
+                "fill": style["color"],
+                "backgroundColor": "rgba(255, 255, 255, 0.8)",
+                "padding": "2px 4px",
+                "borderRadius": "3px",
             },
-            'labelBgStyle': {
-                'fill': 'rgba(255, 255, 255, 0.8)',
-                'fillOpacity': 0.8
+            "labelBgStyle": {"fill": "rgba(255, 255, 255, 0.8)", "fillOpacity": 0.8},
+            "data": {
+                "type": edge_type,
+                "importance": style["importance"],
+                "properties": props,
             },
-            'data': {
-                'type': edge_type,
-                'importance': style['importance'],
-                'properties': props
-            }
         }
 
         # Format for R3F (3D)
         r3f_data = {
-            'id': edge_id,
-            'source': start_id,
-            'target': end_id,
-            'type': edge_type,
-            'label': style['label'],
-            'color': style['color'],
-            'style': style['style'],
-            'width': float(style['width']) / 2.0,  # Normalize for 3D space
-            'animated': style['animated'],
-            'importance': style['importance'],
-            'geometry': {
-                'type': 'line',
-                'points': [],  # Will be calculated based on node positions
+            "id": edge_id,
+            "source": start_id,
+            "target": end_id,
+            "type": edge_type,
+            "label": style["label"],
+            "color": style["color"],
+            "style": style["style"],
+            "width": float(style["width"]) / 2.0,  # Normalize for 3D space
+            "animated": style["animated"],
+            "importance": style["importance"],
+            "geometry": {
+                "type": "line",
+                "points": [],  # Will be calculated based on node positions
             },
-            'material': {
-                'color': style['color'],
-                'opacity': 0.8 if style['style'] == 'dotted' else 1.0,
-                'transparent': style['style'] in ['dotted', 'dashed'],
-                'linewidth': style['width']
+            "material": {
+                "color": style["color"],
+                "opacity": 0.8 if style["style"] == "dotted" else 1.0,
+                "transparent": style["style"] in ["dotted", "dashed"],
+                "linewidth": style["width"],
             },
-            'properties': props,
-            'interactions': {
-                'hoverable': True,
-                'clickable': True,
-                'selectable': False
-            }
+            "properties": props,
+            "interactions": {"hoverable": True, "clickable": True, "selectable": False},
         }
 
         return {
-            'id': edge_id,
-            'source': start_id,
-            'target': end_id,
-            'type': edge_type,
-            'label': style['label'],
-            'color': style['color'],
-            'style': style['style'],
-            'width': style['width'],
-            'animated': style['animated'],
-            'importance': style['importance'],
-            'properties': props,
-            'age_id': age_relationship_id,  # Store AGE ID for updates/deletes
-            'reactFlow': react_flow_data,
-            'r3f': r3f_data
+            "id": edge_id,
+            "source": start_id,
+            "target": end_id,
+            "type": edge_type,
+            "label": style["label"],
+            "color": style["color"],
+            "style": style["style"],
+            "width": style["width"],
+            "animated": style["animated"],
+            "importance": style["importance"],
+            "properties": props,
+            "age_id": age_relationship_id,  # Store AGE ID for updates/deletes
+            "reactFlow": react_flow_data,
+            "r3f": r3f_data,
         }
 
     def _parse_agtype(self, agtype_value: Any) -> dict[str, Any]:
@@ -2481,9 +2850,9 @@ class GraphService:
         if isinstance(agtype_value, str):
             # AGE returns vertex/edge data as strings like:
             # '{"id": 1125899906842625, "label": "WorkItem", "properties": {...}}::vertex'
-            if '::vertex' in agtype_value or '::edge' in agtype_value:
+            if "::vertex" in agtype_value or "::edge" in agtype_value:
                 # Remove the type suffix and parse JSON
-                json_part = agtype_value.split('::')[0]
+                json_part = agtype_value.split("::")[0]
                 try:
                     return json.loads(json_part)
                 except json.JSONDecodeError:

@@ -80,6 +80,17 @@ from app.schemas.test import (
     TestStep,
 )
 from app.schemas.user import UserCreate, UserInDB, UserResponse, UserUpdate
+from app.schemas.worked import (
+    ActiveTrackingResponse,
+    StartTrackingRequest,
+    StopTrackingRequest,
+    WorkedBase,
+    WorkedCreate,
+    WorkedListResponse,
+    WorkedResponse,
+    WorkedSummary,
+    WorkedUpdate,
+)
 from app.schemas.workitem import (
     DocumentBase,
     DocumentCreate,
@@ -200,4 +211,14 @@ __all__ = [
     "DocumentRecord",
     "DocumentFilter",
     "DocumentDownloadResponse",
+    # Worked (Time Tracking) Schemas
+    "WorkedBase",
+    "WorkedCreate",
+    "WorkedUpdate",
+    "WorkedResponse",
+    "WorkedSummary",
+    "WorkedListResponse",
+    "StartTrackingRequest",
+    "StopTrackingRequest",
+    "ActiveTrackingResponse",
 ]

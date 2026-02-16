@@ -25,6 +25,7 @@ from app.api.v1 import (
     templates,
     tests,
     time_entries,
+    time_tracking,
     workitems,
     workpackages,
 )
@@ -95,6 +96,9 @@ api_router.include_router(backlogs.project_router, tags=["backlogs", "projects"]
 
 # Include time entry routes
 api_router.include_router(time_entries.router, tags=["time-entries"])
+
+# Include time tracking routes (graph database-based)
+api_router.include_router(time_tracking.router, tags=["time-tracking"])
 
 # Include template routes
 api_router.include_router(templates.router, tags=["templates"])

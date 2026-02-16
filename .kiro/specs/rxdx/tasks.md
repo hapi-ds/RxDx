@@ -668,36 +668,36 @@
 
 ### 26.1 Time Tracking Data Model
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 26.1.1 Create "worked" node schema for graph database with fields: resource (user_id), date, from (start_time), to (end_time), description (optional)
-- [ ] 26.1.2 Define "worked_on" relationship type from "worked" node to task node
-- [ ] 26.1.3 Implement GraphService method to create worked nodes and relationships
-- [ ] 26.1.4 Implement GraphService method to calculate worked_sum for tasks (aggregate all linked worked nodes)
-- [ ] 26.1.5 Write unit tests for worked node creation and aggregation
-- [ ] 26.1.6 Write property-based tests for time validation (end time after start time)
+- [x] 26.1.1 Create "worked" node schema for graph database with fields: resource (user_id), date, from (start_time), to (end_time), description (optional)
+- [x] 26.1.2 Define "worked_on" relationship type from "worked" node to task node
+- [x] 26.1.3 Implement GraphService method to create worked nodes and relationships
+- [x] 26.1.4 Implement GraphService method to calculate worked_sum for tasks (aggregate all linked worked nodes)
+- [x] 26.1.5 Write unit tests for worked node creation and aggregation
+- [x] 26.1.6 Write property-based tests for time validation (end time after start time)
 
 ### 26.2 Time Tracking Backend Service
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 26.2.1 Create TimeTrackingService class
-- [ ] 26.2.2 Implement start_time_tracking method (creates worked node with start time)
-- [ ] 26.2.3 Implement stop_time_tracking method (updates worked node with end time)
-- [ ] 26.2.4 Implement get_active_tracking method (get currently running time entries for user)
-- [ ] 26.2.5 Implement get_task_worked_sum method (calculate total time for task)
-- [ ] 26.2.6 Implement add_time_entry method (manually add completed time entry)
-- [ ] 26.2.7 Implement update_time_entry method (edit existing time entry)
-- [ ] 26.2.8 Implement get_sorted_tasks_for_user method (sort: started by user → scheduled next → all others)
-- [ ] 26.2.9 Write unit tests for time tracking service
+- [x] 26.2.1 Create TimeTrackingService class
+- [x] 26.2.2 Implement start_time_tracking method (creates worked node with start time)
+- [x] 26.2.3 Implement stop_time_tracking method (updates worked node with end time)
+- [x] 26.2.4 Implement get_active_tracking method (get currently running time entries for user)
+- [x] 26.2.5 Implement get_task_worked_sum method (calculate total time for task)
+- [x] 26.2.6 Implement add_time_entry method (manually add completed time entry)
+- [x] 26.2.7 Implement update_time_entry method (edit existing time entry)
+- [x] 26.2.8 Implement get_sorted_tasks_for_user method (sort: started by user → scheduled next → all others)
+- [x] 26.2.9 Write unit tests for time tracking service
 
 ### 26.3 Time Tracking API Endpoints
 **References:** Requirement 4 (Mobile Time Recording)
-- [ ] 26.3.1 Create POST /api/v1/time-tracking/start endpoint (start tracking for task)
-- [ ] 26.3.2 Create POST /api/v1/time-tracking/stop endpoint (stop active tracking)
-- [ ] 26.3.3 Create GET /api/v1/time-tracking/active endpoint (get user's active entries)
-- [ ] 26.3.4 Create GET /api/v1/time-tracking/task/{task_id} endpoint (get all time entries for task)
-- [ ] 26.3.5 Create POST /api/v1/time-tracking/entries endpoint (manually add time entry)
-- [ ] 26.3.6 Create PATCH /api/v1/time-tracking/entries/{id} endpoint (update time entry)
-- [ ] 26.3.7 Create DELETE /api/v1/time-tracking/entries/{id} endpoint (delete time entry)
-- [ ] 26.3.8 Create GET /api/v1/time-tracking/tasks endpoint (get sorted task list for user)
-- [ ] 26.3.9 Write integration tests for time tracking endpoints
+- [x] 26.3.1 Create POST /api/v1/time-tracking/start endpoint (start tracking for task)
+- [x] 26.3.2 Create POST /api/v1/time-tracking/stop endpoint (stop active tracking)
+- [x] 26.3.3 Create GET /api/v1/time-tracking/active endpoint (get user's active entries)
+- [x] 26.3.4 Create GET /api/v1/time-tracking/task/{task_id} endpoint (get all time entries for task)
+- [x] 26.3.5 Create POST /api/v1/time-tracking/entries endpoint (manually add time entry)
+- [x] 26.3.6 Create PATCH /api/v1/time-tracking/entries/{id} endpoint (update time entry)
+- [x] 26.3.7 Create DELETE /api/v1/time-tracking/entries/{id} endpoint (delete time entry)
+- [x] 26.3.8 Create GET /api/v1/time-tracking/tasks endpoint (get sorted task list for user)
+- [x] 26.3.9 Write integration tests for time tracking endpoints
 
 ### 26.4 Mobile App Setup
 **References:** Requirement 4 (Mobile Time Recording)

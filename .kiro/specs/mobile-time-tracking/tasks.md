@@ -51,53 +51,53 @@ This document outlines the implementation tasks for the RxDx Mobile Time Trackin
 
 ### 2.1 Storage Service
 **References:** Requirement 2 (Authentication and Security)
-- [ ] 2.1.1 Create StorageService class in `src/services/StorageService.ts`
-- [ ] 2.1.2 Implement setItem method with type safety
-- [ ] 2.1.3 Implement getItem method with type safety
-- [ ] 2.1.4 Implement removeItem method
-- [ ] 2.1.5 Implement clear method
-- [ ] 2.1.6 Write unit tests for StorageService
+- [x] 2.1.1 Create StorageService class in `src/services/StorageService.ts`
+- [x] 2.1.2 Implement setItem method with type safety
+- [x] 2.1.3 Implement getItem method with type safety
+- [x] 2.1.4 Implement removeItem method
+- [x] 2.1.5 Implement clear method
+- [x] 2.1.6 Write unit tests for StorageService
 
 ### 2.2 API Service
 **References:** Requirement 2 (Authentication and Security)
-- [ ] 2.2.1 Create ApiService class in `src/services/ApiService.ts`
-- [ ] 2.2.2 Implement constructor with base URL configuration
-- [ ] 2.2.3 Implement setToken and clearToken methods
-- [ ] 2.2.4 Implement generic request method with axios
-- [ ] 2.2.5 Add request interceptor to include Authorization header
-- [ ] 2.2.6 Add response interceptor to handle 401 errors
-- [ ] 2.2.7 Implement error handling and error type mapping
-- [ ] 2.2.8 Write unit tests for ApiService with mocked axios
+- [x] 2.2.1 Create ApiService class in `src/services/ApiService.ts`
+- [x] 2.2.2 Implement constructor with base URL configuration
+- [x] 2.2.3 Implement setToken and clearToken methods
+- [x] 2.2.4 Implement generic request method with axios
+- [x] 2.2.5 Add request interceptor to include Authorization header
+- [x] 2.2.6 Add response interceptor to handle 401 errors
+- [x] 2.2.7 Implement error handling and error type mapping
+- [x] 2.2.8 Write unit tests for ApiService with mocked axios
 
 ### 2.3 Auth Service
 **References:** Requirement 2 (Authentication and Security)
-- [ ] 2.3.1 Create AuthService class in `src/services/AuthService.ts`
-- [ ] 2.3.2 Implement login method calling POST /api/v1/auth/login
-- [ ] 2.3.3 Implement logout method
-- [ ] 2.3.4 Implement getStoredToken method
-- [ ] 2.3.5 Implement getStoredUser method
-- [ ] 2.3.6 Implement storeToken method
-- [ ] 2.3.7 Implement storeUser method
-- [ ] 2.3.8 Implement clearAuth method
-- [ ] 2.3.9 Write unit tests for AuthService
+- [x] 2.3.1 Create AuthService class in `src/services/AuthService.ts`
+- [x] 2.3.2 Implement login method calling POST /api/v1/auth/login
+- [x] 2.3.3 Implement logout method
+- [x] 2.3.4 Implement getStoredToken method
+- [x] 2.3.5 Implement getStoredUser method
+- [x] 2.3.6 Implement storeToken method
+- [x] 2.3.7 Implement storeUser method
+- [x] 2.3.8 Implement clearAuth method
+- [x] 2.3.9 Write unit tests for AuthService
 
 ### 2.4 Time Tracking Service
 **References:** Requirement 4 (Time Tracking Start/Stop)
-- [ ] 2.4.1 Create TimeTrackingService class in `src/services/TimeTrackingService.ts`
-- [ ] 2.4.2 Implement startTracking method calling POST /api/v1/time-tracking/start
-- [ ] 2.4.3 Implement stopTracking method calling POST /api/v1/time-tracking/stop
-- [ ] 2.4.4 Implement getActiveTracking method calling GET /api/v1/time-tracking/active
-- [ ] 2.4.5 Implement getTasks method calling GET /api/v1/time-tracking/tasks
-- [ ] 2.4.6 Implement getTaskWorkedSum method
-- [ ] 2.4.7 Write unit tests for TimeTrackingService
+- [x] 2.4.1 Create TimeTrackingService class in `src/services/TimeTrackingService.ts`
+- [x] 2.4.2 Implement startTracking method calling POST /api/v1/time-tracking/start
+- [x] 2.4.3 Implement stopTracking method calling POST /api/v1/time-tracking/stop
+- [x] 2.4.4 Implement getActiveTracking method calling GET /api/v1/time-tracking/active
+- [x] 2.4.5 Implement getTasks method calling GET /api/v1/time-tracking/tasks
+- [x] 2.4.6 Implement getTaskWorkedSum method
+- [x] 2.4.7 Write unit tests for TimeTrackingService
 
 ### 2.5 Utility Functions
 **References:** Multiple requirements
-- [ ] 2.5.1 Create time formatting utilities in `src/utils/timeUtils.ts` (formatElapsedTime, formatDuration)
-- [ ] 2.5.2 Create validation utilities in `src/utils/validation.ts` (validateEmail, validateTimeRange)
-- [ ] 2.5.3 Create date utilities in `src/utils/dateUtils.ts` (formatDate, groupByDate)
-- [ ] 2.5.4 Write unit tests for utility functions
-- [ ] 2.5.5 Write property-based tests for time calculations
+- [x] 2.5.1 Create time formatting utilities in `src/utils/timeUtils.ts` (formatElapsedTime, formatDuration)
+- [x] 2.5.2 Create validation utilities in `src/utils/validation.ts` (validateEmail, validateTimeRange)
+- [x] 2.5.3 Create date utilities in `src/utils/dateUtils.ts` (formatDate, groupByDate)
+- [x] 2.5.4 Write unit tests for utility functions
+- [x] 2.5.5 Write property-based tests for time calculations
 
 ## Phase 3: Type Definitions
 

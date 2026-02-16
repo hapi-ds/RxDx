@@ -11,13 +11,13 @@ jest.mock('axios', () => {
     delete: jest.fn(),
     interceptors: {
       request: {
-        use: jest.fn((successHandler, errorHandler) => {
+        use: jest.fn((_successHandler, _errorHandler) => {
           // Store handlers for testing if needed
           return 0;
         }),
       },
       response: {
-        use: jest.fn((successHandler, errorHandler) => {
+        use: jest.fn((_successHandler, _errorHandler) => {
           // Store handlers for testing if needed
           return 0;
         }),

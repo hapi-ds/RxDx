@@ -103,13 +103,13 @@ This document outlines the implementation tasks for the RxDx Mobile Time Trackin
 
 ### 3.1 Define Core Types
 **References:** Design document data models
-- [ ] 3.1.1 Create types in `src/types/index.ts`
-- [ ] 3.1.2 Define Task interface
-- [ ] 3.1.3 Define WorkedEntry interface
-- [ ] 3.1.4 Define User interface
-- [ ] 3.1.5 Define ErrorType enum and AppError interface
-- [ ] 3.1.6 Define API request/response types
-- [ ] 3.1.7 Define navigation types for React Navigation
+- [x] 3.1.1 Create types in `src/types/index.ts`
+- [x] 3.1.2 Define Task interface
+- [x] 3.1.3 Define WorkedEntry interface
+- [x] 3.1.4 Define User interface
+- [x] 3.1.5 Define ErrorType enum and AppError interface
+- [x] 3.1.6 Define API request/response types
+- [x] 3.1.7 Define navigation types for React Navigation
 
 ## Phase 4: State Management
 

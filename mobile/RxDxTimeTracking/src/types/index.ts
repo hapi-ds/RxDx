@@ -4,6 +4,7 @@
 
 export * from './user';
 export * from './errors';
+export * from './navigation';
 
 /**
  * Task interface
@@ -47,4 +48,35 @@ export interface StartTrackingRequest {
  */
 export interface StopTrackingRequest {
   worked_id: string;
+}
+
+/**
+ * API response wrapper for list endpoints
+ */
+export interface ApiListResponse<T> {
+  items: T[];
+  total?: number;
+}
+
+/**
+ * Task list response
+ */
+export interface TaskListResponse {
+  tasks: Task[];
+}
+
+/**
+ * Active tracking response
+ */
+export interface ActiveTrackingResponse {
+  active_entries: WorkedEntry[];
+}
+
+/**
+ * Task worked sum response
+ */
+export interface TaskWorkedSumResponse {
+  task_id: string;
+  worked_sum: string;
+  total_seconds: number;
 }

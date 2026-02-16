@@ -152,30 +152,30 @@ This document outlines the implementation tasks for the RxDx Mobile Time Trackin
 
 ### 5.1 Common Components
 **References:** Requirement 9 (User Experience and Performance)
-- [ ] 5.1.1 Create Button component in `src/components/Button.tsx`
-- [ ] 5.1.2 Create Input component in `src/components/Input.tsx`
-- [ ] 5.1.3 Create LoadingSpinner component in `src/components/LoadingSpinner.tsx`
-- [ ] 5.1.4 Create ErrorMessage component in `src/components/ErrorMessage.tsx`
-- [ ] 5.1.5 Create EmptyState component in `src/components/EmptyState.tsx`
-- [ ] 5.1.6 Write unit tests for common components
+- [x] 5.1.1 Create Button component in `src/components/Button.tsx`
+- [x] 5.1.2 Create Input component in `src/components/Input.tsx`
+- [x] 5.1.3 Create LoadingSpinner component in `src/components/LoadingSpinner.tsx`
+- [x] 5.1.4 Create ErrorMessage component in `src/components/ErrorMessage.tsx`
+- [x] 5.1.5 Create EmptyState component in `src/components/EmptyState.tsx`
+- [x] 5.1.6 Write unit tests for common components
 
 ### 5.2 Task Components
 **References:** Requirement 3 (Task Selection and Sorting)
-- [ ] 5.2.1 Create TaskCard component in `src/components/TaskCard.tsx`
-- [ ] 5.2.2 Display task title, description, and worked_sum
-- [ ] 5.2.3 Add priority indicator (visual cue)
-- [ ] 5.2.4 Add active tracking indicator
-- [ ] 5.2.5 Make TaskCard tappable with onPress handler
-- [ ] 5.2.6 Add accessibility labels
-- [ ] 5.2.7 Write unit tests for TaskCard
+- [x] 5.2.1 Create TaskCard component in `src/components/TaskCard.tsx`
+- [x] 5.2.2 Display task title, description, and worked_sum
+- [x] 5.2.3 Add priority indicator (visual cue)
+- [x] 5.2.4 Add active tracking indicator
+- [x] 5.2.5 Make TaskCard tappable with onPress handler
+- [x] 5.2.6 Add accessibility labels
+- [x] 5.2.7 Write unit tests for TaskCard
 
 ### 5.3 Timer Components
 **References:** Requirement 4 (Time Tracking Start/Stop)
-- [ ] 5.3.1 Create Timer component in `src/components/Timer.tsx`
-- [ ] 5.3.2 Display elapsed time in HH:MM:SS format
-- [ ] 5.3.3 Update every second
-- [ ] 5.3.4 Add visual styling (large, prominent display)
-- [ ] 5.3.5 Write unit tests for Timer
+- [x] 5.3.1 Create Timer component in `src/components/Timer.tsx`
+- [x] 5.3.2 Display elapsed time in HH:MM:SS format
+- [x] 5.3.3 Update every second
+- [x] 5.3.4 Add visual styling (large, prominent display)
+- [x] 5.3.5 Write unit tests for Timer
 
 ## Phase 6: Screens
 

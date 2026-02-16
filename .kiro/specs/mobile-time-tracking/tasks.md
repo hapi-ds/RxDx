@@ -115,38 +115,38 @@ This document outlines the implementation tasks for the RxDx Mobile Time Trackin
 
 ### 4.1 Auth Context
 **References:** Requirement 2 (Authentication and Security)
-- [ ] 4.1.1 Create AuthContext in `src/contexts/AuthContext.tsx`
-- [ ] 4.1.2 Define AuthContextType interface
-- [ ] 4.1.3 Implement AuthProvider component with useReducer
-- [ ] 4.1.4 Implement login action
-- [ ] 4.1.5 Implement logout action
-- [ ] 4.1.6 Implement token restoration on app start
-- [ ] 4.1.7 Create useAuth custom hook
-- [ ] 4.1.8 Write unit tests for AuthContext
+- [x] 4.1.1 Create AuthContext in `src/contexts/AuthContext.tsx`
+- [x] 4.1.2 Define AuthContextType interface
+- [x] 4.1.3 Implement AuthProvider component with useReducer
+- [x] 4.1.4 Implement login action
+- [x] 4.1.5 Implement logout action
+- [x] 4.1.6 Implement token restoration on app start
+- [x] 4.1.7 Create useAuth custom hook
+- [x] 4.1.8 Write unit tests for AuthContext
 
 ### 4.2 Time Tracking Context
 **References:** Requirement 4 (Time Tracking Start/Stop)
-- [ ] 4.2.1 Create TimeTrackingContext in `src/contexts/TimeTrackingContext.tsx`
-- [ ] 4.2.2 Define TimeTrackingContextType interface
-- [ ] 4.2.3 Implement TimeTrackingProvider component
-- [ ] 4.2.4 Implement startTracking action
-- [ ] 4.2.5 Implement stopTracking action
-- [ ] 4.2.6 Implement timer logic with setInterval
-- [ ] 4.2.7 Implement description update action
-- [ ] 4.2.8 Persist active tracking state to AsyncStorage
-- [ ] 4.2.9 Restore active tracking on app start
-- [ ] 4.2.10 Write unit tests for TimeTrackingContext
+- [x] 4.2.1 Create TimeTrackingContext in `src/contexts/TimeTrackingContext.tsx`
+- [x] 4.2.2 Define TimeTrackingContextType interface
+- [x] 4.2.3 Implement TimeTrackingProvider component
+- [x] 4.2.4 Implement startTracking action
+- [x] 4.2.5 Implement stopTracking action
+- [x] 4.2.6 Implement timer logic with setInterval
+- [x] 4.2.7 Implement description update action
+- [x] 4.2.8 Persist active tracking state to AsyncStorage
+- [x] 4.2.9 Restore active tracking on app start
+- [x] 4.2.10 Write unit tests for TimeTrackingContext
 
 ### 4.3 Tasks Context
 **References:** Requirement 3 (Task Selection and Sorting)
-- [ ] 4.3.1 Create TasksContext in `src/contexts/TasksContext.tsx`
-- [ ] 4.3.2 Define TasksContextType interface
-- [ ] 4.3.3 Implement TasksProvider component
-- [ ] 4.3.4 Implement fetchTasks action
-- [ ] 4.3.5 Implement refreshTasks action
-- [ ] 4.3.6 Implement searchTasks function
-- [ ] 4.3.7 Implement task caching with TTL
-- [ ] 4.3.8 Write unit tests for TasksContext
+- [x] 4.3.1 Create TasksContext in `src/contexts/TasksContext.tsx`
+- [x] 4.3.2 Define TasksContextType interface
+- [x] 4.3.3 Implement TasksProvider component
+- [x] 4.3.4 Implement fetchTasks action
+- [x] 4.3.5 Implement refreshTasks action
+- [x] 4.3.6 Implement searchTasks function
+- [x] 4.3.7 Implement task caching with TTL
+- [x] 4.3.8 Write unit tests for TasksContext
 
 ## Phase 5: UI Components
 

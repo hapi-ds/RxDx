@@ -14,6 +14,7 @@ import { KanbanPage } from './pages/KanbanPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { TemplatesPage } from './pages/TemplatesPage';
 import { TimeTrackingPage } from './pages/TimeTrackingPage';
+import { PSPMatrixPage } from './pages/PSPMatrixPage';
 import { ProtectedRoute, NavigationHeader, LoadingPage } from './components/common';
 import { useAuthStore } from './stores/authStore';
 
@@ -141,11 +142,11 @@ function AppLayout({ children }: { children: React.ReactNode }): React.ReactElem
 
 function AuthRedirect(): React.ReactElement {
   const { isAuthenticated } = useAuthStore();
-  
+
   if (isAuthenticated) {
     return <Navigate to="/table" replace />;
   }
-  
+
   return <Navigate to="/login" replace />;
 }
 
@@ -261,6 +262,18 @@ function App(): React.ReactElement {
               <ProtectedRoute>
                 <PageErrorBoundary>
                   <TimeTrackingPage />
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/psp"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
+                  <PSPMatrixPage />
                 </PageErrorBoundary>
               </ProtectedRoute>
             </AppLayout>

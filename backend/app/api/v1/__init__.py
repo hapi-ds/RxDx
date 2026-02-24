@@ -16,6 +16,7 @@ from app.api.v1 import (
     llm,
     milestones,
     phases,
+    psp,
     requirements,
     resources,
     risks,
@@ -108,3 +109,6 @@ api_router.include_router(workpackages.router, tags=["workpackages"])
 
 # Include kanban routes
 api_router.include_router(kanban.router, prefix="/kanban", tags=["kanban"])
+
+# Include PSP matrix routes
+api_router.include_router(psp.router, prefix="/psp", tags=["psp"])

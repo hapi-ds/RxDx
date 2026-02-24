@@ -71,24 +71,24 @@ departments:
 resources:
   - id: resource-dev1
     name: Charlie Developer
-    type: human
-    availability: full_time
+    type: person
+    availability: available
     cost_per_hour: 75.0
     department_id: dept-engineering
     user_id: user-dev1
 
   - id: resource-dev2
     name: Diana Developer
-    type: human
-    availability: full_time
+    type: person
+    availability: available
     cost_per_hour: 75.0
     department_id: dept-engineering
     user_id: user-dev2
 
   - id: resource-qa
     name: Eve QA Engineer
-    type: human
-    availability: full_time
+    type: person
+    availability: available
     cost_per_hour: 65.0
     department_id: dept-qa
     user_id: user-qa
@@ -350,7 +350,7 @@ workitems:
     - id: risk-security
       title: Security Vulnerability Risk
       description: Potential security vulnerabilities in authentication
-      status: active
+      status: draft
       priority: 5
       severity: 8
       occurrence: 3
@@ -362,7 +362,7 @@ workitems:
     - id: risk-regulatory
       title: Regulatory Compliance Risk
       description: Risk of non-compliance with medical device regulations
-      status: active
+      status: draft
       priority: 5
       severity: 9
       occurrence: 2

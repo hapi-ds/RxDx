@@ -1,0 +1,224 @@
+/* ============================================================================
+   PSP Matrix View Styling
+   Modern, clean table styling for cross-referencing Departments & Phases
+   ============================================================================ */
+
+.psp-matrix-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.5rem;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  overflow: hidden;
+}
+
+.psp-matrix-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.psp-matrix-header-bar h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.psp-legend {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.psp-table-wrapper {
+  flex: 1;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background-color: var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.psp-table {
+  min-width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+/* Base Headings & Cells */
+.psp-table th,
+.psp-table td {
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+}
+
+/* Corner cell */
+.psp-th-corner {
+  background-color: var(--color-background-alt);
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  min-width: 200px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.corner-label {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Phase Columns Header */
+.psp-th-phase {
+  background-color: var(--color-background-alt);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  min-width: 250px;
+}
+
+.phase-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.phase-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.phase-status {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
+  text-transform: capitalize;
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.phase-status.active {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+/* Department Rows Sidebar */
+.psp-td-dept {
+  background-color: var(--color-background-alt);
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  font-weight: 600;
+  vertical-align: top;
+  border-right: 2px solid var(--color-border);
+}
+
+.dept-cell-content {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+/* Matrix Data Cell */
+.psp-td-cell {
+  vertical-align: top;
+  background-color: var(--color-surface);
+  transition: background-color 0.2s ease;
+}
+
+.psp-td-cell:hover {
+  background-color: var(--color-background-alt);
+}
+
+.psp-cell-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 80px;
+}
+
+.psp-cell-workpackages {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Workpackage Card Component */
+.psp-wp-card {
+  background-color: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-left: 3px solid var(--color-primary);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.psp-wp-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.psp-wp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.psp-wp-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1.25;
+}
+
+.psp-wp-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.25rem;
+}
+
+.psp-wp-id {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  font-family: monospace;
+}
+
+.psp-wp-status {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #ffffff;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+/* Loading & Empty States */
+.psp-matrix-loading,
+.psp-matrix-error,
+.psp-matrix-empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 3rem;
+  color: var(--color-text-muted);
+}
+
+.empty-state {
+  text-align: center;
+  max-width: 400px;
+}
+
+.empty-state h3 {
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}

@@ -190,3 +190,14 @@ class ActiveTrackingResponse(BaseModel):
         ..., description="List of active (running) worked entries"
     )
     count: int = Field(..., description="Number of active entries")
+
+
+class WorkedEntriesListResponse(BaseModel):
+    """Schema for paginated list of worked entries"""
+
+    entries: list[WorkedListResponse] = Field(
+        ..., description="List of worked entries with task information"
+    )
+    total: int = Field(..., description="Total number of entries")
+    skip: int = Field(..., description="Number of entries skipped")
+    limit: int = Field(..., description="Maximum number of entries returned")

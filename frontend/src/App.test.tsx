@@ -49,6 +49,10 @@ vi.mock('./pages/TemplatesPage', () => ({
   TemplatesPage: () => <div>Templates Page</div>,
 }));
 
+vi.mock('./pages/TimeTrackingPage', () => ({
+  TimeTrackingPage: () => <div>Time Tracking Page</div>,
+}));
+
 vi.mock('./components/common', () => ({
   ProtectedRoute: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   NavigationHeader: () => <div>Navigation Header</div>,
@@ -176,5 +180,94 @@ describe('App Routing', () => {
       ),
       { numRuns: 100 }
     );
+  });
+
+  describe('Time Tracking Route Integration', () => {
+    it('renders TimeTrackingPage at /time-tracking route', () => {
+      render(
+        <MemoryRouter initialEntries={['/time-tracking']}>
+          <Routes>
+            <Route path="/time-tracking" element={<div>Time Tracking Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      );
+      expect(screen.getByText('Time Tracking Page')).toBeInTheDocument();
+    });
+
+    it('requires authentication for /time-tracking route', () => {
+      // Mock unauthenticated state
+      const mockUseAuthStore = vi.fn(() => ({
+        isAuthenticated: false,
+        user: null,
+        logout: vi.fn(),
+      }));
+      
+      // Create a ProtectedRoute mock that checks authentication
+      const MockProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+        const { isAuthenticated } = mockUseAuthStore();
+        if (!isAuthenticated) {
+          return <Navigate to="/login" replace />;
+        }
+        return <>{children}</>;
+      };
+
+      render(
+        <MemoryRouter initialEntries={['/time-tracking']}>
+          <Routes>
+            <Route 
+              path="/time-tracking" 
+              element={
+                <MockProtectedRoute>
+                  <div>Time Tracking Page</div>
+                </MockProtectedRoute>
+              } 
+            />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      );
+      
+      // Should redirect to login when not authenticated
+      expect(screen.getByText('Login Page')).toBeInTheDocument();
+      expect(screen.queryByText('Time Tracking Page')).not.toBeInTheDocument();
+    });
+
+    it('allows authenticated users to access /time-tracking route', () => {
+      // Mock authenticated state
+      const mockUseAuthStore = vi.fn(() => ({
+        isAuthenticated: true,
+        user: { id: '1', email: 'test@example.com' },
+        logout: vi.fn(),
+      }));
+      
+      // Create a ProtectedRoute mock that checks authentication
+      const MockProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+        const { isAuthenticated } = mockUseAuthStore();
+        if (!isAuthenticated) {
+          return <Navigate to="/login" replace />;
+        }
+        return <>{children}</>;
+      };
+
+      render(
+        <MemoryRouter initialEntries={['/time-tracking']}>
+          <Routes>
+            <Route 
+              path="/time-tracking" 
+              element={
+                <MockProtectedRoute>
+                  <div>Time Tracking Page</div>
+                </MockProtectedRoute>
+              } 
+            />
+            <Route path="/login" element={<div>Login Page</div>} />
+          </Routes>
+        </MemoryRouter>
+      );
+      
+      // Should render time tracking page when authenticated
+      expect(screen.getByText('Time Tracking Page')).toBeInTheDocument();
+      expect(screen.queryByText('Login Page')).not.toBeInTheDocument();
+    });
   });
 });

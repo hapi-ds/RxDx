@@ -64,11 +64,11 @@ class TimeTrackingService:
 
         worked_node = await self.graph.create_worked_node(
             worked_id=str(worked_id),
-            resource=str(current_user.id),
-            date=today,
-            from_time=start_time,
-            to_time=None,  # No end time yet
+            resource_id=str(current_user.id),
             task_id=str(task_id),
+            date=str(today),
+            start_time=start_time.isoformat(),
+            end_time=None,  # No end time yet
             description=description,
         )
 
@@ -125,7 +125,7 @@ class TimeTrackingService:
 
         updated_node = await self.graph.update_worked_node(
             worked_id=str(worked_id),
-            to_time=end_time,
+            end_time=end_time.isoformat(),
         )
 
         logger.info(
@@ -246,11 +246,11 @@ class TimeTrackingService:
 
         worked_node = await self.graph.create_worked_node(
             worked_id=str(worked_id),
-            resource=str(current_user.id),
-            date=entry_data.date,
-            from_time=entry_data.start_time,  # Use start_time from schema
-            to_time=entry_data.end_time,  # Use end_time from schema
+            resource_id=str(current_user.id),
             task_id=str(entry_data.task_id),
+            date=str(entry_data.date),
+            start_time=entry_data.start_time.isoformat() if hasattr(entry_data.start_time, 'isoformat') else str(entry_data.start_time),
+            end_time=entry_data.end_time.isoformat() if entry_data.end_time and hasattr(entry_data.end_time, 'isoformat') else (str(entry_data.end_time) if entry_data.end_time else None),
             description=entry_data.description,
         )
 
@@ -301,7 +301,7 @@ class TimeTrackingService:
         # Update the node
         updated_node = await self.graph.update_worked_node(
             worked_id=str(worked_id),
-            to_time=updates.end_time,  # Use end_time instead of to_time
+            end_time=updates.end_time.isoformat() if updates.end_time and hasattr(updates.end_time, 'isoformat') else (str(updates.end_time) if updates.end_time else None),
             description=updates.description,
         )
 
@@ -333,7 +333,7 @@ class TimeTrackingService:
         # Get tasks with worked entries by this user
         started_query = f"""
         MATCH (w:Worked {{resource: '{str(current_user.id)}'}})-[:WORKED_ON]->(t:WorkItem {{type: 'task'}})
-        RETURN DISTINCT t, 1 as priority
+        RETURN t
         ORDER BY t.title
         LIMIT {limit}
         """
@@ -345,7 +345,7 @@ class TimeTrackingService:
         AND NOT EXISTS {{
             MATCH (w:Worked {{resource: '{str(current_user.id)}'}})-[:WORKED_ON]->(t)
         }}
-        RETURN t, 2 as priority
+        RETURN t
         ORDER BY t.scheduled_start
         LIMIT {limit}
         """
@@ -356,8 +356,7 @@ class TimeTrackingService:
         WHERE NOT EXISTS {{
             MATCH (w:Worked {{resource: '{str(current_user.id)}'}})-[:WORKED_ON]->(t)
         }}
-        AND (t.scheduled_start IS NULL OR t.scheduled_start > datetime())
-        RETURN t, 3 as priority
+        RETURN t
         ORDER BY t.title
         LIMIT {limit}
         """
@@ -367,25 +366,104 @@ class TimeTrackingService:
         scheduled_results = await self.graph.execute_query(scheduled_query)
         other_results = await self.graph.execute_query(other_query)
 
-        # Combine results
+        # Combine results with priorities
         all_tasks = []
         seen_ids = set()
 
-        for result in started_results + scheduled_results + other_results:
-            task_data = result["t"]
+        # Priority 1: Started tasks
+        for result in started_results:
+            task_data = result.get("t", result)
             task_id = task_data.get("id")
 
-            if task_id not in seen_ids:
+            if task_id and task_id not in seen_ids:
                 seen_ids.add(task_id)
                 all_tasks.append({
                     "id": task_id,
                     "title": task_data.get("title", ""),
-                    "description": task_data.get("description"),
+                    "description": task_data.get("description", ""),
                     "status": task_data.get("status", "draft"),
-                    "priority": result.get("priority", 3),
+                    "priority": task_data.get("priority", 0),
+                    "estimated_hours": task_data.get("estimated_hours", 0),
+                    "worked_sum": 0,  # Will be calculated below
+                    "assigned_to": task_data.get("assigned_to"),
                     "scheduled_start": task_data.get("scheduled_start"),
                     "scheduled_end": task_data.get("scheduled_end"),
+                    "has_active_tracking": False,  # Will be checked below
+                    "user_is_tracking": True,  # Priority 1 means user has worked on it
                 })
+
+        # Priority 2: Scheduled tasks
+        for result in scheduled_results:
+            task_data = result.get("t", result)
+            task_id = task_data.get("id")
+
+            if task_id and task_id not in seen_ids:
+                seen_ids.add(task_id)
+                all_tasks.append({
+                    "id": task_id,
+                    "title": task_data.get("title", ""),
+                    "description": task_data.get("description", ""),
+                    "status": task_data.get("status", "draft"),
+                    "priority": task_data.get("priority", 0),
+                    "estimated_hours": task_data.get("estimated_hours", 0),
+                    "worked_sum": 0,  # Will be calculated below
+                    "assigned_to": task_data.get("assigned_to"),
+                    "scheduled_start": task_data.get("scheduled_start"),
+                    "scheduled_end": task_data.get("scheduled_end"),
+                    "has_active_tracking": False,  # Will be checked below
+                    "user_is_tracking": False,
+                })
+
+        # Priority 3: Other tasks
+        for result in other_results:
+            task_data = result.get("t", result)
+            task_id = task_data.get("id")
+
+            if task_id and task_id not in seen_ids:
+                seen_ids.add(task_id)
+                all_tasks.append({
+                    "id": task_id,
+                    "title": task_data.get("title", ""),
+                    "description": task_data.get("description", ""),
+                    "status": task_data.get("status", "draft"),
+                    "priority": task_data.get("priority", 0),
+                    "estimated_hours": task_data.get("estimated_hours", 0),
+                    "worked_sum": 0,  # Will be calculated below
+                    "assigned_to": task_data.get("assigned_to"),
+                    "scheduled_start": task_data.get("scheduled_start"),
+                    "scheduled_end": task_data.get("scheduled_end"),
+                    "has_active_tracking": False,  # Will be checked below
+                    "user_is_tracking": False,
+                })
+
+        # Calculate worked_sum and check for active tracking for each task
+        for task in all_tasks:
+            try:
+                # Get worked sum
+                task["worked_sum"] = await self.get_task_worked_sum(UUID(task["id"]))
+                
+                # Check if task has active tracking by any user
+                active_query = f"""
+                MATCH (w:Worked)-[:WORKED_ON]->(t:WorkItem {{id: '{task["id"]}'}})
+                WHERE w.to IS NULL
+                RETURN count(w) as active_count
+                """
+                active_results = await self.graph.execute_query(active_query)
+                active_count = active_results[0] if active_results and isinstance(active_results[0], int) else 0
+                task["has_active_tracking"] = active_count > 0
+                
+                # Check if current user is tracking this task
+                user_tracking_query = f"""
+                MATCH (w:Worked {{resource: '{str(current_user.id)}'}})-[:WORKED_ON]->(t:WorkItem {{id: '{task["id"]}'}})
+                WHERE w.to IS NULL
+                RETURN count(w) as user_count
+                """
+                user_tracking_results = await self.graph.execute_query(user_tracking_query)
+                user_count = user_tracking_results[0] if user_tracking_results and isinstance(user_tracking_results[0], int) else 0
+                task["user_is_tracking"] = user_count > 0
+            except Exception:
+                # If calculation fails, use defaults
+                pass
 
         return all_tasks[:limit]
 

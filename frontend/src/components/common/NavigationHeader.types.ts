@@ -20,4 +20,5 @@ export const navItems: NavItem[] = [
   { path: '/kanban', label: 'Kanban', icon: '📊' },
   { path: '/documents', label: 'Documents', icon: '📄' },
   { path: '/templates', label: 'Templates', icon: '📑' },
+  { path: '/time-tracking', label: 'Time Tracking', icon: '⏱️' },
 ];

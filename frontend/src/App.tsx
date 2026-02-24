@@ -13,6 +13,7 @@ import { SchedulePage } from './pages/SchedulePage';
 import { KanbanPage } from './pages/KanbanPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { TemplatesPage } from './pages/TemplatesPage';
+import { TimeTrackingPage } from './pages/TimeTrackingPage';
 import { ProtectedRoute, NavigationHeader, LoadingPage } from './components/common';
 import { useAuthStore } from './stores/authStore';
 
@@ -248,6 +249,18 @@ function App(): React.ReactElement {
               <ProtectedRoute>
                 <PageErrorBoundary>
                   <TemplatesPage />
+                </PageErrorBoundary>
+              </ProtectedRoute>
+            </AppLayout>
+          }
+        />
+        <Route
+          path="/time-tracking"
+          element={
+            <AppLayout>
+              <ProtectedRoute>
+                <PageErrorBoundary>
+                  <TimeTrackingPage />
                 </PageErrorBoundary>
               </ProtectedRoute>
             </AppLayout>

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.auth import get_current_user
+from app.api.deps import get_current_user
 from app.db.graph import get_graph_service, GraphService
 from app.models.user import User
 from app.schemas.worked import (
@@ -14,6 +14,7 @@ from app.schemas.worked import (
     StartTrackingRequest,
     StopTrackingRequest,
     WorkedCreate,
+    WorkedEntriesListResponse,
     WorkedListResponse,
     WorkedResponse,
     WorkedSummary,
@@ -252,6 +253,167 @@ async def get_task_time_summary(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
+        )
+
+
+@router.get(
+    "/entries",
+    response_model=WorkedEntriesListResponse,
+    summary="Get time entry history",
+    description="Get time entry history for the authenticated user with pagination.",
+)
+async def get_time_entries(
+    skip: int = 0,
+    limit: int = 10,
+    current_user: User = Depends(get_current_user),
+    graph_service: GraphService = Depends(get_graph_service),
+) -> WorkedEntriesListResponse:
+    """
+    Get time entry history for the authenticated user.
+
+    Args:
+        skip: Number of entries to skip (for pagination)
+        limit: Maximum number of entries to return
+        current_user: Authenticated user
+        graph_service: Graph service
+
+    Returns:
+        List of time entries with pagination info
+
+    Raises:
+        HTTPException: 401 if not authenticated
+    """
+    try:
+        # Query for worked entries by this user
+        # Note: Apache AGE execute_query expects a single return value
+        query = f"""
+        MATCH (w:Worked {{resource: '{str(current_user.id)}'}})
+        WHERE w.to IS NOT NULL
+        RETURN w
+        SKIP {skip}
+        LIMIT {limit}
+        """
+
+        # Get total count
+        count_query = f"""
+        MATCH (w:Worked {{resource: '{str(current_user.id)}'}})
+        WHERE w.to IS NOT NULL
+        RETURN count(w) as total
+        """
+
+        results = await graph_service.execute_query(query)
+        count_results = await graph_service.execute_query(count_query)
+        
+        # Apache AGE returns count directly as an int, not wrapped in a dict
+        total = count_results[0] if count_results and isinstance(count_results[0], int) else (count_results[0].get("total", 0) if count_results else 0)
+
+        entries = []
+        for result in results:
+            worked_data = result
+            
+            # Get task info via relationship
+            task_query = f"""
+            MATCH (w:Worked {{id: '{worked_data.get("id")}'}})-[:WORKED_ON]->(t:WorkItem)
+            RETURN t
+            """
+            task_results = await graph_service.execute_query(task_query)
+            
+            task_id = "00000000-0000-0000-0000-000000000000"
+            task_title = "Unknown Task"
+            
+            if task_results:
+                task_data = task_results[0]
+                task_id = task_data.get("id", task_id)
+                task_title = task_data.get("title", task_title)
+            
+            # Parse date and times
+            from datetime import datetime as dt
+            
+            date_str = worked_data.get('date', '')
+            from_str = worked_data.get('from', '')
+            to_str = worked_data.get('to', '')
+            
+            # Parse date
+            if isinstance(date_str, str):
+                entry_date = dt.fromisoformat(date_str).date()
+            else:
+                entry_date = date_str
+            
+            # Parse start time
+            if isinstance(from_str, str):
+                start_time = dt.fromisoformat(f"{entry_date}T{from_str}").time()
+            else:
+                start_time = from_str
+            
+            # Parse end time
+            end_time = None
+            if to_str:
+                if isinstance(to_str, str):
+                    end_time = dt.fromisoformat(f"{entry_date}T{to_str}").time()
+                else:
+                    end_time = to_str
+            
+            # Calculate duration
+            duration_hours = None
+            if end_time:
+                start_seconds = start_time.hour * 3600 + start_time.minute * 60 + start_time.second
+                end_seconds = end_time.hour * 3600 + end_time.minute * 60 + end_time.second
+                if end_seconds < start_seconds:
+                    end_seconds += 24 * 3600
+                duration_hours = (end_seconds - start_seconds) / 3600
+            
+            # Parse created_at
+            created_at_str = worked_data.get('created_at', '')
+            if isinstance(created_at_str, str):
+                created_at = dt.fromisoformat(created_at_str)
+            else:
+                created_at = created_at_str or dt.now()
+            
+            entries.append(WorkedListResponse(
+                id=UUID(worked_data.get("id")),
+                resource=UUID(worked_data.get("resource")),
+                task_id=UUID(task_id) if task_id else UUID("00000000-0000-0000-0000-000000000000"),
+                task_title=task_title,
+                date=entry_date,
+                start_time=start_time,
+                end_time=end_time,
+                duration_hours=duration_hours,
+                description=worked_data.get("description", ""),
+                created_at=created_at,
+            ))
+
+        logger.info(
+            "Fetched time entries",
+            extra={
+                "user_id": str(current_user.id),
+                "count": len(entries),
+                "total": total,
+            },
+        )
+
+        return WorkedEntriesListResponse(
+            entries=entries,
+            total=total,
+            skip=skip,
+            limit=limit,
+        )
+
+    except Exception as e:
+        logger.error(
+            "Failed to fetch time entries",
+            extra={
+                "user_id": str(current_user.id),
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,  # This will log the full traceback
+        )
+        # Return empty list instead of error for better UX
+        return WorkedEntriesListResponse(
+            entries=[],
+            total=0,
+            skip=skip,
+            limit=limit,
         )
 
 

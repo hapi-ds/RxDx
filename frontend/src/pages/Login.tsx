@@ -24,7 +24,7 @@ export function Login(): React.ReactElement {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/requirements', { replace: true });
+      navigate('/table', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 

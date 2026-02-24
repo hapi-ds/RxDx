@@ -30,6 +30,11 @@ interface FormData {
   status: WorkItemStatus;
   priority: string;
   assigned_to: string;
+  req_subtype: string;
+  req_category: string;
+  acceptance_criteria: string;
+  business_value: string;
+  source: string;
 }
 
 interface FormErrors {
@@ -71,6 +76,11 @@ const initialFormData: FormData = {
   status: 'draft',
   priority: '',
   assigned_to: '',
+  req_subtype: '',
+  req_category: '',
+  acceptance_criteria: '',
+  business_value: '',
+  source: '',
 };
 
 export function WorkItemForm({
@@ -80,7 +90,7 @@ export function WorkItemForm({
   defaultType,
 }: WorkItemFormProps): React.ReactElement {
   const { createItem, updateItem, isSaving, error, clearError } = useWorkItemStore();
-  
+
   const isEditing = !!item;
 
   const [formData, setFormData] = useState<FormData>(() => {
@@ -92,6 +102,11 @@ export function WorkItemForm({
         status: item.status,
         priority: item.priority?.toString() || '',
         assigned_to: item.assigned_to || '',
+        req_subtype: item.req_subtype || '',
+        req_category: item.req_category || '',
+        acceptance_criteria: item.acceptance_criteria || '',
+        business_value: item.business_value || '',
+        source: item.source || '',
       };
     }
     return {
@@ -131,13 +146,13 @@ export function WorkItemForm({
 
   const validateForm = useCallback((): boolean => {
     const newErrors: FormErrors = {};
-    
+
     const titleError = validateField('title', formData.title);
     if (titleError) newErrors.title = titleError;
-    
+
     const priorityError = validateField('priority', formData.priority);
     if (priorityError) newErrors.priority = priorityError;
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   }, [formData, validateField]);
@@ -146,7 +161,7 @@ export function WorkItemForm({
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       setFormData((prev) => ({ ...prev, [name]: value }));
-      
+
       // Clear field error when user starts typing
       if (errors[name as keyof FormErrors]) {
         setErrors((prev) => ({ ...prev, [name]: undefined }));
@@ -159,7 +174,7 @@ export function WorkItemForm({
     (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
       const { name, value } = e.target;
       setTouched((prev) => new Set(prev).add(name));
-      
+
       const fieldError = validateField(name as keyof FormData, value);
       if (fieldError) {
         setErrors((prev) => ({ ...prev, [name]: fieldError }));
@@ -170,14 +185,14 @@ export function WorkItemForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     try {
       let result: WorkItem;
-      
+
       if (isEditing && item) {
         const updateData: WorkItemUpdate = {
           title: formData.title,
@@ -185,6 +200,11 @@ export function WorkItemForm({
           status: formData.status,
           priority: formData.priority ? parseInt(formData.priority) : undefined,
           assigned_to: formData.assigned_to || undefined,
+          req_subtype: formData.req_subtype || undefined,
+          req_category: formData.req_category || undefined,
+          acceptance_criteria: formData.acceptance_criteria || undefined,
+          business_value: formData.business_value || undefined,
+          source: formData.source || undefined,
         };
         const changeDescription = 'WorkItem updated';
         result = await updateItem(item.id, updateData, changeDescription);
@@ -196,10 +216,15 @@ export function WorkItemForm({
           status: formData.status,
           priority: formData.priority ? parseInt(formData.priority) : undefined,
           assigned_to: formData.assigned_to || undefined,
+          req_subtype: formData.req_subtype || undefined,
+          req_category: formData.req_category || undefined,
+          acceptance_criteria: formData.acceptance_criteria || undefined,
+          business_value: formData.business_value || undefined,
+          source: formData.source || undefined,
         };
         result = await createItem(createData);
       }
-      
+
       onSuccess?.(result);
     } catch {
       // Error is handled by the store
@@ -288,6 +313,67 @@ export function WorkItemForm({
           placeholder="User ID or email"
           hint="Enter the user ID to assign this work item"
         />
+
+        {formData.type === 'requirement' && (
+          <div className="requirement-fields">
+            <div className="form-row">
+              <Select
+                name="req_subtype"
+                label="Requirement Subtype"
+                options={[
+                  { value: '', label: 'None' },
+                  { value: 'UN', label: 'User Need (UN)' },
+                  { value: 'DIR', label: 'Design Input (DIR)' },
+                  { value: 'DOR', label: 'Design Output (DOR)' },
+                  { value: 'PR', label: 'Product Requirement (PR)' },
+                  { value: 'WIR', label: 'Work Instruction (WIR)' },
+                ]}
+                value={formData.req_subtype}
+                onChange={handleChange}
+              />
+              <Select
+                name="req_category"
+                label="Category"
+                options={[
+                  { value: '', label: 'None' },
+                  { value: 'functional', label: 'Functional' },
+                  { value: 'non-functional (business)', label: 'Non-Functional (Business)' },
+                  { value: 'non-functional (quality)', label: 'Non-Functional (Quality)' },
+                  { value: 'non-functional (costs)', label: 'Non-Functional (Costs)' },
+                ]}
+                value={formData.req_category}
+                onChange={handleChange}
+              />
+            </div>
+
+            <Textarea
+              name="acceptance_criteria"
+              label="Acceptance Criteria"
+              value={formData.acceptance_criteria}
+              onChange={handleChange}
+              placeholder="Criteria to consider this requirement met"
+              rows={3}
+              required={formData.req_subtype === 'WIR'}
+            />
+
+            <div className="form-row">
+              <Input
+                name="business_value"
+                label="Business Value"
+                value={formData.business_value}
+                onChange={handleChange}
+                placeholder="Business explanation"
+              />
+              <Input
+                name="source"
+                label="Source"
+                value={formData.source}
+                onChange={handleChange}
+                placeholder="Regulation, User Story, etc."
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       <VersionPreview

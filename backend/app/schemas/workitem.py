@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class WorkItemBase(BaseModel):
@@ -149,6 +149,12 @@ class RequirementBase(WorkItemBase):
     """Base schema for Requirement WorkItems"""
 
     # Additional fields specific to requirements
+    req_subtype: str | None = Field(
+        None, description="Specific requirement type: UN, DIR, DOR, PR, or WIR"
+    )
+    req_category: str | None = Field(
+        None, description="Category: functional, non-functional (business), non-functional (quality), non-functional (costs)"
+    )
     acceptance_criteria: str | None = Field(
         None, description="Acceptance criteria for the requirement"
     )
@@ -158,6 +164,33 @@ class RequirementBase(WorkItemBase):
     source: str | None = Field(
         None, description="Source of the requirement (e.g., stakeholder, regulation)"
     )
+
+    @field_validator("req_subtype")
+    @classmethod
+    def validate_req_subtype(cls, v: str | None) -> str | None:
+        """Validate requirement subtype"""
+        if v is None:
+            return v
+        valid_subtypes = {"UN", "DIR", "DOR", "PR", "WIR"}
+        if v.upper() not in valid_subtypes:
+            raise ValueError(f"Requirement subtype must be one of: {', '.join(valid_subtypes)}")
+        return v.upper()
+
+    @field_validator("req_category")
+    @classmethod
+    def validate_req_category(cls, v: str | None) -> str | None:
+        """Validate requirement category"""
+        if v is None:
+            return v
+        valid_categories = {
+            "functional",
+            "non-functional (business)",
+            "non-functional (quality)",
+            "non-functional (costs)"
+        }
+        if v.lower() not in valid_categories:
+            raise ValueError(f"Requirement category must be one of: {', '.join(sorted(valid_categories))}")
+        return v.lower()
 
     @field_validator("acceptance_criteria")
     @classmethod
@@ -273,6 +306,13 @@ class RequirementBase(WorkItemBase):
 
         return v_lower
 
+    @model_validator(mode="after")
+    def validate_wir_acceptance_criteria(self) -> "RequirementBase":
+        """Validate that WIR requirements have acceptance criteria"""
+        if self.req_subtype == "WIR" and not self.acceptance_criteria:
+            raise ValueError("Work Instruction Requirements (WIR) must have acceptance criteria")
+        return self
+
 
 class RequirementCreate(RequirementBase):
     """Schema for creating a new Requirement"""
@@ -288,9 +328,36 @@ class RequirementUpdate(BaseModel):
     status: str | None = Field(None, description="Current status of the WorkItem")
     priority: int | None = Field(None, ge=1, le=5)
     assigned_to: UUID | None = None
+    req_subtype: str | None = None
+    req_category: str | None = None
     acceptance_criteria: str | None = None
     business_value: str | None = None
     source: str | None = None
+
+    @field_validator("req_subtype")
+    @classmethod
+    def validate_req_subtype(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        valid_subtypes = {"UN", "DIR", "DOR", "PR", "WIR"}
+        if v.upper() not in valid_subtypes:
+            raise ValueError(f"Requirement subtype must be one of: {', '.join(valid_subtypes)}")
+        return v.upper()
+
+    @field_validator("req_category")
+    @classmethod
+    def validate_req_category(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        valid_categories = {
+            "functional",
+            "non-functional (business)",
+            "non-functional (quality)",
+            "non-functional (costs)"
+        }
+        if v.lower() not in valid_categories:
+            raise ValueError(f"Requirement category must be one of: {', '.join(sorted(valid_categories))}")
+        return v.lower()
 
     @field_validator("status")
     @classmethod
@@ -479,6 +546,13 @@ class RequirementUpdate(BaseModel):
             return source_lower
 
         return v
+
+    @model_validator(mode="after")
+    def validate_wir_acceptance_criteria(self) -> "RequirementUpdate":
+        """Validate that WIR requirements have acceptance criteria"""
+        if self.req_subtype == "WIR" and not self.acceptance_criteria:
+            raise ValueError("Work Instruction Requirements (WIR) must have acceptance criteria")
+        return self
 
 
 class RequirementResponse(RequirementBase):

@@ -163,6 +163,28 @@ class GraphService:
         Returns:
             Created relationship
         """
+        # Validate requirement traceability chains
+        if rel_type in ("DEPENDS_ON", "RELATES_TO", "IMPLEMENTS", "REFERENCES"):
+            validation_query = f"""
+            MATCH (a {{id: '{from_id}'}}), (b {{id: '{to_id}'}})
+            RETURN a.type as a_type, a.req_subtype as a_sub, b.type as b_type, b.req_subtype as b_sub
+            """
+            val_results = await self.execute_query(validation_query)
+            if val_results:
+                val = val_results[0]
+                if val.get("a_type") == "requirement" and val.get("b_type") == "requirement":
+                    a_sub = val.get("a_sub")
+                    b_sub = val.get("b_sub")
+                    if a_sub and b_sub:
+                        req_order = {"UN": 0, "DIR": 1, "DOR": 2, "PR": 3, "WIR": 4}
+                        if a_sub in req_order and b_sub in req_order:
+                            level_a = req_order[a_sub]
+                            level_b = req_order[b_sub]
+                            # Allow same level (self-refinement) or adjacent levels
+                            if abs(level_a - level_b) > 1:
+                                raise ValueError(f"Invalid requirement trace: {a_sub} cannot trace to {b_sub}. "
+                                                 f"Allowed traces are to the same level or exactly one level adjacent (e.g., UN <-> DIR).")
+
         props_str = self._dict_to_cypher_props(properties) if properties else ""
 
         query = f"""

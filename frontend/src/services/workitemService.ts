@@ -16,6 +16,11 @@ export interface WorkItem {
   status: WorkItemStatus;
   priority?: number;
   assigned_to?: string;
+  req_subtype?: string;
+  req_category?: string;
+  acceptance_criteria?: string;
+  business_value?: string;
+  source?: string;
   version: string;
   created_by: string;
   created_at: string;
@@ -30,6 +35,11 @@ export interface WorkItemCreate {
   status?: WorkItemStatus;
   priority?: number;
   assigned_to?: string;
+  req_subtype?: string;
+  req_category?: string;
+  acceptance_criteria?: string;
+  business_value?: string;
+  source?: string;
 }
 
 export interface WorkItemUpdate {
@@ -38,6 +48,11 @@ export interface WorkItemUpdate {
   status?: WorkItemStatus;
   priority?: number;
   assigned_to?: string;
+  req_subtype?: string;
+  req_category?: string;
+  acceptance_criteria?: string;
+  business_value?: string;
+  source?: string;
 }
 
 export interface BulkUpdateData {

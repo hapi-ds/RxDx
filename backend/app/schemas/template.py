@@ -39,7 +39,7 @@ class RelationshipType(str, Enum):
     ALLOCATED_TO = "ALLOCATED_TO"
     PARENT_OF = "PARENT_OF"
     BELONGS_TO = "BELONGS_TO"
-
+    NEXT = "NEXT"
 
 class ResourceType(str, Enum):
     """Resource type enumeration."""
@@ -489,6 +489,12 @@ class TemplateRequirement(BaseModel):
     priority: int = Field(
         ..., ge=1, le=5, description="Priority level (1=lowest, 5=highest)"
     )
+    req_subtype: str | None = Field(
+        None, description="Requirement subtype (UN, DIR, DOR, PR, WIR)"
+    )
+    req_category: str | None = Field(
+        None, description="Requirement category (functional, non-functional (business), etc.)"
+    )
     acceptance_criteria: str | None = Field(
         None, max_length=2000, description="Acceptance criteria for the requirement"
     )
@@ -528,6 +534,15 @@ class TemplateRequirement(BaseModel):
             raise ValueError("Title must contain at least one letter")
         return v
 
+    @field_validator("req_subtype")
+    @classmethod
+    def validate_req_subtype(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        valid_subtypes = {"UN", "DIR", "DOR", "PR", "WIR"}
+        if v.upper() not in valid_subtypes:
+            raise ValueError(f"Requirement subtype must be one of: {', '.join(valid_subtypes)}")
+        return v.upper()
 
 class TemplateTask(BaseModel):
     """

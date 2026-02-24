@@ -45,6 +45,8 @@ workitems:
       description: The system shall comply with FDA 21 CFR Part 11 requirements for electronic records and electronic signatures
       status: active
       priority: 5
+      req_subtype: PR
+      req_category: "non-functional (business)"
       acceptance_criteria: Given electronic records, when stored in the system, then they shall be secure, tamper-proof, and include audit trails as required by 21 CFR Part 11
       business_value: Ensures regulatory compliance for medical device software
       source: FDA 21 CFR Part 11
@@ -55,6 +57,8 @@ workitems:
       description: The system development shall follow IEC 62304 medical device software lifecycle processes
       status: active
       priority: 5
+      req_subtype: PR
+      req_category: "non-functional (quality)"
       acceptance_criteria: Given software development activities, when performed, then they shall follow IEC 62304 Class B requirements including risk management and verification
       business_value: Ensures medical device software safety and effectiveness
       source: IEC 62304
@@ -65,6 +69,8 @@ workitems:
       description: The system shall support ISO 13485 quality management system requirements
       status: active
       priority: 4
+      req_subtype: PR
+      req_category: "non-functional (quality)"
       acceptance_criteria: Given quality management processes, when executed, then the system shall maintain records and traceability as required by ISO 13485
       business_value: Demonstrates quality management system compliance
       source: ISO 13485
@@ -75,6 +81,8 @@ workitems:
       description: The system shall maintain a complete Design History File including all design inputs, outputs, reviews, and verification activities
       status: active
       priority: 5
+      req_subtype: PR
+      req_category: "non-functional (business)"
       acceptance_criteria: Given design activities, when completed, then all documentation shall be stored in the DHF with version control and traceability
       business_value: Provides evidence of design control for regulatory submissions
       source: FDA Design Control Guidance
@@ -85,6 +93,8 @@ workitems:
       description: The system shall implement risk management processes according to ISO 14971 for medical devices
       status: active
       priority: 5
+      req_subtype: PR
+      req_category: "non-functional (quality)"
       acceptance_criteria: Given identified hazards, when analyzed, then risk controls shall be implemented and residual risks shall be acceptable
       business_value: Ensures patient safety through systematic risk management
       source: ISO 14971

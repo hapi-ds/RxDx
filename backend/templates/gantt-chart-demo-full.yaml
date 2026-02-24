@@ -233,6 +233,8 @@ workitems:
       description: Secure user authentication with role-based access control
       status: active
       priority: 5
+      req_subtype: PR
+      req_category: functional
       acceptance_criteria: Users can securely log in with email and password
       business_value: Essential for system security and compliance
       source: security
@@ -243,6 +245,8 @@ workitems:
       description: Interface for controlling medical device parameters
       status: active
       priority: 5
+      req_subtype: PR
+      req_category: functional
       acceptance_criteria: Users can safely control device parameters within regulatory limits
       business_value: Core functionality for device operation
       source: product
@@ -253,6 +257,8 @@ workitems:
       description: Comprehensive audit trail for all user actions
       status: active
       priority: 4
+      req_subtype: PR
+      req_category: "non-functional (business)"
       acceptance_criteria: All user actions are logged with timestamp and user identity
       business_value: Required for regulatory compliance
       source: regulation
@@ -369,6 +375,15 @@ workitems:
 # Relationships
 # ============================================================================
 relationships:
+  # Phase progression
+  - from_id: phase-planning
+    to_id: phase-development
+    type: NEXT
+
+  - from_id: phase-development
+    to_id: phase-validation
+    type: NEXT
+
   # Requirement to Task relationships
   - from_id: req-auth
     to_id: task-auth-backend

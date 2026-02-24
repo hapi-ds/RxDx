@@ -130,7 +130,7 @@ export function WorkItemDetail({
             </span>
           )}
         </div>
-        
+
         <div className="workitem-detail-meta">
           <span
             className="status-badge"
@@ -157,6 +157,13 @@ export function WorkItemDetail({
         ) : (
           <div className="workitem-section">
             <p className="no-description">No description provided</p>
+          </div>
+        )}
+
+        {selectedItem.type === 'requirement' && selectedItem.acceptance_criteria && (
+          <div className="workitem-section" style={{ marginTop: '1rem' }}>
+            <h3 className="section-title">Acceptance Criteria</h3>
+            <p className="workitem-description">{selectedItem.acceptance_criteria}</p>
           </div>
         )}
 
@@ -193,6 +200,35 @@ export function WorkItemDetail({
             <span className="info-label">ID</span>
             <span className="info-value id-value">{selectedItem.id}</span>
           </div>
+
+          {selectedItem.type === 'requirement' && (
+            <>
+              {selectedItem.req_subtype && (
+                <div className="info-item">
+                  <span className="info-label">Subtype</span>
+                  <span className="info-value">{selectedItem.req_subtype}</span>
+                </div>
+              )}
+              {selectedItem.req_category && (
+                <div className="info-item">
+                  <span className="info-label">Category</span>
+                  <span className="info-value" style={{ textTransform: 'capitalize' }}>{selectedItem.req_category}</span>
+                </div>
+              )}
+              {selectedItem.business_value && (
+                <div className="info-item" style={{ gridColumn: '1 / -1' }}>
+                  <span className="info-label">Business Value</span>
+                  <span className="info-value">{selectedItem.business_value}</span>
+                </div>
+              )}
+              {selectedItem.source && (
+                <div className="info-item">
+                  <span className="info-label">Source</span>
+                  <span className="info-value">{selectedItem.source}</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 

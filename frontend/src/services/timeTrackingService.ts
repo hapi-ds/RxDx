@@ -110,18 +110,43 @@ class TimeTrackingService {
         requestData.description = description;
       }
       
-      const response = await apiClient.post<ActiveTracking>(
+      // Backend returns WorkedResponse with date + from (time only)
+      // Pydantic uses alias "from" for start_time field
+      interface BackendWorkedResponse {
+        id: string;
+        task_id: string;
+        task_title: string | null;
+        date: string;
+        from: string; // Time only like "18:28:34.822595"
+        to: string | null;
+        description: string | null;
+        created_at: string;
+      }
+      
+      const response = await apiClient.post<BackendWorkedResponse>(
         `${this.basePath}/start`,
         requestData
       );
       
+      const data = response.data;
+      
+      // Map to ActiveTracking: combine date + from into full ISO datetime with UTC timezone
+      // Backend stores times in UTC, so we need to add 'Z' suffix
+      const result: ActiveTracking = {
+        id: data.id,
+        task_id: data.task_id,
+        task_title: data.task_title || '',
+        start_time: `${data.date}T${data.from}Z`, // Add Z for UTC
+        description: data.description || '',
+      };
+      
       logger.info('Time tracking started', {
-        trackingId: response.data.id,
-        taskId: response.data.task_id,
-        taskTitle: response.data.task_title,
+        trackingId: result.id,
+        taskId: result.task_id,
+        taskTitle: result.task_title,
       });
       
-      return response.data;
+      return result;
     } catch (error) {
       logger.error('Failed to start time tracking', {
         taskId,
@@ -134,13 +159,16 @@ class TimeTrackingService {
 
   /**
    * Stop active time tracking
+   * @param workedId - UUID of the worked entry to stop
    * @param description - Optional description to update/add
    */
-  async stopTracking(description?: string): Promise<void> {
+  async stopTracking(workedId: string, description?: string): Promise<void> {
     try {
-      logger.debug('Stopping time tracking', { hasDescription: !!description });
+      logger.debug('Stopping time tracking', { workedId, hasDescription: !!description });
       
-      const requestData: StopTrackingRequest = {};
+      const requestData: StopTrackingRequest & { worked_id: string } = {
+        worked_id: workedId,
+      };
       
       if (description) {
         requestData.description = description;
@@ -148,9 +176,10 @@ class TimeTrackingService {
       
       await apiClient.post(`${this.basePath}/stop`, requestData);
       
-      logger.info('Time tracking stopped');
+      logger.info('Time tracking stopped', { workedId });
     } catch (error) {
       logger.error('Failed to stop time tracking', {
+        workedId,
         error,
         message: getErrorMessage(error),
       });
@@ -165,21 +194,50 @@ class TimeTrackingService {
   async getActiveTracking(): Promise<ActiveTracking | null> {
     try {
       logger.debug('Checking for active tracking');
-      const response = await apiClient.get<ActiveTracking | null>(
+      
+      // Backend returns { entries: [...], count: number }
+      // Each entry has: id, task_id, task_title, date, from, description, etc.
+      // Pydantic uses alias "from" for start_time field
+      interface BackendActiveEntry {
+        id: string;
+        task_id: string;
+        task_title: string;
+        date: string;
+        from: string; // Time string like "14:30:00"
+        to: string | null;
+        description: string;
+        created_at: string;
+      }
+      
+      const response = await apiClient.get<{ entries: BackendActiveEntry[]; count: number }>(
         `${this.basePath}/active`
       );
       
-      if (response.data) {
-        logger.info('Active tracking found', {
-          trackingId: response.data.id,
-          taskId: response.data.task_id,
-          taskTitle: response.data.task_title,
-        });
-      } else {
+      // Extract first entry (user can only have one active tracking at a time)
+      if (response.data.entries.length === 0) {
         logger.debug('No active tracking found');
+        return null;
       }
       
-      return response.data;
+      const entry = response.data.entries[0];
+      
+      // Transform to frontend format: combine date and time into ISO datetime with UTC timezone
+      // Backend stores times in UTC, so we need to add 'Z' suffix
+      const activeTracking: ActiveTracking = {
+        id: entry.id,
+        task_id: entry.task_id,
+        task_title: entry.task_title,
+        start_time: `${entry.date}T${entry.from}Z`, // Add Z for UTC
+        description: entry.description || '',
+      };
+      
+      logger.info('Active tracking found', {
+        trackingId: activeTracking.id,
+        taskId: activeTracking.task_id,
+        taskTitle: activeTracking.task_title,
+      });
+      
+      return activeTracking;
     } catch (error) {
       logger.error('Failed to get active tracking', {
         error,

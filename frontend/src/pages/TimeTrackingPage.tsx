@@ -8,6 +8,7 @@ import React, { useEffect, useCallback, useRef } from 'react';
 import { TaskListPanel } from '../components/timetracking/TaskListPanel';
 import { TimerPanel } from '../components/timetracking/TimerPanel';
 import { TimeEntriesPanel } from '../components/timetracking/TimeEntriesPanel';
+import { ErrorMessage } from '../components/common/Error';
 import { useTimeTrackingStore } from '../stores/timeTrackingStore';
 
 export function TimeTrackingPage(): React.ReactElement {
@@ -26,6 +27,7 @@ export function TimeTrackingPage(): React.ReactElement {
     isStarting,
     isStopping,
     error,
+    lastFailedOperation,
     fetchTasks,
     checkActiveTracking,
     fetchEntries,
@@ -35,6 +37,7 @@ export function TimeTrackingPage(): React.ReactElement {
     stopTracking,
     loadMoreEntries,
     clearError,
+    retryLastOperation,
     getFilteredAndSortedTasks,
   } = useTimeTrackingStore();
 
@@ -87,6 +90,11 @@ export function TimeTrackingPage(): React.ReactElement {
   const handleLoadMoreEntries = useCallback(async () => {
     await loadMoreEntries();
   }, [loadMoreEntries]);
+
+  // Handle retry
+  const handleRetry = useCallback(async () => {
+    await retryLastOperation();
+  }, [retryLastOperation]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -192,19 +200,13 @@ export function TimeTrackingPage(): React.ReactElement {
 
       {/* Error Banner */}
       {error && (
-        <div className="time-tracking-page__error" role="alert">
-          <span className="time-tracking-page__error-icon" aria-hidden="true">
-            ⚠️
-          </span>
-          <span className="time-tracking-page__error-message">{error}</span>
-          <button
-            onClick={clearError}
-            className="time-tracking-page__error-dismiss"
-            aria-label="Dismiss error"
-            type="button"
-          >
-            ✕
-          </button>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <ErrorMessage
+            variant="banner"
+            message={error}
+            onRetry={lastFailedOperation ? handleRetry : undefined}
+            onDismiss={clearError}
+          />
         </div>
       )}
 
@@ -277,43 +279,6 @@ const styles = `
     margin: 0;
     font-size: 0.875rem;
     color: #6b7280;
-  }
-
-  .time-tracking-page__error {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-    background-color: #fef2f2;
-    border: 1px solid #fecaca;
-    border-radius: 6px;
-    color: #991b1b;
-  }
-
-  .time-tracking-page__error-icon {
-    font-size: 1.25rem;
-    line-height: 1;
-  }
-
-  .time-tracking-page__error-message {
-    flex: 1;
-    font-size: 0.875rem;
-  }
-
-  .time-tracking-page__error-dismiss {
-    background: none;
-    border: none;
-    color: #991b1b;
-    cursor: pointer;
-    padding: 0.25rem;
-    font-size: 1.25rem;
-    line-height: 1;
-    transition: opacity 0.2s;
-  }
-
-  .time-tracking-page__error-dismiss:hover {
-    opacity: 0.7;
   }
 
   .time-tracking-page__content {

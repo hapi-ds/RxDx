@@ -519,6 +519,22 @@ describe('timeTrackingStore', () => {
 
   describe('startTracking', () => {
     it('starts tracking successfully and updates state', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
       const mockActiveTracking: ActiveTracking = {
         id: 'tracking-1',
         task_id: 'task-1',
@@ -538,6 +554,22 @@ describe('timeTrackingStore', () => {
     });
 
     it('persists active tracking to localStorage', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
       const mockActiveTracking: ActiveTracking = {
         id: 'tracking-1',
         task_id: 'task-1',
@@ -550,7 +582,7 @@ describe('timeTrackingStore', () => {
 
       await useTimeTrackingStore.getState().startTracking('task-1', 'Working on feature');
 
-      const stored = localStorage.getItem('activeTracking');
+      const stored = localStorage.getItem('rxdx_active_tracking');
       expect(stored).toBeTruthy();
       expect(JSON.parse(stored!)).toEqual(mockActiveTracking);
     });
@@ -574,6 +606,22 @@ describe('timeTrackingStore', () => {
     });
 
     it('handles start tracking error', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
       const errorMessage = 'Failed to start tracking';
       vi.mocked(timeTrackingService.startTracking).mockRejectedValue(new Error(errorMessage));
 
@@ -583,10 +631,27 @@ describe('timeTrackingStore', () => {
 
       expect(useTimeTrackingStore.getState().error).toBe(errorMessage);
       expect(useTimeTrackingStore.getState().isStarting).toBe(false);
+      // Should rollback to null after error
       expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
     });
 
     it('sets loading state while starting', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
       const mockActiveTracking: ActiveTracking = {
         id: 'tracking-1',
         task_id: 'task-1',
@@ -607,6 +672,141 @@ describe('timeTrackingStore', () => {
 
       await startPromise;
       expect(useTimeTrackingStore.getState().isStarting).toBe(false);
+    });
+
+    it('updates UI optimistically before API call completes', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
+      const mockActiveTracking: ActiveTracking = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: '2024-01-15T10:00:00Z',
+        description: 'Working',
+      };
+
+      let resolvePromise: (value: ActiveTracking) => void;
+      const promise = new Promise<ActiveTracking>((resolve) => {
+        resolvePromise = resolve;
+      });
+
+      vi.mocked(timeTrackingService.startTracking).mockReturnValue(promise);
+
+      const startPromise = useTimeTrackingStore.getState().startTracking('task-1', 'Working');
+
+      // Check that optimistic update happened immediately
+      const state = useTimeTrackingStore.getState();
+      expect(state.activeTracking).not.toBeNull();
+      expect(state.activeTracking?.task_id).toBe('task-1');
+      expect(state.activeTracking?.task_title).toBe('Test Task');
+      expect(state.activeTracking?.description).toBe('Working');
+      expect(state.activeTracking?.id).toMatch(/^optimistic-/);
+      expect(state.isStarting).toBe(true);
+
+      // Resolve the API call
+      resolvePromise!(mockActiveTracking);
+      await startPromise;
+
+      // Check that real data replaced optimistic data
+      const finalState = useTimeTrackingStore.getState();
+      expect(finalState.activeTracking).toEqual(mockActiveTracking);
+      expect(finalState.isStarting).toBe(false);
+    });
+
+    it('rolls back optimistic update on API error', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
+      const errorMessage = 'Network error';
+      let rejectPromise: (error: Error) => void;
+      const promise = new Promise<ActiveTracking>((_, reject) => {
+        rejectPromise = reject;
+      });
+
+      vi.mocked(timeTrackingService.startTracking).mockReturnValue(promise);
+
+      const startPromise = useTimeTrackingStore.getState().startTracking('task-1', 'Working');
+
+      // Check that optimistic update happened
+      expect(useTimeTrackingStore.getState().activeTracking).not.toBeNull();
+      expect(useTimeTrackingStore.getState().activeTracking?.id).toMatch(/^optimistic-/);
+
+      // Reject the API call
+      rejectPromise!(new Error(errorMessage));
+
+      await expect(startPromise).rejects.toThrow(errorMessage);
+
+      // Check that state was rolled back
+      const finalState = useTimeTrackingStore.getState();
+      expect(finalState.activeTracking).toBeNull();
+      expect(finalState.error).toBe(errorMessage);
+      expect(finalState.isStarting).toBe(false);
+    });
+
+    it('rolls back localStorage on API error', async () => {
+      // Set up tasks in store so task can be found
+      const mockTasks: Task[] = [
+        {
+          id: 'task-1',
+          title: 'Test Task',
+          description: 'Test description',
+          status: 'in_progress',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+      useTimeTrackingStore.setState({ tasks: mockTasks });
+
+      const errorMessage = 'Network error';
+      vi.mocked(timeTrackingService.startTracking).mockRejectedValue(new Error(errorMessage));
+
+      await expect(
+        useTimeTrackingStore.getState().startTracking('task-1', 'Working')
+      ).rejects.toThrow(errorMessage);
+
+      // Check that localStorage was cleared
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
+    });
+
+    it('prevents starting when task not found', async () => {
+      // Empty tasks array
+      useTimeTrackingStore.setState({ tasks: [] });
+
+      await useTimeTrackingStore.getState().startTracking('nonexistent-task', 'Working');
+
+      expect(timeTrackingService.startTracking).not.toHaveBeenCalled();
+      expect(useTimeTrackingStore.getState().error).toBe('Task not found');
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
     });
   });
 
@@ -659,7 +859,7 @@ describe('timeTrackingStore', () => {
 
       await useTimeTrackingStore.getState().stopTracking('Done');
 
-      expect(localStorage.getItem('activeTracking')).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
     });
 
     it('refreshes entries after stopping', async () => {
@@ -785,7 +985,7 @@ describe('timeTrackingStore', () => {
 
       await useTimeTrackingStore.getState().checkActiveTracking();
 
-      const stored = localStorage.getItem('activeTracking');
+      const stored = localStorage.getItem('rxdx_active_tracking');
       expect(stored).toBeTruthy();
       expect(JSON.parse(stored!)).toEqual(mockActiveTracking);
     });
@@ -807,7 +1007,7 @@ describe('timeTrackingStore', () => {
       await useTimeTrackingStore.getState().checkActiveTracking();
 
       expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
-      expect(localStorage.getItem('activeTracking')).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
     });
 
     it('handles check active tracking error', async () => {
@@ -1016,6 +1216,121 @@ describe('timeTrackingStore', () => {
   // ============================================================================
 
   describe('localStorage persistence', () => {
+    it('recovers active tracking from localStorage on initialization', () => {
+      const mockActiveTracking: ActiveTracking = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: new Date(Date.now() - 60 * 60 * 1000).toISOString(), // 1 hour ago
+        description: 'Working',
+      };
+
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(mockActiveTracking));
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Check that active tracking was recovered
+      const state = useTimeTrackingStore.getState();
+      expect(state.activeTracking).toEqual(mockActiveTracking);
+    });
+
+    it('validates recovered data has all required fields', () => {
+      const invalidData = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        // Missing task_title, start_time, description
+      };
+
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(invalidData));
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Invalid data should be rejected
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
+      // Invalid data should be cleared from localStorage
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
+    });
+
+    it('validates start_time is a valid ISO date', () => {
+      const invalidData = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: 'invalid-date',
+        description: 'Working',
+      };
+
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(invalidData));
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Invalid date should be rejected
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
+    });
+
+    it('rejects start_time in the future', () => {
+      const futureData = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour in future
+        description: 'Working',
+      };
+
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(futureData));
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Future date should be rejected
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
+    });
+
+    it('rejects start_time older than 24 hours', () => {
+      const oldData = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString(), // 25 hours ago
+        description: 'Working',
+      };
+
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(oldData));
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Old data should be rejected
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
+    });
+
+    it('handles corrupted JSON in localStorage gracefully', () => {
+      localStorage.setItem('rxdx_active_tracking', 'invalid-json{');
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Should not crash and should clear corrupted data
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
+    });
+
+    it('handles missing localStorage data gracefully', () => {
+      localStorage.removeItem('rxdx_active_tracking');
+
+      // Reset store to trigger initialization
+      useTimeTrackingStore.getState().reset();
+
+      // Should initialize with null
+      expect(useTimeTrackingStore.getState().activeTracking).toBeNull();
+    });
+
     it('persists active tracking on start', async () => {
       const mockActiveTracking: ActiveTracking = {
         id: 'tracking-1',
@@ -1029,7 +1344,7 @@ describe('timeTrackingStore', () => {
 
       await useTimeTrackingStore.getState().startTracking('task-1', 'Working');
 
-      const stored = localStorage.getItem('activeTracking');
+      const stored = localStorage.getItem('rxdx_active_tracking');
       expect(stored).toBeTruthy();
       const parsed = JSON.parse(stored!);
       expect(parsed).toEqual(mockActiveTracking);
@@ -1044,7 +1359,7 @@ describe('timeTrackingStore', () => {
         description: 'Working',
       };
 
-      localStorage.setItem('activeTracking', JSON.stringify(mockActiveTracking));
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(mockActiveTracking));
       useTimeTrackingStore.setState({ activeTracking: mockActiveTracking });
 
       vi.mocked(timeTrackingService.stopTracking).mockResolvedValue(undefined);
@@ -1057,7 +1372,7 @@ describe('timeTrackingStore', () => {
 
       await useTimeTrackingStore.getState().stopTracking('Done');
 
-      expect(localStorage.getItem('activeTracking')).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
     });
 
     it('updates localStorage when checking active tracking', async () => {
@@ -1073,19 +1388,19 @@ describe('timeTrackingStore', () => {
 
       await useTimeTrackingStore.getState().checkActiveTracking();
 
-      const stored = localStorage.getItem('activeTracking');
+      const stored = localStorage.getItem('rxdx_active_tracking');
       expect(stored).toBeTruthy();
       expect(JSON.parse(stored!)).toEqual(mockActiveTracking);
     });
 
     it('clears localStorage when no active tracking found', async () => {
-      localStorage.setItem('activeTracking', JSON.stringify({ id: 'old' }));
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify({ id: 'old' }));
 
       vi.mocked(timeTrackingService.getActiveTracking).mockResolvedValue(null);
 
       await useTimeTrackingStore.getState().checkActiveTracking();
 
-      expect(localStorage.getItem('activeTracking')).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
     });
 
     it('does not persist to localStorage on start error', async () => {
@@ -1097,7 +1412,7 @@ describe('timeTrackingStore', () => {
         useTimeTrackingStore.getState().startTracking('task-1', 'Working')
       ).rejects.toThrow();
 
-      expect(localStorage.getItem('activeTracking')).toBeNull();
+      expect(localStorage.getItem('rxdx_active_tracking')).toBeNull();
     });
 
     it('does not clear localStorage on stop error', async () => {
@@ -1109,14 +1424,14 @@ describe('timeTrackingStore', () => {
         description: 'Working',
       };
 
-      localStorage.setItem('activeTracking', JSON.stringify(mockActiveTracking));
+      localStorage.setItem('rxdx_active_tracking', JSON.stringify(mockActiveTracking));
       useTimeTrackingStore.setState({ activeTracking: mockActiveTracking });
 
       vi.mocked(timeTrackingService.stopTracking).mockRejectedValue(new Error('Stop failed'));
 
       await expect(useTimeTrackingStore.getState().stopTracking('Done')).rejects.toThrow();
 
-      const stored = localStorage.getItem('activeTracking');
+      const stored = localStorage.getItem('rxdx_active_tracking');
       expect(stored).toBeTruthy();
       expect(JSON.parse(stored!)).toEqual(mockActiveTracking);
     });
@@ -1199,6 +1514,348 @@ describe('timeTrackingStore', () => {
       );
 
       expect(useTimeTrackingStore.getState().error).toBe('Failed to stop tracking');
+    });
+  });
+
+  describe('Error Recovery with Retry', () => {
+    it('stores retry context when fetchTasks fails', async () => {
+      vi.mocked(timeTrackingService.getTasks).mockRejectedValue(
+        new Error('Network error')
+      );
+
+      await useTimeTrackingStore.getState().fetchTasks();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('Network error');
+      expect(state.lastFailedOperation).toEqual({
+        operation: 'fetchTasks',
+      });
+    });
+
+    it('stores retry context when startTracking fails', async () => {
+      const mockTask: Task = {
+        id: 'task-1',
+        title: 'Test Task',
+        description: 'Description',
+        status: 'not_started',
+        priority: 1,
+        estimated_hours: 5,
+        worked_sum: 0,
+        has_active_tracking: false,
+        user_is_tracking: false,
+      };
+
+      useTimeTrackingStore.setState({ tasks: [mockTask] });
+
+      vi.mocked(timeTrackingService.startTracking).mockRejectedValue(
+        new Error('API error')
+      );
+
+      await expect(
+        useTimeTrackingStore.getState().startTracking('task-1', 'Working on it')
+      ).rejects.toThrow();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('API error');
+      expect(state.lastFailedOperation).toEqual({
+        operation: 'startTracking',
+        params: { taskId: 'task-1', description: 'Working on it' },
+      });
+    });
+
+    it('stores retry context when stopTracking fails', async () => {
+      const mockActiveTracking: ActiveTracking = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: '2024-01-15T10:00:00Z',
+        description: 'Working',
+      };
+
+      useTimeTrackingStore.setState({ activeTracking: mockActiveTracking });
+
+      vi.mocked(timeTrackingService.stopTracking).mockRejectedValue(
+        new Error('Stop failed')
+      );
+
+      await expect(
+        useTimeTrackingStore.getState().stopTracking('Completed')
+      ).rejects.toThrow();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('Stop failed');
+      expect(state.lastFailedOperation).toEqual({
+        operation: 'stopTracking',
+        params: { description: 'Completed' },
+      });
+    });
+
+    it('stores retry context when fetchEntries fails', async () => {
+      vi.mocked(timeTrackingService.getEntries).mockRejectedValue(
+        new Error('Entries error')
+      );
+
+      await useTimeTrackingStore.getState().fetchEntries();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('Entries error');
+      expect(state.lastFailedOperation).toEqual({
+        operation: 'fetchEntries',
+      });
+    });
+
+    it('stores retry context when loadMoreEntries fails', async () => {
+      useTimeTrackingStore.setState({ entriesPage: 1 });
+
+      vi.mocked(timeTrackingService.getEntries).mockRejectedValue(
+        new Error('Load more error')
+      );
+
+      await useTimeTrackingStore.getState().loadMoreEntries();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('Load more error');
+      expect(state.lastFailedOperation).toEqual({
+        operation: 'loadMoreEntries',
+      });
+    });
+
+    it('stores retry context when checkActiveTracking fails', async () => {
+      vi.mocked(timeTrackingService.getActiveTracking).mockRejectedValue(
+        new Error('Check failed')
+      );
+
+      await useTimeTrackingStore.getState().checkActiveTracking();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('Check failed');
+      expect(state.lastFailedOperation).toEqual({
+        operation: 'checkActiveTracking',
+      });
+    });
+
+    it('retries fetchTasks successfully', async () => {
+      const mockTasks: Task[] = [
+        {
+          id: '1',
+          title: 'Task 1',
+          description: 'Description',
+          status: 'not_started',
+          priority: 1,
+          estimated_hours: 5,
+          worked_sum: 0,
+          has_active_tracking: false,
+          user_is_tracking: false,
+        },
+      ];
+
+      // First call fails
+      vi.mocked(timeTrackingService.getTasks).mockRejectedValueOnce(
+        new Error('Network error')
+      );
+
+      await useTimeTrackingStore.getState().fetchTasks();
+
+      expect(useTimeTrackingStore.getState().error).toBe('Network error');
+      expect(useTimeTrackingStore.getState().lastFailedOperation).toBeTruthy();
+
+      // Second call succeeds
+      vi.mocked(timeTrackingService.getTasks).mockResolvedValue(mockTasks);
+
+      await useTimeTrackingStore.getState().retryLastOperation();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.tasks).toEqual(mockTasks);
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('retries startTracking successfully', async () => {
+      const mockTask: Task = {
+        id: 'task-1',
+        title: 'Test Task',
+        description: 'Description',
+        status: 'not_started',
+        priority: 1,
+        estimated_hours: 5,
+        worked_sum: 0,
+        has_active_tracking: false,
+        user_is_tracking: false,
+      };
+
+      const mockActiveTracking: ActiveTracking = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: '2024-01-15T10:00:00Z',
+        description: 'Working',
+      };
+
+      useTimeTrackingStore.setState({ tasks: [mockTask] });
+
+      // First call fails
+      vi.mocked(timeTrackingService.startTracking).mockRejectedValueOnce(
+        new Error('API error')
+      );
+
+      await expect(
+        useTimeTrackingStore.getState().startTracking('task-1', 'Working')
+      ).rejects.toThrow();
+
+      expect(useTimeTrackingStore.getState().error).toBe('API error');
+
+      // Second call succeeds
+      vi.mocked(timeTrackingService.startTracking).mockResolvedValue(
+        mockActiveTracking
+      );
+
+      await useTimeTrackingStore.getState().retryLastOperation();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.activeTracking).toEqual(mockActiveTracking);
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('retries stopTracking successfully', async () => {
+      const mockActiveTracking: ActiveTracking = {
+        id: 'tracking-1',
+        task_id: 'task-1',
+        task_title: 'Test Task',
+        start_time: '2024-01-15T10:00:00Z',
+        description: 'Working',
+      };
+
+      useTimeTrackingStore.setState({ activeTracking: mockActiveTracking });
+
+      // First call fails
+      vi.mocked(timeTrackingService.stopTracking).mockRejectedValueOnce(
+        new Error('Stop failed')
+      );
+
+      await expect(
+        useTimeTrackingStore.getState().stopTracking('Done')
+      ).rejects.toThrow();
+
+      expect(useTimeTrackingStore.getState().error).toBe('Stop failed');
+
+      // Restore active tracking for retry
+      useTimeTrackingStore.setState({ activeTracking: mockActiveTracking });
+
+      // Second call succeeds
+      vi.mocked(timeTrackingService.stopTracking).mockResolvedValue(undefined);
+      vi.mocked(timeTrackingService.getEntries).mockResolvedValue({
+        entries: [],
+        total: 0,
+        skip: 0,
+        limit: 10,
+      });
+
+      await useTimeTrackingStore.getState().retryLastOperation();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.activeTracking).toBeNull();
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('retries fetchEntries successfully', async () => {
+      const mockEntries: TimeEntry[] = [
+        {
+          id: 'entry-1',
+          task_id: 'task-1',
+          task_title: 'Test Task',
+          start_time: '2024-01-15T10:00:00Z',
+          end_time: '2024-01-15T11:00:00Z',
+          duration_hours: 1,
+          description: 'Worked on task',
+          created_at: '2024-01-15T11:00:00Z',
+        },
+      ];
+
+      const mockResponse: TimeEntriesResponse = {
+        entries: mockEntries,
+        total: 1,
+        skip: 0,
+        limit: 10,
+      };
+
+      // First call fails
+      vi.mocked(timeTrackingService.getEntries).mockRejectedValueOnce(
+        new Error('Entries error')
+      );
+
+      await useTimeTrackingStore.getState().fetchEntries();
+
+      expect(useTimeTrackingStore.getState().error).toBe('Entries error');
+
+      // Second call succeeds
+      vi.mocked(timeTrackingService.getEntries).mockResolvedValue(mockResponse);
+
+      await useTimeTrackingStore.getState().retryLastOperation();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.entries).toEqual(mockEntries);
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('clears retry context on successful operation', async () => {
+      const mockTasks: Task[] = [];
+
+      vi.mocked(timeTrackingService.getTasks).mockResolvedValue(mockTasks);
+
+      await useTimeTrackingStore.getState().fetchTasks();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('clearError also clears retry context', () => {
+      useTimeTrackingStore.setState({
+        error: 'Some error',
+        lastFailedOperation: { operation: 'fetchTasks' },
+      });
+
+      useTimeTrackingStore.getState().clearError();
+
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('handles retry when no failed operation exists', async () => {
+      // Should not throw, just log warning
+      await useTimeTrackingStore.getState().retryLastOperation();
+
+      // State should remain unchanged
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBeNull();
+      expect(state.lastFailedOperation).toBeNull();
+    });
+
+    it('handles retry failure gracefully', async () => {
+      // First call fails
+      vi.mocked(timeTrackingService.getTasks).mockRejectedValue(
+        new Error('Network error')
+      );
+
+      await useTimeTrackingStore.getState().fetchTasks();
+
+      expect(useTimeTrackingStore.getState().error).toBe('Network error');
+
+      // Retry also fails
+      vi.mocked(timeTrackingService.getTasks).mockRejectedValue(
+        new Error('Still failing')
+      );
+
+      await useTimeTrackingStore.getState().retryLastOperation();
+
+      // Error should be updated with new error
+      const state = useTimeTrackingStore.getState();
+      expect(state.error).toBe('Still failing');
+      expect(state.lastFailedOperation).toBeTruthy();
     });
   });
 });

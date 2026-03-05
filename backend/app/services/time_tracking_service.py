@@ -109,14 +109,16 @@ class TimeTrackingService:
         if not worked_results:
             raise ValueError(f"Worked entry {worked_id} not found")
 
-        worked_data = worked_results[0]["w"]
+        worked_data = worked_results[0]  # Result is the node directly
+        # AGE returns nodes with properties nested under "properties" key
+        props = worked_data.get("properties", worked_data)
 
         # Verify ownership
-        if worked_data.get("resource") != str(current_user.id):
+        if props.get("resource") != str(current_user.id):
             raise ValueError("Cannot stop time tracking for another user")
 
         # Check if already stopped
-        if worked_data.get("to"):
+        if props.get("to"):
             raise ValueError("Time tracking already stopped for this entry")
 
         # Update with end time
@@ -141,7 +143,7 @@ class TimeTrackingService:
     async def get_active_tracking(
         self,
         current_user: User,
-    ) -> list[WorkedResponse]:
+    ) -> list[dict[str, Any]]:
         """
         Get currently running time entries for user (entries without end time).
 
@@ -149,17 +151,56 @@ class TimeTrackingService:
             current_user: User to get active tracking for
 
         Returns:
-            List of active worked entries (without end time)
+            List of active worked entries with task information
         """
+        # Query for worked nodes without end time
         query = f"""
         MATCH (w:Worked {{resource: '{str(current_user.id)}'}})
         WHERE w.to IS NULL
         RETURN w
-        ORDER BY w.date DESC, w.from DESC
         """
 
         results = await self.graph.execute_query(query)
-        return [self._node_to_response(result["w"]) for result in results]
+        
+        active_entries = []
+        for result in results:
+            # Result is the node directly after parsing
+            worked_data = result
+            
+            # AGE returns nodes with properties nested under "properties" key
+            worked_props = worked_data.get("properties", worked_data)
+            
+            # Get task info via separate query using the relationship
+            worked_id = worked_props.get("id")
+            task_query = f"""
+            MATCH (w:Worked {{id: '{worked_id}'}})-[:WORKED_ON]->(t:WorkItem)
+            RETURN t
+            """
+            task_results = await self.graph.execute_query(task_query)
+            
+            task_title = "Unknown Task"
+            task_id = None
+            if task_results:
+                task_data = task_results[0]
+                task_props = task_data.get("properties", task_data)
+                task_title = task_props.get("title", "Unknown Task")
+                task_id = task_props.get("id")
+            
+            # Build response with task title
+            entry = {
+                "id": worked_props.get("id"),
+                "resource": worked_props.get("resource"),
+                "task_id": task_id,
+                "task_title": task_title,
+                "date": worked_props.get("date"),
+                "from": worked_props.get("from"),  # start_time alias
+                "to": worked_props.get("to"),  # end_time alias
+                "description": worked_props.get("description", ""),
+                "created_at": worked_props.get("created_at"),
+            }
+            active_entries.append(entry)
+        
+        return active_entries
 
     async def get_task_worked_sum(
         self,
@@ -195,12 +236,12 @@ class TimeTrackingService:
             if from_time and to_time:
                 # Parse time strings
                 if isinstance(from_time, str):
-                    from_dt = datetime.strptime(from_time, "%H:%M:%S").time()
+                    from_dt = time_type.fromisoformat(from_time)
                 else:
                     from_dt = from_time
 
                 if isinstance(to_time, str):
-                    to_dt = datetime.strptime(to_time, "%H:%M:%S").time()
+                    to_dt = time_type.fromisoformat(to_time)
                 else:
                     to_dt = to_time
 
@@ -292,10 +333,12 @@ class TimeTrackingService:
         if not worked_results:
             raise ValueError(f"Worked entry {worked_id} not found")
 
-        worked_data = worked_results[0]["w"]
+        worked_data = worked_results[0]  # Result is the node directly
+        # AGE returns nodes with properties nested under "properties" key
+        props = worked_data.get("properties", worked_data)
 
         # Verify ownership
-        if worked_data.get("resource") != str(current_user.id):
+        if props.get("resource") != str(current_user.id):
             raise ValueError("Cannot update time entry for another user")
 
         # Update the node
@@ -373,21 +416,23 @@ class TimeTrackingService:
         # Priority 1: Started tasks
         for result in started_results:
             task_data = result.get("t", result)
-            task_id = task_data.get("id")
+            # AGE returns nodes with properties nested under "properties" key
+            props = task_data.get("properties", task_data)
+            task_id = props.get("id")
 
             if task_id and task_id not in seen_ids:
                 seen_ids.add(task_id)
                 all_tasks.append({
                     "id": task_id,
-                    "title": task_data.get("title", ""),
-                    "description": task_data.get("description", ""),
-                    "status": task_data.get("status", "draft"),
-                    "priority": task_data.get("priority", 0),
-                    "estimated_hours": task_data.get("estimated_hours", 0),
+                    "title": props.get("title", ""),
+                    "description": props.get("description", ""),
+                    "status": props.get("status", "draft"),
+                    "priority": props.get("priority", 0),
+                    "estimated_hours": props.get("estimated_hours", 0),
                     "worked_sum": 0,  # Will be calculated below
-                    "assigned_to": task_data.get("assigned_to"),
-                    "scheduled_start": task_data.get("scheduled_start"),
-                    "scheduled_end": task_data.get("scheduled_end"),
+                    "assigned_to": props.get("assigned_to"),
+                    "scheduled_start": props.get("scheduled_start"),
+                    "scheduled_end": props.get("scheduled_end"),
                     "has_active_tracking": False,  # Will be checked below
                     "user_is_tracking": True,  # Priority 1 means user has worked on it
                 })
@@ -395,21 +440,23 @@ class TimeTrackingService:
         # Priority 2: Scheduled tasks
         for result in scheduled_results:
             task_data = result.get("t", result)
-            task_id = task_data.get("id")
+            # AGE returns nodes with properties nested under "properties" key
+            props = task_data.get("properties", task_data)
+            task_id = props.get("id")
 
             if task_id and task_id not in seen_ids:
                 seen_ids.add(task_id)
                 all_tasks.append({
                     "id": task_id,
-                    "title": task_data.get("title", ""),
-                    "description": task_data.get("description", ""),
-                    "status": task_data.get("status", "draft"),
-                    "priority": task_data.get("priority", 0),
-                    "estimated_hours": task_data.get("estimated_hours", 0),
+                    "title": props.get("title", ""),
+                    "description": props.get("description", ""),
+                    "status": props.get("status", "draft"),
+                    "priority": props.get("priority", 0),
+                    "estimated_hours": props.get("estimated_hours", 0),
                     "worked_sum": 0,  # Will be calculated below
-                    "assigned_to": task_data.get("assigned_to"),
-                    "scheduled_start": task_data.get("scheduled_start"),
-                    "scheduled_end": task_data.get("scheduled_end"),
+                    "assigned_to": props.get("assigned_to"),
+                    "scheduled_start": props.get("scheduled_start"),
+                    "scheduled_end": props.get("scheduled_end"),
                     "has_active_tracking": False,  # Will be checked below
                     "user_is_tracking": False,
                 })
@@ -417,21 +464,23 @@ class TimeTrackingService:
         # Priority 3: Other tasks
         for result in other_results:
             task_data = result.get("t", result)
-            task_id = task_data.get("id")
+            # AGE returns nodes with properties nested under "properties" key
+            props = task_data.get("properties", task_data)
+            task_id = props.get("id")
 
             if task_id and task_id not in seen_ids:
                 seen_ids.add(task_id)
                 all_tasks.append({
                     "id": task_id,
-                    "title": task_data.get("title", ""),
-                    "description": task_data.get("description", ""),
-                    "status": task_data.get("status", "draft"),
-                    "priority": task_data.get("priority", 0),
-                    "estimated_hours": task_data.get("estimated_hours", 0),
+                    "title": props.get("title", ""),
+                    "description": props.get("description", ""),
+                    "status": props.get("status", "draft"),
+                    "priority": props.get("priority", 0),
+                    "estimated_hours": props.get("estimated_hours", 0),
                     "worked_sum": 0,  # Will be calculated below
-                    "assigned_to": task_data.get("assigned_to"),
-                    "scheduled_start": task_data.get("scheduled_start"),
-                    "scheduled_end": task_data.get("scheduled_end"),
+                    "assigned_to": props.get("assigned_to"),
+                    "scheduled_start": props.get("scheduled_start"),
+                    "scheduled_end": props.get("scheduled_end"),
                     "has_active_tracking": False,  # Will be checked below
                     "user_is_tracking": False,
                 })
@@ -469,8 +518,11 @@ class TimeTrackingService:
 
     def _node_to_response(self, node: dict[str, Any]) -> WorkedResponse:
         """Convert graph node to WorkedResponse"""
+        # AGE returns nodes with properties nested under "properties" key
+        props = node.get("properties", node)
+
         # Parse date
-        date_val = node.get("date")
+        date_val = props.get("date")
         if isinstance(date_val, str):
             parsed_date = datetime.fromisoformat(date_val).date()
         elif isinstance(date_val, date_type):
@@ -478,19 +530,19 @@ class TimeTrackingService:
         else:
             parsed_date = datetime.now(UTC).date()
 
-        # Parse times
-        from_val = node.get("from")
+        # Parse times — use time.fromisoformat which handles microseconds
+        from_val = props.get("from")
         if isinstance(from_val, str):
-            from_time = datetime.strptime(from_val, "%H:%M:%S").time()
+            from_time = time_type.fromisoformat(from_val)
         elif isinstance(from_val, time_type):
             from_time = from_val
         else:
             from_time = datetime.now(UTC).time()
 
-        to_val = node.get("to")
+        to_val = props.get("to")
         if to_val:
             if isinstance(to_val, str):
-                to_time = datetime.strptime(to_val, "%H:%M:%S").time()
+                to_time = time_type.fromisoformat(to_val)
             elif isinstance(to_val, time_type):
                 to_time = to_val
             else:
@@ -499,14 +551,14 @@ class TimeTrackingService:
             to_time = None
 
         # Get created_at or use current time
-        created_at = node.get("created_at")
+        created_at = props.get("created_at")
         if created_at is None:
             created_at = datetime.now(UTC)
         elif isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
 
         # Get task_id - try to extract from node or use a placeholder
-        task_id_val = node.get("task_id")
+        task_id_val = props.get("task_id")
         if task_id_val:
             task_id = UUID(task_id_val) if isinstance(task_id_val, str) else task_id_val
         else:
@@ -514,12 +566,13 @@ class TimeTrackingService:
             task_id = UUID("00000000-0000-0000-0000-000000000000")
 
         return WorkedResponse(
-            id=UUID(node["id"]),
-            resource=UUID(node["resource"]),
+            id=UUID(props["id"]),
+            resource=UUID(props["resource"]),
             task_id=task_id,
+            task_title=None,  # Not available in this context
             date=parsed_date,
-            start_time=from_time,  # Use start_time instead of from_time
-            end_time=to_time,  # Use end_time instead of to_time
-            description=node.get("description"),
+            start_time=from_time,
+            end_time=to_time,
+            description=props.get("description"),
             created_at=created_at,
         )

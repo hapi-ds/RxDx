@@ -32,7 +32,7 @@ interface TimeEntryCardProps {
 // TimeEntryCard Component
 // ============================================================================
 
-function TimeEntryCard({ entry }: TimeEntryCardProps): React.ReactElement {
+const TimeEntryCard = React.memo(function TimeEntryCard({ entry }: TimeEntryCardProps): React.ReactElement {
   const startTime = formatTime(entry.start_time);
   const endTime = formatTime(entry.end_time);
   const duration = formatDuration(entry.duration_hours);
@@ -60,13 +60,13 @@ function TimeEntryCard({ entry }: TimeEntryCardProps): React.ReactElement {
       )}
     </div>
   );
-}
+});
 
 // ============================================================================
 // TimeEntryGroup Component
 // ============================================================================
 
-function TimeEntryGroup({ dateHeader, entries }: TimeEntryGroupProps): React.ReactElement {
+const TimeEntryGroup = React.memo(function TimeEntryGroup({ dateHeader, entries }: TimeEntryGroupProps): React.ReactElement {
   return (
     <div className="time-entry-group">
       <h3 className="time-entry-group__date-header">{dateHeader}</h3>
@@ -77,7 +77,7 @@ function TimeEntryGroup({ dateHeader, entries }: TimeEntryGroupProps): React.Rea
       </div>
     </div>
   );
-}
+});
 
 // ============================================================================
 // TimeEntriesPanel Component

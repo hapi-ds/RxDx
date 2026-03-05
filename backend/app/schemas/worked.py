@@ -100,6 +100,7 @@ class WorkedResponse(WorkedBase):
     """Schema for Worked response (includes metadata)"""
 
     id: UUID = Field(..., description="Unique identifier for the worked entry")
+    task_title: str | None = Field(None, description="Title of the task (for active tracking)")
     created_at: datetime = Field(..., description="When the entry was created")
 
     model_config = {"from_attributes": True, "populate_by_name": True}

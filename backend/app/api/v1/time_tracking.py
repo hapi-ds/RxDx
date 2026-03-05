@@ -139,6 +139,14 @@ async def stop_time_tracking(
 
     except ValueError as e:
         error_msg = str(e).lower()
+        logger.warning(
+            "Stop time tracking ValueError",
+            extra={
+                "user_id": str(current_user.id),
+                "worked_id": str(request.worked_id),
+                "error": str(e),
+            },
+        )
 
         if "not found" in error_msg:
             raise HTTPException(
@@ -175,12 +183,64 @@ async def get_active_tracking(
         service: Time tracking service
 
     Returns:
-        List of active worked entries
+        List of active worked entries with task information
 
     Raises:
         HTTPException: 401 if not authenticated
     """
-    entries = await service.get_active_tracking(current_user)
+    entries_data = await service.get_active_tracking(current_user)
+    
+    # Debug: log what we got
+    logger.info(f"Active tracking entries_data: {entries_data}")
+    
+    # Convert dict entries to WorkedResponse objects
+    entries = []
+    for entry_data in entries_data:
+        logger.info(f"Processing entry_data: {entry_data}")
+        
+        # Parse date
+        from datetime import datetime as dt
+        
+        date_str = entry_data.get("date", "")
+        if isinstance(date_str, str):
+            entry_date = dt.fromisoformat(date_str).date()
+        else:
+            entry_date = date_str
+        
+        # Parse start time
+        from_str = entry_data.get("from", "")
+        if isinstance(from_str, str):
+            start_time = dt.fromisoformat(f"{entry_date}T{from_str}").time()
+        else:
+            start_time = from_str
+        
+        # Parse end time (should be None for active tracking)
+        to_str = entry_data.get("to")
+        end_time = None
+        if to_str:
+            if isinstance(to_str, str):
+                end_time = dt.fromisoformat(f"{entry_date}T{to_str}").time()
+            else:
+                end_time = to_str
+        
+        # Parse created_at
+        created_at_str = entry_data.get("created_at", "")
+        if isinstance(created_at_str, str):
+            created_at = dt.fromisoformat(created_at_str)
+        else:
+            created_at = created_at_str or dt.now()
+        
+        entries.append(WorkedResponse(
+            id=UUID(entry_data.get("id")),
+            resource=UUID(entry_data.get("resource")),
+            task_id=UUID(entry_data.get("task_id")),
+            task_title=entry_data.get("task_title"),  # Include task title
+            date=entry_date,
+            start_time=start_time,
+            end_time=end_time,
+            description=entry_data.get("description", ""),
+            created_at=created_at,
+        ))
 
     return ActiveTrackingResponse(
         entries=entries,
@@ -310,10 +370,12 @@ async def get_time_entries(
         entries = []
         for result in results:
             worked_data = result
+            # AGE returns nodes with properties nested under "properties" key
+            worked_props = worked_data.get("properties", worked_data)
             
             # Get task info via relationship
             task_query = f"""
-            MATCH (w:Worked {{id: '{worked_data.get("id")}'}})-[:WORKED_ON]->(t:WorkItem)
+            MATCH (w:Worked {{id: '{worked_props.get("id")}'}})-[:WORKED_ON]->(t:WorkItem)
             RETURN t
             """
             task_results = await graph_service.execute_query(task_query)
@@ -323,15 +385,16 @@ async def get_time_entries(
             
             if task_results:
                 task_data = task_results[0]
-                task_id = task_data.get("id", task_id)
-                task_title = task_data.get("title", task_title)
+                task_props = task_data.get("properties", task_data)
+                task_id = task_props.get("id", task_id)
+                task_title = task_props.get("title", task_title)
             
             # Parse date and times
             from datetime import datetime as dt
             
-            date_str = worked_data.get('date', '')
-            from_str = worked_data.get('from', '')
-            to_str = worked_data.get('to', '')
+            date_str = worked_props.get('date', '')
+            from_str = worked_props.get('from', '')
+            to_str = worked_props.get('to', '')
             
             # Parse date
             if isinstance(date_str, str):
@@ -363,22 +426,22 @@ async def get_time_entries(
                 duration_hours = (end_seconds - start_seconds) / 3600
             
             # Parse created_at
-            created_at_str = worked_data.get('created_at', '')
+            created_at_str = worked_props.get('created_at', '')
             if isinstance(created_at_str, str):
                 created_at = dt.fromisoformat(created_at_str)
             else:
                 created_at = created_at_str or dt.now()
             
             entries.append(WorkedListResponse(
-                id=UUID(worked_data.get("id")),
-                resource=UUID(worked_data.get("resource")),
+                id=UUID(worked_props.get("id")),
+                resource=UUID(worked_props.get("resource")),
                 task_id=UUID(task_id) if task_id else UUID("00000000-0000-0000-0000-000000000000"),
                 task_title=task_title,
                 date=entry_date,
                 start_time=start_time,
                 end_time=end_time,
                 duration_hours=duration_hours,
-                description=worked_data.get("description", ""),
+                description=worked_props.get("description", ""),
                 created_at=created_at,
             ))
 
@@ -568,10 +631,12 @@ async def delete_time_entry(
             detail=f"Worked entry {worked_id} not found",
         )
 
-    worked_data = worked_results[0]["w"]
+    worked_data = worked_results[0]  # Result is the node directly
+    # AGE returns nodes with properties nested under "properties" key
+    worked_props = worked_data.get("properties", worked_data)
 
     # Verify ownership
-    if worked_data.get("resource") != str(current_user.id):
+    if worked_props.get("resource") != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Cannot delete time entry for another user",

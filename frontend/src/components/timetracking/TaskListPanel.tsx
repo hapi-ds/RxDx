@@ -187,7 +187,7 @@ interface TaskCardProps {
   onClick: () => void;
 }
 
-function TaskCard({ task, isSelected, onClick }: TaskCardProps): React.ReactElement {
+const TaskCard = React.memo(function TaskCard({ task, isSelected, onClick }: TaskCardProps): React.ReactElement {
   // Format worked_sum as "Xh Ym"
   const formatWorkedSum = (hours: number): string => {
     const h = Math.floor(hours);
@@ -233,7 +233,7 @@ function TaskCard({ task, isSelected, onClick }: TaskCardProps): React.ReactElem
       )}
     </div>
   );
-}
+});
 
 const styles = `
   .task-list-panel {

@@ -108,6 +108,7 @@ describe('TimeTrackingPage', () => {
     isStarting: false,
     isStopping: false,
     error: null,
+    lastFailedOperation: null,
     fetchTasks: vi.fn(),
     checkActiveTracking: vi.fn(),
     fetchEntries: vi.fn(),
@@ -117,6 +118,7 @@ describe('TimeTrackingPage', () => {
     stopTracking: vi.fn(),
     loadMoreEntries: vi.fn(),
     clearError: vi.fn(),
+    retryLastOperation: vi.fn(),
     getFilteredAndSortedTasks: vi.fn(() => mockTasks),
   };
 
@@ -434,23 +436,84 @@ describe('TimeTrackingPage', () => {
 
       render(<TimeTrackingPage />);
 
-      const dismissButton = screen.getByLabelText('Dismiss error');
+      const dismissButton = screen.getByRole('button', { name: /dismiss/i });
       fireEvent.click(dismissButton);
 
       expect(mockStore.clearError).toHaveBeenCalledTimes(1);
     });
 
-    it('displays error icon in error banner', () => {
+    it('displays error banner with proper styling', () => {
       vi.mocked(useTimeTrackingStore).mockReturnValue({
         ...mockStore,
         error: 'Failed to fetch tasks',
       } as any);
 
-      const { container } = render(<TimeTrackingPage />);
+      render(<TimeTrackingPage />);
 
-      const errorIcon = container.querySelector('.time-tracking-page__error-icon');
-      expect(errorIcon).toBeInTheDocument();
-      expect(errorIcon?.textContent).toBe('⚠️');
+      const errorBanner = screen.getByRole('alert');
+      expect(errorBanner).toBeInTheDocument();
+      expect(errorBanner).toHaveClass('error-banner');
+    });
+
+    it('displays retry button when lastFailedOperation exists', () => {
+      vi.mocked(useTimeTrackingStore).mockReturnValue({
+        ...mockStore,
+        error: 'Failed to fetch tasks',
+        lastFailedOperation: { operation: 'fetchTasks' },
+      } as any);
+
+      render(<TimeTrackingPage />);
+
+      const retryButton = screen.getByRole('button', { name: /retry/i });
+      expect(retryButton).toBeInTheDocument();
+    });
+
+    it('does not display retry button when no lastFailedOperation', () => {
+      vi.mocked(useTimeTrackingStore).mockReturnValue({
+        ...mockStore,
+        error: 'Some validation error',
+        lastFailedOperation: null,
+      } as any);
+
+      render(<TimeTrackingPage />);
+
+      const retryButton = screen.queryByRole('button', { name: /retry/i });
+      expect(retryButton).not.toBeInTheDocument();
+    });
+
+    it('calls retryLastOperation when retry button is clicked', () => {
+      vi.mocked(useTimeTrackingStore).mockReturnValue({
+        ...mockStore,
+        error: 'Failed to fetch tasks',
+        lastFailedOperation: { operation: 'fetchTasks' },
+      } as any);
+
+      render(<TimeTrackingPage />);
+
+      const retryButton = screen.getByRole('button', { name: /retry/i });
+      fireEvent.click(retryButton);
+
+      expect(mockStore.retryLastOperation).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears error on successful retry', async () => {
+      const mockRetry = vi.fn().mockResolvedValue(undefined);
+      
+      vi.mocked(useTimeTrackingStore).mockReturnValue({
+        ...mockStore,
+        error: 'Failed to fetch tasks',
+        lastFailedOperation: { operation: 'fetchTasks' },
+        retryLastOperation: mockRetry,
+      } as any);
+
+      render(<TimeTrackingPage />);
+
+      const retryButton = screen.getByRole('button', { name: /retry/i });
+      fireEvent.click(retryButton);
+
+      await waitFor(() => {
+        expect(mockRetry).toHaveBeenCalledTimes(1);
+      });
     });
   });
 

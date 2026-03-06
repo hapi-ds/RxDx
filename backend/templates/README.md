@@ -2,16 +2,46 @@
 - Start with docker compose up -d
 - Apply templates with
   - docker compose exec backend uv run python scripts/seed_data.py --template TEMPLATE
-  - TEMPLATE: modular/company-acme
-  - TEMPLATE: modular/project-medical-device
-  - TEMPLATE: modular/requirements-medical-device
-  - TEMPLATE: modular/users-acme
+  - TEMPLATE: acme-medical-device/company-acme
+  - TEMPLATE: acme-medical-device/users-acme
+  - TEMPLATE: acme-medical-device/project-medical-device
+  - TEMPLATE: acme-medical-device/psp-comprehensive
+  - TEMPLATE: acme-medical-device/requirements-medical-device
 
-Keep this sequence - else linking to none existing resources can cause errors
+Keep this sequence - else linking to non-existing resources can cause errors
 
 # RxDx Template System
 
 This directory contains YAML templates for seeding the RxDx system with users, organizational structures, projects, and workitems. Templates provide a declarative way to define complex project structures that can be applied idempotently to the database.
+
+## Directory Structure
+
+```
+backend/templates/
+├── acme-medical-device/          # ACME Medical Device project templates
+│   ├── company-acme.yaml         # Organizational structure
+│   ├── users-acme.yaml           # User accounts
+│   ├── project-medical-device.yaml  # Project structure
+│   ├── psp-comprehensive.yaml    # PSP matrix (8 phases, 12 depts, 74 workpackages)
+│   ├── requirements-medical-device.yaml  # Requirements and workitems
+│   └── README.md                 # Detailed documentation
+├── schema.json                   # JSON Schema for validation
+├── MIGRATION.md                  # Migration guide
+└── README.md                     # This file
+```
+
+## Template Organization
+
+Templates are organized by project/company to support multiple demonstration datasets:
+
+- **acme-medical-device/**: Complete Medical Device Development project for ACME Corporation
+  - Demonstrates realistic medical device software lifecycle
+  - Includes ISO 13485, ISO 14971, IEC 62304, IEC 60601 compliance references
+  - 8 phases from POC to Post-Market
+  - 12 departments covering full medical device organization
+  - 74 workpackages distributed across PSP matrix
+
+Future template sets can be added for other companies/projects without conflicts.
 
 ## Table of Contents
 
@@ -419,92 +449,47 @@ relationships:
 
 ## Available Templates
 
-### Single-File Templates
+### ACME Medical Device Templates
 
-#### `default.yaml`
-Basic seed data with example users and workitems for development and testing.
-
-#### `minimal.yaml`
-Minimal template with just essential users for quick setup.
-
-#### `software-only.yaml`
-Software development focused template without medical device specifics.
-
-#### `medical-device.yaml`
-Medical device development template with regulatory compliance focus.
-
-#### `gantt-chart-demo-full.yaml`
-Comprehensive demo template with all entity types for Gantt chart visualization. Includes:
-- Complete organizational structure (companies, departments, resources)
-- Full project management structure (projects, sprints, phases, workpackages, backlogs, milestones)
-- Comprehensive workitems (requirements, tasks, tests, risks)
-- All relationship types demonstrated
-
-### Modular Templates
-
-Modular templates can be applied sequentially to build up a complete system. They use deterministic UUIDs for cross-template entity references.
-
-#### `modular/users-acme.yaml`
-User accounts for Acme Corporation (20 users across all roles).
-
-#### `modular/company-acme.yaml`
-Acme Corporation organizational structure with departments and resources.
-
-#### `modular/project-medical-device.yaml`
-Medical Device Software v2.0 project structure with sprints, phases, workpackages, backlogs, and milestones.
-
-#### `modular/requirements-medical-device.yaml`
-Requirements, tasks, tests, and risks for the medical device project with complete relationship graph.
+Located in `acme-medical-device/` directory. See `acme-medical-device/README.md` for detailed documentation.
 
 **Application Order:**
-1. `users-acme.yaml` - Create users first
-2. `company-acme.yaml` - Create organizational structure
-3. `project-medical-device.yaml` - Create project structure
-4. `requirements-medical-device.yaml` - Create workitems and relationships
+1. `acme-medical-device/company-acme` - Organizational structure (company, departments, resources)
+2. `acme-medical-device/users-acme` - User accounts
+3. `acme-medical-device/project-medical-device` - Project structure (sprints, phases, workpackages, backlogs, milestones)
+4. `acme-medical-device/psp-comprehensive` - PSP matrix (8 phases, 12 departments, 74 workpackages)
+5. `acme-medical-device/requirements-medical-device` - Requirements, tasks, tests, risks, and relationships
+
+**Quick Apply:**
+```bash
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/company-acme
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/users-acme
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/project-medical-device
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/psp-comprehensive
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/requirements-medical-device
+```
 
 ## Usage
 
-### Applying Templates via API
+### Applying Templates
 
 ```bash
-# Apply a template
-curl -X POST http://localhost:8000/api/v1/templates/default/apply \
-  -H "Authorization: Bearer $TOKEN"
+# Apply a template using seed_data.py script
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/company-acme
 
 # Dry-run mode (preview without applying)
-curl -X POST http://localhost:8000/api/v1/templates/default/apply?dry_run=true \
-  -H "Authorization: Bearer $TOKEN"
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/company-acme --dry-run
 ```
 
-### Applying Modular Templates
+### Applying Multiple Templates
 
 ```bash
-# Apply modular templates in sequence
-curl -X POST http://localhost:8000/api/v1/templates/users-acme/apply \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -X POST http://localhost:8000/api/v1/templates/company-acme/apply \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -X POST http://localhost:8000/api/v1/templates/project-medical-device/apply \
-  -H "Authorization: Bearer $TOKEN"
-
-curl -X POST http://localhost:8000/api/v1/templates/requirements-medical-device/apply \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Listing Available Templates
-
-```bash
-curl http://localhost:8000/api/v1/templates \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### Validating Templates
-
-```bash
-curl http://localhost:8000/api/v1/templates/default/validate \
-  -H "Authorization: Bearer $TOKEN"
+# Apply ACME Medical Device templates in sequence
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/company-acme
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/users-acme
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/project-medical-device
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/psp-comprehensive
+docker compose exec backend uv run python scripts/seed_data.py --template acme-medical-device/requirements-medical-device
 ```
 
 ## Deterministic UUIDs
@@ -522,13 +507,13 @@ This means:
 
 **Example:**
 ```yaml
-# In users-acme.yaml
+# In acme-medical-device/users-acme.yaml
 users:
   - id: user-pm1
     email: pm1@acme.example.com
     # Will generate UUID: deterministic_uuid("users-acme:user-pm1")
 
-# In project-medical-device.yaml
+# In acme-medical-device/project-medical-device.yaml
 projects:
   - id: project-medical-device
     owner_id: user-pm1  # References the same UUID
@@ -571,10 +556,11 @@ Templates are validated before application:
 
 ### Modular Templates
 
-1. **Separate Concerns**: Split large templates into logical modules
+1. **Separate Concerns**: Split large templates into logical modules (company, project, requirements)
 2. **Define Dependencies**: Document which templates must be applied first
 3. **Use Consistent IDs**: Use the same entity IDs across related templates
 4. **Minimize Duplication**: Don't duplicate users across templates
+5. **Organize by Project**: Group related templates in project-specific directories
 
 ### Entity References
 
@@ -600,7 +586,7 @@ Templates are validated before application:
 
 - Use kebab-case for template names: `medical-device-v2.yaml`
 - Use descriptive names that indicate content: `users-acme.yaml`
-- For modular templates, use prefixes: `modular/company-acme.yaml`
+- For project-specific templates, use directory structure: `acme-medical-device/company-acme.yaml`
 - Version templates when making breaking changes: `project-v2.yaml`
 
 ## Troubleshooting
@@ -618,7 +604,7 @@ Templates are validated before application:
 
 **Missing References:**
 - Ensure referenced users exist in the template or were created previously
-- For modular templates, apply in the correct order
+- For project-specific templates, apply in the correct order (see directory README)
 
 **Relationship Errors:**
 - Verify both endpoints exist

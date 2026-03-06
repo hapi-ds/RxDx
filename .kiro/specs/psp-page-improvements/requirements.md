@@ -18,6 +18,7 @@ This document defines requirements for improving the Project Structure Plan (PSP
 - **Frontend_Store**: The Zustand store managing PSP state
 - **Template_System**: The YAML-based system for loading demonstration data
 - **Cypher_Query**: Graph database query language (executed via PostgreSQL + Apache AGE)
+- **Relationship-Only_Approach**: Graph database design principle where associations are stored ONLY as relationships, NOT as foreign key properties on nodes (exception: user_id is allowed because users are not part of the AGE graph database)
 
 ## Requirements
 
@@ -217,20 +218,38 @@ This document defines requirements for improving the Project Structure Plan (PSP
 7. THE statistics panel SHALL show the average number of workpackages per cell
 8. WHEN statistics are displayed, THE statistics panel SHALL use visual indicators (icons, colors) for clarity
 
-### Requirement 11: Enhance Backend Data Model
+### Requirement 11: Enforce Relationship-Only Graph Database Approach
 
-**User Story:** As a developer, I want an enhanced data model, so that the system supports rich PSP functionality.
+**User Story:** As a developer, I want an enhanced data model that follows graph database principles, so that the system uses relationships as the source of truth without redundant foreign key properties.
+
+**CRITICAL PRINCIPLE**: The graph database MUST use relationships ONLY for associations between graph entities, NOT foreign key properties stored on nodes. This ensures data integrity, prevents inconsistencies, and leverages the full power of graph traversal.
+
+**EXCEPTION**: user_id properties ARE allowed because users are stored in PostgreSQL (not in the AGE graph database) and cannot be linked via graph relationships.
 
 #### Acceptance Criteria
 
 1. THE Phase node SHALL include properties: id, name, description, status, order, created_at, updated_at
-2. THE Department node SHALL include properties: id, name, description, manager_user_id, created_at, updated_at
-3. THE Workpackage node SHALL include properties: id, name, description, status, order, estimated_hours, actual_hours, created_at, updated_at
-4. THE NEXT relationship SHALL link phases in chronological order with no additional properties
-5. THE BELONGS_TO relationship SHALL link workpackages to phases with no additional properties
-6. THE LINKED_TO_DEPARTMENT relationship SHALL link workpackages to departments with no additional properties
-7. WHEN a phase is created, THE Backend_Service SHALL validate that the phase name is unique within the project
-8. WHEN a workpackage is created, THE Backend_Service SHALL validate that it has both a phase and department relationship
+2. THE Phase node SHALL NOT include project_id property (use BELONGS_TO relationship instead)
+3. THE Department node SHALL include properties: id, name, description, manager_user_id, created_at, updated_at
+4. THE Department node SHALL NOT include company_id property (use PARENT_OF relationship instead)
+5. THE Department node MAY include manager_user_id property (exception: users are not in graph database)
+6. THE Workpackage node SHALL include properties: id, name, description, status, order, estimated_hours, actual_hours, created_at, updated_at
+7. THE Workpackage node SHALL NOT include phase_id or department_id properties (relationships are the source of truth)
+8. THE Resource node SHALL NOT include department_id property (use BELONGS_TO relationship instead)
+9. THE Sprint node SHALL NOT include project_id property (use BELONGS_TO relationship instead)
+10. THE Milestone node SHALL NOT include project_id property (use BELONGS_TO relationship instead)
+11. THE Backlog node SHALL NOT include project_id property (use BELONGS_TO relationship instead)
+12. THE NEXT relationship SHALL link phases in chronological order with no additional properties
+13. THE BELONGS_TO relationship SHALL link entities to their parent entities (Phase->Project, Workpackage->Phase, Sprint->Project, Resource->Department, Milestone->Project, Backlog->Project)
+14. THE LINKED_TO_DEPARTMENT relationship SHALL link workpackages to departments with no additional properties
+15. THE PARENT_OF relationship SHALL link companies to departments with no additional properties
+16. WHEN a phase is created, THE Backend_Service SHALL create a BELONGS_TO relationship to the project, NOT store project_id as a property
+17. WHEN a workpackage is created, THE Backend_Service SHALL create BELONGS_TO and LINKED_TO_DEPARTMENT relationships, NOT store phase_id or department_id as properties
+18. WHEN a department is created, THE Backend_Service SHALL create a PARENT_OF relationship from the company, NOT store company_id as a property
+19. WHEN querying workpackages, THE Backend_Service SHALL traverse relationships to determine phase and department associations, NOT read from node properties
+20. WHEN filtering workpackages by phase or department, THE Backend_Service SHALL use relationship traversal in Cypher queries, NOT property-based filtering
+21. WHEN the Template_System loads entities, THE Template_System SHALL create relationships from foreign key fields in YAML but SHALL NOT store those fields as node properties
+22. WHEN the Template_Validator validates templates, THE Template_Validator SHALL validate that required relationships exist, NOT that foreign key properties are present
 
 ### Requirement 12: Add Template Validation
 

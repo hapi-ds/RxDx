@@ -1184,11 +1184,65 @@ export class PSPExporter {
 - Cypher queries executed via `ag_catalog.cypher()`
 - All graph operations go through GraphService
 
+#### CRITICAL: Relationship-Only Approach
+
+**PRINCIPLE**: The graph database MUST use relationships ONLY for associations between graph entities, NOT foreign key properties stored on nodes.
+
+**WHY**: 
+- Prevents data inconsistencies (single source of truth)
+- Leverages graph database strengths (traversal performance)
+- Simplifies updates (change relationship, not properties on multiple nodes)
+- Enforces referential integrity through graph structure
+
+**EXCEPTION**: `user_id` properties ARE allowed because users are stored in PostgreSQL (not in the AGE graph database) and cannot be linked via graph relationships.
+
+**ANTI-PATTERNS TO AVOID**:
+```cypher
+// ❌ BAD: Storing foreign keys as node properties
+CREATE (wp:Workpackage {
+  id: '123',
+  name: 'My Workpackage',
+  phase_id: '456',           // ❌ DON'T DO THIS
+  department_id: '789'       // ❌ DON'T DO THIS
+})
+
+// ✅ GOOD: Using relationships only
+CREATE (wp:Workpackage {
+  id: '123',
+  name: 'My Workpackage'
+})
+CREATE (wp)-[:BELONGS_TO]->(phase:Phase {id: '456'})
+CREATE (wp)-[:LINKED_TO_DEPARTMENT]->(dept:Department {id: '789'})
+```
+
+**QUERYING WITH RELATIONSHIPS**:
+```cypher
+// ❌ BAD: Property-based filtering
+MATCH (wp:Workpackage)
+WHERE wp.phase_id = '456'
+RETURN wp
+
+// ✅ GOOD: Relationship traversal
+MATCH (phase:Phase {id: '456'})<-[:BELONGS_TO]-(wp:Workpackage)
+RETURN wp
+```
+
+**TEMPLATE SYSTEM BEHAVIOR**:
+- Templates MAY include foreign key fields in YAML (e.g., `phase_id`, `department_id`) for readability
+- TemplateService reads these fields to know which relationships to create
+- TemplateService MUST NOT store these fields as node properties
+- Only relationships are created in the graph database
+
+**VALIDATION**:
+- TemplateValidator validates that required relationships exist
+- TemplateValidator does NOT validate foreign key properties (they shouldn't exist on nodes)
+- Services validate relationships exist before operations
+
 #### Node Types (Stored as AGE Vertices)
 
 **Phase Node**:
 ```
-(:phase {
+(:Phase {
   id: UUID (primary key),
   name: String (required, max 200 chars),
   description: String (optional),
@@ -1196,24 +1250,28 @@ export class PSPExporter {
   order: Integer (optional, computed from NEXT traversal),
   created_at: DateTime (auto-generated),
   updated_at: DateTime (auto-updated)
+  
+  // ❌ NO project_id property - use BELONGS_TO relationship instead
 })
 ```
 
 **Department Node**:
 ```
-(:department {
+(:Department {
   id: UUID (primary key),
   name: String (required, max 200 chars),
   description: String (optional),
-  manager_user_id: UUID (optional, foreign key to User),
+  manager_user_id: UUID (optional, foreign key to User - EXCEPTION: users not in graph),
   created_at: DateTime (auto-generated),
   updated_at: DateTime (auto-updated)
+  
+  // ❌ NO company_id property - use PARENT_OF relationship instead
 })
 ```
 
 **Workpackage Node**:
 ```
-(:workpackage {
+(:Workpackage {
   id: UUID (primary key),
   name: String (required, max 500 chars),
   description: String (optional),
@@ -1223,6 +1281,9 @@ export class PSPExporter {
   actual_hours: Float (optional, >= 0),
   created_at: DateTime (auto-generated),
   updated_at: DateTime (auto-updated)
+  
+  // ❌ NO phase_id property - use BELONGS_TO relationship instead
+  // ❌ NO department_id property - use LINKED_TO_DEPARTMENT relationship instead
 })
 ```
 

@@ -482,18 +482,18 @@ class TemplateValidator:
         self, template: TemplateDefinition
     ) -> list[ValidationError]:
         """
-        Validate all graph entity references are resolvable.
+        Validate all graph entity references are resolvable through relationships.
 
-        This method checks that all entity references (foreign keys) point to
-        entities that are defined in the template:
-        - Department.company_id references must point to defined companies
-        - Department.manager_user_id references must point to defined users
-        - Resource.department_id references must point to defined departments
-        - Sprint.project_id references must point to defined projects
-        - Phase.project_id references must point to defined projects
-        - Workpackage.phase_id references must point to defined phases
-        - Backlog.project_id references must point to defined projects
-        - Milestone.project_id references must point to defined projects
+        CRITICAL: Graph database uses relationships ONLY for associations, NOT foreign key properties.
+        This method validates that required relationships exist in the template, not that foreign key
+        properties reference valid entities.
+
+        Exception: user_id references are allowed because users are not part of the AGE graph database.
+
+        This method checks that:
+        - Department.manager_user_id references must point to defined users (user_id is allowed)
+        - All entities have required BELONGS_TO or PARENT_OF relationships defined
+        - Workpackages have required LINKED_TO_DEPARTMENT relationships defined
 
         Args:
             template: Validated TemplateDefinition object
@@ -504,7 +504,8 @@ class TemplateValidator:
         Requirements:
             - 2.6: Validate manager_user_id references in departments
             - 7.2: Validate all entity references are resolvable
-            - 10.4: Validate foreign key references
+            - 10.4: Validate relationship references (not foreign key properties)
+            - 11.4: Enforce relationship-only approach (no foreign key properties except user_id)
         """
         errors = []
 
@@ -514,19 +515,31 @@ class TemplateValidator:
         project_ids = {p.id for p in template.projects}
         phase_ids = {ph.id for ph in template.phases}
         user_ids = {u.id for u in template.users}
+        workpackage_ids = {wp.id for wp in template.workpackages}
+        resource_ids = {r.id for r in template.resources}
+        sprint_ids = {s.id for s in template.sprints}
+        backlog_ids = {b.id for b in template.backlogs}
+        milestone_ids = {m.id for m in template.milestones}
 
-        # Validate department.company_id references
+        # Build relationship maps for validation
+        parent_of_relationships = {
+            (rel.from_id, rel.to_id)
+            for rel in template.relationships
+            if rel.type == RelationshipType.PARENT_OF
+        }
+        belongs_to_relationships = {
+            (rel.from_id, rel.to_id)
+            for rel in template.relationships
+            if rel.type == RelationshipType.BELONGS_TO
+        }
+        linked_to_dept_relationships = {
+            (rel.from_id, rel.to_id)
+            for rel in template.relationships
+            if rel.type == RelationshipType.LINKED_TO_DEPARTMENT
+        }
+
+        # Validate department.manager_user_id references (user_id is allowed exception)
         for idx, dept in enumerate(template.departments):
-            if dept.company_id not in company_ids:
-                errors.append(
-                    ValidationError(
-                        path=f"departments[{idx}].company_id",
-                        message=f"Company reference '{dept.company_id}' not found in template companies",
-                        value=dept.company_id,
-                    )
-                )
-
-            # Validate department.manager_user_id references
             if dept.manager_user_id and dept.manager_user_id not in user_ids:
                 errors.append(
                     ValidationError(
@@ -536,69 +549,121 @@ class TemplateValidator:
                     )
                 )
 
-        # Validate resource.department_id references
+            # Validate PARENT_OF relationship exists (Company -> Department)
+            has_parent_relationship = any(
+                (from_id, dept.id) in parent_of_relationships
+                for from_id in company_ids
+            )
+            if not has_parent_relationship:
+                errors.append(
+                    ValidationError(
+                        path=f"departments[{idx}]",
+                        message=f"Department '{dept.id}' must have a PARENT_OF relationship from a company",
+                        value=dept.id,
+                    )
+                )
+
+        # Validate resource BELONGS_TO relationships (Resource -> Department)
         for idx, res in enumerate(template.resources):
-            if res.department_id not in department_ids:
+            has_belongs_to = any(
+                (res.id, dept_id) in belongs_to_relationships
+                for dept_id in department_ids
+            )
+            if not has_belongs_to:
                 errors.append(
                     ValidationError(
-                        path=f"resources[{idx}].department_id",
-                        message=f"Department reference '{res.department_id}' not found in template departments",
-                        value=res.department_id,
+                        path=f"resources[{idx}]",
+                        message=f"Resource '{res.id}' must have a BELONGS_TO relationship to a department",
+                        value=res.id,
                     )
                 )
 
-        # Validate sprint.project_id references
+        # Validate sprint BELONGS_TO relationships (Sprint -> Project)
         for idx, sprint in enumerate(template.sprints):
-            if sprint.project_id not in project_ids:
+            has_belongs_to = any(
+                (sprint.id, proj_id) in belongs_to_relationships
+                for proj_id in project_ids
+            )
+            if not has_belongs_to:
                 errors.append(
                     ValidationError(
-                        path=f"sprints[{idx}].project_id",
-                        message=f"Project reference '{sprint.project_id}' not found in template projects",
-                        value=sprint.project_id,
+                        path=f"sprints[{idx}]",
+                        message=f"Sprint '{sprint.id}' must have a BELONGS_TO relationship to a project",
+                        value=sprint.id,
                     )
                 )
 
-        # Validate phase.project_id references
+        # Validate phase BELONGS_TO relationships (Phase -> Project)
         for idx, phase in enumerate(template.phases):
-            if phase.project_id not in project_ids:
+            has_belongs_to = any(
+                (phase.id, proj_id) in belongs_to_relationships
+                for proj_id in project_ids
+            )
+            if not has_belongs_to:
                 errors.append(
                     ValidationError(
-                        path=f"phases[{idx}].project_id",
-                        message=f"Project reference '{phase.project_id}' not found in template projects",
-                        value=phase.project_id,
+                        path=f"phases[{idx}]",
+                        message=f"Phase '{phase.id}' must have a BELONGS_TO relationship to a project",
+                        value=phase.id,
                     )
                 )
 
-        # Validate workpackage.phase_id references
+        # Validate workpackage BELONGS_TO relationships (Workpackage -> Phase)
         for idx, wp in enumerate(template.workpackages):
-            if wp.phase_id not in phase_ids:
+            has_belongs_to = any(
+                (wp.id, phase_id) in belongs_to_relationships
+                for phase_id in phase_ids
+            )
+            if not has_belongs_to:
                 errors.append(
                     ValidationError(
-                        path=f"workpackages[{idx}].phase_id",
-                        message=f"Phase reference '{wp.phase_id}' not found in template phases",
-                        value=wp.phase_id,
+                        path=f"workpackages[{idx}]",
+                        message=f"Workpackage '{wp.id}' must have a BELONGS_TO relationship to a phase",
+                        value=wp.id,
                     )
                 )
 
-        # Validate backlog.project_id references
+            # Validate workpackage LINKED_TO_DEPARTMENT relationship
+            has_linked_to_dept = any(
+                (wp.id, dept_id) in linked_to_dept_relationships
+                for dept_id in department_ids
+            )
+            if not has_linked_to_dept:
+                errors.append(
+                    ValidationError(
+                        path=f"workpackages[{idx}]",
+                        message=f"Workpackage '{wp.id}' must have a LINKED_TO_DEPARTMENT relationship to a department",
+                        value=wp.id,
+                    )
+                )
+
+        # Validate backlog BELONGS_TO relationships (Backlog -> Project)
         for idx, backlog in enumerate(template.backlogs):
-            if backlog.project_id not in project_ids:
+            has_belongs_to = any(
+                (backlog.id, proj_id) in belongs_to_relationships
+                for proj_id in project_ids
+            )
+            if not has_belongs_to:
                 errors.append(
                     ValidationError(
-                        path=f"backlogs[{idx}].project_id",
-                        message=f"Project reference '{backlog.project_id}' not found in template projects",
-                        value=backlog.project_id,
+                        path=f"backlogs[{idx}]",
+                        message=f"Backlog '{backlog.id}' must have a BELONGS_TO relationship to a project",
+                        value=backlog.id,
                     )
                 )
 
-        # Validate milestone.project_id references
+        # Validate milestone BELONGS_TO relationships (Milestone -> Project)
         for idx, milestone in enumerate(template.milestones):
-            if milestone.project_id not in project_ids:
+            has_belongs_to = any(
+                (milestone.id, proj_id) in belongs_to_relationships
+                for proj_id in project_ids
+            )
+            if not has_belongs_to:
                 errors.append(
                     ValidationError(
-                        path=f"milestones[{idx}].project_id",
-                        message=f"Project reference '{milestone.project_id}' not found in template projects",
-                        value=milestone.project_id,
+                        path=f"milestones[{idx}]",
+                        message=f"Milestone '{milestone.id}' must have a BELONGS_TO relationship to a project",
+                        value=milestone.id,
                     )
                 )
 

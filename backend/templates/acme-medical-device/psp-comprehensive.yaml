@@ -1,0 +1,1079 @@
+metadata:
+  name: psp-comprehensive
+  version: 1.0.0
+  description: Comprehensive Medical Device Development PSP template with 8 phases, 12 departments, and 60+ workpackages demonstrating realistic lifecycle
+  author: RxDx Team
+
+settings:
+  default_password: password123
+
+# ============================================================================
+# Users (empty - references users from users-acme.yaml)
+# ============================================================================
+users: []
+
+# ============================================================================
+# Companies (empty - references company from company-acme.yaml)
+# ============================================================================
+companies: []
+
+# ============================================================================
+# Departments - 12 departments covering Medical Device Development
+# ============================================================================
+departments:
+  - id: dept-rd
+    name: Research & Development
+    description: Innovation and technology development for new medical device concepts
+    company_id: company-acme
+
+  - id: dept-systems
+    name: Systems Engineering
+    description: Requirements management, system architecture, and systems integration
+    company_id: company-acme
+
+  - id: dept-software
+    name: Software Engineering
+    description: Software design, implementation, testing, and IEC 62304 compliance
+    company_id: company-acme
+
+  - id: dept-hardware
+    name: Hardware Engineering
+    description: Electronics, mechanics, and hardware integration for medical devices
+    company_id: company-acme
+
+  - id: dept-qa
+    name: Quality Assurance
+    description: Testing, verification, validation, and quality control per ISO 13485
+    company_id: company-acme
+
+  - id: dept-regulatory
+    name: Regulatory Affairs
+    description: Compliance, regulatory submissions (FDA 510k, CE Mark), and regulatory strategy
+    company_id: company-acme
+
+  - id: dept-clinical
+    name: Clinical Affairs
+    description: Clinical evaluation, clinical trials, and medical expertise
+    company_id: company-acme
+
+  - id: dept-manufacturing
+    name: Manufacturing
+    description: Production planning, process development, scale-up, and FDA 21 CFR Part 820 compliance
+    company_id: company-acme
+
+  - id: dept-supply-chain
+    name: Supply Chain
+    description: Procurement, vendor management, supplier qualification, and logistics
+    company_id: company-acme
+
+  - id: dept-risk
+    name: Risk Management
+    description: Risk analysis per ISO 14971, mitigation strategies, and safety assessment
+    company_id: company-acme
+
+  - id: dept-documentation
+    name: Documentation
+    description: Technical writing, document control, DHF/DMR management, and FDA 21 CFR Part 11 compliance
+    company_id: company-acme
+
+  - id: dept-pm
+    name: Project Management
+    description: Planning, coordination, stakeholder management, and project execution
+    company_id: company-acme
+
+# ============================================================================
+# Projects (empty - references project from project-medical-device.yaml)
+# ============================================================================
+projects: []
+
+# ============================================================================
+# Phases - 8 phases representing Medical Device Development Lifecycle
+# ============================================================================
+phases:
+  - id: phase-poc
+    name: Proof of Concept (POC)
+    description: Feasibility assessment, technology evaluation, and initial prototyping to validate device concept
+    order: 1
+    status: completed
+    project_id: project-medical-device
+
+  - id: phase-project-def
+    name: Project Definition
+    description: Business case development, project charter, resource planning, and quality/risk management planning
+    order: 2
+    status: completed
+    project_id: project-medical-device
+
+  - id: phase-concept
+    name: Concept Phase
+    description: User needs analysis, design inputs per ISO 13485, system architecture, and preliminary hazard analysis per ISO 14971
+    order: 3
+    status: active
+    project_id: project-medical-device
+
+  - id: phase-design-dev
+    name: Design & Development
+    description: Detailed design per IEC 62304, implementation, design verification testing, and DHF compilation
+    order: 4
+    status: active
+    project_id: project-medical-device
+
+  - id: phase-design-transfer
+    name: Design Transfer
+    description: Manufacturing process development, IQ/OQ/PQ validation per FDA 21 CFR Part 820, and DMR creation
+    order: 5
+    status: draft
+    project_id: project-medical-device
+
+  - id: phase-validation
+    name: Validation
+    description: Design validation testing, clinical evaluation per MDR, usability validation per IEC 62366, and risk management report
+    order: 6
+    status: draft
+    project_id: project-medical-device
+
+  - id: phase-market-release
+    name: Market Release
+    description: Regulatory submissions (FDA 510k, CE Mark), labeling per IEC 60601, manufacturing scale-up, and product launch
+    order: 7
+    status: draft
+    project_id: project-medical-device
+
+  - id: phase-post-market
+    name: Post-Market
+    description: Post-market surveillance per ISO 13485, vigilance reporting, CAPA system, and lifecycle management
+    order: 8
+    status: draft
+    project_id: project-medical-device
+
+# ============================================================================
+# Workpackages - 60+ workpackages distributed across phase-department matrix
+# ============================================================================
+workpackages:
+  # ========== POC Phase (6 workpackages) ==========
+  - id: wp-poc-feasibility
+    name: Feasibility Study
+    description: Technical and commercial feasibility assessment for medical device concept
+    order: 1
+    status: completed
+    estimated_hours: 80
+    actual_hours: 75
+    phase_id: phase-poc
+
+  - id: wp-poc-technology
+    name: Technology Assessment
+    description: Evaluate available technologies and select optimal approach for device implementation
+    order: 2
+    status: completed
+    estimated_hours: 60
+    actual_hours: 65
+    phase_id: phase-poc
+
+  - id: wp-poc-prototype
+    name: Prototype Development
+    description: Build proof-of-concept prototype to validate core functionality
+    order: 3
+    status: completed
+    estimated_hours: 120
+    actual_hours: 130
+    phase_id: phase-poc
+
+  - id: wp-poc-risk
+    name: Initial Risk Assessment
+    description: Preliminary risk identification per ISO 14971 for device concept
+    order: 4
+    status: completed
+    estimated_hours: 40
+    actual_hours: 38
+    phase_id: phase-poc
+
+  - id: wp-poc-market
+    name: Market Research
+    description: Market analysis, competitive landscape, and user needs assessment
+    order: 5
+    status: completed
+    estimated_hours: 50
+    actual_hours: 52
+    phase_id: phase-poc
+
+  - id: wp-poc-regulatory-strategy
+    name: Regulatory Strategy Planning
+    description: Initial regulatory pathway assessment (FDA 510k vs PMA, CE Mark classification)
+    order: 6
+    status: completed
+    estimated_hours: 60
+    actual_hours: 58
+    phase_id: phase-poc
+
+  # ========== Project Definition Phase (6 workpackages) ==========
+  - id: wp-projdef-business
+    name: Business Case
+    description: Develop comprehensive business case with ROI analysis and market projections
+    order: 1
+    status: completed
+    estimated_hours: 80
+    actual_hours: 85
+    phase_id: phase-project-def
+
+  - id: wp-projdef-charter
+    name: Project Charter
+    description: Create project charter with scope, objectives, stakeholders, and success criteria
+    order: 2
+    status: completed
+    estimated_hours: 40
+    actual_hours: 42
+    phase_id: phase-project-def
+
+  - id: wp-projdef-resources
+    name: Resource Planning
+    description: Identify required resources, skills, and staffing plan for project execution
+    order: 3
+    status: completed
+    estimated_hours: 60
+    actual_hours: 55
+    phase_id: phase-project-def
+
+  - id: wp-projdef-qms
+    name: Quality Management Plan
+    description: Establish QMS per ISO 13485 including procedures, work instructions, and quality objectives
+    order: 4
+    status: completed
+    estimated_hours: 100
+    actual_hours: 110
+    phase_id: phase-project-def
+
+  - id: wp-projdef-risk-plan
+    name: Risk Management Plan
+    description: Define risk management process per ISO 14971 including risk acceptance criteria
+    order: 5
+    status: completed
+    estimated_hours: 80
+    actual_hours: 78
+    phase_id: phase-project-def
+
+  - id: wp-projdef-doc-plan
+    name: Documentation Plan
+    description: Establish documentation strategy, DHF structure, and document control per FDA 21 CFR Part 11
+    order: 6
+    status: completed
+    estimated_hours: 60
+    actual_hours: 62
+    phase_id: phase-project-def
+
+  # ========== Concept Phase (8 workpackages) ==========
+  - id: wp-concept-user-needs
+    name: User Needs Analysis
+    description: Gather and document user needs through interviews, observations, and market research
+    order: 1
+    status: active
+    estimated_hours: 120
+    actual_hours: 95
+    phase_id: phase-concept
+
+  - id: wp-concept-design-inputs
+    name: Design Input Specification
+    description: Transform user needs into design inputs per ISO 13485 with traceability
+    order: 2
+    status: active
+    estimated_hours: 160
+    actual_hours: 140
+    phase_id: phase-concept
+
+  - id: wp-concept-system-arch
+    name: System Architecture
+    description: Define high-level system architecture including hardware, software, and interfaces
+    order: 3
+    status: active
+    estimated_hours: 140
+    phase_id: phase-concept
+
+  - id: wp-concept-sw-req
+    name: Software Requirements
+    description: Software requirements specification per IEC 62304 with safety classification
+    order: 4
+    status: active
+    estimated_hours: 180
+    phase_id: phase-concept
+
+  - id: wp-concept-hw-req
+    name: Hardware Requirements
+    description: Hardware requirements including electrical, mechanical, and environmental specifications
+    order: 5
+    status: active
+    estimated_hours: 160
+    phase_id: phase-concept
+
+  - id: wp-concept-hazard
+    name: Preliminary Hazard Analysis
+    description: Identify potential hazards and failure modes per ISO 14971 preliminary risk analysis
+    order: 6
+    status: active
+    estimated_hours: 100
+    phase_id: phase-concept
+
+  - id: wp-concept-regulatory-req
+    name: Regulatory Requirements
+    description: Define regulatory requirements for FDA 510k submission and CE Mark technical file
+    order: 7
+    status: active
+    estimated_hours: 80
+    phase_id: phase-concept
+
+  - id: wp-concept-suppliers
+    name: Supplier Identification
+    description: Identify and evaluate potential suppliers for critical components
+    order: 8
+    status: active
+    estimated_hours: 60
+    phase_id: phase-concept
+
+  # ========== Design & Development Phase (12 workpackages) ==========
+  - id: wp-design-sw-arch
+    name: Software Architecture
+    description: Detailed software architecture per IEC 62304 including SOUP analysis
+    order: 1
+    status: active
+    estimated_hours: 200
+    actual_hours: 180
+    phase_id: phase-design-dev
+
+  - id: wp-design-sw-detailed
+    name: Software Detailed Design
+    description: Detailed software design with module specifications and interface definitions
+    order: 2
+    status: active
+    estimated_hours: 240
+    actual_hours: 220
+    phase_id: phase-design-dev
+
+  - id: wp-design-sw-impl
+    name: Software Implementation
+    description: Software coding per IEC 62304 with code reviews and static analysis
+    order: 3
+    status: active
+    estimated_hours: 400
+    actual_hours: 380
+    phase_id: phase-design-dev
+
+  - id: wp-design-sw-unit
+    name: Software Unit Testing
+    description: Unit testing per IEC 62304 with coverage analysis and test documentation
+    order: 4
+    status: active
+    estimated_hours: 160
+    phase_id: phase-design-dev
+
+  - id: wp-design-hw-detailed
+    name: Hardware Detailed Design
+    description: Detailed hardware design including schematics, PCB layout, and BOM
+    order: 5
+    status: active
+    estimated_hours: 280
+    phase_id: phase-design-dev
+
+  - id: wp-design-mechanical
+    name: Mechanical Design
+    description: Mechanical design including enclosure, mounting, and thermal management
+    order: 6
+    status: active
+    estimated_hours: 200
+    phase_id: phase-design-dev
+
+  - id: wp-design-risk-analysis
+    name: Risk Analysis ISO 14971
+    description: Comprehensive risk analysis per ISO 14971 with FMEA and risk control measures
+    order: 7
+    status: active
+    estimated_hours: 180
+    phase_id: phase-design-dev
+
+  - id: wp-design-verification
+    name: Design Verification Testing
+    description: Verify design outputs meet design inputs per ISO 13485
+    order: 8
+    status: active
+    estimated_hours: 240
+    phase_id: phase-design-dev
+
+  - id: wp-design-electrical-safety
+    name: Electrical Safety Testing
+    description: Electrical safety testing per IEC 60601-1 including leakage current and dielectric strength
+    order: 9
+    status: draft
+    estimated_hours: 120
+    phase_id: phase-design-dev
+
+  - id: wp-design-emc
+    name: EMC Testing
+    description: Electromagnetic compatibility testing per IEC 60601-1-2 for emissions and immunity
+    order: 10
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-design-dev
+
+  - id: wp-design-usability
+    name: Usability Engineering
+    description: Usability engineering per IEC 62366 including use scenarios and formative evaluation
+    order: 11
+    status: active
+    estimated_hours: 140
+    phase_id: phase-design-dev
+
+  - id: wp-design-dhf
+    name: DHF Compilation
+    description: Compile Design History File with all design documentation per FDA 21 CFR Part 820
+    order: 12
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-design-dev
+
+  # ========== Design Transfer Phase (6 workpackages) ==========
+  - id: wp-transfer-process
+    name: Manufacturing Process Development
+    description: Develop manufacturing processes including assembly, testing, and packaging procedures
+    order: 1
+    status: draft
+    estimated_hours: 200
+    phase_id: phase-design-transfer
+
+  - id: wp-transfer-validation
+    name: Process Validation IQ/OQ/PQ
+    description: Installation, Operational, and Performance Qualification per FDA 21 CFR Part 820
+    order: 2
+    status: draft
+    estimated_hours: 180
+    phase_id: phase-design-transfer
+
+  - id: wp-transfer-instructions
+    name: Manufacturing Instructions
+    description: Create work instructions, batch records, and manufacturing SOPs
+    order: 3
+    status: draft
+    estimated_hours: 120
+    phase_id: phase-design-transfer
+
+  - id: wp-transfer-supplier-qual
+    name: Supplier Qualification
+    description: Qualify suppliers per ISO 13485 including audits and quality agreements
+    order: 4
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-design-transfer
+
+  - id: wp-transfer-review
+    name: Design Transfer Review
+    description: Formal design transfer review to ensure manufacturing readiness
+    order: 5
+    status: draft
+    estimated_hours: 40
+    phase_id: phase-design-transfer
+
+  - id: wp-transfer-dmr
+    name: Device Master Record
+    description: Compile DMR with all manufacturing specifications per FDA 21 CFR Part 820
+    order: 6
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-design-transfer
+
+  # ========== Validation Phase (6 workpackages) ==========
+  - id: wp-validation-clinical
+    name: Clinical Evaluation Report
+    description: Clinical evaluation per MDR Annex XIV demonstrating safety and performance
+    order: 1
+    status: draft
+    estimated_hours: 200
+    phase_id: phase-validation
+
+  - id: wp-validation-design
+    name: Design Validation Testing
+    description: Validate device meets user needs and intended use per ISO 13485
+    order: 2
+    status: draft
+    estimated_hours: 240
+    phase_id: phase-validation
+
+  - id: wp-validation-software
+    name: Software Validation
+    description: Software system testing per IEC 62304 including integration and system testing
+    order: 3
+    status: draft
+    estimated_hours: 200
+    phase_id: phase-validation
+
+  - id: wp-validation-usability
+    name: Usability Validation
+    description: Summative usability evaluation per IEC 62366 with representative users
+    order: 4
+    status: draft
+    estimated_hours: 120
+    phase_id: phase-validation
+
+  - id: wp-validation-risk-report
+    name: Risk Management Report
+    description: Final risk management report per ISO 14971 with residual risk evaluation
+    order: 5
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-validation
+
+  - id: wp-validation-design-review
+    name: Design Review
+    description: Final design review per ISO 13485 to approve design for production
+    order: 6
+    status: draft
+    estimated_hours: 60
+    phase_id: phase-validation
+
+  # ========== Market Release Phase (6 workpackages) ==========
+  - id: wp-release-510k
+    name: FDA 510(k) Submission
+    description: Prepare and submit FDA 510(k) premarket notification with substantial equivalence demonstration
+    order: 1
+    status: draft
+    estimated_hours: 240
+    phase_id: phase-market-release
+
+  - id: wp-release-ce-mark
+    name: CE Mark Technical File
+    description: Compile CE Mark technical documentation per MDR for European market access
+    order: 2
+    status: draft
+    estimated_hours: 220
+    phase_id: phase-market-release
+
+  - id: wp-release-labeling
+    name: Labeling and IFU
+    description: Create device labeling and Instructions for Use per IEC 60601 and FDA requirements
+    order: 3
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-market-release
+
+  - id: wp-release-scale-up
+    name: Manufacturing Scale-Up
+    description: Scale manufacturing from pilot to full production with process validation
+    order: 4
+    status: draft
+    estimated_hours: 160
+    phase_id: phase-market-release
+
+  - id: wp-release-launch
+    name: Product Launch Plan
+    description: Marketing, sales enablement, and commercial launch strategy
+    order: 5
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-market-release
+
+  - id: wp-release-training
+    name: Training Materials
+    description: Develop training materials for sales, service, and clinical users
+    order: 6
+    status: draft
+    estimated_hours: 120
+    phase_id: phase-market-release
+
+  # ========== Post-Market Phase (6 workpackages) ==========
+  - id: wp-postmarket-surveillance
+    name: Post-Market Surveillance Plan
+    description: Establish post-market surveillance system per ISO 13485 and MDR requirements
+    order: 1
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-post-market
+
+  - id: wp-postmarket-complaints
+    name: Complaint Handling System
+    description: Implement complaint handling and adverse event reporting per FDA 21 CFR Part 820
+    order: 2
+    status: draft
+    estimated_hours: 120
+    phase_id: phase-post-market
+
+  - id: wp-postmarket-vigilance
+    name: Vigilance Reporting
+    description: Establish vigilance reporting system for EU MDR and FDA MedWatch
+    order: 3
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-post-market
+
+  - id: wp-postmarket-capa
+    name: CAPA System
+    description: Corrective and Preventive Action system per ISO 13485 and FDA 21 CFR Part 820
+    order: 4
+    status: draft
+    estimated_hours: 140
+    phase_id: phase-post-market
+
+  - id: wp-postmarket-psur
+    name: Periodic Safety Update Report
+    description: Periodic safety update reporting per MDR for ongoing safety monitoring
+    order: 5
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-post-market
+
+  - id: wp-postmarket-lifecycle
+    name: Product Lifecycle Management
+    description: Manage product lifecycle including updates, obsolescence, and end-of-life planning
+    order: 6
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-post-market
+
+  # ========== Additional workpackages for better coverage (14 more) ==========
+  
+  # POC - Additional departments
+  - id: wp-poc-systems
+    name: System Concept Definition
+    description: Define high-level system concept and key performance requirements
+    order: 7
+    status: completed
+    estimated_hours: 60
+    actual_hours: 58
+    phase_id: phase-poc
+
+  # Project Definition - Additional departments
+  - id: wp-projdef-software-plan
+    name: Software Development Plan
+    description: Software development plan per IEC 62304 including lifecycle model and activities
+    order: 7
+    status: completed
+    estimated_hours: 60
+    actual_hours: 65
+    phase_id: phase-project-def
+
+  # Concept - Additional departments
+  - id: wp-concept-manufacturing-req
+    name: Manufacturing Requirements
+    description: Define manufacturing requirements including production volume and process constraints
+    order: 9
+    status: active
+    estimated_hours: 80
+    phase_id: phase-concept
+
+  - id: wp-concept-supply-chain
+    name: Supply Chain Strategy
+    description: Develop supply chain strategy including make-vs-buy analysis
+    order: 10
+    status: active
+    estimated_hours: 60
+    phase_id: phase-concept
+
+  # Design & Development - Additional departments
+  - id: wp-design-clinical-input
+    name: Clinical Input Review
+    description: Clinical review of design to ensure medical appropriateness
+    order: 13
+    status: active
+    estimated_hours: 60
+    phase_id: phase-design-dev
+
+  - id: wp-design-manufacturing-input
+    name: Design for Manufacturing
+    description: Design for manufacturability review and optimization
+    order: 14
+    status: active
+    estimated_hours: 80
+    phase_id: phase-design-dev
+
+  - id: wp-design-supply-chain-plan
+    name: Component Sourcing Plan
+    description: Identify and qualify component suppliers
+    order: 15
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-design-dev
+
+  - id: wp-design-doc-control
+    name: Design Documentation Control
+    description: Establish document control system for design documentation
+    order: 16
+    status: active
+    estimated_hours: 40
+    phase_id: phase-design-dev
+
+  - id: wp-design-project-tracking
+    name: Design Phase Project Tracking
+    description: Track design phase progress, risks, and resource utilization
+    order: 17
+    status: active
+    estimated_hours: 60
+    phase_id: phase-design-dev
+
+  # Design Transfer - Additional departments
+  - id: wp-transfer-clinical-training
+    name: Clinical Training Development
+    description: Develop clinical training materials for healthcare professionals
+    order: 7
+    status: draft
+    estimated_hours: 100
+    phase_id: phase-design-transfer
+
+  # Validation - Additional departments
+  - id: wp-validation-manufacturing
+    name: Manufacturing Validation
+    description: Validate manufacturing processes produce consistent, safe devices
+    order: 7
+    status: draft
+    estimated_hours: 160
+    phase_id: phase-validation
+
+  - id: wp-validation-supply-chain
+    name: Supply Chain Validation
+    description: Validate supplier quality systems and component traceability
+    order: 8
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-validation
+
+  # Market Release - Additional departments
+  - id: wp-release-quality-release
+    name: Quality Release Review
+    description: Final quality review and release authorization per ISO 13485
+    order: 7
+    status: draft
+    estimated_hours: 60
+    phase_id: phase-market-release
+
+  - id: wp-release-risk-final
+    name: Final Risk Assessment
+    description: Final risk-benefit analysis and residual risk acceptance
+    order: 8
+    status: draft
+    estimated_hours: 80
+    phase_id: phase-market-release
+
+# ============================================================================
+# Workitems (empty - workitems defined in other templates)
+# ============================================================================
+workitems:
+  requirements: []
+  tasks: []
+  tests: []
+  risks: []
+
+# ============================================================================
+# Relationships - NEXT relationships for phases and LINKED_TO_DEPARTMENT for workpackages
+# ============================================================================
+relationships:
+  # ========== Phase NEXT Relationships (7 relationships) ==========
+  - from_id: phase-poc
+    to_id: phase-project-def
+    type: NEXT
+
+  - from_id: phase-project-def
+    to_id: phase-concept
+    type: NEXT
+
+  - from_id: phase-concept
+    to_id: phase-design-dev
+    type: NEXT
+
+  - from_id: phase-design-dev
+    to_id: phase-design-transfer
+    type: NEXT
+
+  - from_id: phase-design-transfer
+    to_id: phase-validation
+    type: NEXT
+
+  - from_id: phase-validation
+    to_id: phase-market-release
+    type: NEXT
+
+  - from_id: phase-market-release
+    to_id: phase-post-market
+    type: NEXT
+
+  # ========== Workpackage to Department Links ==========
+  
+  # POC Phase workpackages
+  - from_id: wp-poc-feasibility
+    to_id: dept-rd
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-poc-technology
+    to_id: dept-systems
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-poc-prototype
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-poc-risk
+    to_id: dept-risk
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-poc-market
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-poc-regulatory-strategy
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-poc-systems
+    to_id: dept-systems
+    type: LINKED_TO_DEPARTMENT
+
+  # Project Definition Phase workpackages
+  - from_id: wp-projdef-business
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-projdef-charter
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-projdef-resources
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-projdef-qms
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-projdef-risk-plan
+    to_id: dept-risk
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-projdef-doc-plan
+    to_id: dept-documentation
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-projdef-software-plan
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  # Concept Phase workpackages
+  - from_id: wp-concept-user-needs
+    to_id: dept-systems
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-design-inputs
+    to_id: dept-systems
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-system-arch
+    to_id: dept-systems
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-sw-req
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-hw-req
+    to_id: dept-hardware
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-hazard
+    to_id: dept-risk
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-regulatory-req
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-suppliers
+    to_id: dept-supply-chain
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-manufacturing-req
+    to_id: dept-manufacturing
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-concept-supply-chain
+    to_id: dept-supply-chain
+    type: LINKED_TO_DEPARTMENT
+
+  # Design & Development Phase workpackages
+  - from_id: wp-design-sw-arch
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-sw-detailed
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-sw-impl
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-sw-unit
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-hw-detailed
+    to_id: dept-hardware
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-mechanical
+    to_id: dept-hardware
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-risk-analysis
+    to_id: dept-risk
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-verification
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-electrical-safety
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-emc
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-usability
+    to_id: dept-clinical
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-dhf
+    to_id: dept-documentation
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-clinical-input
+    to_id: dept-clinical
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-manufacturing-input
+    to_id: dept-manufacturing
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-supply-chain-plan
+    to_id: dept-supply-chain
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-doc-control
+    to_id: dept-documentation
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-design-project-tracking
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT
+
+  # Design Transfer Phase workpackages
+  - from_id: wp-transfer-process
+    to_id: dept-manufacturing
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-transfer-validation
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-transfer-instructions
+    to_id: dept-manufacturing
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-transfer-supplier-qual
+    to_id: dept-supply-chain
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-transfer-review
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-transfer-dmr
+    to_id: dept-documentation
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-transfer-clinical-training
+    to_id: dept-clinical
+    type: LINKED_TO_DEPARTMENT
+
+  # Validation Phase workpackages
+  - from_id: wp-validation-clinical
+    to_id: dept-clinical
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-design
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-software
+    to_id: dept-software
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-usability
+    to_id: dept-clinical
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-risk-report
+    to_id: dept-risk
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-design-review
+    to_id: dept-systems
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-manufacturing
+    to_id: dept-manufacturing
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-validation-supply-chain
+    to_id: dept-supply-chain
+    type: LINKED_TO_DEPARTMENT
+
+  # Market Release Phase workpackages
+  - from_id: wp-release-510k
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-ce-mark
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-labeling
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-scale-up
+    to_id: dept-manufacturing
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-launch
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-training
+    to_id: dept-documentation
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-quality-release
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-release-risk-final
+    to_id: dept-risk
+    type: LINKED_TO_DEPARTMENT
+
+  # Post-Market Phase workpackages
+  - from_id: wp-postmarket-surveillance
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-postmarket-complaints
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-postmarket-vigilance
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-postmarket-capa
+    to_id: dept-qa
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-postmarket-psur
+    to_id: dept-regulatory
+    type: LINKED_TO_DEPARTMENT
+
+  - from_id: wp-postmarket-lifecycle
+    to_id: dept-pm
+    type: LINKED_TO_DEPARTMENT

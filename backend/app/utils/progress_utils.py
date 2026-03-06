@@ -62,6 +62,8 @@ async def calculate_phase_progress(
     Progress is calculated as the weighted average of all workpackages in the phase,
     where each workpackage's contribution is weighted by the sum of task efforts.
     
+    Uses relationship traversal (BELONGS_TO) instead of phase_id property.
+    
     Args:
         phase_id: Phase UUID
         graph_service: Graph service instance
@@ -69,7 +71,7 @@ async def calculate_phase_progress(
     Returns:
         Progress percentage (0-100)
     """
-    # Query all workpackages in the phase
+    # Query all workpackages in the phase using BELONGS_TO relationship
     query = f"""
     MATCH (p:Phase {{id: '{str(phase_id)}'}})<-[:BELONGS_TO]-(wp:Workpackage)
     RETURN wp.id as workpackage_id, wp.progress as progress
@@ -91,7 +93,7 @@ async def calculate_phase_progress(
         if progress is None:
             progress = await calculate_workpackage_progress(workpackage_id, graph_service)
         
-        # Get total effort for this workpackage (sum of task efforts)
+        # Get total effort for this workpackage (sum of task efforts) using relationship traversal
         effort_query = f"""
         MATCH (wp:Workpackage {{id: '{workpackage_id}'}})<-[:BELONGS_TO]-(t:Task)
         RETURN sum(coalesce(t.effort, t.estimated_hours, 1.0)) as total_effort
@@ -118,6 +120,8 @@ async def calculate_project_progress(
     Progress is calculated as the weighted average of all phases in the project,
     where each phase's contribution is weighted by the sum of workpackage efforts.
     
+    Uses relationship traversal (BELONGS_TO) instead of project_id property.
+    
     Args:
         project_id: Project UUID
         graph_service: Graph service instance
@@ -125,7 +129,7 @@ async def calculate_project_progress(
     Returns:
         Progress percentage (0-100)
     """
-    # Query all phases in the project
+    # Query all phases in the project using BELONGS_TO relationship
     query = f"""
     MATCH (proj:Project {{id: '{str(project_id)}'}})<-[:BELONGS_TO]-(p:Phase)
     RETURN p.id as phase_id, p.progress as progress
@@ -147,7 +151,7 @@ async def calculate_project_progress(
         if progress is None:
             progress = await calculate_phase_progress(phase_id, graph_service)
         
-        # Get total effort for this phase (sum of workpackage efforts)
+        # Get total effort for this phase (sum of workpackage efforts) using relationship traversal
         effort_query = f"""
         MATCH (p:Phase {{id: '{phase_id}'}})<-[:BELONGS_TO]-(wp:Workpackage)<-[:BELONGS_TO]-(t:Task)
         RETURN sum(coalesce(t.effort, t.estimated_hours, 1.0)) as total_effort

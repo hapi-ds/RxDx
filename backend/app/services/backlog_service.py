@@ -42,12 +42,13 @@ class BacklogService:
         """
         backlog_id = uuid4()
 
+        # CRITICAL: Do NOT store project_id as a property on the node
+        # The project association is stored as a BELONGS_TO relationship
         # Prepare backlog properties
         properties = {
             "id": str(backlog_id),
             "name": backlog_data.name,
             "type": "Backlog",  # Add explicit type property
-            "project_id": str(backlog_data.project_id),
             "created_at": datetime.now(UTC).isoformat(),
             "updated_at": datetime.now(UTC).isoformat(),
         }
@@ -57,6 +58,13 @@ class BacklogService:
 
         # Create the Backlog node
         await self.graph_service.create_node("Backlog", properties)
+
+        # Create BELONGS_TO relationship from Backlog to Project
+        await self.graph_service.create_relationship(
+            from_id=str(backlog_id),
+            to_id=str(backlog_data.project_id),
+            rel_type="BELONGS_TO",
+        )
 
         logger.info(
             f"Created backlog {backlog_id} for project {backlog_data.project_id}"

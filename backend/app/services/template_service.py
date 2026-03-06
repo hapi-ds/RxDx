@@ -2108,8 +2108,9 @@ class TemplateService:
                         # Try to find it in the database using deterministic UUID
                         # We don't know which template created it, so we try common template names
                         for template_prefix in [
-                            "modular/company-acme",
-                            "modular/project-medical-device",
+                            "acme-medical-device/company-acme",
+                            "acme-medical-device/project-medical-device",
+                            "acme-medical-device/psp-comprehensive",
                             "company-acme",
                             "project-medical-device",
                         ]:
@@ -2128,8 +2129,9 @@ class TemplateService:
                     if rel.to_id not in all_entity_maps:
                         # Try to find it in the database using deterministic UUID
                         for template_prefix in [
-                            "modular/company-acme",
-                            "modular/project-medical-device",
+                            "acme-medical-device/company-acme",
+                            "acme-medical-device/project-medical-device",
+                            "acme-medical-device/psp-comprehensive",
                             "company-acme",
                             "project-medical-device",
                         ]:

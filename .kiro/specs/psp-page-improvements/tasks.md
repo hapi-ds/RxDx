@@ -12,8 +12,8 @@ This implementation plan addresses critical fixes and enhancements to the Projec
 
 ## Tasks
 
-- [ ] 1. Fix PSPService null handling and enhance backend infrastructure
-  - [ ] 1.1 Fix PSPService.get_matrix_data() null handling (CRITICAL)
+- [x] 1. Fix PSPService null handling and enhance backend infrastructure
+  - [x] 1.1 Fix PSPService.get_matrix_data() null handling (CRITICAL)
     - Fix the 500 error by adding null filtering for OPTIONAL MATCH results
     - Filter out entries where id is None from phases, departments, and workpackages
     - Ensure null foreign keys (phase_id, department_id) are explicitly set to None
@@ -21,7 +21,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Test with empty database and partial data scenarios
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
 
-  - [ ] 1.2 Enhance Cypher query with proper NEXT traversal
+  - [x] 1.2 Enhance Cypher query with proper NEXT traversal
     - Update the matrix query to find root phases (no incoming NEXT)
     - Add OPTIONAL MATCH for NEXT relationship traversal
     - Compute path_length for phase ordering
@@ -29,7 +29,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Ensure query works via ag_catalog.cypher() function (PostgreSQL + AGE)
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-  - [ ] 1.3 Create Pydantic schemas for PSP entities
+  - [x] 1.3 Create Pydantic schemas for PSP entities
     - Create backend/app/schemas/psp.py with PhaseBase, PhaseResponse
     - Add DepartmentBase, DepartmentResponse schemas
     - Add WorkpackageBase, WorkpackageCreate, WorkpackageUpdate, WorkpackageResponse
@@ -38,7 +38,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Add field validators for status enum and numeric constraints
     - _Requirements: 11.1, 11.2, 11.3_
 
-  - [ ] 1.4 Create PSP API endpoints
+  - [x] 1.4 Create PSP API endpoints
     - Create backend/app/api/v1/psp.py router
     - Add GET /api/v1/psp/matrix endpoint (returns PSPMatrixResponse)
     - Add GET /api/v1/psp/phases endpoint (returns ordered phases)
@@ -51,7 +51,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Register router in main.py
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.6, 17.7, 17.8, 17.9, 17.10_
 
-  - [ ] 1.5 Implement PSPService.get_statistics() method
+  - [x] 1.5 Implement PSPService.get_statistics() method
     - Count total phases, departments, workpackages
     - Count workpackages by status (draft, active, completed, archived)
     - Calculate coverage percentage (cells with workpackages / total cells)
@@ -59,7 +59,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Return PSPStatistics schema
     - _Requirements: 10.2, 10.3, 10.4, 10.5, 10.6, 10.7_
 
-  - [ ] 1.6 Add comprehensive error handling and logging
+  - [x] 1.6 Add comprehensive error handling and logging
     - Add try-catch blocks for database errors in PSPService
     - Log query execution time for performance monitoring
     - Log warnings for empty data scenarios
@@ -85,18 +85,84 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Test DELETE /api/v1/psp/workpackages/{id}
     - _Requirements: 17.1, 17.6, 17.7, 17.8_
 
-- [ ] 2. Checkpoint - Verify backend fixes
+- [x] 2. Checkpoint - Verify backend fixes
   - Ensure all tests pass, verify 500 error is fixed, ask the user if questions arise.
 
-- [ ] 3. Create comprehensive Medical Device Development PSP template
-  - [ ] 3.1 Create psp-comprehensive.yaml template structure
+- [-] 3. Remove redundant foreign key properties from graph database
+  - [x] 3.1 Update Pydantic schemas to remove phase_id and department_id properties
+    - Remove phase_id and department_id from WorkpackageBase in backend/app/schemas/psp.py
+    - Remove phase_id from WorkpackageBase in backend/app/schemas/workpackage.py
+    - Keep phase_id and department_id ONLY in WorkpackageCreate (for API input)
+    - Remove phase_id and department_id from WorkpackageResponse (use relationships)
+    - Update field validators to not reference these properties
+    - _Requirements: 11.3, 11.4, 11.10, 11.11_
+
+  - [x] 3.2 Rewrite PSPService to use relationship traversal instead of N+1 queries
+    - Replace get_matrix_data() implementation with single efficient Cypher query
+    - Use MATCH patterns to traverse BELONGS_TO and LINKED_TO_DEPARTMENT relationships
+    - Remove all references to phase_id and department_id properties in queries
+    - Return phase_id and department_id in response by traversing relationships
+    - Ensure query handles null relationships gracefully
+    - _Requirements: 11.10, 11.11, 1.5, 3.1_
+
+  - [x] 3.3 Update WorkpackageService to not store phase_id property on nodes
+    - Remove phase_id from properties dict in create_workpackage()
+    - Remove phase_id from update_props in update_workpackage()
+    - Keep relationship creation/update logic (BELONGS_TO, LINKED_TO_DEPARTMENT)
+    - Update get_workpackage() to traverse relationships for phase_id and department_id
+    - Update list_workpackages_by_phase() to use relationship traversal
+    - _Requirements: 11.4, 11.10_
+
+  - [x] 3.4 Update template validator to not require phase_id property
+    - Remove phase_id validation from workpackage schema in backend/app/schemas/template.py
+    - Validate that BELONGS_TO relationships exist instead
+    - Validate that LINKED_TO_DEPARTMENT relationships exist instead
+    - _Requirements: 12.1, 12.2_
+
+  - [x] 3.5 Update API endpoints to filter by relationships
+    - Update GET /api/v1/psp/workpackages to use relationship-based filtering
+    - Update Cypher queries to use MATCH patterns instead of property filters
+    - Remove phase_id and department_id from query parameters (use relationship traversal)
+    - _Requirements: 11.11, 17.4_
+
+  - [x] 3.6 Update progress utilities to traverse relationships
+    - Update backend/app/utils/progress_utils.py to use relationship traversal
+    - Remove any phase_id or department_id property references
+    - Use MATCH patterns to find related phases and departments
+    - _Requirements: 11.10, 11.11_
+
+  - [x] 3.7 Search for and fix other foreign key anti-patterns
+    - Search codebase for company_id, project_id, user_id properties on nodes
+    - Identify which should be relationships instead of properties
+    - Create tasks to fix similar anti-patterns in other services
+    - Document relationship-only approach in coding standards
+    - _Requirements: 11.4, 11.10, 11.11_
+
+  - [x] 3.8 Update spec documents to mandate relationship-only approach
+    - Update requirements.md to explicitly forbid foreign key properties
+    - Update design.md to show relationship traversal patterns
+    - Add examples of correct vs incorrect graph database usage
+    - _Requirements: 11.4, 11.10, 11.11_
+
+  - [ ]* 3.9 Run full test suite and fix broken tests
+    - Run backend tests: uvx pytest
+    - Fix tests that expect phase_id/department_id properties
+    - Update test fixtures to use relationship traversal
+    - Verify all PSP-related tests pass
+    - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8, 18.9, 18.10_
+
+- [ ] 4. Checkpoint - Verify relationship-only implementation
+  - Ensure no foreign key properties remain on workpackage nodes, verify all queries use relationship traversal, ask the user if questions arise.
+
+- [ ] 5. Create comprehensive Medical Device Development PSP template
+  - [x] 3.1 Create psp-comprehensive.yaml template structure
     - Create backend/templates/modular/psp-comprehensive.yaml
     - Add metadata section (name, version, description, author)
     - Define 8 phases in chronological order (POC → Post-Market)
     - Define 12 departments (R&D, Systems Eng, Software, Hardware, QA, Regulatory, Clinical, Manufacturing, Supply Chain, Risk Mgmt, Documentation, Project Mgmt)
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.2 Add phase definitions with realistic Medical Device lifecycle
+  - [x] 3.2 Add phase definitions with realistic Medical Device lifecycle
     - Phase 0: Proof of Concept (POC) - status: completed
     - Phase 1: Project Definition - status: completed
     - Phase 2: Concept Phase - status: active
@@ -108,7 +174,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Include descriptions referencing ISO 13485, ISO 14971, IEC 62304, IEC 60601
     - _Requirements: 2.2, 2.13_
 
-  - [ ] 3.3 Add department definitions with descriptions
+  - [x] 3.3 Add department definitions with descriptions
     - Research & Development (R&D) - Innovation and technology development
     - Systems Engineering - Requirements management and system architecture
     - Software Engineering - Software design, implementation, and testing
@@ -123,7 +189,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Project Management - Planning, coordination, and stakeholder management
     - _Requirements: 2.3_
 
-  - [ ] 3.4 Create 60+ workpackages distributed across phase-department intersections
+  - [x] 3.4 Create 60+ workpackages distributed across phase-department intersections
     - POC Phase: 6 workpackages (Feasibility Study, Technology Assessment, Prototype Development, Initial Risk Assessment, Market Research, Regulatory Strategy Planning)
     - Project Definition: 6 workpackages (Business Case, Project Charter, Resource Planning, Quality Management Plan, Risk Management Plan, Documentation Plan)
     - Concept Phase: 8 workpackages (User Needs Analysis, Design Input Specification, System Architecture, Software Requirements, Hardware Requirements, Preliminary Hazard Analysis, Regulatory Requirements, Supplier Identification)
@@ -134,7 +200,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Post-Market: 6 workpackages (Post-Market Surveillance Plan, Complaint Handling System, Vigilance Reporting, CAPA System, Periodic Safety Update Report, Product Lifecycle Management)
     - _Requirements: 2.4, 2.8, 2.10, 2.11, 2.12_
 
-  - [ ] 3.5 Add realistic workpackage properties
+  - [x] 3.5 Add realistic workpackage properties
     - Include realistic names referencing Medical Device standards
     - Add descriptions mentioning ISO 13485, ISO 14971, IEC 62304, IEC 60601, FDA 21 CFR Part 820, FDA 21 CFR Part 11
     - Set varied statuses (completed for POC/Project Def, active for Concept/Design Dev, draft for later phases)
@@ -143,7 +209,7 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Set order field for workpackages within same phase-department cell
     - _Requirements: 2.8, 2.9, 2.13, 2.15_
 
-  - [ ] 3.6 Define NEXT relationships for phase ordering
+  - [x] 3.6 Define NEXT relationships for phase ordering
     - Create NEXT relationship from POC → Project Definition
     - Create NEXT relationship from Project Definition → Concept Phase
     - Create NEXT relationship from Concept Phase → Design & Development
@@ -153,13 +219,13 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Create NEXT relationship from Market Release → Post-Market
     - _Requirements: 2.5_
 
-  - [ ] 3.7 Define workpackage relationships
+  - [x] 3.7 Define workpackage relationships
     - Add BELONGS_TO relationships linking each workpackage to its phase
     - Add LINKED_TO_DEPARTMENT relationships linking each workpackage to its department
     - Ensure every workpackage has both relationships
     - _Requirements: 2.6, 2.7_
 
-  - [ ] 3.8 Add template validation
+  - [x] 3.8 Add template validation
     - Validate all phase_id references exist in phases section
     - Validate all department_id references exist in departments section
     - Validate NEXT relationships form a valid chain (no cycles)
@@ -181,10 +247,10 @@ This implementation plan addresses critical fixes and enhancements to the Projec
     - Verify workpackages appear in correct matrix cells
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7, 18.8, 18.9, 18.10_
 
-- [ ] 4. Checkpoint - Verify template creation
+- [ ] 6. Checkpoint - Verify template creation
   - Ensure template loads without errors, verify all relationships are correct, ask the user if questions arise.
 
-- [ ] 5. Enhance frontend PSP store with filtering and CRUD operations
+- [ ] 7. Enhance frontend PSP store with filtering and CRUD operations
   - [ ] 5.1 Add filter state to PSPStore
     - Add searchQuery: string state
     - Add statusFilter: string | null state

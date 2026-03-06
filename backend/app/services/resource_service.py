@@ -49,13 +49,14 @@ class ResourceService:
         resource_id = uuid4()
         now = datetime.now(UTC)
 
+        # CRITICAL: Do NOT store department_id as a property on the node
+        # The department association is stored as a BELONGS_TO relationship
         properties = {
             "id": str(resource_id),
             "name": resource_data.name,
             "type": "Resource",  # Add explicit type property
             "resource_type": resource_data.type,  # Rename the resource type field
             "capacity": resource_data.capacity,
-            "department_id": str(resource_data.department_id),
             "availability": resource_data.availability,
             "created_at": now.isoformat(),
         }

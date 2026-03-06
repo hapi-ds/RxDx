@@ -40,11 +40,12 @@ class PhaseService:
         phase_id = uuid4()
         now = datetime.utcnow()
 
+        # CRITICAL: Do NOT store project_id as a property on the node
+        # The project association is stored as a BELONGS_TO relationship
         properties = {
             "id": str(phase_id),
             "name": phase_data.name,
             "order": phase_data.order,
-            "project_id": str(phase_data.project_id),
             "created_at": now.isoformat(),
         }
 

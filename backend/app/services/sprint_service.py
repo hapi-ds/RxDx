@@ -55,6 +55,8 @@ class SprintService:
 
         sprint_id = uuid4()
 
+        # CRITICAL: Do NOT store project_id as a property on the node
+        # The project association is stored as a BELONGS_TO relationship
         # Prepare sprint properties
         properties = {
             "id": str(sprint_id),
@@ -63,7 +65,6 @@ class SprintService:
             "start_date": sprint_data.start_date.isoformat(),
             "end_date": sprint_data.end_date.isoformat(),
             "status": sprint_data.status,
-            "project_id": str(sprint_data.project_id),
             "actual_velocity_hours": 0.0,
             "actual_velocity_story_points": 0,
             "created_at": datetime.now(UTC).isoformat(),
@@ -81,6 +82,13 @@ class SprintService:
 
         # Create the Sprint node
         await self.graph_service.create_node("Sprint", properties)
+
+        # Create BELONGS_TO relationship from Sprint to Project
+        await self.graph_service.create_relationship(
+            from_id=str(sprint_id),
+            to_id=str(sprint_data.project_id),
+            rel_type="BELONGS_TO",
+        )
 
         logger.info(
             f"Created sprint {sprint_id} for project {sprint_data.project_id}"

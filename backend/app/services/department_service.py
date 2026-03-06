@@ -46,11 +46,12 @@ class DepartmentService:
         department_id = uuid4()
         now = datetime.now(UTC)
 
+        # CRITICAL: Do NOT store company_id as a property on the node
+        # The company association is stored as a PARENT_OF relationship
         properties = {
             "id": str(department_id),
             "name": department_data.name,
             "type": "Department",  # Add explicit type property
-            "company_id": str(department_data.company_id),
             "created_at": now.isoformat(),
         }
 

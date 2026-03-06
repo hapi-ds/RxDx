@@ -37,6 +37,8 @@ class MilestoneService:
         """
         milestone_id = uuid4()
 
+        # CRITICAL: Do NOT store project_id as a property on the node
+        # The project association is stored as a BELONGS_TO relationship
         # Prepare milestone properties
         properties = {
             "id": str(milestone_id),
@@ -45,7 +47,6 @@ class MilestoneService:
             "target_date": milestone_data.target_date.isoformat(),
             "is_manual_constraint": milestone_data.is_manual_constraint,
             "status": milestone_data.status,
-            "project_id": str(milestone_data.project_id),
             "version": "1.0",
             "created_by": str(current_user.id),
             "created_at": datetime.now(UTC).isoformat(),
@@ -60,6 +61,13 @@ class MilestoneService:
 
         # Create the Milestone node
         await self.graph_service.create_node("Milestone", properties)
+
+        # Create BELONGS_TO relationship from Milestone to Project
+        await self.graph_service.create_relationship(
+            from_id=str(milestone_id),
+            to_id=str(milestone_data.project_id),
+            rel_type="BELONGS_TO",
+        )
 
         logger.info(
             f"Created milestone {milestone_id} for project {milestone_data.project_id}"

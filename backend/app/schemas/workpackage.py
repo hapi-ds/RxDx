@@ -7,7 +7,13 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class WorkpackageBase(BaseModel):
-    """Base schema for Workpackage"""
+    """Base schema for Workpackage
+    
+    Note: phase_id is NOT stored as a property on the node.
+    It's only used in Create/Update schemas to specify which
+    relationship to create/update. The actual association is
+    stored as a BELONGS_TO relationship in the graph.
+    """
 
     name: str = Field(..., min_length=1, max_length=200, description="Workpackage name")
     description: str | None = Field(
@@ -23,7 +29,6 @@ class WorkpackageBase(BaseModel):
     due_date: datetime | None = Field(
         None, description="Manual due date (optional, user-specified)"
     )
-    phase_id: UUID = Field(..., description="Phase ID this workpackage belongs to")
 
     @field_validator("name")
     @classmethod
@@ -44,13 +49,21 @@ class WorkpackageBase(BaseModel):
 
 
 class WorkpackageCreate(WorkpackageBase):
-    """Schema for creating a new Workpackage"""
+    """Schema for creating a new Workpackage
+    
+    phase_id is used to create the BELONGS_TO relationship,
+    not stored as a property on the node.
+    """
 
-    pass
+    phase_id: UUID = Field(..., description="Phase ID to create BELONGS_TO relationship")
 
 
 class WorkpackageUpdate(BaseModel):
-    """Schema for updating a Workpackage"""
+    """Schema for updating a Workpackage
+    
+    phase_id can be provided to update the BELONGS_TO relationship,
+    not to update a property on the node.
+    """
 
     name: str | None = Field(
         None, min_length=1, max_length=200, description="Workpackage name"
@@ -75,7 +88,7 @@ class WorkpackageUpdate(BaseModel):
         None, ge=0, le=100, description="Completion percentage (0-100)"
     )
     phase_id: UUID | None = Field(
-        None, description="Phase ID this workpackage belongs to"
+        None, description="Phase ID to update BELONGS_TO relationship"
     )
 
     @field_validator("name")
@@ -88,9 +101,16 @@ class WorkpackageUpdate(BaseModel):
 
 
 class WorkpackageResponse(WorkpackageBase):
-    """Schema for Workpackage response"""
+    """Schema for Workpackage response
+    
+    phase_id is derived from the BELONGS_TO relationship,
+    not stored as a property on the node.
+    """
 
     id: UUID
+    phase_id: UUID | None = Field(
+        None, description="Phase ID derived from BELONGS_TO relationship"
+    )
     created_at: datetime
     calculated_start_date: datetime | None = Field(
         None, description="Calculated by scheduler"

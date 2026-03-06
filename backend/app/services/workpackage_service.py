@@ -47,11 +47,12 @@ class WorkpackageService:
         workpackage_id = uuid4()
         now = datetime.now(UTC)
 
+        # CRITICAL: Do NOT store phase_id as a property on the node
+        # The phase association is stored as a BELONGS_TO relationship
         properties = {
             "id": str(workpackage_id),
             "name": workpackage_data.name,
             "order": workpackage_data.order,
-            "phase_id": str(workpackage_data.phase_id),
             "created_at": now.isoformat(),
         }
 
@@ -114,16 +115,25 @@ class WorkpackageService:
             Workpackage if found, None otherwise
         """
         try:
-            query = f"MATCH (wp:Workpackage {{id: '{str(workpackage_id)}'}}) RETURN wp"
+            # Query with relationship traversal to get phase_id
+            query = f"""
+            MATCH (wp:Workpackage {{id: '{str(workpackage_id)}'}})
+            OPTIONAL MATCH (wp)-[:BELONGS_TO]->(p:Phase)
+            RETURN wp, p.id as phase_id
+            """
             results = await self.graph_service.execute_query(query)
 
             if not results:
                 return None
 
             # Extract workpackage data from result
-            workpackage_data = results[0]
+            result = results[0]
+            workpackage_data = result.get("wp", {})
             if "properties" in workpackage_data:
                 workpackage_data = workpackage_data["properties"]
+            
+            # Get phase_id from relationship traversal, not from properties
+            phase_id = result.get("phase_id")
 
             # Get task statistics if requested
             task_count = None
@@ -165,7 +175,7 @@ class WorkpackageService:
                     else None
                 ),
                 progress=workpackage_data.get("progress", 0),
-                phase_id=UUID(workpackage_data["phase_id"]),
+                phase_id=UUID(phase_id) if phase_id else None,
                 created_at=datetime.fromisoformat(workpackage_data["created_at"]),
                 task_count=task_count,
                 completion_percentage=completion_percentage,
@@ -261,7 +271,8 @@ class WorkpackageService:
             if not phase_results:
                 raise ValueError(f"Phase {updates.phase_id} not found")
 
-            update_props["phase_id"] = str(updates.phase_id)
+            # CRITICAL: Do NOT store phase_id as a property
+            # Only update the BELONGS_TO relationship
 
             # Delete old BELONGS_TO relationship and create new one
             try:
@@ -340,7 +351,7 @@ class WorkpackageService:
         self, phase_id: UUID, limit: int = 100
     ) -> list[WorkpackageResponse]:
         """
-        List all workpackages for a specific phase
+        List all workpackages for a specific phase using relationship traversal
 
         Args:
             phase_id: Phase UUID
@@ -350,6 +361,7 @@ class WorkpackageService:
             List of workpackages ordered by sequence
         """
         try:
+            # Use relationship traversal - we already know the phase_id from the query
             query = f"""
             MATCH (p:Phase {{id: '{str(phase_id)}'}})<-[:BELONGS_TO]-(wp:Workpackage)
             RETURN wp
@@ -397,7 +409,8 @@ class WorkpackageService:
                             else None
                         ),
                         progress=workpackage_data.get("progress", 0),
-                        phase_id=UUID(workpackage_data["phase_id"]),
+                        # phase_id comes from the query parameter, not from properties
+                        phase_id=phase_id,
                         created_at=datetime.fromisoformat(
                             workpackage_data["created_at"]
                         ),

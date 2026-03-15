@@ -2,6 +2,7 @@
  
 **(R)equirements *(x)* … and much more TO (D)ocuments *(x)* ... and much more**
 
+This project was primarily a test designed to explore the limits of agentic coding. Once those limits became apparent, it was necessary to restart the project—with a greater focus on the data model and its ease of customization - that is why this project is being archived. See RxD3 for how it is going on. 
 
 **RxDx** is a tool for structured engineering work across the full lifecycle of requirements and related artifacts. It supports the creation, refinement, linking, and traceability of content ranging from informal notes to formal requirements, specifications, tests, tasks, and risk items.
 
